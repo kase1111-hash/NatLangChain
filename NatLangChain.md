@@ -57,39 +57,6 @@ Regulatory oversight, democratic accountability, and ethical traceability improv
 5. Anticipated Challenges and Mitigations
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ChallengeDescriptionMitigation / PositioningAmbiguity in interpretationNatural language can be context-dependent or vagueConsensus protocols include explicit clarification dialogues; ambiguity is surfaced and resolved transparently on-chainStorage and scalability overheadProse entries are larger than binary/struct dataTargeted at human-scale, high-value domains (personal finance, governance, agent coordination) rather than high-throughput tradingAdversarial phrasingMalicious entries exploiting LLM inconsistenciesMulti-model/multi-node agreement on intent; cryptographic signatures; evolving LLM robustness to deceptionConsensus performanceLinguistic validation requires heavier computationAcceptable trade-off for trust-sensitive applications; optimizable via lighter models or hybrid layersLegal enforceabilityCourts may prefer structured contractsFull narrative history provides explicit, readable evidence of intent—potentially stronger than opaque code
 These are engineering hurdles rather than fundamental flaws. The paradigm accepts efficiency trade-offs in exchange for alignment, readability, and semantic fidelity.
 6. Conclusion
@@ -100,5 +67,5 @@ References
 Related philosophical grounding: Concepts in language as a primary substrate for intelligent systems (e.g., cognitive linguistics views of language as operational medium).
 Adjacent technical work: Natural language interfaces for blockchain interaction; hybrid ricardian/smart legal contracts.
 
-Repository: https://github.com/[yourusername]/NatLangChain
+Repository: https://github.com/kase1111-hash/NatLangChain
 License: CC BY-SA 4.0 – Attribution and share-alike required.
