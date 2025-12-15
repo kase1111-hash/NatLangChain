@@ -1,4 +1,3 @@
-Now let me fetch the main NatLangChain.md file to see the full context and writing style:Failed to fetch https://raw.githubusercontent.com/kase1111-hash/NatLangChain/main/NatLangChain.mdLet me search for the raw content:Failed to fetch https://github.com/kase1111-hash/NatLangChain/blob/main/NatLangChain.mdBased on the README, I can see your project has a technical yet accessible tone that balances conceptual depth with clarity. Here's a rewritten version of your Multilingual Extensions section that maintains this style:
 
 Multilingual Extensions
 A frequent critique of language-native systems is their apparent linguistic specificity—natural language is diverse, not universal, and grounding a ledger in prose could fragment rather than unite a global user base. This concern, while valid, overlooks how real-world international coordination already navigates linguistic plurality successfully, from treaty negotiations to cross-border commerce.
