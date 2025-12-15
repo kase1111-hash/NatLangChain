@@ -48,4 +48,12 @@ You are free to share and adapt, provided you give appropriate credit and share 
 
 ---
 
-Timestamped for prior art purposes. Feel free to expand with prototypes, diagrams, or discussions.
+Timestamped for prior art purposes. Feel free to expand with prototypes, diagrams, or discussions.[![CC BY-SA 4.0][cc-by-sa-image]][cc-by-sa]
+
+This work is licensed under a [Creative Commons Attribution-ShareAlike 4.0 International License][cc-by-sa].
+
+[cc-by-sa]: http://creativecommons.org/licenses/by-sa/4.0/
+[cc-by-sa-image]: https://licensebuttons.net/l/by-sa/4.0/88x31.png
+"Creative Commons Attribution-ShareAlike 4.0 International License"
+
+
