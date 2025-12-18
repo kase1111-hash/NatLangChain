@@ -1,3 +1,50 @@
+NatLangChain — Summary (December 18, 2025)
+NatLangChain is a prose-first, intent-native blockchain protocol whose sole purpose is to record explicit human intent in natural language and let the system find alignment.
+“Post intent. Let the system find alignment.”
+That is the entire mechanism.
+Core Design
+
+Entries are ordinary, readable prose — stories, offers, requests, summaries, agreements, or daily work outputs.
+Large language models serve as neutral mediators: clarifying meaning, proposing alignments between compatible intents, facilitating negotiation, and summarizing closures.
+Every step (post, proposal, counter, acceptance, rejection) is immutably recorded as legible text, creating permanent, auditable receipts.
+Multi-chain branching and merging allow separate contexts (personal, family, creative, professional) to evolve independently and combine when useful.
+Mediation “mining” replaces proof-of-work: nodes running LLMs compete to create successful alignments and earn small, contract-specified facilitation fees.
+
+The Breakthrough Insight
+NatLangChain solves one of the largest unaddressed frictions in the modern labor and professional economy: the fear and ghosting that kill most opportunities before they begin.
+Traditional markets require one party to reach out cold — a psychologically costly act that feels like exposure or begging. Most potential collaborations therefore never happen.
+NatLangChain removes the “first contact” entirely.
+
+Creators (programmers, designers, researchers, writers) automatically post their daily output as self-seeking prose contracts — no outreach required.
+Buyers (companies, DAOs, individuals) post standing intents or bounties.
+Overnight, decentralized LLM mediators discover fits, propose terms, negotiate, and close — all in public, auditable prose.
+Rejection is impersonal and visible; accepted deals come with full receipts. Ghosting becomes structurally impossible.
+
+Your work sells itself at the door.
+You no longer have to knock.
+Emergent Possibilities
+
+Programmers can “incorporate” their GitHub repositories: every commit or daily progress becomes a live, monetizable asset that finds buyers autonomously.
+Bounties flip from push to pull: open intents attract solutions without manual submission.
+Banked or bundled outputs compound into higher-value packages over time.
+The same substrate supports family memories, personal journals, speculative agreements, service offers — anything that benefits from clarity, mediation, and trustworthy records.
+
+Boundaries & Guarantees
+The protocol is deliberately neutral infrastructure.
+
+It records only what users voluntarily and explicitly publish.
+It performs no surveillance, profiling, inferencing, or reporting.
+Procedural integrity checks refuse to mediate unclear, euphemistic, or unsafe intent — not as censorship, but as refusal to amplify.
+All participants use the same mechanisms; there are no hidden powers.
+
+NatLangChain is not a marketplace, not a job board, not a social network.
+Those are temporary skins.
+It is the underlying ledger for a fearless, intent-driven economy — where human effort and opportunity align automatically, without the emotional tax of cold outreach.
+One chain.
+One principle.
+Infinite fearless alignments.
+
+
 NatLangChain: A Natural Language-Native Distributed Ledger
 Prior Art Publication
 Date: December 15, 2025
