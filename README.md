@@ -2,7 +2,31 @@ NatLangChain: A Natural Language-Native Distributed Ledger
 Prior Art Publication
 Date: December 15, 2025
 License: Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)
-Abstract
+
+## Implementation Status
+
+**Working Implementation Available!** This repository now includes a functional implementation of the NatLangChain concept with a REST API for Agent OS integration.
+
+### Quick Start
+
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Configure API key
+cp .env.example .env
+# Edit .env and add your ANTHROPIC_API_KEY
+
+# Run the server
+python run_server.py
+
+# Test the implementation
+python tests/test_blockchain.py
+```
+
+See [API.md](API.md) for complete API documentation and Agent OS integration examples.
+
+## Abstract
 Distributed ledgers have transformed trustless coordination, yet canonical records remain symbolic and opaque. NatLangChain proposes a paradigm where natural language prose is the primary substrate for immutable entries, forming a shared narrative "book." LLMs enable linguistic consensus, validation, and execution, preserving intent and enhancing auditability. This document addresses key considerations, challenges, and extensions.
 1. Technical Architecture Considerations
 Consensus Mechanisms for Natural Language
@@ -90,6 +114,76 @@ NLP for blockchain monitoring/security.
 NatLangChain advances by making prose canonical.
 10. Conclusion
 NatLangChain reframes distributed trust around linguistic participation. By addressing challenges head-on, it offers interpretable, inclusive ledgers for human-AI collaboration.
+
+## Implementation Features
+
+The current implementation includes:
+
+### Core Blockchain
+- Natural language entries as primary substrate
+- Cryptographic block chaining with SHA-256
+- Genesis block initialization
+- Proof-of-work mining (configurable difficulty)
+- Chain validation and integrity checks
+- Full serialization/deserialization
+- Persistent storage (JSON-based)
+
+### LLM-Powered Validation
+- **Proof of Understanding** consensus mechanism
+- Single and multi-validator consensus modes
+- Paraphrase-based comprehension verification
+- Ambiguity detection
+- Adversarial pattern detection
+- Intent matching validation
+- Semantic drift analysis
+- Clarification protocol generation
+
+### Hybrid Validation
+- Symbolic rule-based pre-validation
+- LLM validation for complex entries
+- Configurable validation tiers
+- Malicious pattern detection
+
+### REST API for Agent OS
+- **Push**: Add natural language entries
+- **Pull**: Retrieve entries, blocks, narratives
+- **Query**: Search by author, intent, keywords
+- **Validate**: Dry-run validation without committing
+- **Mine**: Create blocks from pending entries
+- **Stats**: Blockchain statistics and health
+
+### API Endpoints
+```
+GET  /health                    - Health check
+GET  /stats                     - Blockchain statistics
+GET  /chain                     - Full blockchain data
+GET  /chain/narrative           - Human-readable narrative
+POST /entry                     - Add new entry
+POST /entry/validate            - Validate without adding
+POST /mine                      - Mine pending entries
+GET  /block/<index>             - Get specific block
+GET  /entries/author/<author>   - Get entries by author
+GET  /entries/search?intent=... - Search by intent
+GET  /pending                   - Get pending entries
+GET  /validate/chain            - Validate integrity
+```
+
+### Agent OS Integration
+See [API.md](API.md) for complete examples in:
+- Python
+- JavaScript
+- cURL
+- Any HTTP-capable system
+
+### Testing
+Comprehensive test suite covering:
+- Genesis block creation
+- Entry addition and validation
+- Block mining
+- Chain validation
+- Author queries
+- Narrative generation
+- Serialization/deserialization
 
 ## License
 Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)  
