@@ -11,6 +11,9 @@ from dotenv import load_dotenv
 
 from blockchain import NatLangChain, NaturalLanguageEntry, Block
 from validator import ProofOfUnderstanding, HybridValidator
+from semantic_diff import SemanticDriftDetector
+from semantic_search import SemanticSearchEngine
+from dialectic_consensus import DialecticConsensus
 
 
 # Load environment variables
@@ -24,21 +27,36 @@ app.config['JSON_SORT_KEYS'] = False
 blockchain = NatLangChain()
 llm_validator = None
 hybrid_validator = None
+drift_detector = None
+search_engine = None
+dialectic_validator = None
 
 # Data file for persistence
 CHAIN_DATA_FILE = os.getenv("CHAIN_DATA_FILE", "chain_data.json")
 
 
 def init_validators():
-    """Initialize validators if API key is available."""
-    global llm_validator, hybrid_validator
+    """Initialize validators and advanced features if API key is available."""
+    global llm_validator, hybrid_validator, drift_detector, search_engine, dialectic_validator
     api_key = os.getenv("ANTHROPIC_API_KEY")
+
+    # Initialize semantic search (doesn't require API key)
+    try:
+        search_engine = SemanticSearchEngine()
+        print("Semantic search engine initialized")
+    except Exception as e:
+        print(f"Warning: Could not initialize semantic search: {e}")
+
+    # Initialize LLM-based features if API key available
     if api_key and api_key != "your_api_key_here":
         try:
             llm_validator = ProofOfUnderstanding(api_key)
             hybrid_validator = HybridValidator(llm_validator)
+            drift_detector = SemanticDriftDetector(api_key)
+            dialectic_validator = DialecticConsensus(api_key)
+            print("LLM-based features initialized")
         except Exception as e:
-            print(f"Warning: Could not initialize LLM validator: {e}")
+            print(f"Warning: Could not initialize LLM features: {e}")
             print("API will operate without LLM validation")
 
 
@@ -156,15 +174,27 @@ def add_entry():
     # Validate if requested
     validate = data.get("validate", True)
     validation_result = None
+    validation_mode = data.get("validation_mode", "standard")  # "standard", "multi", or "dialectic"
 
-    if validate and hybrid_validator:
-        validation_result = hybrid_validator.validate(
-            content=content,
-            intent=intent,
-            author=author,
-            use_llm=True,
-            multi_validator=data.get("multi_validator", False)
-        )
+    if validate:
+        if validation_mode == "dialectic" and dialectic_validator:
+            # Use dialectic consensus validation
+            dialectic_result = dialectic_validator.validate_entry(content, intent, author)
+            validation_result = {
+                "validation_mode": "dialectic",
+                "dialectic_validation": dialectic_result,
+                "overall_decision": dialectic_result.get("decision", "ERROR")
+            }
+        elif hybrid_validator:
+            # Use standard or multi-validator mode
+            validation_result = hybrid_validator.validate(
+                content=content,
+                intent=intent,
+                author=author,
+                use_llm=True,
+                multi_validator=(validation_mode == "multi" or data.get("multi_validator", False))
+            )
+            validation_result["validation_mode"] = validation_mode
 
         # Update entry with validation results
         decision = validation_result.get("overall_decision", "PENDING")
@@ -407,8 +437,268 @@ def get_stats():
         "validated_entries": validated_count,
         "chain_valid": blockchain.validate_chain(),
         "latest_block_hash": blockchain.get_latest_block().hash,
-        "llm_validation_enabled": llm_validator is not None
+        "llm_validation_enabled": llm_validator is not None,
+        "semantic_search_enabled": search_engine is not None,
+        "drift_detection_enabled": drift_detector is not None,
+        "dialectic_consensus_enabled": dialectic_validator is not None
     })
+
+
+# ========== Semantic Search Endpoints ==========
+
+@app.route('/search/semantic', methods=['POST'])
+def semantic_search():
+    """
+    Perform semantic search across blockchain entries.
+
+    Request body:
+    {
+        "query": "natural language search query",
+        "top_k": 5 (optional),
+        "min_score": 0.0 (optional),
+        "field": "content" | "intent" | "both" (optional)
+    }
+
+    Returns:
+        List of semantically similar entries
+    """
+    if not search_engine:
+        return jsonify({
+            "error": "Semantic search not available",
+            "reason": "Search engine not initialized"
+        }), 503
+
+    data = request.get_json()
+
+    if not data or "query" not in data:
+        return jsonify({
+            "error": "Missing required field: query"
+        }), 400
+
+    query = data["query"]
+    top_k = data.get("top_k", 5)
+    min_score = data.get("min_score", 0.0)
+    field = data.get("field", "content")
+
+    try:
+        if field in ["content", "intent", "both"]:
+            results = search_engine.search_by_field(
+                blockchain, query, field=field, top_k=top_k, min_score=min_score
+            )
+        else:
+            results = search_engine.search(
+                blockchain, query, top_k=top_k, min_score=min_score
+            )
+
+        return jsonify({
+            "query": query,
+            "field": field,
+            "count": len(results),
+            "results": results
+        })
+
+    except Exception as e:
+        return jsonify({
+            "error": "Search failed",
+            "reason": str(e)
+        }), 500
+
+
+@app.route('/search/similar', methods=['POST'])
+def find_similar():
+    """
+    Find entries similar to a given content.
+
+    Request body:
+    {
+        "content": "content to find similar entries for",
+        "top_k": 5 (optional),
+        "exclude_exact": true (optional)
+    }
+
+    Returns:
+        List of similar entries
+    """
+    if not search_engine:
+        return jsonify({
+            "error": "Semantic search not available"
+        }), 503
+
+    data = request.get_json()
+
+    if not data or "content" not in data:
+        return jsonify({
+            "error": "Missing required field: content"
+        }), 400
+
+    content = data["content"]
+    top_k = data.get("top_k", 5)
+    exclude_exact = data.get("exclude_exact", True)
+
+    try:
+        results = search_engine.find_similar_entries(
+            blockchain, content, top_k=top_k, exclude_exact=exclude_exact
+        )
+
+        return jsonify({
+            "content": content,
+            "count": len(results),
+            "similar_entries": results
+        })
+
+    except Exception as e:
+        return jsonify({
+            "error": "Search failed",
+            "reason": str(e)
+        }), 500
+
+
+# ========== Semantic Drift Detection Endpoints ==========
+
+@app.route('/drift/check', methods=['POST'])
+def check_drift():
+    """
+    Check semantic drift between intent and execution.
+
+    Request body:
+    {
+        "on_chain_intent": "the canonical intent from blockchain",
+        "execution_log": "the actual execution or action log"
+    }
+
+    Returns:
+        Drift analysis with score and recommendations
+    """
+    if not drift_detector:
+        return jsonify({
+            "error": "Drift detection not available",
+            "reason": "ANTHROPIC_API_KEY not configured"
+        }), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    on_chain_intent = data.get("on_chain_intent")
+    execution_log = data.get("execution_log")
+
+    if not all([on_chain_intent, execution_log]):
+        return jsonify({
+            "error": "Missing required fields",
+            "required": ["on_chain_intent", "execution_log"]
+        }), 400
+
+    result = drift_detector.check_alignment(on_chain_intent, execution_log)
+
+    return jsonify(result)
+
+
+@app.route('/drift/entry/<int:block_index>/<int:entry_index>', methods=['POST'])
+def check_entry_drift(block_index: int, entry_index: int):
+    """
+    Check drift for a specific blockchain entry against an execution log.
+
+    Args:
+        block_index: Block index containing the entry
+        entry_index: Entry index within the block
+
+    Request body:
+    {
+        "execution_log": "the actual execution or action log"
+    }
+
+    Returns:
+        Drift analysis for the specific entry
+    """
+    if not drift_detector:
+        return jsonify({
+            "error": "Drift detection not available"
+        }), 503
+
+    # Validate block index
+    if block_index < 0 or block_index >= len(blockchain.chain):
+        return jsonify({
+            "error": "Block not found",
+            "valid_range": f"0-{len(blockchain.chain) - 1}"
+        }), 404
+
+    block = blockchain.chain[block_index]
+
+    # Validate entry index
+    if entry_index < 0 or entry_index >= len(block.entries):
+        return jsonify({
+            "error": "Entry not found",
+            "valid_range": f"0-{len(block.entries) - 1}"
+        }), 404
+
+    entry = block.entries[entry_index]
+
+    # Get execution log from request
+    data = request.get_json()
+    if not data or "execution_log" not in data:
+        return jsonify({
+            "error": "Missing required field: execution_log"
+        }), 400
+
+    execution_log = data["execution_log"]
+
+    # Check drift
+    result = drift_detector.check_entry_execution_alignment(
+        entry.content, entry.intent, execution_log
+    )
+
+    result["entry_info"] = {
+        "block_index": block_index,
+        "entry_index": entry_index,
+        "author": entry.author,
+        "intent": entry.intent
+    }
+
+    return jsonify(result)
+
+
+# ========== Dialectic Consensus Endpoint ==========
+
+@app.route('/validate/dialectic', methods=['POST'])
+def validate_dialectic():
+    """
+    Validate an entry using dialectic consensus (Skeptic/Facilitator debate).
+
+    Request body:
+    {
+        "content": "content to validate",
+        "author": "author identifier",
+        "intent": "intent description"
+    }
+
+    Returns:
+        Dialectic validation result with both perspectives
+    """
+    if not dialectic_validator:
+        return jsonify({
+            "error": "Dialectic consensus not available",
+            "reason": "ANTHROPIC_API_KEY not configured"
+        }), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    content = data.get("content")
+    author = data.get("author")
+    intent = data.get("intent")
+
+    if not all([content, author, intent]):
+        return jsonify({
+            "error": "Missing required fields",
+            "required": ["content", "author", "intent"]
+        }), 400
+
+    result = dialectic_validator.validate_entry(content, intent, author)
+
+    return jsonify(result)
 
 
 @app.errorhandler(404)

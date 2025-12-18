@@ -647,6 +647,213 @@ The entire blockchain can be read as a narrative (`/chain/narrative`), making it
 
 ---
 
+---
+
+## Advanced Features
+
+The NatLangChain API now includes three integrated advanced features for enhanced validation, search, and security.
+
+### Semantic Search
+
+Semantic search uses embeddings to find entries by meaning, not just keywords.
+
+#### `POST /search/semantic`
+
+Perform semantic search across all blockchain entries.
+
+**Request Body:**
+```json
+{
+  "query": "natural language search query",
+  "top_k": 5,
+  "min_score": 0.0,
+  "field": "content" | "intent" | "both"
+}
+```
+
+**Example:**
+```bash
+curl -X POST http://localhost:5000/search/semantic \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "vehicle ownership transfers",
+    "top_k": 5,
+    "field": "both"
+  }'
+```
+
+**Response:**
+```json
+{
+  "query": "vehicle ownership transfers",
+  "field": "both",
+  "count": 2,
+  "results": [
+    {
+      "score": 0.8234,
+      "entry": {
+        "content": "Alice transfers ownership of the vintage car...",
+        "author": "alice",
+        "intent": "Transfer vehicle ownership",
+        "block_index": 1,
+        "block_hash": "000abc..."
+      }
+    }
+  ]
+}
+```
+
+**Key Feature:** Semantic search finds "car sales" even when the text says "automobile transfers" because it understands meaning, not just words.
+
+#### `POST /search/similar`
+
+Find entries similar to given content (useful for detecting duplicates).
+
+**Request Body:**
+```json
+{
+  "content": "content to find similar entries for",
+  "top_k": 5,
+  "exclude_exact": true
+}
+```
+
+### Semantic Drift Detection
+
+Detect when agent execution drifts from stated on-chain intent. This is a security feature that implements a "semantic firewall" for agent systems.
+
+#### `POST /drift/check`
+
+Check semantic drift between canonical intent and execution log.
+
+**Request Body:**
+```json
+{
+  "on_chain_intent": "Maintain a neutral delta on S&P 500 via low-risk options",
+  "execution_log": "Purchasing leveraged 3x call options on volatile AI startups"
+}
+```
+
+**Response:**
+```json
+{
+  "status": "success",
+  "drift_analysis": {
+    "score": 0.89,
+    "is_violating": true,
+    "reason": "Execution significantly diverges from stated low-risk strategy",
+    "recommended_action": "BLOCK"
+  },
+  "threshold": 0.7,
+  "alert": true
+}
+```
+
+**Use Cases:**
+- Monitor AI agents to ensure they follow their stated intentions
+- Audit trails for regulatory compliance
+- Circuit breakers for autonomous systems
+
+#### `POST /drift/entry/<block_index>/<entry_index>`
+
+Check drift for a specific blockchain entry against an execution log.
+
+**Example:**
+```bash
+curl -X POST http://localhost:5000/drift/entry/1/0 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "execution_log": "Agent performed action X"
+  }'
+```
+
+### Dialectic Consensus Validation
+
+Advanced validation using debate between Skeptic and Facilitator roles. Particularly useful for financial or legal entries requiring precision.
+
+#### `POST /validate/dialectic`
+
+Validate entry through dialectic debate (requires ANTHROPIC_API_KEY).
+
+**Request Body:**
+```json
+{
+  "content": "I'll hedge some oil soon if things get crazy in the Middle East",
+  "author": "trader",
+  "intent": "Risk management strategy"
+}
+```
+
+**Response:**
+```json
+{
+  "status": "success",
+  "method": "dialectic_consensus",
+  "skeptic_perspective": {
+    "concerns": ["'some oil' is vague", "'soon' lacks timeline", "'crazy' is undefined"],
+    "severity": "CRITICAL",
+    "recommendation": "REJECT",
+    "reasoning": "Multiple ambiguous terms make entry unenforceable"
+  },
+  "facilitator_perspective": {
+    "canonical_intent": "Trader wants to hedge oil exposure during geopolitical instability",
+    "key_commitments": ["Hedge oil positions", "Respond to Middle East events"],
+    "clarity_score": 0.4
+  },
+  "final_decision": {
+    "status": "REJECT",
+    "reasoning": "Skeptic's concerns are critical - vague terms make entry semantically null",
+    "required_clarifications": ["Specify oil quantity", "Define timeline", "Clarify trigger conditions"]
+  },
+  "decision": "INVALID"
+}
+```
+
+**How It Works:**
+1. **Skeptic** examines for ambiguities, loopholes, and vague terms
+2. **Facilitator** extracts core intent and spirit
+3. **Consensus Engine** reconciles perspectives to make final decision
+
+**Use in Entry Creation:**
+
+You can use dialectic validation when adding entries:
+
+```bash
+curl -X POST http://localhost:5000/entry \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": "Your entry content",
+    "author": "author_id",
+    "intent": "Entry intent",
+    "validation_mode": "dialectic",
+    "auto_mine": true
+  }'
+```
+
+**Validation Modes:**
+- `"standard"` - Default hybrid validation (symbolic + LLM)
+- `"multi"` - Multi-validator consensus (3 validators)
+- `"dialectic"` - Skeptic/Facilitator debate
+
+---
+
+## Configuration
+
+### Environment Variables
+
+Create a `.env` file:
+
+```bash
+ANTHROPIC_API_KEY=your_api_key_here
+PORT=5000
+HOST=0.0.0.0
+CHAIN_DATA_FILE=chain_data.json
+```
+
+**Note:** Semantic search works without an API key. Drift detection and dialectic consensus require `ANTHROPIC_API_KEY`.
+
+---
+
 ## Support
 
 For issues and feature requests, see the main README.md and project documentation.
