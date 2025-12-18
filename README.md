@@ -15,6 +15,10 @@ NatLangChain solves one of the largest unaddressed frictions in the modern labor
 Traditional markets require one party to reach out cold — a psychologically costly act that feels like exposure or begging. Most potential collaborations therefore never happen.
 NatLangChain removes the “first contact” entirely.
 
+NatLangChain is an open-source project by kase1111-hash.
+The name "NatLangChain" is not a registered trademark.
+All rights to the code are governed by the LICENSE file.
+
 Creators (programmers, designers, researchers, writers) automatically post their daily output as self-seeking prose contracts — no outreach required.
 Buyers (companies, DAOs, individuals) post standing intents or bounties.
 Overnight, decentralized LLM mediators discover fits, propose terms, negotiate, and close — all in public, auditable prose.
