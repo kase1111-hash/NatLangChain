@@ -14,6 +14,8 @@ from validator import ProofOfUnderstanding, HybridValidator
 from semantic_diff import SemanticDriftDetector
 from semantic_search import SemanticSearchEngine
 from dialectic_consensus import DialecticConsensus
+from contract_parser import ContractParser
+from contract_matcher import ContractMatcher
 
 
 # Load environment variables
@@ -30,6 +32,8 @@ hybrid_validator = None
 drift_detector = None
 search_engine = None
 dialectic_validator = None
+contract_parser = None
+contract_matcher = None
 
 # Data file for persistence
 CHAIN_DATA_FILE = os.getenv("CHAIN_DATA_FILE", "chain_data.json")
@@ -37,7 +41,7 @@ CHAIN_DATA_FILE = os.getenv("CHAIN_DATA_FILE", "chain_data.json")
 
 def init_validators():
     """Initialize validators and advanced features if API key is available."""
-    global llm_validator, hybrid_validator, drift_detector, search_engine, dialectic_validator
+    global llm_validator, hybrid_validator, drift_detector, search_engine, dialectic_validator, contract_parser, contract_matcher
     api_key = os.getenv("ANTHROPIC_API_KEY")
 
     # Initialize semantic search (doesn't require API key)
@@ -54,7 +58,9 @@ def init_validators():
             hybrid_validator = HybridValidator(llm_validator)
             drift_detector = SemanticDriftDetector(api_key)
             dialectic_validator = DialecticConsensus(api_key)
-            print("LLM-based features initialized")
+            contract_parser = ContractParser(api_key)
+            contract_matcher = ContractMatcher(api_key)
+            print("LLM-based features initialized (including contract matching)")
         except Exception as e:
             print(f"Warning: Could not initialize LLM features: {e}")
             print("API will operate without LLM validation")
@@ -289,13 +295,16 @@ def mine_block():
     """
     Mine pending entries into a new block.
 
+    Automatically finds and proposes matches for contract entries before mining.
+
     Request body (optional):
     {
-        "difficulty": 2 (number of leading zeros in hash)
+        "difficulty": 2 (number of leading zeros in hash),
+        "miner_id": "miner identifier" (optional, for contract matching)
     }
 
     Returns:
-        Newly mined block
+        Newly mined block with any contract proposals
     """
     if not blockchain.pending_entries:
         return jsonify({
@@ -304,14 +313,35 @@ def mine_block():
 
     data = request.get_json() or {}
     difficulty = data.get("difficulty", 2)
+    miner_id = data.get("miner_id", "miner")
 
+    # Find contract matches if matcher is available
+    proposals = []
+    if contract_matcher:
+        try:
+            proposals = contract_matcher.find_matches(
+                blockchain,
+                blockchain.pending_entries,
+                miner_id
+            )
+
+            # Add proposals to pending entries
+            for proposal in proposals:
+                blockchain.add_entry(proposal)
+
+        except Exception as e:
+            print(f"Contract matching failed: {e}")
+
+    # Mine the block
     mined_block = blockchain.mine_pending_entries(difficulty=difficulty)
     save_chain()
 
     return jsonify({
         "status": "success",
         "message": "Block mined successfully",
-        "block": mined_block.to_dict()
+        "block": mined_block.to_dict(),
+        "contract_proposals": len(proposals),
+        "proposals": [p.to_dict() for p in proposals] if proposals else []
     })
 
 
@@ -429,6 +459,21 @@ def get_stats():
             if entry.validation_status == "validated" or entry.validation_status == "valid":
                 validated_count += 1
 
+    # Count contracts
+    total_contracts = 0
+    open_contracts = 0
+    matched_contracts = 0
+
+    for block in blockchain.chain:
+        for entry in block.entries:
+            if entry.metadata.get("is_contract"):
+                total_contracts += 1
+                status = entry.metadata.get("status", "open")
+                if status == "open":
+                    open_contracts += 1
+                elif status == "matched":
+                    matched_contracts += 1
+
     return jsonify({
         "total_blocks": len(blockchain.chain),
         "total_entries": total_entries,
@@ -440,7 +485,11 @@ def get_stats():
         "llm_validation_enabled": llm_validator is not None,
         "semantic_search_enabled": search_engine is not None,
         "drift_detection_enabled": drift_detector is not None,
-        "dialectic_consensus_enabled": dialectic_validator is not None
+        "dialectic_consensus_enabled": dialectic_validator is not None,
+        "contract_features_enabled": contract_parser is not None and contract_matcher is not None,
+        "total_contracts": total_contracts,
+        "open_contracts": open_contracts,
+        "matched_contracts": matched_contracts
     })
 
 
@@ -699,6 +748,246 @@ def validate_dialectic():
     result = dialectic_validator.validate_entry(content, intent, author)
 
     return jsonify(result)
+
+
+# ========== Live Contract Endpoints ==========
+
+@app.route('/contract/post', methods=['POST'])
+def post_contract():
+    """
+    Post a new live contract (offer or seek).
+
+    Request body:
+    {
+        "content": "Natural language contract description",
+        "author": "author identifier",
+        "intent": "Contract intent",
+        "contract_type": "offer" | "seek",
+        "terms": {"key": "value"},  (optional, will be extracted if not provided)
+        "auto_mine": true/false (optional)
+    }
+
+    Returns:
+        Contract entry with validation results
+    """
+    if not contract_parser:
+        return jsonify({
+            "error": "Contract features not available",
+            "reason": "ANTHROPIC_API_KEY not configured"
+        }), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    content = data.get("content")
+    author = data.get("author")
+    intent = data.get("intent")
+    contract_type = data.get("contract_type", ContractParser.TYPE_OFFER)
+
+    if not all([content, author, intent]):
+        return jsonify({
+            "error": "Missing required fields",
+            "required": ["content", "author", "intent"]
+        }), 400
+
+    try:
+        # Parse contract
+        contract_data = contract_parser.parse_contract(content, use_llm=True)
+
+        # Override type if provided
+        if contract_type:
+            contract_data["contract_type"] = contract_type
+
+        # Override terms if provided
+        if "terms" in data:
+            contract_data["terms"] = data["terms"]
+
+        # Validate clarity
+        is_valid, reason = contract_parser.validate_contract_clarity(content)
+        if not is_valid:
+            return jsonify({
+                "error": "Contract validation failed",
+                "reason": reason
+            }), 400
+
+        # Create entry with contract metadata
+        entry = NaturalLanguageEntry(
+            content=content,
+            author=author,
+            intent=intent,
+            metadata=contract_data
+        )
+
+        entry.validation_status = "valid"
+
+        # Add to blockchain
+        result = blockchain.add_entry(entry)
+
+        # Auto-mine if requested
+        auto_mine = data.get("auto_mine", False)
+        mined_block = None
+        if auto_mine:
+            mined_block = blockchain.mine_pending_entries()
+            save_chain()
+
+        response = {
+            "status": "success",
+            "entry": result,
+            "contract_metadata": contract_data
+        }
+
+        if mined_block:
+            response["mined_block"] = {
+                "index": mined_block.index,
+                "hash": mined_block.hash
+            }
+
+        return jsonify(response), 201
+
+    except Exception as e:
+        return jsonify({
+            "error": "Contract posting failed",
+            "reason": str(e)
+        }), 500
+
+
+@app.route('/contract/list', methods=['GET'])
+def list_contracts():
+    """
+    List all contracts, optionally filtered by status or type.
+
+    Query params:
+        status: Filter by status (open, matched, negotiating, closed, cancelled)
+        type: Filter by type (offer, seek, proposal)
+        author: Filter by author
+
+    Returns:
+        List of contract entries
+    """
+    status_filter = request.args.get('status')
+    type_filter = request.args.get('type')
+    author_filter = request.args.get('author')
+
+    contracts = []
+
+    for block in blockchain.chain:
+        for entry in block.entries:
+            # Skip if not a contract
+            if not entry.metadata.get("is_contract"):
+                continue
+
+            # Apply filters
+            if status_filter and entry.metadata.get("status") != status_filter:
+                continue
+
+            if type_filter and entry.metadata.get("contract_type") != type_filter:
+                continue
+
+            if author_filter and entry.author != author_filter:
+                continue
+
+            contracts.append({
+                "block_index": block.index,
+                "block_hash": block.hash,
+                "entry": entry.to_dict()
+            })
+
+    return jsonify({
+        "count": len(contracts),
+        "contracts": contracts
+    })
+
+
+@app.route('/contract/respond', methods=['POST'])
+def respond_to_contract():
+    """
+    Respond to a contract proposal or create a counter-offer.
+
+    Request body:
+    {
+        "to_block": block_index,
+        "to_entry": entry_index,
+        "response_content": "Natural language response",
+        "author": "author identifier",
+        "response_type": "accept" | "counter" | "reject",
+        "counter_terms": {"key": "value"} (optional, for counter-offers)
+    }
+
+    Returns:
+        Response entry with mediation if counter-offer
+    """
+    if not contract_parser or not contract_matcher:
+        return jsonify({
+            "error": "Contract features not available"
+        }), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    to_block = data.get("to_block")
+    to_entry = data.get("to_entry")
+    response_content = data.get("response_content")
+    author = data.get("author")
+    response_type = data.get("response_type", "counter")
+
+    if not all([to_block is not None, to_entry is not None, response_content, author]):
+        return jsonify({
+            "error": "Missing required fields",
+            "required": ["to_block", "to_entry", "response_content", "author"]
+        }), 400
+
+    # Get original entry
+    if to_block < 0 or to_block >= len(blockchain.chain):
+        return jsonify({"error": "Block not found"}), 404
+
+    block = blockchain.chain[to_block]
+
+    if to_entry < 0 or to_entry >= len(block.entries):
+        return jsonify({"error": "Entry not found"}), 404
+
+    original_entry = block.entries[to_entry]
+
+    # Create response entry
+    response_metadata = {
+        "is_contract": True,
+        "contract_type": ContractParser.TYPE_RESPONSE,
+        "response_type": response_type,
+        "links": [block.hash],  # Link to original
+        "terms": data.get("counter_terms", {})
+    }
+
+    # If counter-offer, get mediation
+    mediation_result = None
+    if response_type == "counter" and contract_matcher:
+        mediation_result = contract_matcher.mediate_negotiation(
+            original_entry.content,
+            original_entry.metadata.get("terms", {}),
+            response_content,
+            data.get("counter_terms", {}),
+            original_entry.metadata.get("negotiation_round", 0) + 1
+        )
+
+        response_metadata["mediation"] = mediation_result
+        response_metadata["negotiation_round"] = original_entry.metadata.get("negotiation_round", 0) + 1
+
+    response_entry = NaturalLanguageEntry(
+        content=f"[RESPONSE TO: {block.hash[:8]}] {response_content}",
+        author=author,
+        intent=f"Response to contract: {response_type}",
+        metadata=response_metadata
+    )
+
+    blockchain.add_entry(response_entry)
+
+    return jsonify({
+        "status": "success",
+        "response": response_entry.to_dict(),
+        "mediation": mediation_result
+    }), 201
 
 
 @app.errorhandler(404)
