@@ -43,10 +43,24 @@ class ConsensusModule:
         return self._call_llm(consensus_check, role="Consensus_Engine")
 
     def _call_llm(self, prompt, role):
-        # Placeholder for actual API call logic
+        """
+        Makes an actual API call to Claude for LLM analysis.
+        Returns the response text from the model.
+        """
         print(f"[{role}] analyzing...")
-        # In 2025, this would be a multi-model ensemble call
-        return "Analysis completed." 
+        try:
+            response = self.client.messages.create(
+                model="claude-3-5-sonnet-20241022",
+                max_tokens=1024,
+                messages=[{"role": "user", "content": prompt}]
+            )
+            # Extract text from response content
+            if response.content and len(response.content) > 0:
+                return response.content[0].text
+            return "No response from LLM."
+        except Exception as e:
+            print(f"Error calling LLM ({role}): {str(e)}")
+            return f"Error: {str(e)}" 
 
 # --- Usage ---
 # entry = "I'll hedge some oil soon if things get crazy in the Middle East."
