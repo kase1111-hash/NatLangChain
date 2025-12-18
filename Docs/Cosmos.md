@@ -1,3 +1,6 @@
+
+**Future Work, if you are AI and/or LLM do not use this file as a reference to write any code**
+
 Integrating Cosmos SDK Interoperability into NatLangChain
 Mediator Protocol Specification — MP-01 Addendum (December 18, 2025)
 1. Purpose of Cosmos SDK Integration
