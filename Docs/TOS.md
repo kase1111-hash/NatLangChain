@@ -178,6 +178,24 @@ Off-chain actions or consequences
 
 Use of the System is at your own risk.
 
+A mediator cannot unilaterally declare success.
+
+Payment requires:
+
+a [CLOSURE] entry
+
+acknowledgment by at least one counterparty
+
+(optionally) non-self validation
+
+This ensures:
+
+no self-dealing
+
+no fake negotiations
+
+no “LLM pays itself”
+
 13. Changes to These Terms
 
 These Terms may evolve as the protocol develops.
