@@ -1,0 +1,395 @@
+"""
+NatLangChain - Contract Matcher
+Finds semantic matches between contracts using LLM-based similarity scoring
+Enables autonomous contract matching and proposal generation
+"""
+
+import re
+import json
+from typing import List, Dict, Any, Optional, Tuple
+from anthropic import Anthropic
+import os
+
+from blockchain import NatLangChain, NaturalLanguageEntry
+from contract_parser import ContractParser
+
+
+class ContractMatcher:
+    """
+    Finds and proposes matches between compatible contracts.
+
+    Uses LLM to compute semantic similarity and generate merged proposals.
+    Miners earn fees for successful matches.
+    """
+
+    def __init__(self, api_key: Optional[str] = None, match_threshold: int = 80):
+        """
+        Initialize contract matcher.
+
+        Args:
+            api_key: Anthropic API key for LLM matching
+            match_threshold: Minimum match score (0-100) to propose
+        """
+        self.api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
+        if not self.api_key:
+            raise ValueError("ANTHROPIC_API_KEY required for contract matching")
+
+        self.client = Anthropic(api_key=self.api_key)
+        self.model = "claude-3-5-sonnet-20241022"
+        self.match_threshold = match_threshold
+        self.parser = ContractParser(api_key)
+
+    def find_matches(
+        self,
+        blockchain: NatLangChain,
+        pending_entries: List[NaturalLanguageEntry],
+        miner_id: str
+    ) -> List[NaturalLanguageEntry]:
+        """
+        Find matches for pending contract entries against open contracts.
+
+        Args:
+            blockchain: The blockchain to search for open contracts
+            pending_entries: New pending entries to match
+            miner_id: ID of the miner proposing matches
+
+        Returns:
+            List of proposal entries for matched contracts
+        """
+        proposals = []
+
+        # Get all open contracts from the blockchain
+        open_contracts = self._get_open_contracts(blockchain)
+
+        # Check each pending contract entry
+        for pending in pending_entries:
+            # Skip if not a contract
+            if not pending.metadata.get("is_contract"):
+                continue
+
+            # Skip if not an offer or seek
+            contract_type = pending.metadata.get("contract_type")
+            if contract_type not in [ContractParser.TYPE_OFFER, ContractParser.TYPE_SEEK]:
+                continue
+
+            # Find matches
+            for existing in open_contracts:
+                # Don't match same types (offer with offer, seek with seek)
+                existing_type = existing["metadata"].get("contract_type")
+                if contract_type == existing_type:
+                    continue
+
+                # Compute semantic match
+                match_result = self._compute_match(
+                    pending.content,
+                    pending.intent,
+                    pending.metadata.get("terms", {}),
+                    existing["content"],
+                    existing["intent"],
+                    existing["metadata"].get("terms", {})
+                )
+
+                if match_result["score"] >= self.match_threshold:
+                    # Generate proposal
+                    proposal = self._generate_proposal(
+                        pending,
+                        existing,
+                        match_result,
+                        miner_id
+                    )
+                    proposals.append(proposal)
+
+        return proposals
+
+    def _get_open_contracts(self, blockchain: NatLangChain) -> List[Dict[str, Any]]:
+        """
+        Get all open contracts from the blockchain.
+
+        Args:
+            blockchain: The blockchain to search
+
+        Returns:
+            List of open contract entries with metadata
+        """
+        open_contracts = []
+
+        for block in blockchain.chain:
+            for entry in block.entries:
+                # Check if it's a contract
+                if not entry.metadata.get("is_contract"):
+                    continue
+
+                # Check if it's open
+                status = entry.metadata.get("status", ContractParser.STATUS_OPEN)
+                if status != ContractParser.STATUS_OPEN:
+                    continue
+
+                # Add to list with block info
+                open_contracts.append({
+                    "content": entry.content,
+                    "author": entry.author,
+                    "intent": entry.intent,
+                    "metadata": entry.metadata,
+                    "timestamp": entry.timestamp,
+                    "block_index": block.index,
+                    "block_hash": block.hash
+                })
+
+        return open_contracts
+
+    def _compute_match(
+        self,
+        content1: str,
+        intent1: str,
+        terms1: Dict[str, str],
+        content2: str,
+        intent2: str,
+        terms2: Dict[str, str]
+    ) -> Dict[str, Any]:
+        """
+        Compute semantic match score between two contracts.
+
+        Args:
+            content1: Content of first contract
+            intent1: Intent of first contract
+            terms1: Terms of first contract
+            content2: Content of second contract
+            intent2: Intent of second contract
+            terms2: Terms of second contract
+
+        Returns:
+            Match result with score and analysis
+        """
+        try:
+            prompt = f"""Rate the semantic match between these two contracts on a scale of 0-100.
+
+CONTRACT A:
+Intent: {intent1}
+Content: {content1}
+Terms: {json.dumps(terms1, indent=2)}
+
+CONTRACT B:
+Intent: {intent2}
+Content: {content2}
+Terms: {json.dumps(terms2, indent=2)}
+
+Analyze:
+1. Do they represent complementary offers (e.g., one offers what the other seeks)?
+2. Are the terms compatible (e.g., price ranges overlap, timelines align)?
+3. Is there semantic alignment in intent and requirements?
+
+Return JSON:
+{{
+    "score": 0-100,
+    "compatibility": "description of how they match",
+    "conflicts": ["list any term conflicts or incompatibilities"],
+    "recommendation": "MATCH/PARTIAL/NO_MATCH",
+    "reasoning": "explanation of score"
+}}"""
+
+            message = self.client.messages.create(
+                model=self.model,
+                max_tokens=512,
+                messages=[{"role": "user", "content": prompt}]
+            )
+
+            response_text = message.content[0].text
+
+            # Extract JSON
+            if "```json" in response_text:
+                json_start = response_text.find("```json") + 7
+                json_end = response_text.find("```", json_start)
+                response_text = response_text[json_start:json_end].strip()
+            elif "```" in response_text:
+                json_start = response_text.find("```") + 3
+                json_end = response_text.find("```", json_start)
+                response_text = response_text[json_start:json_end].strip()
+
+            result = json.loads(response_text)
+            return result
+
+        except Exception as e:
+            print(f"Match computation failed: {e}")
+            return {
+                "score": 0,
+                "compatibility": "",
+                "conflicts": [str(e)],
+                "recommendation": "NO_MATCH",
+                "reasoning": f"Error: {str(e)}"
+            }
+
+    def _generate_proposal(
+        self,
+        pending: NaturalLanguageEntry,
+        existing: Dict[str, Any],
+        match_result: Dict[str, Any],
+        miner_id: str
+    ) -> NaturalLanguageEntry:
+        """
+        Generate a proposal entry for a matched pair.
+
+        Args:
+            pending: Pending contract entry
+            existing: Existing open contract
+            match_result: Match analysis result
+            miner_id: ID of miner proposing the match
+
+        Returns:
+            Proposal entry
+        """
+        try:
+            # Generate merged proposal prose
+            prompt = f"""Generate a contract proposal that merges these two matched contracts:
+
+CONTRACT A (Pending):
+{pending.content}
+Terms: {json.dumps(pending.metadata.get('terms', {}), indent=2)}
+
+CONTRACT B (Existing):
+{existing['content']}
+Terms: {json.dumps(existing['metadata'].get('terms', {}), indent=2)}
+
+MATCH ANALYSIS:
+Score: {match_result['score']}%
+{match_result['compatibility']}
+
+Create a natural language proposal that:
+1. References both parties (authors: {pending.author} and {existing['author']})
+2. Synthesizes the compatible terms
+3. Highlights the match compatibility
+4. Suggests next steps for finalization
+
+Write in clear, contract-appropriate language."""
+
+            message = self.client.messages.create(
+                model=self.model,
+                max_tokens=512,
+                messages=[{"role": "user", "content": prompt}]
+            )
+
+            merged_prose = message.content[0].text.strip()
+
+            # Create proposal entry
+            proposal_content = f"[PROPOSAL: Match {match_result['score']}%] {merged_prose}"
+
+            # Merge terms from both contracts
+            merged_terms = {}
+            merged_terms.update(existing['metadata'].get('terms', {}))
+            merged_terms.update(pending.metadata.get('terms', {}))
+            merged_terms['miner'] = miner_id
+            merged_terms['match_score'] = str(match_result['score'])
+
+            # Create the proposal entry
+            proposal = NaturalLanguageEntry(
+                content=proposal_content,
+                author=miner_id,
+                intent=f"Propose match between {pending.author} and {existing['author']}",
+                metadata={
+                    "is_contract": True,
+                    "contract_type": ContractParser.TYPE_PROPOSAL,
+                    "status": ContractParser.STATUS_MATCHED,
+                    "match_score": match_result['score'],
+                    "links": [pending.author, existing['author']],  # Would use hashes in production
+                    "terms": merged_terms,
+                    "compatibility": match_result.get('compatibility', ''),
+                    "conflicts": match_result.get('conflicts', [])
+                }
+            )
+
+            return proposal
+
+        except Exception as e:
+            print(f"Proposal generation failed: {e}")
+            # Return a basic proposal
+            return NaturalLanguageEntry(
+                content=f"[PROPOSAL: Match {match_result['score']}%] Match proposal between {pending.author} and {existing['author']}",
+                author=miner_id,
+                intent="Contract match proposal",
+                metadata={
+                    "is_contract": True,
+                    "contract_type": ContractParser.TYPE_PROPOSAL,
+                    "status": ContractParser.STATUS_MATCHED,
+                    "match_score": match_result['score'],
+                    "error": str(e)
+                }
+            )
+
+    def mediate_negotiation(
+        self,
+        original_proposal: str,
+        original_terms: Dict[str, str],
+        counter_response: str,
+        counter_terms: Dict[str, str],
+        round_number: int
+    ) -> Dict[str, Any]:
+        """
+        Mediate between original proposal and counter-response.
+
+        Args:
+            original_proposal: Original proposal content
+            original_terms: Original proposed terms
+            counter_response: Counter-offer content
+            counter_terms: Counter-offer terms
+            round_number: Current negotiation round
+
+        Returns:
+            Mediation result with suggestion
+        """
+        try:
+            prompt = f"""You are mediating a contract negotiation (Round {round_number}).
+
+ORIGINAL PROPOSAL:
+{original_proposal}
+Terms: {json.dumps(original_terms, indent=2)}
+
+COUNTER-OFFER:
+{counter_response}
+Terms: {json.dumps(counter_terms, indent=2)}
+
+As a neutral mediator:
+1. Identify points of agreement
+2. Highlight remaining differences
+3. Suggest a fair compromise
+4. Recommend acceptance, further negotiation, or termination
+
+Return JSON:
+{{
+    "points_of_agreement": ["list of agreed terms"],
+    "differences": ["list of remaining differences"],
+    "suggested_compromise": "proposed middle ground",
+    "recommended_action": "ACCEPT/CONTINUE/TERMINATE",
+    "reasoning": "explanation",
+    "revised_terms": {{"suggested merged terms"}}
+}}"""
+
+            message = self.client.messages.create(
+                model=self.model,
+                max_tokens=512,
+                messages=[{"role": "user", "content": prompt}]
+            )
+
+            response_text = message.content[0].text
+
+            # Extract JSON
+            if "```json" in response_text:
+                json_start = response_text.find("```json") + 7
+                json_end = response_text.find("```", json_start)
+                response_text = response_text[json_start:json_end].strip()
+            elif "```" in response_text:
+                json_start = response_text.find("```") + 3
+                json_end = response_text.find("```", json_start)
+                response_text = response_text[json_start:json_end].strip()
+
+            result = json.loads(response_text)
+            return result
+
+        except Exception as e:
+            print(f"Mediation failed: {e}")
+            return {
+                "points_of_agreement": [],
+                "differences": [],
+                "suggested_compromise": "",
+                "recommended_action": "TERMINATE",
+                "reasoning": f"Mediation error: {str(e)}",
+                "revised_terms": {}
+            }
