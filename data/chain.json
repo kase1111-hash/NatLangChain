@@ -1,0 +1,60 @@
+[
+  {
+    "block_index": 0,
+    "timestamp": "2025-12-15T09:00:00Z",
+    "previous_hash": "0",
+    "nonce": 0,
+    "entries": [
+      {
+        "author": "System_Genesis",
+        "prose": "The NatLangChain is initialized. This ledger serves as the canonical record of human and agentic intent, secured by Proof of Understanding and Language-Native Intelligence.",
+        "validation": { "status": "trusted", "score": 1.0 }
+      }
+    ],
+    "hash": "0000a1b2c3d4..."
+  },
+  {
+    "block_index": 1,
+    "timestamp": "2025-12-16T14:22:10Z",
+    "previous_hash": "0000a1b2c3d4...",
+    "nonce": 8842,
+    "entries": [
+      {
+        "entry_id": "tx_882A",
+        "author": "Hedge_Fund_Alpha",
+        "intent_type": "OTC_Derivative_Hedge",
+        "prose": "I hereby execute a hedge for 1,000 units of Brent Crude Oil futures. My protective floor is set at $75.00 per barrel. If the 30-day volatility index exceeds 25%, this contract shall automatically extend for one additional fiscal quarter. Both parties acknowledge that geopolitical conflict in the Suez region constitutes a 'force majeure' event for price adjustments.",
+        "validation": {
+          "consensus": "Proof_of_Understanding",
+          "score": 0.98,
+          "summary": "Protective oil hedge at $75 floor with volatility and geopolitical triggers.",
+          "validators": ["Claude-3.5-LNI", "Llama-4-Finance"]
+        },
+        "signature": "sig_ed55..."
+      }
+    ],
+    "hash": "0000f9e8d7c6..."
+  },
+  {
+    "block_index": 2,
+    "timestamp": "2025-12-17T10:05:45Z",
+    "previous_hash": "0000f9e8d7c6...",
+    "nonce": 12093,
+    "entries": [
+      {
+        "entry_id": "tx_991B",
+        "author": "Analyst_Sarah",
+        "intent_type": "Narrative_Stake",
+        "prose": "Staking 500 Reputation Units on the narrative that copper futures will rally 10% by February. Basis: Recent labor disputes at the Escondida mine and a 5% drop in global stockpile levels as reported by the LME. If the rally occurs due to these specific factors, yield is calculated at 1.5x.",
+        "validation": {
+          "consensus": "Proof_of_Understanding",
+          "score": 0.94,
+          "summary": "Copper rally prediction based on labor strikes and stockpile depletion.",
+          "validators": ["GPT-5-Economic", "Claude-3.5-LNI"]
+        },
+        "signature": "sig_fb22..."
+      }
+    ],
+    "hash": "00003b2a1c0d..."
+  }
+]
