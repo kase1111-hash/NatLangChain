@@ -16,6 +16,9 @@ from semantic_search import SemanticSearchEngine
 from dialectic_consensus import DialecticConsensus
 from contract_parser import ContractParser
 from contract_matcher import ContractMatcher
+from temporal_fixity import TemporalFixity
+from semantic_oracles import SemanticOracle, SemanticCircuitBreaker
+from multi_model_consensus import MultiModelConsensus
 
 
 # Load environment variables
@@ -34,6 +37,10 @@ search_engine = None
 dialectic_validator = None
 contract_parser = None
 contract_matcher = None
+temporal_fixity = None
+semantic_oracle = None
+circuit_breaker = None
+multi_model_consensus = None
 
 # Data file for persistence
 CHAIN_DATA_FILE = os.getenv("CHAIN_DATA_FILE", "chain_data.json")
@@ -41,8 +48,15 @@ CHAIN_DATA_FILE = os.getenv("CHAIN_DATA_FILE", "chain_data.json")
 
 def init_validators():
     """Initialize validators and advanced features if API key is available."""
-    global llm_validator, hybrid_validator, drift_detector, search_engine, dialectic_validator, contract_parser, contract_matcher
+    global llm_validator, hybrid_validator, drift_detector, search_engine, dialectic_validator, contract_parser, contract_matcher, temporal_fixity, semantic_oracle, circuit_breaker, multi_model_consensus
     api_key = os.getenv("ANTHROPIC_API_KEY")
+
+    # Initialize temporal fixity (doesn't require API key)
+    try:
+        temporal_fixity = TemporalFixity()
+        print("Temporal fixity (T0 preservation) initialized")
+    except Exception as e:
+        print(f"Warning: Could not initialize temporal fixity: {e}")
 
     # Initialize semantic search (doesn't require API key)
     try:
@@ -60,7 +74,10 @@ def init_validators():
             dialectic_validator = DialecticConsensus(api_key)
             contract_parser = ContractParser(api_key)
             contract_matcher = ContractMatcher(api_key)
-            print("LLM-based features initialized (including contract matching)")
+            semantic_oracle = SemanticOracle(api_key)
+            circuit_breaker = SemanticCircuitBreaker(semantic_oracle) if semantic_oracle else None
+            multi_model_consensus = MultiModelConsensus(api_key)
+            print("LLM-based features initialized (contracts, oracles, multi-model consensus)")
         except Exception as e:
             print(f"Warning: Could not initialize LLM features: {e}")
             print("API will operate without LLM validation")
