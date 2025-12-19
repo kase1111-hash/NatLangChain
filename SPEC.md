@@ -189,7 +189,7 @@ The Mediator Protocol (MP) suite defines five normative specifications:
 - [ ] Integration with Memory Vault for artifact storage
 
 ### MP-03: Dispute & Escalation Protocol
-**Status:** Not Implemented
+**Status:** ✅ Implemented (100%)
 **Purpose:** Governs how disputes are surfaced, recorded, and escalated.
 
 **Key Rules:**
@@ -198,11 +198,13 @@ The Mediator Protocol (MP) suite defines five normative specifications:
 - No automated resolution; human judgment required
 - Explicit escalation declarations
 
-**Implementation Plan:**
-- [ ] Dispute Declaration entry type
-- [ ] Evidence freezing mechanism
-- [ ] Escalation Authority registry
-- [ ] Dispute Package export for external arbitration
+**Implementation Status:** ✅ IMPLEMENTED (src/dispute.py)
+- ✅ Dispute Declaration entry type
+- ✅ Evidence freezing mechanism
+- ✅ Escalation to mediator/arbitrator/court
+- ✅ Dispute Package export for external arbitration
+- ✅ LLM-assisted dispute analysis
+- ✅ 9 API endpoints for full dispute lifecycle
 
 ### MP-04: Licensing & Delegation Protocol
 **Status:** Partially Implemented (30%)
@@ -683,33 +685,60 @@ POST /contract/post
 
 **Purpose:** Execute predefined posthumous or delayed intent.
 
+**Compatibility Status:** ✅ VERIFIED (11 tests passing)
+- See `tests/test_fie_compatibility.py` for full test suite
+
 **Workflow:**
 1. User posts delayed intent on NatLangChain
 2. Trigger conditions specified (date, event, death certificate)
 3. Finite-Intent-Executor monitors triggers
 4. On trigger, executes recorded intent
 5. Records execution as new entry
+6. 20-year sunset transitions assets to public domain
+
+**Supported Intent Types:**
+- Posthumous intents (trigger: death verification)
+- Time-delayed intents (trigger: datetime)
+- Conditional intents (trigger: external events)
+- Incapacity intents (trigger: incapacity declaration)
 
 **API Contract:**
 ```python
-# Delayed Intent Entry
+# Delayed Intent Entry (FIE-Compatible)
 POST /entry
 {
     "content": "Upon my passing, transfer IP rights of all repositories to Foundation XYZ",
     "author": "alice",
     "intent": "Posthumous IP transfer",
     "metadata": {
-        "delayed_execution": true,
+        "is_delayed_intent": true,
+        "delayed_intent_type": "posthumous",
+        "delayed_intent_id": "DI-001",
         "trigger": {
-            "type": "death_certificate",
-            "executor": "finite_intent_executor_1",
-            "beneficiary": "foundation_xyz"
+            "type": "death",
+            "verification_method": "death_certificate_oracle",
+            "minimum_confirmations": 2
         },
-        "irrevocable": false,
-        "last_updated": "2025-12-19"
+        "executor": {
+            "primary": "finite_intent_executor_mainnet"
+        },
+        "beneficiary": {
+            "name": "Foundation XYZ",
+            "identifier": "foundation_xyz"
+        },
+        "revocation": {
+            "revocable": true,
+            "revocation_method": "author_signature"
+        }
     }
 }
 ```
+
+**Implementation Gaps (for enhanced integration):**
+- [ ] Dedicated `/delayed-intent` query endpoint
+- [ ] Active trigger monitoring integration
+- [ ] Revocation chain tracking
+- [ ] Oracle network callbacks
 
 ---
 
