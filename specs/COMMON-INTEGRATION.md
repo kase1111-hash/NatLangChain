@@ -8,7 +8,7 @@
 
 ## Overview
 
-Common is the shared library providing schemas, cryptographic primitives, receipt formats, and provenance standards used across all 12 repositories in the NatLangChain ecosystem.
+Common is the shared library providing schemas, cryptographic primitives, receipt formats, and provenance standards used across all 11 repositories in the NatLangChain ecosystem.
 
 ## Purpose
 
@@ -45,8 +45,8 @@ Common ensures all repos speak the same language.
               ▼               ▼               ▼
 ┌───────────────────┐ ┌───────────────┐ ┌───────────────────────┐
 │   NatLangChain    │ │   Agent OS    │ │  All Other Repos      │
-│   Value Ledger    │ │   Synth-Mind  │ │  Memory Vault         │
-│   Mediator Node   │ │   IntentLog   │ │  Boundary Daemon      │
+│   Value Ledger    │ │   IntentLog   │ │  Memory Vault         │
+│   Mediator Node   │ │               │ │  Boundary Daemon      │
 │                   │ │               │ │  RRA-Module           │
 │                   │ │               │ │  Finite-Intent-Exec   │
 │                   │ │               │ │  Learning Contracts   │

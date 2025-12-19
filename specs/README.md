@@ -1,6 +1,6 @@
 # NatLangChain Cross-Repository Integration Specifications
 
-This directory contains detailed integration specifications for all 11 repositories in the NatLangChain ecosystem.
+This directory contains detailed integration specifications for all 10 repositories in the NatLangChain ecosystem.
 
 ## Overview
 
@@ -11,7 +11,6 @@ NatLangChain is the spine of a 12-repository ecosystem. These specifications def
 | Repository | Integration Spec | Purpose |
 |------------|-----------------|---------|
 | **Agent OS** | [AGENT-OS-INTEGRATION.md](./AGENT-OS-INTEGRATION.md) | Locally-controlled AI infrastructure |
-| **Synth-Mind** | [SYNTH-MIND-INTEGRATION.md](./SYNTH-MIND-INTEGRATION.md) | Cognitive drift and hallucination regulation |
 | **IntentLog** | [INTENTLOG-INTEGRATION.md](./INTENTLOG-INTEGRATION.md) | Version control for human reasoning |
 | **Value Ledger** | [VALUE-LEDGER-INTEGRATION.md](./VALUE-LEDGER-INTEGRATION.md) | Accounting and capitalization layer |
 | **Learning Contracts** | [LEARNING-CONTRACTS-INTEGRATION.md](./LEARNING-CONTRACTS-INTEGRATION.md) | AI learning governance |
@@ -32,10 +31,10 @@ NatLangChain is the spine of a 12-repository ecosystem. These specifications def
                                           │
 ┌─────────────────────────────────────────┼─────────────────────────────────────────┐
 │                           LOCAL SOVEREIGNTY LAYER                                  │
-│  ┌─────────────┐  ┌──────────────┐  ┌─────────────────┐  ┌────────────────────┐   │
-│  │  Agent OS   │  │ Synth-Mind   │  │ Learning        │  │ Boundary Daemon    │   │
-│  │             │  │              │  │ Contracts       │  │                    │   │
-│  └──────┬──────┘  └──────┬───────┘  └───────┬─────────┘  └─────────┬──────────┘   │
+│  ┌─────────────┐  ┌─────────────────┐  ┌────────────────────┐                     │
+│  │  Agent OS   │  │ Learning        │  │ Boundary Daemon    │                     │
+│  │             │  │ Contracts       │  │                    │                     │
+│  └──────┬──────┘  └───────┬─────────┘  └─────────┬──────────┘                     │
 └─────────┼────────────────┼──────────────────┼──────────────────────┼──────────────┘
           │                │                  │                      │
 ┌─────────┼────────────────┼──────────────────┼──────────────────────┼──────────────┐
@@ -96,7 +95,6 @@ NatLangChain is the spine of a 12-repository ecosystem. These specifications def
 | Spec | Status | Priority |
 |------|--------|----------|
 | Agent OS | Draft | HIGH |
-| Synth-Mind | Draft | HIGH |
 | Mediator Node | Draft | HIGH |
 | Value Ledger | Draft | HIGH |
 | Memory Vault | Draft | MEDIUM |
@@ -111,7 +109,8 @@ NatLangChain is the spine of a 12-repository ecosystem. These specifications def
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 1.0 | 2025-12-19 | Initial specifications for all 11 repos |
+| 1.0 | 2025-12-19 | Initial specifications for all repos |
+| 1.1 | 2025-12-19 | Removed Synth-Mind (part of Agent OS, not used in NatLangChain workflow) |
 
 ---
 

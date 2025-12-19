@@ -25,6 +25,13 @@ Enable Mediator Nodes to:
 
 Mediator Nodes generate proposals but never finalize agreements. All settlements require explicit human ratification.
 
+## LLM Model Selection
+
+**Important:** The Mediator Node only uses LLM models that are loaded or selected by the user. This ensures:
+1. **User control** - Operators choose which models to use
+2. **Transparency** - No hidden or external model dependencies
+3. **Sovereignty** - Users maintain control over AI components
+
 ## Architecture
 
 ```

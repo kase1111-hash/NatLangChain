@@ -407,7 +407,6 @@ Response:
 - **Agent OS**: Enforcement layer
 - **Boundary Daemon**: Hard enforcement
 - **NatLangChain**: Immutable record
-- **Synth-Mind**: Compliance monitoring
 
 ## Version History
 
