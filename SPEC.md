@@ -173,7 +173,7 @@ The Mediator Protocol (MP) suite defines five normative specifications:
 - All proposals are provisional until human sign-off
 - Mutual acceptance required for finality
 
-**Escalation Fork (Optional Extension):**
+**Escalation Fork (Optional Extension):** ✅ IMPLEMENTED
 When mediation fails, either party can trigger an Escalation Fork:
 - Fee pool splits 50/50 (mediator retained / bounty pool)
 - Community solvers compete to resolve the deadlock
@@ -181,14 +181,16 @@ When mediation fails, either party can trigger an Escalation Fork:
 - 7-day solver window with timeout refund mechanism
 - Requires **Observance Burn** (5% of stake) to trigger
 - See [Escalation-Protocol.md](docs/Escalation-Protocol.md) for full specification
+- Implementation: `src/escalation_fork.py`, 8 API endpoints (`/fork/*`)
 
-**Observance Burn Protocol:**
+**Observance Burn Protocol:** ✅ IMPLEMENTED
 Ceremonial token destruction that serves economic and signaling purposes:
 - Permanently removes tokens from circulation
 - Proportional redistribution to remaining holders
 - Burn reasons: VoluntarySignal, EscalationCommitment, RateLimitExcess, ProtocolViolation, CommunityDirective
 - Epitaphs allow burners to leave meaningful messages
 - See [Observance-Burn.md](docs/Observance-Burn.md) for full specification
+- Implementation: `src/observance_burn.py`, 8 API endpoints (`/burn/*`)
 
 ### MP-02: Proof-of-Effort Receipt Protocol
 **Status:** Partially Implemented (70%)
