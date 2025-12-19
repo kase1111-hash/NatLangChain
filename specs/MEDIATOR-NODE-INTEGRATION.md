@@ -273,6 +273,29 @@ def generate_proposal(self, offer: Contract, seek: Contract, score: float) -> st
     return self.llm.generate(prompt)
 ```
 
+## Escalation Fork (Optional)
+
+When standard mediation fails to achieve resolution, either party can trigger an **Escalation Fork**. This mechanism forks the mediation fee pool to incentivize alternative solvers while preserving the original mediator's stake.
+
+### Trigger Conditions
+- Failed ratification of mediation proposal
+- Refusal to mediate by either party
+- Mediation timeout
+
+### Fork Mechanics
+- **50% retained** by original mediator (for initial effort)
+- **50% becomes Resolution Bounty Pool** (available to solvers)
+
+### Resolution
+- Any qualified participant can submit a proposal during the 7-day solver window
+- Both parties must ratify for resolution
+- Bounty distributed based on effort metrics (word count, iterations, alignment score)
+- On timeout: 90% refunded to parties, 10% burned
+
+**Full specification:** See [Escalation-Protocol.md](../docs/Escalation-Protocol.md)
+
+---
+
 ## Competitive Mediation
 
 When multiple Mediator Nodes propose for the same pair:

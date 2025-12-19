@@ -20,6 +20,8 @@ from temporal_fixity import TemporalFixity
 from dispute import DisputeManager
 from semantic_oracles import SemanticOracle, SemanticCircuitBreaker
 from multi_model_consensus import MultiModelConsensus
+from escalation_fork import EscalationForkManager, ForkStatus, TriggerReason
+from observance_burn import ObservanceBurnManager, BurnReason
 
 
 # Load environment variables
@@ -43,6 +45,8 @@ semantic_oracle = None
 circuit_breaker = None
 multi_model_consensus = None
 dispute_manager = None
+escalation_fork_manager = None
+observance_burn_manager = None
 
 # Data file for persistence
 CHAIN_DATA_FILE = os.getenv("CHAIN_DATA_FILE", "chain_data.json")
@@ -50,7 +54,7 @@ CHAIN_DATA_FILE = os.getenv("CHAIN_DATA_FILE", "chain_data.json")
 
 def init_validators():
     """Initialize validators and advanced features if API key is available."""
-    global llm_validator, hybrid_validator, drift_detector, search_engine, dialectic_validator, contract_parser, contract_matcher, temporal_fixity, semantic_oracle, circuit_breaker, multi_model_consensus, dispute_manager
+    global llm_validator, hybrid_validator, drift_detector, search_engine, dialectic_validator, contract_parser, contract_matcher, temporal_fixity, semantic_oracle, circuit_breaker, multi_model_consensus, dispute_manager, escalation_fork_manager, observance_burn_manager
     api_key = os.getenv("ANTHROPIC_API_KEY")
 
     # Initialize temporal fixity (doesn't require API key)
@@ -80,7 +84,9 @@ def init_validators():
             circuit_breaker = SemanticCircuitBreaker(semantic_oracle) if semantic_oracle else None
             multi_model_consensus = MultiModelConsensus(api_key)
             dispute_manager = DisputeManager(api_key)
-            print("LLM-based features initialized (contracts, oracles, disputes, multi-model consensus)")
+            escalation_fork_manager = EscalationForkManager()
+            observance_burn_manager = ObservanceBurnManager()
+            print("LLM-based features initialized (contracts, oracles, disputes, forks, burns, multi-model consensus)")
         except Exception as e:
             print(f"Warning: Could not initialize LLM features: {e}")
             print("API will operate without LLM validation")
@@ -1660,6 +1666,516 @@ def check_entry_frozen(block_index: int, entry_index: int):
         "entry_index": entry_index,
         "frozen": is_frozen,
         "dispute_id": dispute_id
+    })
+
+
+# ========== Escalation Fork Endpoints ==========
+
+@app.route('/fork/trigger', methods=['POST'])
+def trigger_escalation_fork():
+    """
+    Trigger an Escalation Fork after failed mediation.
+
+    Request body:
+    {
+        "dispute_id": "DISPUTE-XXX",
+        "trigger_reason": "failed_ratification|refusal_to_mediate|timeout|mutual_request",
+        "triggering_party": "alice",
+        "original_mediator": "mediator_node_1",
+        "original_pool": 100.0,
+        "burn_tx_hash": "0x...",
+        "evidence_of_failure": {...}  (optional)
+    }
+
+    Returns:
+        Fork metadata
+    """
+    if not escalation_fork_manager:
+        return jsonify({
+            "error": "Escalation fork not available",
+            "reason": "Features not initialized"
+        }), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    required_fields = ["dispute_id", "trigger_reason", "triggering_party",
+                       "original_mediator", "original_pool", "burn_tx_hash"]
+    missing = [f for f in required_fields if f not in data]
+
+    if missing:
+        return jsonify({
+            "error": "Missing required fields",
+            "missing": missing
+        }), 400
+
+    # Validate trigger reason
+    try:
+        trigger_reason = TriggerReason(data["trigger_reason"])
+    except ValueError:
+        return jsonify({
+            "error": "Invalid trigger_reason",
+            "valid_values": [r.value for r in TriggerReason]
+        }), 400
+
+    # Verify the observance burn if burn manager available
+    if observance_burn_manager:
+        is_valid, burn_result = observance_burn_manager.verify_escalation_burn(
+            data["burn_tx_hash"],
+            observance_burn_manager.calculate_escalation_burn(data["original_pool"]),
+            data["dispute_id"]
+        )
+        if not is_valid:
+            return jsonify({
+                "error": "Observance burn verification failed",
+                "details": burn_result
+            }), 400
+
+    fork_data = escalation_fork_manager.trigger_fork(
+        dispute_id=data["dispute_id"],
+        trigger_reason=trigger_reason,
+        triggering_party=data["triggering_party"],
+        original_mediator=data["original_mediator"],
+        original_pool=data["original_pool"],
+        burn_tx_hash=data["burn_tx_hash"],
+        evidence_of_failure=data.get("evidence_of_failure")
+    )
+
+    return jsonify(fork_data)
+
+
+@app.route('/fork/<fork_id>', methods=['GET'])
+def get_fork_status(fork_id: str):
+    """Get current status of an escalation fork."""
+    if not escalation_fork_manager:
+        return jsonify({"error": "Escalation fork not available"}), 503
+
+    status = escalation_fork_manager.get_fork_status(fork_id)
+
+    if not status:
+        return jsonify({"error": "Fork not found"}), 404
+
+    return jsonify(status)
+
+
+@app.route('/fork/<fork_id>/submit-proposal', methods=['POST'])
+def submit_fork_proposal(fork_id: str):
+    """
+    Submit a resolution proposal to an active fork.
+
+    Request body:
+    {
+        "solver": "solver_id",
+        "proposal_content": "Full proposal text (500+ words)",
+        "addresses_concerns": ["concern1", "concern2"],
+        "supporting_evidence": ["ref1", "ref2"]  (optional)
+    }
+    """
+    if not escalation_fork_manager:
+        return jsonify({"error": "Escalation fork not available"}), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    required_fields = ["solver", "proposal_content", "addresses_concerns"]
+    missing = [f for f in required_fields if f not in data]
+
+    if missing:
+        return jsonify({
+            "error": "Missing required fields",
+            "missing": missing
+        }), 400
+
+    success, result = escalation_fork_manager.submit_proposal(
+        fork_id=fork_id,
+        solver=data["solver"],
+        proposal_content=data["proposal_content"],
+        addresses_concerns=data["addresses_concerns"],
+        supporting_evidence=data.get("supporting_evidence")
+    )
+
+    if not success:
+        return jsonify(result), 400
+
+    return jsonify(result)
+
+
+@app.route('/fork/<fork_id>/proposals', methods=['GET'])
+def list_fork_proposals(fork_id: str):
+    """List all proposals for a fork."""
+    if not escalation_fork_manager:
+        return jsonify({"error": "Escalation fork not available"}), 503
+
+    if fork_id not in escalation_fork_manager.forks:
+        return jsonify({"error": "Fork not found"}), 404
+
+    proposals = escalation_fork_manager.proposals.get(fork_id, [])
+
+    return jsonify({
+        "fork_id": fork_id,
+        "count": len(proposals),
+        "proposals": proposals
+    })
+
+
+@app.route('/fork/<fork_id>/ratify', methods=['POST'])
+def ratify_fork_proposal(fork_id: str):
+    """
+    Ratify a proposal (both parties must ratify for resolution).
+
+    Request body:
+    {
+        "proposal_id": "PROP-XXX",
+        "ratifying_party": "alice",
+        "satisfaction_rating": 85,
+        "comments": "Optional comments"
+    }
+    """
+    if not escalation_fork_manager:
+        return jsonify({"error": "Escalation fork not available"}), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    required_fields = ["proposal_id", "ratifying_party", "satisfaction_rating"]
+    missing = [f for f in required_fields if f not in data]
+
+    if missing:
+        return jsonify({
+            "error": "Missing required fields",
+            "missing": missing
+        }), 400
+
+    success, result = escalation_fork_manager.ratify_proposal(
+        fork_id=fork_id,
+        proposal_id=data["proposal_id"],
+        ratifying_party=data["ratifying_party"],
+        satisfaction_rating=data["satisfaction_rating"],
+        comments=data.get("comments")
+    )
+
+    if not success:
+        return jsonify(result), 400
+
+    return jsonify(result)
+
+
+@app.route('/fork/<fork_id>/veto', methods=['POST'])
+def veto_fork_proposal(fork_id: str):
+    """
+    Veto a proposal with documented reasoning.
+
+    Request body:
+    {
+        "proposal_id": "PROP-XXX",
+        "vetoing_party": "bob",
+        "veto_reason": "Reason (100+ words)",
+        "evidence_refs": ["ref1", "ref2"]  (optional)
+    }
+    """
+    if not escalation_fork_manager:
+        return jsonify({"error": "Escalation fork not available"}), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    required_fields = ["proposal_id", "vetoing_party", "veto_reason"]
+    missing = [f for f in required_fields if f not in data]
+
+    if missing:
+        return jsonify({
+            "error": "Missing required fields",
+            "missing": missing
+        }), 400
+
+    success, result = escalation_fork_manager.veto_proposal(
+        fork_id=fork_id,
+        proposal_id=data["proposal_id"],
+        vetoing_party=data["vetoing_party"],
+        veto_reason=data["veto_reason"],
+        evidence_refs=data.get("evidence_refs")
+    )
+
+    if not success:
+        return jsonify(result), 400
+
+    return jsonify(result)
+
+
+@app.route('/fork/<fork_id>/distribution', methods=['GET'])
+def get_fork_distribution(fork_id: str):
+    """Get bounty distribution for a resolved fork."""
+    if not escalation_fork_manager:
+        return jsonify({"error": "Escalation fork not available"}), 503
+
+    if fork_id not in escalation_fork_manager.forks:
+        return jsonify({"error": "Fork not found"}), 404
+
+    fork = escalation_fork_manager.forks[fork_id]
+
+    if fork["status"] not in [ForkStatus.RESOLVED.value, ForkStatus.TIMEOUT.value]:
+        return jsonify({
+            "error": "Fork not yet resolved",
+            "status": fork["status"]
+        }), 400
+
+    return jsonify({
+        "fork_id": fork_id,
+        "status": fork["status"],
+        "bounty_pool": fork["bounty_pool"],
+        "distribution": fork.get("distribution", {})
+    })
+
+
+@app.route('/fork/<fork_id>/audit', methods=['GET'])
+def get_fork_audit_trail(fork_id: str):
+    """Get complete audit trail for a fork."""
+    if not escalation_fork_manager:
+        return jsonify({"error": "Escalation fork not available"}), 503
+
+    trail = escalation_fork_manager.get_fork_audit_trail(fork_id)
+
+    if not trail:
+        return jsonify({"error": "Fork not found"}), 404
+
+    return jsonify({
+        "fork_id": fork_id,
+        "audit_count": len(trail),
+        "audit_trail": trail
+    })
+
+
+@app.route('/fork/active', methods=['GET'])
+def list_active_forks():
+    """List all active escalation forks."""
+    if not escalation_fork_manager:
+        return jsonify({"error": "Escalation fork not available"}), 503
+
+    forks = escalation_fork_manager.list_active_forks()
+
+    return jsonify({
+        "count": len(forks),
+        "active_forks": forks
+    })
+
+
+# ========== Observance Burn Endpoints ==========
+
+@app.route('/burn/observance', methods=['POST'])
+def perform_observance_burn():
+    """
+    Perform an Observance Burn.
+
+    Request body:
+    {
+        "burner": "0xAddress",
+        "amount": 5.0,
+        "reason": "VoluntarySignal|EscalationCommitment|RateLimitExcess|ProtocolViolation|CommunityDirective",
+        "intent_hash": "0x..." (optional, required for EscalationCommitment),
+        "epitaph": "Optional message (max 280 chars)"
+    }
+
+    Returns:
+        Burn confirmation with redistribution effect
+    """
+    if not observance_burn_manager:
+        return jsonify({
+            "error": "Observance burn not available",
+            "reason": "Features not initialized"
+        }), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    required_fields = ["burner", "amount", "reason"]
+    missing = [f for f in required_fields if f not in data]
+
+    if missing:
+        return jsonify({
+            "error": "Missing required fields",
+            "missing": missing
+        }), 400
+
+    # Validate reason
+    try:
+        reason = BurnReason(data["reason"])
+    except ValueError:
+        return jsonify({
+            "error": "Invalid reason",
+            "valid_values": [r.value for r in BurnReason]
+        }), 400
+
+    # Escalation commitment requires intent_hash
+    if reason == BurnReason.ESCALATION_COMMITMENT and not data.get("intent_hash"):
+        return jsonify({
+            "error": "intent_hash required for EscalationCommitment burns"
+        }), 400
+
+    success, result = observance_burn_manager.perform_burn(
+        burner=data["burner"],
+        amount=data["amount"],
+        reason=reason,
+        intent_hash=data.get("intent_hash"),
+        epitaph=data.get("epitaph")
+    )
+
+    if not success:
+        return jsonify(result), 400
+
+    return jsonify(result)
+
+
+@app.route('/burn/voluntary', methods=['POST'])
+def perform_voluntary_burn():
+    """
+    Perform a voluntary signal burn (simplified endpoint).
+
+    Request body:
+    {
+        "burner": "0xAddress",
+        "amount": 1.0,
+        "epitaph": "For the health of NatLangChain"  (optional)
+    }
+    """
+    if not observance_burn_manager:
+        return jsonify({"error": "Observance burn not available"}), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    if "burner" not in data or "amount" not in data:
+        return jsonify({
+            "error": "Missing required fields",
+            "required": ["burner", "amount"]
+        }), 400
+
+    success, result = observance_burn_manager.perform_voluntary_burn(
+        burner=data["burner"],
+        amount=data["amount"],
+        epitaph=data.get("epitaph")
+    )
+
+    if not success:
+        return jsonify(result), 400
+
+    return jsonify(result)
+
+
+@app.route('/burn/history', methods=['GET'])
+def get_burn_history():
+    """
+    Get paginated burn history.
+
+    Query params:
+        limit: Maximum burns to return (default 50)
+        offset: Starting offset (default 0)
+    """
+    if not observance_burn_manager:
+        return jsonify({"error": "Observance burn not available"}), 503
+
+    limit = request.args.get("limit", 50, type=int)
+    offset = request.args.get("offset", 0, type=int)
+
+    history = observance_burn_manager.get_burn_history(limit=limit, offset=offset)
+
+    return jsonify(history)
+
+
+@app.route('/burn/stats', methods=['GET'])
+def get_burn_statistics():
+    """Get burn statistics."""
+    if not observance_burn_manager:
+        return jsonify({"error": "Observance burn not available"}), 503
+
+    stats = observance_burn_manager.get_statistics()
+
+    return jsonify(stats)
+
+
+@app.route('/burn/<tx_hash>', methods=['GET'])
+def get_burn_by_hash(tx_hash: str):
+    """Get specific burn by transaction hash."""
+    if not observance_burn_manager:
+        return jsonify({"error": "Observance burn not available"}), 503
+
+    burn = observance_burn_manager.get_burn_by_tx_hash(tx_hash)
+
+    if not burn:
+        return jsonify({"error": "Burn not found"}), 404
+
+    return jsonify(burn)
+
+
+@app.route('/burn/address/<address>', methods=['GET'])
+def get_burns_by_address(address: str):
+    """Get all burns by a specific address."""
+    if not observance_burn_manager:
+        return jsonify({"error": "Observance burn not available"}), 503
+
+    burns = observance_burn_manager.get_burns_by_address(address)
+
+    return jsonify({
+        "address": address,
+        "count": len(burns),
+        "burns": burns
+    })
+
+
+@app.route('/burn/ledger', methods=['GET'])
+def get_observance_ledger():
+    """
+    Get Observance Ledger data for explorer display.
+
+    Query params:
+        limit: Number of recent burns to include (default 20)
+    """
+    if not observance_burn_manager:
+        return jsonify({"error": "Observance burn not available"}), 503
+
+    limit = request.args.get("limit", 20, type=int)
+
+    ledger = observance_burn_manager.get_observance_ledger(limit=limit)
+
+    return jsonify(ledger)
+
+
+@app.route('/burn/calculate-escalation', methods=['GET'])
+def calculate_escalation_burn():
+    """
+    Calculate required burn for escalation commitment.
+
+    Query params:
+        stake: Mediation stake amount
+    """
+    if not observance_burn_manager:
+        return jsonify({"error": "Observance burn not available"}), 503
+
+    stake = request.args.get("stake", type=float)
+
+    if not stake:
+        return jsonify({
+            "error": "Missing required parameter: stake"
+        }), 400
+
+    burn_amount = observance_burn_manager.calculate_escalation_burn(stake)
+
+    return jsonify({
+        "mediation_stake": stake,
+        "burn_percentage": observance_burn_manager.DEFAULT_ESCALATION_BURN_PERCENTAGE * 100,
+        "required_burn": burn_amount,
+        "message": f"To escalate, you must burn {burn_amount} tokens (5% of stake)"
     })
 
 
