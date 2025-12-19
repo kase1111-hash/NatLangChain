@@ -15,14 +15,33 @@ The Escalation Fork can be triggered by either party under these conditions:
 3. **Mediation Timeout**: The mediator fails to produce a proposal within the agreed timeframe
 4. **Mutual Request**: Both parties agree to escalate to community solving
 
+### Observance Burn Requirement
+
+Before an Escalation Fork can be triggered, the requesting party must perform an **Observance Burn** of 5% of the original mediation stake. This ensures escalations are serious commitments, not tactical delays.
+
+> "To escalate, you must perform an Observance Burn of 5% of the mediation stake. This amount is permanently removed from circulation and redistributed proportionally to all remaining holders. Do you wish to proceed with the burn?"
+
+See [Observance-Burn.md](./Observance-Burn.md) for the full burn protocol specification.
+
 ### Trigger Syntax
 
 ```python
+# Step 1: Perform Observance Burn (required)
+POST /burn/observance
+{
+    "amount": "5000000000000000000",  # 5% of mediation stake
+    "reason": "EscalationCommitment",
+    "intentHash": "0x...",  # Hash of the mediation being escalated
+    "epitaph": "Burned to fairly escalate and preserve ledger integrity"
+}
+
+# Step 2: Trigger the fork
 POST /dispute/{dispute_id}/escalate-fork
 {
     "trigger_reason": "failed_ratification",  # or "refusal_to_mediate", "timeout", "mutual_request"
     "triggering_party": "alice",
     "original_mediator": "mediator_node_1",
+    "burn_tx_hash": "0x...",  # Proof of Observance Burn
     "evidence_of_failure": {
         "failed_proposals": ["PROP-001", "PROP-002"],
         "rejection_reasons": ["Terms unacceptable", "Missing key provisions"]
@@ -36,6 +55,7 @@ Response:
     "original_pool": 100.0,
     "mediator_retained": 50.0,
     "bounty_pool": 50.0,
+    "observance_burn_verified": true,
     "solver_window_ends": "2025-12-26T00:00:00Z"
 }
 ```
@@ -188,12 +208,12 @@ If no ratified resolution is achieved within the solver window:
 │  Bounty Pool: 50 tokens                                          │
 │                                                                  │
 │  ┌─────────────────────┐    ┌─────────────────────┐             │
-│  │   Refund to Parties │    │     Burn Fee        │             │
+│  │   Refund to Parties │    │   Observance Burn   │             │
 │  │      90% (45)       │    │     10% (5)         │             │
 │  │                     │    │                     │             │
-│  │  Split equally:     │    │  Burned to prevent  │             │
-│  │  - Party A: 22.5    │    │  abuse of fork      │             │
-│  │  - Party B: 22.5    │    │  mechanism          │             │
+│  │  Split equally:     │    │  Burned via the     │             │
+│  │  - Party A: 22.5    │    │  Observance Burn    │             │
+│  │  - Party B: 22.5    │    │  protocol           │             │
 │  └─────────────────────┘    └─────────────────────┘             │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -376,6 +396,7 @@ ESCALATION_FORK_CONFIG = {
 
 **Related Documents:**
 - [SPEC.md](../SPEC.md) - MP-01 Alignment Cycle
+- [Observance-Burn.md](./Observance-Burn.md) - Observance Burn protocol
 - [MEDIATOR-NODE-INTEGRATION.md](../specs/MEDIATOR-NODE-INTEGRATION.md) - Mediator Node integration
 - [Dispute Protocol](./dispute-protocol.md) - MP-03 Dispute Protocol
 

@@ -179,7 +179,16 @@ When mediation fails, either party can trigger an Escalation Fork:
 - Community solvers compete to resolve the deadlock
 - Effort-based bounty distribution (word count + iterations + alignment score)
 - 7-day solver window with timeout refund mechanism
+- Requires **Observance Burn** (5% of stake) to trigger
 - See [Escalation-Protocol.md](docs/Escalation-Protocol.md) for full specification
+
+**Observance Burn Protocol:**
+Ceremonial token destruction that serves economic and signaling purposes:
+- Permanently removes tokens from circulation
+- Proportional redistribution to remaining holders
+- Burn reasons: VoluntarySignal, EscalationCommitment, RateLimitExcess, ProtocolViolation, CommunityDirective
+- Epitaphs allow burners to leave meaningful messages
+- See [Observance-Burn.md](docs/Observance-Burn.md) for full specification
 
 ### MP-02: Proof-of-Effort Receipt Protocol
 **Status:** Partially Implemented (70%)
