@@ -5,12 +5,15 @@
 
 ## Table of Contents
 1. [Project Overview](#project-overview)
-2. [Core Architecture](#core-architecture)
-3. [Implementation Status Matrix](#implementation-status-matrix)
-4. [Implemented Features](#implemented-features)
-5. [Unimplemented Ideas](#unimplemented-ideas)
-6. [Implementation Plans](#implementation-plans)
-7. [Technical Roadmap](#technical-roadmap)
+2. [Ecosystem Architecture](#ecosystem-architecture)
+3. [Core Architecture](#core-architecture)
+4. [Mediator Protocol Suite (MP-01 to MP-05)](#mediator-protocol-suite)
+5. [Implementation Status Matrix](#implementation-status-matrix)
+6. [Implemented Features](#implemented-features)
+7. [Unimplemented Ideas](#unimplemented-ideas)
+8. [Cross-Repo Integration Specifications](#cross-repo-integration-specifications)
+9. [Implementation Plans](#implementation-plans)
+10. [Technical Roadmap](#technical-roadmap)
 
 ---
 
@@ -26,6 +29,100 @@ Unlike traditional blockchains where transactions are opaque bytecode, NatLangCh
 
 ### Mission
 Transform professional relationships by eliminating the "first contact" barrier—enabling work to sell itself without cold outreach, through AI-mediated autonomous matching and negotiation.
+
+### Canonical Doctrines
+- **Refusal Doctrine**: What we refuse to automate (consent, agreement, authority, value finality, dispute resolution, moral judgment)
+- **Automation Doctrine**: What we do automate (possibility expansion, consistency checking, evidence collection, provenance, risk surfacing, mediation support)
+
+---
+
+## Ecosystem Architecture
+
+NatLangChain is the spine of a 12-repository ecosystem. Each repo has distinct responsibilities:
+
+### Repository Map
+
+| Repository | Purpose | Integration with NatLangChain |
+|------------|---------|------------------------------|
+| **NatLangChain** | Prose-first blockchain for intent recording | Core ledger |
+| **Agent OS** | Locally-controlled AI infrastructure | Posts intents, receives alignments |
+| **Synth-Mind** | Drift/hallucination regulation | Monitors Agent OS cognitive drift |
+| **IntentLog** | Version control for reasoning ("why") | Feeds reasoning context to NatLangChain |
+| **Value Ledger** | Meta-value accounting layer | Receives settlement interfaces (MP-05) |
+| **Learning Contracts** | AI learning governance | Enforces what agents may learn |
+| **Memory Vault** | Secure work artifact storage | Stores raw effort data for MP-02 |
+| **Boundary Daemon** | Trust boundary enforcement | Prevents unauthorized data flow |
+| **Finite-Intent-Executor** | Posthumous intent execution | Executes delayed NatLangChain agreements |
+| **RRA-Module** | Resurrects dormant repos as agents | Converts repos to autonomous contract posters |
+| **Mediator Node** | Third-party contract mediation | Mines alignments, earns facilitation fees |
+| **Common** | Shared schemas and primitives | Provides common data formats |
+
+### Architectural Premise
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        USER LAYER                                   │
+│   (Humans post intents, ratify agreements, declare settlements)     │
+└─────────────────────────────────┬───────────────────────────────────┘
+                                  │
+┌─────────────────────────────────▼───────────────────────────────────┐
+│                    LOCAL SOVEREIGNTY LAYER                          │
+│  ┌─────────────┐  ┌──────────────┐  ┌────────────────┐              │
+│  │  Agent OS   │  │ Synth-Mind   │  │ Learning       │              │
+│  │ (Root of    │  │ (Cognitive   │  │ Contracts      │              │
+│  │  Trust)     │  │  Regulation) │  │ (AI Governance)│              │
+│  └──────┬──────┘  └──────┬───────┘  └───────┬────────┘              │
+│         │                │                  │                       │
+│  ┌──────▼──────────────────────────────────▼────────┐               │
+│  │              Boundary Daemon                      │               │
+│  │        (Trust Boundary Enforcement)               │               │
+│  └───────────────────────┬──────────────────────────┘               │
+└──────────────────────────┼──────────────────────────────────────────┘
+                           │
+┌──────────────────────────▼──────────────────────────────────────────┐
+│                    INTENT & EFFORT LAYER                            │
+│  ┌─────────────┐  ┌──────────────┐  ┌────────────────┐              │
+│  │ IntentLog   │  │ Memory Vault │  │ Value Ledger   │              │
+│  │ (Why Track) │  │ (Work Store) │  │ (Meta-Value)   │              │
+│  └──────┬──────┘  └──────┬───────┘  └───────┬────────┘              │
+└─────────┼────────────────┼──────────────────┼───────────────────────┘
+          │                │                  │
+┌─────────▼────────────────▼──────────────────▼───────────────────────┐
+│                      NATLANGCHAIN CORE                              │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │                 NatLangChain Blockchain                       │   │
+│  │  • Natural Language Entries (Canonical Record)                │   │
+│  │  • MP-01: Negotiation & Ratification                          │   │
+│  │  • MP-02: Proof-of-Effort Receipts                            │   │
+│  │  • MP-03: Dispute & Escalation                                │   │
+│  │  • MP-04: Licensing & Delegation                              │   │
+│  │  • MP-05: Settlement & Capitalization                         │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────┬───────────────────────────────────────┘
+                              │
+┌─────────────────────────────▼───────────────────────────────────────┐
+│                      MEDIATION LAYER                                │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │              Mediator Node (Third-Party)                      │   │
+│  │  • Discovers alignments between intents                       │   │
+│  │  • Proposes settlements (never decides)                       │   │
+│  │  • Earns facilitation fees for successful matches             │   │
+│  │  • User-selectable LLM models                                 │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                                                                     │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │              RRA-Module (Repo Resurrection)                   │   │
+│  │  • Converts dormant repos to autonomous agents                │   │
+│  │  • Auto-posts daily work as contracts                         │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                                                                     │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │              Finite-Intent-Executor                           │   │
+│  │  • Executes predefined posthumous intent                      │   │
+│  │  • Delayed agreement execution                                │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
@@ -67,6 +164,85 @@ Transform professional relationships by eliminating the "first contact" barrier�
 
 ---
 
+## Mediator Protocol Suite
+
+The Mediator Protocol (MP) suite defines five normative specifications:
+
+### MP-01: Negotiation & Ratification Protocol
+**Status:** Implemented (Core)
+**Purpose:** Governs how intents are declared, mediated, and ratified into agreements.
+
+**Key Rules:**
+- LLMs may propose; humans must decide
+- No inferred consent; explicit ratification required
+- All proposals are provisional until human sign-off
+- Mutual acceptance required for finality
+
+### MP-02: Proof-of-Effort Receipt Protocol
+**Status:** Partially Implemented (70%)
+**Purpose:** Records cryptographically verifiable receipts of human intellectual effort.
+
+**Key Rules:**
+- Effort is validated as process over time, not single output
+- Receipts are append-only and time-stamped
+- Validators assess coherence, progression, consistency
+- Uncertainty is preserved, not collapsed
+
+**Implementation Gaps:**
+- [ ] Continuous effort capture integration (voice, text, edits)
+- [ ] Automatic segmentation of effort units
+- [ ] Integration with Memory Vault for artifact storage
+
+### MP-03: Dispute & Escalation Protocol
+**Status:** Not Implemented
+**Purpose:** Governs how disputes are surfaced, recorded, and escalated.
+
+**Key Rules:**
+- Disputes are signals, not failures
+- Evidence freezing upon dispute initiation
+- No automated resolution; human judgment required
+- Explicit escalation declarations
+
+**Implementation Plan:**
+- [ ] Dispute Declaration entry type
+- [ ] Evidence freezing mechanism
+- [ ] Escalation Authority registry
+- [ ] Dispute Package export for external arbitration
+
+### MP-04: Licensing & Delegation Protocol
+**Status:** Partially Implemented (30%)
+**Purpose:** Governs how rights to use, delegate, or sublicense are granted.
+
+**Key Rules:**
+- All authority is explicit, scoped, time-bounded
+- Delegation requires human ratification
+- Revocation paths must exist
+- Actions outside scope are invalid
+
+**Implementation Gaps:**
+- [ ] License entry type with scope/duration/transferability
+- [ ] Delegation chain tracking
+- [ ] Revocation mechanism
+- [ ] Scope violation detection
+
+### MP-05: Settlement & Capitalization Protocol
+**Status:** Partially Implemented (40%)
+**Purpose:** Governs how agreements are settled and transformed into value.
+
+**Key Rules:**
+- Settlement is a human act, not automated
+- Capitalization is optional
+- Separation of meaning and execution
+- Explicit finality required
+
+**Implementation Gaps:**
+- [ ] Mutual settlement declaration
+- [ ] Capitalization Interface generator
+- [ ] External system hooks (accounting, payment rails)
+- [ ] Partial/staged settlement support
+
+---
+
 ## Implementation Status Matrix
 
 ### ✅ FULLY IMPLEMENTED (Production Ready)
@@ -97,42 +273,41 @@ Transform professional relationships by eliminating the "first contact" barrier�
 | Contract Negotiation | ✅ Complete | `contract_matcher.py` | `/contract/respond` |
 | Mediation Mining | ✅ Complete | `contract_matcher.py` | `/mine` |
 | **REST API** | ✅ Complete | `api.py` | 20+ endpoints |
-| Health Check | ✅ Complete | `api.py` | `/health` |
-| Statistics | ✅ Complete | `api.py` | `/stats` |
-| Narrative Export | ✅ Complete | `api.py` | `/chain/narrative` |
 
 ### 🚧 PARTIALLY IMPLEMENTED
 
 | Feature | Status | What's Done | What's Missing |
 |---------|--------|-------------|----------------|
 | **WORM Archival** | 🚧 70% | T0 export format, legal certificates | Physical LTO tape writing automation |
+| **MP-02 Proof-of-Effort** | 🚧 70% | Receipt structure, hashing | Continuous capture, segmentation |
+| **MP-04 Licensing** | 🚧 30% | Basic contract terms | Full license lifecycle, delegation |
+| **MP-05 Settlement** | 🚧 40% | Settlement concepts | Mutual declaration, capitalization interface |
 | **Multi-Chain Branching** | 🚧 30% | Architecture designed | Git-like fork/merge implementation |
 | **Agent-Driven Participation** | 🚧 20% | API ready for agents | Agent-OS integration, standing intents |
 | **Reputation Systems** | 🚧 10% | Miner tracking in contracts | Full reputation scoring, stake slashing |
 
 ### ❌ NOT IMPLEMENTED (Documented Only)
 
-| Feature | Documentation | Priority | Complexity |
-|---------|---------------|----------|------------|
-| **Cosmos SDK Integration** | cosmos.md | Medium | High |
-| **Distributed P2P Network** | README.md | High | Very High |
-| **Real-time Mediation Network** | future.md | High | High |
-| **Daily Work Output Automation** | future.md | Medium | Medium |
-| **Chain Subscription & Sync** | future.md | Medium | High |
-| **Escrow Integration** | future.md, CONTRACTS.md | High | Medium |
-| **Bundled Vault Offerings** | future.md | Low | Medium |
-| **Cross-Chain Routing** | future.md, cosmos.md | Medium | High |
-| **Prediction Markets** | COMPLIANCE.md | Low | High |
-| **Narrative Staking** | COMPLIANCE.md | Low | High |
-| **Insurance Premium Integration** | COMPLIANCE.md | Low | Medium |
-| **Multilingual Support** | multilingual-extensions.md | Medium | High |
-| **Web UI / Sandbox** | roadmap.md | High | Medium |
-| **Benchmark Suite** | roadmap.md | Medium | Medium |
-| **ZK Proofs for Privacy** | README.md | Low | Very High |
-| **Database Backend** | API.md | Medium | Low |
-| **Async Validation Pipeline** | API.md | Medium | Medium |
-| **Smart Contracts in NL** | API.md | Low | High |
-| **LNI Multi-Agent Testing** | lni-testable-theory.md | Medium | High |
+| Feature | Documentation | Priority | Complexity | Target Repo |
+|---------|---------------|----------|------------|-------------|
+| **Distributed P2P Network** | README.md | HIGH 🔴 | Very High | NatLangChain |
+| **Real-time Mediation Network** | future.md | HIGH 🔴 | High | Mediator Node |
+| **Escrow Integration** | CONTRACTS.md | HIGH 🔴 | Medium | Value Ledger |
+| **Web UI / Sandbox** | roadmap.md | HIGH 🔴 | Medium | NatLangChain |
+| **MP-03 Dispute Protocol** | MP-03-spec.md | HIGH 🔴 | Medium | NatLangChain |
+| **Daily Work Output Automation** | future.md | MEDIUM 🟡 | Medium | RRA-Module |
+| **Chain Subscription & Sync** | future.md | MEDIUM 🟡 | High | NatLangChain |
+| **Cosmos SDK Integration** | cosmos.md | MEDIUM 🟡 | Very High | NatLangChain |
+| **Multilingual Support** | multilingual.md | MEDIUM 🟡 | High | Common |
+| **Benchmark Suite** | roadmap.md | MEDIUM 🟡 | Medium | NatLangChain |
+| **Database Backend** | API.md | MEDIUM 🟡 | Low | NatLangChain |
+| **Async Validation Pipeline** | API.md | MEDIUM 🟡 | Medium | NatLangChain |
+| **LNI Multi-Agent Testing** | lni-testable-theory.md | MEDIUM 🟡 | High | Agent OS |
+| **Prediction Markets** | COMPLIANCE.md | LOW 🟢 | High | NatLangChain |
+| **Narrative Staking** | COMPLIANCE.md | LOW 🟢 | High | NatLangChain |
+| **Insurance Premium Integration** | COMPLIANCE.md | LOW 🟢 | Medium | Value Ledger |
+| **ZK Proofs for Privacy** | README.md | LOW 🟢 | Very High | NatLangChain |
+| **Smart Contracts in NL** | API.md | LOW 🟢 | High | NatLangChain |
 
 ---
 
@@ -152,200 +327,47 @@ Transform professional relationships by eliminating the "first contact" barrier�
 - Persistent storage with auto-save
 - Pending entry pool for mining
 
-**API Endpoints:**
-- `GET /chain` - Full blockchain
-- `GET /chain/narrative` - Human-readable narrative
-- `GET /block/<index>` - Specific block
-- `POST /entry` - Add entry
-- `POST /mine` - Mine block
-- `GET /validate/chain` - Validate integrity
-- `GET /pending` - Pending entries
-
-**Usage Example:**
-```python
-blockchain = NatLangChain()
-entry = NaturalLanguageEntry(
-    content="Alice transfers ownership of the vintage 1967 Mustang to Bob for $25,000.",
-    author="alice",
-    intent="Transfer vehicle ownership"
-)
-blockchain.add_entry(entry)
-blockchain.mine_pending_entries(difficulty=2)
-```
-
----
-
 ### 2. Validation Systems ✅
 
 **Files:** `src/validator.py`, `src/dialectic_consensus.py`, `src/multi_model_consensus.py`
 
-#### Proof of Understanding
-- LLM paraphrases entries to demonstrate comprehension
-- Detects ambiguities, adversarial patterns
-- Intent matching validation
-- Configurable confidence thresholds
+**Modes:**
+- **Proof of Understanding**: LLM paraphrases to demonstrate comprehension
+- **Hybrid Validator**: Symbolic pre-validation + LLM for complex entries
+- **Dialectic Consensus**: Skeptic/Facilitator debate for precision
+- **Multi-Model Consensus**: Cross-model verification (Claude + future GPT/Llama)
 
-#### Hybrid Validator
-- Symbolic pre-validation (length, patterns)
-- LLM validation for complex entries
-- Tiered approach for efficiency
+### 3. Semantic Features ✅
 
-#### Dialectic Consensus
-- Skeptic perspective (finds ambiguities)
-- Facilitator perspective (extracts intent)
-- Reconciliation engine
-- Best for financial/legal entries
-
-#### Multi-Model Consensus
-- Claude 3.5 (Nuance) - Production
-- GPT-5 (Breadth) - Architecture ready
-- Llama 4 (Logic) - Architecture ready
-- Weighted voting
-- Hallucination detection
-
-**API Endpoints:**
-- `POST /entry/validate` - Dry-run validation
-- `POST /validate/dialectic` - Dialectic validation
-- `POST /entry` with `validation_mode` parameter
-
-**Usage Example:**
-```bash
-curl -X POST http://localhost:5000/entry \
-  -H "Content-Type: application/json" \
-  -d '{
-    "content": "Board approves merger with TechCorp, effective Q2 2024",
-    "author": "board_secretary",
-    "intent": "Record board decision",
-    "validation_mode": "dialectic",
-    "auto_mine": true
-  }'
-```
-
----
-
-### 3. Semantic Search ✅
-
-**Files:** `src/semantic_search.py`
+**Files:** `src/semantic_search.py`, `src/semantic_diff.py`
 
 **Capabilities:**
 - Embedding-based semantic search (sentence-transformers)
-- Search by meaning, not keywords
-- Find similar entries (duplicate detection)
-- Configurable similarity thresholds
-- Works without API key
+- Semantic drift detection ("Semantic Firewall")
+- Circuit breakers for agent safety
+- Duplicate detection
 
-**API Endpoints:**
-- `POST /search/semantic` - Search by query
-- `POST /search/similar` - Find similar entries
-
-**Usage Example:**
-```python
-# "car sales" matches "automobile transfers"
-result = search_engine.search(
-    blockchain=blockchain,
-    query="vehicle ownership transfers",
-    top_k=5
-)
-```
-
----
-
-### 4. Semantic Drift Detection ✅
-
-**Files:** `src/semantic_diff.py`
-
-**Capabilities:**
-- Detect when agent execution diverges from on-chain intent
-- "Semantic firewall" for agent systems
-- Circuit breaker triggers for high drift
-- Audit trail generation
-- Regulatory compliance support
-
-**API Endpoints:**
-- `POST /drift/check` - Check drift between intent and execution
-- `POST /drift/entry/<block>/<entry>` - Check specific entry drift
-
-**Usage Example:**
-```python
-result = drift_detector.check_drift(
-    on_chain_intent="Maintain neutral delta on S&P 500 via low-risk options",
-    execution_log="Purchasing leveraged 3x call options on volatile AI startups"
-)
-# Returns: drift_score=0.89, is_violating=True, recommended_action="BLOCK"
-```
-
----
-
-### 5. Temporal Fixity (T0 Preservation) ✅
+### 4. Temporal Fixity ✅
 
 **Files:** `src/temporal_fixity.py`
 
 **Capabilities:**
 - T0 snapshot creation with cryptographic proof
-- "Transaction is fixed, law is flexible" principle
 - Legal certificate generation
 - WORM archival export format
 - SEC 17a-4, HIPAA compliance ready
-- Malpractice defense support
 
-**Features:**
-- Prose hash for integrity
-- Jurisdiction tracking
-- Contract terms preservation at T0
-- Legal defensibility statements
-
-**Usage Example:**
-```python
-# Generate legal certificate
-certificate = temporal_fixity.generate_legal_certificate(
-    entry=entry,
-    purpose="legal_defense"
-)
-
-# Export for WORM archival
-export = temporal_fixity.export_for_worm_archival(
-    blockchain=blockchain,
-    start_block=0,
-    end_block=None  # All blocks
-)
-# Write to LTO tape or compliance storage
-```
-
----
-
-### 6. Semantic Oracles ✅
+### 5. Semantic Oracles ✅
 
 **Files:** `src/semantic_oracles.py`
 
 **Capabilities:**
 - Verify external events against contract spirit
-- OTC derivatives settlement
+- OTC derivatives settlement support
 - Force majeure verification
-- Material Adverse Change (MAC) clauses
-- Multi-oracle consensus
-- Agent safety monitoring (circuit breakers)
+- Agent safety monitoring
 
-**Usage Example:**
-```python
-# Verify contract trigger
-result = semantic_oracle.verify_event_trigger(
-    contract_condition="if interest rates rise significantly",
-    contract_intent="Hedge against rate increases",
-    event_description="Federal Reserve raised rates 2%"
-)
-# Returns: triggers_condition, confidence, reasoning
-
-# Agent safety check
-result = circuit_breaker.check_agent_action(
-    stated_intent="Conservative portfolio management",
-    proposed_action="Sell naked call options"
-)
-# Returns: allowed, drift_score, circuit_breaker_triggered
-```
-
----
-
-### 7. Live Contracts ✅
+### 6. Live Contracts ✅
 
 **Files:** `src/contract_parser.py`, `src/contract_matcher.py`
 
@@ -354,93 +376,6 @@ result = circuit_breaker.check_agent_action(
 - Automatic contract matching during mining
 - AI-mediated negotiation
 - Facilitation fee tracking
-- Contract lifecycle management
-
-**Contract Types:**
-- `OFFER` - Offering goods/services
-- `SEEK` - Seeking goods/services
-- `PROPOSAL` - Auto-generated by miners
-- `RESPONSE` - Accept/counter/reject
-- `CLOSURE` - Final agreement
-- `PAYOUT` - Miner fee claim
-
-**API Endpoints:**
-- `POST /contract/post` - Post contract
-- `GET /contract/list` - List contracts (with filters)
-- `POST /contract/respond` - Respond to proposal
-- `POST /mine` - Mine with auto-matching
-
-**Usage Example:**
-```bash
-# Post offer
-curl -X POST http://localhost:5000/contract/post \
-  -H "Content-Type: application/json" \
-  -d '{
-    "content": "[CONTRACT: OFFER] Web development services, React/Node.js expert",
-    "author": "alice",
-    "intent": "Offer web dev services",
-    "contract_type": "offer",
-    "terms": {
-      "fee": "$100/hour",
-      "facilitation": "2%",
-      "min_engagement": "1 week"
-    },
-    "auto_mine": true
-  }'
-
-# Post matching seek
-curl -X POST http://localhost:5000/contract/post \
-  -d '{
-    "content": "[CONTRACT: SEEK] Need experienced React developer for e-commerce site",
-    "author": "bob",
-    "intent": "Hire web developer",
-    "contract_type": "seek",
-    "terms": {"budget": "$5000", "deadline": "2 weeks"}
-  }'
-
-# Mine to trigger matching
-curl -X POST http://localhost:5000/mine \
-  -d '{"miner_id": "miner_charlie"}'
-
-# System automatically creates PROPOSAL if match score > 80%
-```
-
----
-
-### 8. REST API (Agent OS Integration) ✅
-
-**Files:** `src/api.py`
-
-**Status:** 20+ endpoints, production ready
-
-**Complete Endpoint List:**
-
-| Category | Endpoint | Method | Description |
-|----------|----------|--------|-------------|
-| **Health** | `/health` | GET | Health check |
-| | `/stats` | GET | Statistics |
-| **Chain** | `/chain` | GET | Full blockchain |
-| | `/chain/narrative` | GET | Human-readable narrative |
-| | `/block/<index>` | GET | Specific block |
-| | `/validate/chain` | GET | Validate integrity |
-| **Entries** | `/entry` | POST | Add entry |
-| | `/entry/validate` | POST | Validate (dry-run) |
-| | `/pending` | GET | Pending entries |
-| | `/entries/author/<author>` | GET | By author |
-| | `/entries/search?intent=X` | GET | By intent keyword |
-| **Mining** | `/mine` | POST | Mine block |
-| **Search** | `/search/semantic` | POST | Semantic search |
-| | `/search/similar` | POST | Find similar |
-| **Drift** | `/drift/check` | POST | Check drift |
-| | `/drift/entry/<block>/<entry>` | POST | Entry drift |
-| **Validation** | `/validate/dialectic` | POST | Dialectic consensus |
-| **Contracts** | `/contract/post` | POST | Post contract |
-| | `/contract/list` | GET | List contracts |
-| | `/contract/respond` | POST | Respond to proposal |
-
-**Authentication:** None (for now - add JWT/API keys for production)
-
-**Rate Limiting:** Not implemented (recommend for production)
 
 ---
 
@@ -449,710 +384,585 @@ curl -X POST http://localhost:5000/mine \
 ### Priority: HIGH 🔴
 
 #### 1. Distributed P2P Network
+**Target Repo:** NatLangChain
 **Documentation:** README.md, future.md
-**Current State:** Single-node only
-**Gap:** No peer discovery, no consensus across nodes, no distributed mining
-
-**Why Important:**
-- True decentralization requires P2P
-- Single point of failure currently
-- Cannot scale to global network
-
-**Dependencies:**
-- Networking protocol design
-- Peer discovery mechanism
-- Distributed consensus algorithm
-- Network security
-
----
+**Gap:** No peer discovery, distributed consensus, or network security
 
 #### 2. Real-Time Mediation Network
+**Target Repo:** Mediator Node
 **Documentation:** future.md, foundation.md
-**Current State:** Contracts exist, but mediation is centralized
-**Gap:** No decentralized mediator nodes, no competitive mediation market
-
-**Why Important:**
-- Core to "mediation mining" vision
-- Enables permissionless participation
-- Creates economic incentives
-
-**Dependencies:**
-- Mediator node registration
-- Reputation system
-- Stake requirements
-- Facilitation fee distribution
-
----
+**Gap:** No decentralized mediator nodes, competitive mediation market
 
 #### 3. Escrow Integration
+**Target Repo:** Value Ledger
 **Documentation:** CONTRACTS.md, future.md
-**Current State:** Fee tracking exists, but no payment settlement
 **Gap:** No on-chain or referenced escrow, no automatic payouts
 
-**Why Important:**
-- Required for real money transactions
-- Trustless settlement
-- Completes contract lifecycle
-
-**Dependencies:**
-- Integration with USDC, BTC, or stable escrow
-- Smart contract references
-- Payment verification
-
----
-
 #### 4. Web UI / Interactive Sandbox
+**Target Repo:** NatLangChain
 **Documentation:** roadmap.md
-**Current State:** API only, no visual interface
-**Gap:** No way for non-technical users to interact
+**Gap:** No visual interface for non-technical users
 
-**Why Important:**
-- User adoption requires UI
-- Demo and testing platform
-- Visualization of narrative chains
-
-**Dependencies:**
-- Frontend framework (React/Svelte)
-- Narrative graph visualization
-- Real-time updates (WebSockets)
-- User authentication
-
----
+#### 5. MP-03 Dispute Protocol
+**Target Repo:** NatLangChain
+**Documentation:** MP-03-spec.md
+**Gap:** No dispute declaration, evidence freezing, escalation
 
 ### Priority: MEDIUM 🟡
 
-#### 5. Multi-Chain Branching & Merging
-**Documentation:** future.md, README.md
-**Current State:** Single chain only
-**Gap:** No fork/merge, no separate contexts (personal, professional, etc.)
+#### 6. Multi-Chain Branching & Merging
+**Target Repo:** NatLangChain
+**Gap:** No fork/merge, no context separation
 
-**Why Important:**
-- Privacy through context separation
-- Selective disclosure
-- Git-like workflow
+#### 7. Daily Work Output Automation
+**Target Repo:** RRA-Module, Memory Vault, IntentLog
+**Gap:** No Git integration, no auto-posting
 
-**Dependencies:**
-- Chain referencing system
-- Merge conflict resolution (LLM-mediated)
-- Branch visibility rules
+#### 8. Multilingual Support
+**Target Repo:** Common
+**Gap:** English only, no parallel language entries
 
----
+#### 9. Benchmark Suite
+**Target Repo:** NatLangChain
+**Gap:** No TPS metrics, no ambiguity resolution benchmarks
 
-#### 6. Daily Work Output Automation
-**Documentation:** future.md
-**Current State:** Manual entry posting
-**Gap:** No integration with development tools, no auto-posting
-
-**Why Important:**
-- Core to "sell at the door" vision
-- Eliminates manual work
-- Enables passive income
-
-**Dependencies:**
-- Git commit integration
-- Memory-vault integration
-- IntentLog integration
-- Automatic contract generation
-
----
-
-#### 7. Multilingual Support
-**Documentation:** multilingual-extensions.md
-**Current State:** English only
-**Gap:** No parallel language entries, no cross-language validation
-
-**Why Important:**
-- Global accessibility
-- Cross-border contracts
-- Legal clarity in multiple jurisdictions
-
-**Dependencies:**
-- Translation protocols
-- Multi-language LLM validation
-- Precedence rules for conflicts
-
----
-
-#### 8. Benchmark Suite
-**Documentation:** roadmap.md
-**Current State:** Manual testing only
-**Gap:** No automated performance benchmarks, no metrics
-
-**Why Important:**
-- Prove scalability claims
-- Identify bottlenecks
-- Compare to traditional blockchains
-
-**Dependencies:**
-- TPS measurement harness
-- Ambiguity resolution metrics
-- Latency tracking
-- Simulation framework
-
----
-
-#### 9. Cosmos SDK Integration
-**Documentation:** cosmos.md
-**Current State:** Standalone Python implementation
+#### 10. Cosmos SDK Integration
+**Target Repo:** NatLangChain
 **Gap:** No IBC, no token, no Cosmos ecosystem access
 
-**Why Important:**
-- Interoperability with 100+ chains
-- Native token economics
-- Proven consensus (Tendermint)
+#### 11. Database Backend
+**Target Repo:** NatLangChain
+**Gap:** JSON only, no scalable storage
 
-**Dependencies:**
-- Rewrite core in Go
-- Implement custom Cosmos modules
-- IBC packet handlers
-- Token design
+#### 12. Agent-OS Full Integration
+**Target Repo:** Agent OS
+**Gap:** No standing intents, no agent bidding
 
----
-
-#### 10. Database Backend
-**Documentation:** API.md
-**Current State:** JSON file persistence
-**Gap:** No scalable storage, no indexing, no query optimization
-
-**Why Important:**
-- Scale beyond thousands of entries
-- Fast lookups
-- Complex queries
-
-**Dependencies:**
-- PostgreSQL schema design
-- Migration from JSON
-- ORM integration
-
----
-
-#### 11. Agent-OS Full Integration
-**Documentation:** future.md, system-architecture.md
-**Current State:** API exists, but no agent autonomy
-**Gap:** No standing intents, no agent bidding, no overnight mediation
-
-**Why Important:**
-- Enables autonomous operation
-- 24/7 matching and negotiation
-- Truly fearless economy
-
-**Dependencies:**
-- Agent-OS deployment
-- Standing intent templates
-- Agent authentication
-- Bidding logic
-
----
+#### 13. LNI Multi-Agent Testing
+**Target Repo:** Agent OS, Synth-Mind
+**Gap:** No empirical validation of LNI hypothesis
 
 ### Priority: LOW 🟢
 
-#### 12. Prediction Markets
-**Documentation:** COMPLIANCE.md
-**Current State:** Not started
-**Gap:** No market mechanism for narrative accuracy
+#### 14. Prediction Markets
+#### 15. Narrative Staking
+#### 16. Zero-Knowledge Proofs
+#### 17. Smart Contract Execution
+#### 18. Insurance Premium Integration
 
 ---
 
-#### 13. Narrative Staking
-**Documentation:** COMPLIANCE.md
-**Current State:** Not started
-**Gap:** No economic stake on truth claims
+## Cross-Repo Integration Specifications
+
+### Agent OS ↔ NatLangChain Integration
+
+**Purpose:** Enable Agent OS to post intents and receive alignments autonomously.
+
+**API Contract:**
+```python
+# Agent OS → NatLangChain
+POST /entry
+{
+    "content": "Agent posting standing intent for code review services",
+    "author": "agent_os_instance_1",
+    "intent": "Offer code review",
+    "metadata": {
+        "source": "agent_os",
+        "learning_contract_ref": "LC-001",
+        "standing_intent": true,
+        "auto_accept_threshold": 85
+    }
+}
+
+# NatLangChain → Agent OS (callback)
+POST {agent_callback_url}/alignment
+{
+    "alignment_id": "ALIGN-123",
+    "match_score": 92,
+    "counterparty": "bob",
+    "proposed_terms": {...}
+}
+```
+
+**Implementation Tasks:**
+- [ ] Agent authentication protocol
+- [ ] Standing intent templates
+- [ ] Callback webhook system
+- [ ] Auto-accept/counter logic
+- [ ] Learning Contract verification
 
 ---
 
-#### 14. Zero-Knowledge Proofs
-**Documentation:** README.md, CONTRACTS.md
-**Current State:** Not started
-**Gap:** No privacy-preserving contracts
+### IntentLog ↔ NatLangChain Integration
+
+**Purpose:** Capture reasoning ("why") for intents before they are posted.
+
+**API Contract:**
+```python
+# IntentLog → NatLangChain
+POST /entry
+{
+    "content": "I offer web development services at $100/hour",
+    "author": "alice",
+    "intent": "Offer services",
+    "metadata": {
+        "intentlog_ref": "INTENT-456",
+        "reasoning_summary": "Need income, prefer remote work",
+        "decision_path": ["Considered full-time", "Rejected due to...", "Freelance preferred"]
+    }
+}
+```
+
+**Implementation Tasks:**
+- [ ] IntentLog reference field in entries
+- [ ] Reasoning summary attachment
+- [ ] Decision path preservation
+- [ ] Bi-directional linking
 
 ---
 
-#### 15. Smart Contracts in Natural Language
-**Documentation:** API.md
-**Current State:** Contracts exist but no execution engine
-**Gap:** No conditional logic execution, no triggers
+### Memory Vault ↔ NatLangChain Integration (MP-02)
+
+**Purpose:** Store raw work artifacts for Proof-of-Effort receipts.
+
+**API Contract:**
+```python
+# Memory Vault stores artifacts
+# NatLangChain references them in receipts
+
+# Effort Receipt Entry
+POST /entry
+{
+    "content": "Effort receipt for code module development",
+    "author": "alice",
+    "intent": "Record effort",
+    "metadata": {
+        "is_effort_receipt": true,
+        "vault_refs": ["MV-001", "MV-002", "MV-003"],
+        "time_bounds": {"start": "2025-12-18T09:00:00", "end": "2025-12-18T17:00:00"},
+        "signal_hashes": ["SHA256...", "SHA256..."],
+        "validation_metadata": {
+            "coherence_score": 0.92,
+            "progression_detected": true
+        }
+    }
+}
+```
+
+**Implementation Tasks:**
+- [ ] Vault reference protocol
+- [ ] Signal hash verification
+- [ ] Time-bound validation
+- [ ] Append-only receipt chain
 
 ---
 
-#### 16. LNI Multi-Agent Testing
-**Documentation:** lni-testable-theory.md
-**Current State:** Theory documented, not tested
-**Gap:** No empirical validation of LNI hypothesis
+### Value Ledger ↔ NatLangChain Integration (MP-05)
+
+**Purpose:** Receive settlement interfaces for accounting and capitalization.
+
+**API Contract:**
+```python
+# NatLangChain → Value Ledger
+POST /capitalization
+{
+    "settlement_id": "SETTLE-789",
+    "agreement_ref": "AGREE-456",
+    "receipts": ["R-101", "R-102", "R-103"],
+    "value_description": {
+        "amount": 25000,
+        "currency": "USD",
+        "facilitation_fee": 375
+    },
+    "parties": ["alice", "bob"],
+    "payment_rails": {
+        "type": "USDC",
+        "escrow_address": "0xABC..."
+    }
+}
+```
+
+**Implementation Tasks:**
+- [ ] Settlement ID generation
+- [ ] Value description schema
+- [ ] Multi-party support
+- [ ] Payment rails abstraction
+
+---
+
+### Mediator Node ↔ NatLangChain Integration
+
+**Purpose:** Third-party mediation with facilitation fee rewards.
+
+**API Contract:**
+```python
+# Mediator Node subscribes to pending contracts
+GET /contract/list?status=open
+
+# Mediator Node proposes alignment
+POST /contract/propose
+{
+    "offer_ref": "CONTRACT-001",
+    "seek_ref": "CONTRACT-002",
+    "proposal_content": "Match between alice and bob...",
+    "match_score": 87,
+    "terms": {
+        "facilitation_fee": "2%",
+        "mediator_id": "mediator_node_alpha"
+    }
+}
+
+# Parties ratify → Mediator earns fee
+POST /contract/payout
+{
+    "settlement_ref": "SETTLE-789",
+    "mediator_id": "mediator_node_alpha",
+    "fee_amount": 500,
+    "wallet": "0xDEF..."
+}
+```
+
+**Implementation Tasks:**
+- [ ] Mediator node registration
+- [ ] Subscription protocol (WebSocket or polling)
+- [ ] Competitive proposal submission
+- [ ] Fee distribution on closure
+
+---
+
+### Boundary Daemon Integration
+
+**Purpose:** Enforce trust boundaries and prevent unauthorized data flow.
+
+**Integration Points:**
+- Validate that Agent OS actions respect Learning Contract bounds
+- Block outbound data that violates privacy constraints
+- Audit all cross-repo communications
+
+**Implementation Tasks:**
+- [ ] Trust boundary rules engine
+- [ ] Data flow monitoring
+- [ ] Violation alerting
+- [ ] Audit log integration
+
+---
+
+### RRA-Module ↔ NatLangChain Integration
+
+**Purpose:** Resurrect dormant repos as autonomous agents.
+
+**Workflow:**
+1. RRA-Module scans GitHub repo for activity
+2. Generates daily/weekly output summary
+3. Posts as OFFER contract on NatLangChain
+4. Matches with SEEK contracts
+5. Negotiates licensing terms
+6. Records settlement
+
+**API Contract:**
+```python
+# RRA-Module → NatLangChain
+POST /contract/post
+{
+    "content": "[CONTRACT: OFFER] Async Fluid Dynamics library in Rust. 400 hours of optimization. Perpetual commercial license available.",
+    "author": "rra_module_repo_xyz",
+    "intent": "Offer library licensing",
+    "contract_type": "offer",
+    "terms": {
+        "license_type": "perpetual_commercial",
+        "price": "500 NLC",
+        "facilitation": "1%"
+    },
+    "metadata": {
+        "source": "rra_module",
+        "repo_url": "github.com/user/repo",
+        "last_commit": "2025-12-15",
+        "total_commits": 847
+    }
+}
+```
+
+---
+
+### Finite-Intent-Executor ↔ NatLangChain Integration
+
+**Purpose:** Execute predefined posthumous or delayed intent.
+
+**Workflow:**
+1. User posts delayed intent on NatLangChain
+2. Trigger conditions specified (date, event, death certificate)
+3. Finite-Intent-Executor monitors triggers
+4. On trigger, executes recorded intent
+5. Records execution as new entry
+
+**API Contract:**
+```python
+# Delayed Intent Entry
+POST /entry
+{
+    "content": "Upon my passing, transfer IP rights of all repositories to Foundation XYZ",
+    "author": "alice",
+    "intent": "Posthumous IP transfer",
+    "metadata": {
+        "delayed_execution": true,
+        "trigger": {
+            "type": "death_certificate",
+            "executor": "finite_intent_executor_1",
+            "beneficiary": "foundation_xyz"
+        },
+        "irrevocable": false,
+        "last_updated": "2025-12-19"
+    }
+}
+```
+
+---
+
+### Common Schema Definitions
+
+**Purpose:** Shared data formats across all repositories.
+
+**Schemas:**
+```python
+# Entry Schema (Common)
+{
+    "content": str,           # Natural language prose
+    "author": str,            # Author identifier
+    "intent": str,            # Brief purpose summary
+    "timestamp": datetime,    # ISO 8601
+    "metadata": {
+        "validation_status": "valid" | "pending" | "invalid",
+        "is_contract": bool,
+        "contract_type": "offer" | "seek" | "proposal" | "response" | "closure",
+        "is_effort_receipt": bool,
+        "is_license": bool,
+        "is_settlement": bool,
+        "is_dispute": bool,
+        "temporal_fixity_enabled": bool,
+        "t0_snapshot": {...}
+    }
+}
+
+# Receipt Schema (MP-02)
+{
+    "receipt_id": str,
+    "time_bounds": {"start": datetime, "end": datetime},
+    "signal_hashes": [str],
+    "effort_summary": str,
+    "validation_metadata": {
+        "coherence_score": float,
+        "progression_detected": bool,
+        "validator_id": str,
+        "model_version": str
+    },
+    "observer_id": str,
+    "prior_receipts": [str]
+}
+
+# License Schema (MP-04)
+{
+    "license_id": str,
+    "subject": str,           # What is licensed
+    "purpose": str,           # Allowed use cases
+    "limits": str,            # Prohibited actions
+    "duration": str,          # Time-bounded or perpetual
+    "transferability": str,   # Sublicensing rules
+    "grantor": str,
+    "grantee": str,
+    "agreement_ref": str,
+    "receipt_refs": [str]
+}
+
+# Settlement Schema (MP-05)
+{
+    "settlement_id": str,
+    "agreement_refs": [str],
+    "receipt_refs": [str],
+    "value_description": {
+        "amount": float,
+        "currency": str,
+        "formula": str        # Optional
+    },
+    "conditions": str,        # Vesting rules
+    "parties": [str],
+    "declarations": [str],    # Each party's declaration
+    "capitalization_interface": {...}
+}
+
+# Dispute Schema (MP-03)
+{
+    "dispute_id": str,
+    "claimant": str,
+    "respondent": str,
+    "contested_refs": [str],  # Receipts/agreements contested
+    "description": str,
+    "escalation_path": str,
+    "evidence_frozen": bool,
+    "status": "open" | "clarifying" | "escalated" | "resolved"
+}
+```
 
 ---
 
 ## Implementation Plans
 
 ### Plan 1: Distributed P2P Network 🔴
+**Target:** NatLangChain
 
-**Objective:** Transform NatLangChain from single-node to distributed P2P network
-
-**Phases:**
-
-#### Phase 1A: Peer Discovery (4-6 weeks)
-**Tasks:**
-1. Design P2P protocol specification
-   - Bootstrap nodes for initial discovery
-   - Kademlia-style DHT for peer routing
-   - Peer reputation tracking
-2. Implement peer discovery module (`src/p2p/discovery.py`)
-   - Connection management
-   - Heartbeat protocol
-   - Peer list synchronization
-3. Add peer endpoints to API
-   - `POST /peer/connect` - Connect to peer
-   - `GET /peer/list` - List active peers
-   - `GET /peer/status` - Peer health
+#### Phase 1A: Peer Discovery
+- Design P2P protocol specification
+- Implement peer discovery module (`src/p2p/discovery.py`)
+- Add peer endpoints to API
 
 **Deliverables:**
-- Working peer discovery
-- 3+ nodes can find each other
+- Working peer discovery with 3+ nodes
 - Automatic reconnection
 
-**Technologies:**
-- `asyncio` for async networking
-- `libp2p` or custom TCP/UDP protocol
-- DHT (Distributed Hash Table)
-
-#### Phase 1B: Distributed Consensus (6-8 weeks)
-**Tasks:**
-1. Implement Proof-of-Alignment consensus
-   - Multi-node voting on entries
-   - LLM-based semantic agreement
-   - Conflict resolution via discourse
-2. Block propagation protocol
-   - Gossip protocol for blocks
-   - Validation by receiving nodes
-   - Fork resolution rules
-3. Distributed mining
-   - Miners compete for proposals
-   - First valid proposal wins
-   - Difficulty adjustment
+#### Phase 1B: Distributed Consensus
+- Implement Proof-of-Alignment consensus
+- Block propagation protocol
+- Distributed mining
 
 **Deliverables:**
 - Consensus across 5+ nodes
 - Byzantine fault tolerance (67% honest nodes)
-- Automatic fork resolution
 
-**Technologies:**
-- Raft or PBFT consensus
-- Custom LLM voting layer
-- Network time synchronization
-
-#### Phase 1C: Network Security (4 weeks)
-**Tasks:**
-1. Cryptographic peer authentication
-2. DDoS protection
-3. Sybil attack resistance
-4. Eclipse attack mitigation
-
-**Deliverables:**
-- Secure P2P network
-- Attack-resistant
-
-**Testing:**
-- Run 10+ node testnet
-- Simulate network partitions
-- Test Byzantine nodes (malicious miners)
-
-**Estimated Total:** 14-18 weeks
+#### Phase 1C: Network Security
+- Cryptographic peer authentication
+- DDoS protection
+- Sybil attack resistance
 
 ---
 
 ### Plan 2: Real-Time Mediation Network 🔴
+**Target:** Mediator Node
 
-**Objective:** Enable decentralized, competitive mediation mining
+#### Phase 2A: Mediator Registration
+- Mediator node identity system
+- On-chain registration
+- Stake requirements
 
-**Phases:**
+#### Phase 2B: Competitive Matching
+- Multiple mediators propose simultaneously
+- Multi-model voting on best proposal
+- Fee distribution
 
-#### Phase 2A: Mediator Registration (2-3 weeks)
-**Tasks:**
-1. Mediator node identity system
-2. Registration on-chain
-3. Stake requirements
-4. Reputation initialization
-
-**Implementation:**
-```python
-# src/mediator/registration.py
-class MediatorRegistry:
-    def register_mediator(self, mediator_id: str, stake: float):
-        """Register new mediator node"""
-
-    def get_active_mediators(self) -> List[Dict]:
-        """Return all active, staked mediators"""
-```
-
-**API:**
-- `POST /mediator/register` - Register as mediator
-- `GET /mediator/list` - List active mediators
-- `GET /mediator/<id>/stats` - Mediator performance
-
-#### Phase 2B: Competitive Matching (4-6 weeks)
-**Tasks:**
-1. Multiple mediators propose matches simultaneously
-2. Consensus on best proposal (multi-model voting)
-3. Winner selection algorithm
-4. Fee distribution
-
-**Algorithm:**
-```
-FOR each new contract:
-  1. Broadcast to all mediators
-  2. Mediators generate proposals (parallel)
-  3. Proposals submitted to chain
-  4. Multi-model consensus votes on best proposal
-  5. Winner's proposal becomes canonical
-  6. Winner earns facilitation fee
-```
-
-#### Phase 2C: Reputation & Slashing (3-4 weeks)
-**Tasks:**
-1. Track mediator success rate
-2. Slash stake for bad proposals
-3. Reputation-weighted selection
-4. Appeals process
-
-**Metrics:**
-- Successful closures / Total proposals
-- Average time to closure
-- Counterparty satisfaction (optional rating)
-
-**Estimated Total:** 9-13 weeks
+#### Phase 2C: Reputation & Slashing
+- Track mediator success rate
+- Slash stake for bad proposals
+- Reputation-weighted selection
 
 ---
 
 ### Plan 3: Escrow Integration 🔴
+**Target:** Value Ledger
 
-**Objective:** Enable trustless payment settlement
+#### Phase 3A: Escrow Reference System
+- Add escrow fields to contract metadata
+- Support USDC, BTC, ETH
 
-**Phases:**
+#### Phase 3B: Payment Verification
+- Oracle integration for on-chain verification
+- Verify escrow funding and payouts
 
-#### Phase 3A: Escrow Reference System (2 weeks)
-**Tasks:**
-1. Add escrow fields to contract metadata
-2. Support multiple escrow types (USDC, BTC, ETH)
-3. Generate escrow addresses
-
-**Schema:**
-```json
-{
-  "contract_terms": {
-    "total_value": "$5000",
-    "facilitation": "2%",
-    "escrow": {
-      "type": "USDC",
-      "address": "0xABC123...",
-      "chain": "Ethereum",
-      "multisig": true
-    }
-  }
-}
-```
-
-#### Phase 3B: Payment Verification (3 weeks)
-**Tasks:**
-1. Oracle integration for on-chain verification
-2. Verify escrow funding
-3. Verify payout execution
-4. Record on NatLangChain
-
-**Oracle APIs:**
-- Chainlink for Ethereum
-- Bitcoin RPC for BTC
-- Cosmos LCD for Cosmos chains
-
-#### Phase 3C: Automatic Payout (4 weeks)
-**Tasks:**
-1. Trigger payouts on contract closure
-2. Multi-sig releases
-3. Dispute resolution holds
-4. Refund mechanisms
-
-**Deliverables:**
-- End-to-end escrow flow
-- Secure multi-sig
-- Audit trail
-
-**Estimated Total:** 9 weeks
+#### Phase 3C: Automatic Payout
+- Trigger payouts on contract closure
+- Multi-sig releases
+- Dispute resolution holds
 
 ---
 
-### Plan 4: Web UI / Interactive Sandbox 🔴
+### Plan 4: Web UI 🔴
+**Target:** NatLangChain
 
-**Objective:** User-friendly interface for non-technical users
+#### Phase 4A: Basic UI
+- React/Svelte frontend
+- Chain explorer, narrative view, search, contracts
 
-**Phases:**
+#### Phase 4B: Visualization
+- Narrative graph (D3.js)
+- Contract matching visualization
 
-#### Phase 4A: Basic UI (4-6 weeks)
-**Framework:** React or Svelte
-
-**Pages:**
-1. **Home** - Overview, quick post
-2. **Chain Explorer** - Browse blocks/entries
-3. **Narrative View** - Read full narrative
-4. **Search** - Semantic search interface
-5. **Contracts** - Browse/post contracts
-
-**Features:**
-- Real-time updates (WebSocket)
-- Markdown rendering
-- Copy/share entries
-
-#### Phase 4B: Visualization (3-4 weeks)
-**Tasks:**
-1. Narrative graph (D3.js or Cytoscape)
-   - Entries as nodes
-   - Links between related entries
-   - Color by status (pending/validated)
-2. Contract matching visualization
-   - Show proposal generation
-   - Negotiation rounds
-   - Closure paths
-
-#### Phase 4C: Interactive Sandbox (3-4 weeks)
-**Features:**
-1. Try posting entries
-2. See validation in real-time
-3. Dialectic debate viewer (Skeptic vs Facilitator)
-4. Stress test with adversarial prompts
-
-**Estimated Total:** 10-14 weeks
+#### Phase 4C: Interactive Sandbox
+- Try posting entries
+- Real-time validation viewer
+- Dialectic debate visualization
 
 ---
 
-### Plan 5: Multi-Chain Branching & Merging 🟡
+### Plan 5: MP-03 Dispute Protocol 🔴
+**Target:** NatLangChain
 
-**Objective:** Git-like branching for context separation
+#### Phase 5A: Dispute Initiation
+- Dispute Declaration entry type
+- Reference to contested entries
+- Escalation path specification
 
-**Phases:**
+#### Phase 5B: Evidence Freezing
+- Mark referenced entries as UNDER DISPUTE
+- Prevent mutation/deletion
+- Append-only new evidence
 
-#### Phase 5A: Chain Forking (3-4 weeks)
-**Tasks:**
-1. Add `parent_chain_id` to blocks
-2. Fork command creates new chain from any block
-3. Independent mining on branches
-
-**API:**
-```bash
-POST /chain/fork
-{
-  "from_block": 100,
-  "branch_name": "personal",
-  "visibility": "private"
-}
-```
-
-#### Phase 5B: LLM-Mediated Merging (5-6 weeks)
-**Tasks:**
-1. Detect merge conflicts (semantic conflicts)
-2. LLM proposes resolution
-3. Human approval required
-4. Create merge block
-
-**Example Conflict:**
-```
-Branch A: "Alice offers web dev at $100/hour"
-Branch B: "Alice offers web dev at $150/hour"
-
-LLM Resolution:
-"Current rate is $150/hour (Branch B supersedes Branch A as of [date])"
-```
-
-#### Phase 5C: Access Control (2-3 weeks)
-**Tasks:**
-1. Private branches (encrypted)
-2. Selective disclosure
-3. Read permissions
-
-**Estimated Total:** 10-13 weeks
+#### Phase 5C: Escalation & Resolution
+- Escalation Declaration mechanism
+- Dispute Package export
+- Post-resolution recording
 
 ---
 
-### Plan 6: Daily Work Output Automation 🟡
+### Plan 6: Multi-Chain Branching 🟡
+**Target:** NatLangChain
 
-**Objective:** Automatic contract posting from development activity
-
-**Phases:**
-
-#### Phase 6A: Git Integration (3 weeks)
-**Tasks:**
-1. Git hook scripts
-2. Commit summarization (LLM)
-3. Automatic contract generation
-
-**Flow:**
-```
-1. Developer commits code
-2. Post-commit hook triggers
-3. LLM summarizes commit (1-2 sentences)
-4. Auto-post as OFFER contract:
-   "Implemented OAuth 2.0 authentication for API. Available for licensing."
-```
-
-#### Phase 6B: Memory Vault Integration (4 weeks)
-**Tasks:**
-1. Connect to Memory Vault API
-2. Pull daily summaries
-3. Generate value propositions
-4. Post overnight for matching
-
-#### Phase 6C: Auction Logic (4 weeks)
-**Tasks:**
-1. Reserve pricing
-2. Highest bid acceptance
-3. Bundling (weekly/monthly packages)
-4. Escalators (price increases over time)
-
-**Estimated Total:** 11 weeks
+- Add `parent_chain_id` to blocks
+- Fork command creates new chain
+- LLM-mediated merge conflict resolution
+- Private branch encryption
 
 ---
 
-### Plan 7: Multilingual Support 🟡
+### Plan 7: Daily Work Automation 🟡
+**Target:** RRA-Module, Memory Vault, IntentLog
 
-**Objective:** Support contracts in multiple languages
-
-**Phases:**
-
-#### Phase 7A: Parallel Language Entries (3 weeks)
-**Schema:**
-```json
-{
-  "content": {
-    "en": "Alice transfers ownership...",
-    "es": "Alice transfiere la propiedad...",
-    "zh": "爱丽丝转让所有权..."
-  },
-  "canonical_language": "en",
-  "precedence_rules": "English governs for US jurisdiction"
-}
-```
-
-#### Phase 7B: Cross-Language Validation (4 weeks)
-**Tasks:**
-1. Multi-language LLM validation
-2. Detect translation inconsistencies
-3. Clarification protocol for conflicts
-
-#### Phase 7C: Jurisdiction Routing (2 weeks)
-**Tasks:**
-1. Automatic language selection by user locale
-2. Legal framework detection
-3. Compliance checks
-
-**Estimated Total:** 9 weeks
+- Git hook scripts
+- Commit summarization (LLM)
+- Auto-contract generation
+- Auction/banking logic
 
 ---
 
-### Plan 8: Benchmark Suite 🟡
+### Plan 8: Multilingual Support 🟡
+**Target:** Common
 
-**Objective:** Measure and prove performance claims
-
-**Phases:**
-
-#### Phase 8A: TPS Benchmark (2 weeks)
-**Metrics:**
-- Validated Prose Entries per second (VPE/s)
-- Throughput vs. entry complexity
-- Scaling with parallel validators
-
-**Implementation:**
-```python
-# tests/benchmarks/test_throughput.py
-def benchmark_vpe_throughput(num_entries=1000):
-    """Measure VPE/s with LLM validation"""
-    start = time.time()
-    for i in range(num_entries):
-        blockchain.add_entry(entry)
-    elapsed = time.time() - start
-    return num_entries / elapsed
-```
-
-#### Phase 8B: Ambiguity Resolution (2 weeks)
-**Metrics:**
-- Clarification success rate
-- Rounds to consensus
-- Semantic drift before/after
-
-#### Phase 8C: Comparison Study (3 weeks)
-**Compare:**
-- NatLangChain vs. Ethereum (TPS)
-- NatLangChain vs. Solana (finality time)
-- Prose overhead vs. bytecode
-
-**Estimated Total:** 7 weeks
+- Parallel language entries
+- Explicit precedence declarations
+- Cross-language validation
+- Clarification protocol for conflicts
 
 ---
 
-### Plan 9: Cosmos SDK Integration 🟡
+### Plan 9: Database Backend 🟡
+**Target:** NatLangChain
 
-**Objective:** Rewrite as Cosmos SDK chain for IBC interoperability
-
-**Complexity:** Very High (requires Golang rewrite)
-
-**Phases:**
-
-#### Phase 9A: Module Design (4 weeks)
-**Modules:**
-1. `x/natlangchain` - Core prose entries
-2. `x/mediation` - Mediator registry, matching
-3. `x/reputation` - Reputation tracking
-4. `x/gov` - Governance for protocol upgrades
-
-#### Phase 9B: Implementation (12-16 weeks)
-**Tasks:**
-1. Rewrite blockchain in Go
-2. Integrate CometBFT (Tendermint)
-3. Implement custom modules
-4. IBC handlers
-
-#### Phase 9C: Tokenomics (4 weeks)
-**Design:**
-- NLC token (staking, governance)
-- Facilitation fees in NLC or stablecoins
-- Inflation schedule
-- Validator rewards
-
-**Estimated Total:** 20-24 weeks
+- PostgreSQL schema design
+- SQLAlchemy ORM models
+- Migration from JSON
+- Index optimization
 
 ---
 
-### Plan 10: Database Backend 🟡
+### Plan 10: LNI Multi-Agent Testing 🟡
+**Target:** Agent OS, Synth-Mind
 
-**Objective:** Replace JSON with scalable database
-
-**Phases:**
-
-#### Phase 10A: Schema Design (1 week)
-**Tables:**
-- `blocks` - Block data
-- `entries` - Entry data
-- `contracts` - Contract metadata
-- `mediators` - Mediator registry
-- `validations` - Validation history
-
-#### Phase 10B: Migration (2 weeks)
-**Tasks:**
-1. PostgreSQL setup
-2. SQLAlchemy ORM models
-3. Migration script from JSON
-4. Backward compatibility
-
-#### Phase 10C: Indexing & Optimization (2 weeks)
-**Tasks:**
-1. Index on author, intent, timestamp
-2. Full-text search (PostgreSQL tsvector)
-3. Query optimization
-4. Connection pooling
-
-**Estimated Total:** 5 weeks
+- Implement SMAS baseline
+- Implement LNIS treatment
+- Run benchmark tasks
+- Measure semantic drift, cooperation, interpretability
 
 ---
 
 ## Technical Roadmap
 
 ### Phase 1: Foundation (Complete ✅)
-**Timeline:** Already done
 - ✅ Core blockchain
 - ✅ Validation systems
 - ✅ REST API
@@ -1160,11 +970,10 @@ def benchmark_vpe_throughput(num_entries=1000):
 - ✅ Advanced features
 
 ### Phase 2: Decentralization (Q1-Q2 2026)
-**Timeline:** 6 months
 **Priority:** HIGH 🔴
-- Distributed P2P network (18 weeks)
-- Real-time mediation network (13 weeks)
-- Escrow integration (9 weeks)
+- Distributed P2P network
+- Real-time mediation network
+- Escrow integration
 
 **Deliverables:**
 - Multi-node testnet (10 nodes)
@@ -1172,21 +981,22 @@ def benchmark_vpe_throughput(num_entries=1000):
 - End-to-end payment settlement
 
 ### Phase 3: User Experience (Q2-Q3 2026)
-**Timeline:** 3-4 months
 **Priority:** HIGH 🔴
-- Web UI (14 weeks)
-- Database backend (5 weeks)
+- Web UI
+- Database backend
+- MP-03 Dispute Protocol
 
 **Deliverables:**
 - Public web interface
 - Scalable storage
+- Full dispute handling
 
 ### Phase 4: Automation & Intelligence (Q3-Q4 2026)
-**Timeline:** 4-5 months
 **Priority:** MEDIUM 🟡
-- Daily work automation (11 weeks)
-- Agent-OS integration (8 weeks)
-- Multi-chain branching (13 weeks)
+- Daily work automation
+- Agent-OS integration
+- Multi-chain branching
+- LNI testing
 
 **Deliverables:**
 - Automatic contract generation from Git
@@ -1194,11 +1004,10 @@ def benchmark_vpe_throughput(num_entries=1000):
 - Privacy through branching
 
 ### Phase 5: Global & Enterprise (Q4 2026 - Q1 2027)
-**Timeline:** 5-6 months
 **Priority:** MEDIUM 🟡
-- Multilingual support (9 weeks)
-- Cosmos SDK integration (24 weeks)
-- Benchmark suite (7 weeks)
+- Multilingual support
+- Cosmos SDK integration
+- Benchmark suite
 
 **Deliverables:**
 - Multi-language contracts
@@ -1216,30 +1025,33 @@ def benchmark_vpe_throughput(num_entries=1000):
 
 ## Conclusion
 
-NatLangChain has achieved **impressive implementation** of its core vision:
+NatLangChain has achieved **solid implementation** of its core vision:
 - ✅ **Natural language as substrate** - Working
 - ✅ **Proof of Understanding** - Working
 - ✅ **Live contracts with AI mediation** - Working
 - ✅ **Temporal fixity for legal defense** - Working
 - ✅ **Semantic search and drift detection** - Working
 
-**The gap** is primarily in **decentralization and scale**:
+**The gap** is primarily in **decentralization, scale, and ecosystem integration**:
 - ❌ Single-node (needs P2P)
-- ❌ Manual usage (needs automation)
-- ❌ Developer-only (needs UI)
+- ❌ Manual usage (needs automation via RRA-Module)
+- ❌ Developer-only (needs Web UI)
 - ❌ Prototype storage (needs database)
+- ❌ Incomplete MP suite (MP-03, MP-04, MP-05)
+- ❌ Limited cross-repo integration
 
 **Next critical steps:**
 1. **P2P Network** - Move from proof-of-concept to distributed system
 2. **Web UI** - Enable non-technical user adoption
 3. **Escrow** - Enable real economic transactions
 4. **Mediation Network** - Realize the "mediation mining" vision
+5. **Cross-Repo Integration** - Connect all 12 ecosystem repos
 
 **The foundation is solid.** The architecture is sound. The innovation is real. Now it's time to scale.
 
 ---
 
-**Document Version:** 1.0
+**Document Version:** 2.0
 **Last Updated:** December 19, 2025
 **Maintained By:** kase1111-hash
 **License:** CC BY-SA 4.0
