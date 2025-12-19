@@ -1,8 +1,6 @@
 System Architecture
 
-Agent OS is locally-controlled, constitutionally-governed, family-owned artificial intelligence infrastructure
-
-Synth-Mind is a complete implementation of the Synthetic Mind Stack (SMS) - an NLOS-based agent with six interconnected psychological modules that create emergent continuity, empathy, and growth.
+Agent OS is locally-controlled, constitutionally-governed, family-owned artificial intelligence infrastructure. It includes Synth-Mind, an internal component for drift and hallucination regulation.
 
 IntentLog is version Control for Human Reasoning What if Git tracked why, not just what?
 
@@ -20,6 +18,6 @@ NatLangChain is a prose-first, intent-native blockchain protocol whose sole purp
 
 RRA-Module is an extension for NatLangChain designed to resurrect dormant or unmanaged GitHub repositories, converting them into self-sustaining, autonomous agents capable of generating revenue through on-chain negotiations and licensing.
 
-Mediator Node a lightweight, dedicated node that discovers, negotiates, and proposes alignments between explicit intents on the NatLangChain protocol
+Mediator Node is a lightweight, dedicated node that discovers, negotiates, and proposes alignments between explicit intents on the NatLangChain protocol. Uses only LLM models that are loaded or selected by the user.
 
 Common holds the needed common files between them

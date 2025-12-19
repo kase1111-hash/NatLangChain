@@ -263,7 +263,6 @@ class LearningContractVerifier:
 
 ## Dependencies
 
-- **Synth-Mind**: For cognitive drift monitoring during negotiations
 - **Learning Contracts**: For action validation
 - **Boundary Daemon**: For trust boundary enforcement
 - **IntentLog**: For reasoning context

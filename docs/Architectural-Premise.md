@@ -2,11 +2,9 @@ Architectural Premise
 
 NatLangChain: Spine of human-intent recording and settlement.
 
-Agent OS: Locally-controlled agentic OS that assists users under Learning Contracts.
+Agent OS: Locally-controlled agentic OS that assists users under Learning Contracts. Includes internal drift and hallucination regulation (Synth-Mind component).
 
-Synth-Mind: Drift and hallucination regulation for Agent OS only.
-
-Mediator Node: Third-party contract mediator for NatLangChain; user selects LLM models.
+Mediator Node: Third-party contract mediator for NatLangChain. Uses only LLM models that are loaded or selected by the user.
 
 Other modules: feed, protect, or consume intent/value without replacing human decision-making.
 
@@ -43,9 +41,9 @@ Requires explicit negotiation payment in the contract to reward the party who su
 
 Cannot finalize agreements; only proposes.
 
-(Optional) Agent OS + Synth-Mind
+(Optional) Agent OS
 
-Provides local assistance to participants, ensuring clarity and regulating hallucinations.
+Provides local assistance to participants, ensuring clarity.
 
 Step 3 — Agreement Ratification
 NatLangChain
@@ -114,4 +112,4 @@ Shared schemas, cryptographic primitives, receipt formats, and provenance standa
 
 One-Sentence Summary (Updated)
 
-NatLangChain records human intent and settlements; Mediator Node mediates contracts as a third-party, earning a negotiation reward for mined agreements; Agent OS enforces Learning Contracts locally with Synth-Mind regulating cognitive drift; Memory Vault and Value Ledger track effort and value; all modules cooperate without automating human decisions.
+NatLangChain records human intent and settlements; Mediator Node mediates contracts as a third-party using user-selected LLM models, earning a negotiation reward for mined agreements; Agent OS enforces Learning Contracts locally; Memory Vault and Value Ledger track effort and value; all modules cooperate without automating human decisions.

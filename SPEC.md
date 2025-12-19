@@ -46,7 +46,6 @@ NatLangChain is the spine of a 12-repository ecosystem. Each repo has distinct r
 |------------|---------|------------------------------|
 | **NatLangChain** | Prose-first blockchain for intent recording | Core ledger |
 | **Agent OS** | Locally-controlled AI infrastructure | Posts intents, receives alignments |
-| **Synth-Mind** | Drift/hallucination regulation | Monitors Agent OS cognitive drift |
 | **IntentLog** | Version control for reasoning ("why") | Feeds reasoning context to NatLangChain |
 | **Value Ledger** | Meta-value accounting layer | Receives settlement interfaces (MP-05) |
 | **Learning Contracts** | AI learning governance | Enforces what agents may learn |
@@ -67,16 +66,12 @@ NatLangChain is the spine of a 12-repository ecosystem. Each repo has distinct r
                                   │
 ┌─────────────────────────────────▼───────────────────────────────────┐
 │                    LOCAL SOVEREIGNTY LAYER                          │
-│  ┌─────────────┐  ┌──────────────┐  ┌────────────────┐              │
-│  │  Agent OS   │  │ Synth-Mind   │  │ Learning       │              │
-│  │ (Root of    │  │ (Cognitive   │  │ Contracts      │              │
-│  │  Trust)     │  │  Regulation) │  │ (AI Governance)│              │
-│  └──────┬──────┘  └──────┬───────┘  └───────┬────────┘              │
-│         │                │                  │                       │
-│  ┌──────▼──────────────────────────────────▼────────┐               │
-│  │              Boundary Daemon                      │               │
-│  │        (Trust Boundary Enforcement)               │               │
-│  └───────────────────────┬──────────────────────────┘               │
+│  ┌─────────────┐  ┌────────────────┐  ┌────────────────────┐        │
+│  │  Agent OS   │  │ Learning       │  │ Boundary Daemon    │        │
+│  │ (Root of    │  │ Contracts      │  │ (Trust Boundary    │        │
+│  │  Trust)     │  │ (AI Governance)│  │  Enforcement)      │        │
+│  └──────┬──────┘  └───────┬────────┘  └─────────┬──────────┘        │
+│         │                 │                     │                   │
 └──────────────────────────┼──────────────────────────────────────────┘
                            │
 ┌──────────────────────────▼──────────────────────────────────────────┐
@@ -439,7 +434,7 @@ The Mediator Protocol (MP) suite defines five normative specifications:
 **Gap:** No standing intents, no agent bidding
 
 #### 13. LNI Multi-Agent Testing
-**Target Repo:** Agent OS, Synth-Mind
+**Target Repo:** Agent OS
 **Gap:** No empirical validation of LNI hypothesis
 
 ### Priority: LOW 🟢
@@ -951,7 +946,7 @@ POST /entry
 ---
 
 ### Plan 10: LNI Multi-Agent Testing 🟡
-**Target:** Agent OS, Synth-Mind
+**Target:** Agent OS
 
 - Implement SMAS baseline
 - Implement LNIS treatment
