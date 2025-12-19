@@ -173,6 +173,14 @@ The Mediator Protocol (MP) suite defines five normative specifications:
 - All proposals are provisional until human sign-off
 - Mutual acceptance required for finality
 
+**Escalation Fork (Optional Extension):**
+When mediation fails, either party can trigger an Escalation Fork:
+- Fee pool splits 50/50 (mediator retained / bounty pool)
+- Community solvers compete to resolve the deadlock
+- Effort-based bounty distribution (word count + iterations + alignment score)
+- 7-day solver window with timeout refund mechanism
+- See [Escalation-Protocol.md](docs/Escalation-Protocol.md) for full specification
+
 ### MP-02: Proof-of-Effort Receipt Protocol
 **Status:** Partially Implemented (70%)
 **Purpose:** Records cryptographically verifiable receipts of human intellectual effort.
