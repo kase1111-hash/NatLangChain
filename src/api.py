@@ -17,6 +17,7 @@ from dialectic_consensus import DialecticConsensus
 from contract_parser import ContractParser
 from contract_matcher import ContractMatcher
 from temporal_fixity import TemporalFixity
+from dispute import DisputeManager
 from semantic_oracles import SemanticOracle, SemanticCircuitBreaker
 from multi_model_consensus import MultiModelConsensus
 
@@ -41,6 +42,7 @@ temporal_fixity = None
 semantic_oracle = None
 circuit_breaker = None
 multi_model_consensus = None
+dispute_manager = None
 
 # Data file for persistence
 CHAIN_DATA_FILE = os.getenv("CHAIN_DATA_FILE", "chain_data.json")
@@ -48,7 +50,7 @@ CHAIN_DATA_FILE = os.getenv("CHAIN_DATA_FILE", "chain_data.json")
 
 def init_validators():
     """Initialize validators and advanced features if API key is available."""
-    global llm_validator, hybrid_validator, drift_detector, search_engine, dialectic_validator, contract_parser, contract_matcher, temporal_fixity, semantic_oracle, circuit_breaker, multi_model_consensus
+    global llm_validator, hybrid_validator, drift_detector, search_engine, dialectic_validator, contract_parser, contract_matcher, temporal_fixity, semantic_oracle, circuit_breaker, multi_model_consensus, dispute_manager
     api_key = os.getenv("ANTHROPIC_API_KEY")
 
     # Initialize temporal fixity (doesn't require API key)
@@ -77,7 +79,8 @@ def init_validators():
             semantic_oracle = SemanticOracle(api_key)
             circuit_breaker = SemanticCircuitBreaker(semantic_oracle) if semantic_oracle else None
             multi_model_consensus = MultiModelConsensus(api_key)
-            print("LLM-based features initialized (contracts, oracles, multi-model consensus)")
+            dispute_manager = DisputeManager(api_key)
+            print("LLM-based features initialized (contracts, oracles, disputes, multi-model consensus)")
         except Exception as e:
             print(f"Warning: Could not initialize LLM features: {e}")
             print("API will operate without LLM validation")
@@ -504,9 +507,12 @@ def get_stats():
         "drift_detection_enabled": drift_detector is not None,
         "dialectic_consensus_enabled": dialectic_validator is not None,
         "contract_features_enabled": contract_parser is not None and contract_matcher is not None,
+        "dispute_features_enabled": dispute_manager is not None,
         "total_contracts": total_contracts,
         "open_contracts": open_contracts,
-        "matched_contracts": matched_contracts
+        "matched_contracts": matched_contracts,
+        "total_disputes": sum(1 for block in blockchain.chain for entry in block.entries if entry.metadata.get("is_dispute") and entry.metadata.get("dispute_type") == "dispute_declaration"),
+        "open_disputes": sum(1 for block in blockchain.chain for entry in block.entries if entry.metadata.get("is_dispute") and entry.metadata.get("dispute_type") == "dispute_declaration" and entry.metadata.get("status") == "open")
     })
 
 
@@ -1005,6 +1011,656 @@ def respond_to_contract():
         "response": response_entry.to_dict(),
         "mediation": mediation_result
     }), 201
+
+
+# ========== Dispute Protocol (MP-03) Endpoints ==========
+
+@app.route('/dispute/file', methods=['POST'])
+def file_dispute():
+    """
+    File a new dispute (MP-03 Dispute Declaration).
+
+    Disputes are signals, not failures. Filing a dispute:
+    1. Creates an immutable record of the dispute
+    2. Freezes contested entries (prevents mutation)
+    3. Establishes the escalation path
+
+    Request body:
+    {
+        "claimant": "identifier of party filing dispute",
+        "respondent": "identifier of party being disputed against",
+        "contested_refs": [{"block": 1, "entry": 0}, ...],
+        "description": "Natural language description of the dispute",
+        "escalation_path": "mediator_node" | "external_arbitrator" | "legal_court" (optional),
+        "supporting_evidence": ["hash1", "hash2", ...] (optional),
+        "auto_mine": true/false (optional)
+    }
+
+    Returns:
+        Dispute entry with frozen evidence confirmation
+    """
+    if not dispute_manager:
+        # Initialize basic dispute manager without LLM
+        global dispute_manager
+        dispute_manager = DisputeManager()
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    claimant = data.get("claimant")
+    respondent = data.get("respondent")
+    contested_refs = data.get("contested_refs", [])
+    description = data.get("description")
+
+    if not all([claimant, respondent, description]):
+        return jsonify({
+            "error": "Missing required fields",
+            "required": ["claimant", "respondent", "description"]
+        }), 400
+
+    if not contested_refs:
+        return jsonify({
+            "error": "No contested entries specified",
+            "required": "contested_refs: [{\"block\": int, \"entry\": int}, ...]"
+        }), 400
+
+    # Validate contested refs exist
+    for ref in contested_refs:
+        block_idx = ref.get("block", -1)
+        entry_idx = ref.get("entry", -1)
+
+        if block_idx < 0 or block_idx >= len(blockchain.chain):
+            return jsonify({
+                "error": f"Invalid block reference: {block_idx}",
+                "valid_range": f"0-{len(blockchain.chain) - 1}"
+            }), 400
+
+        block = blockchain.chain[block_idx]
+        if entry_idx < 0 or entry_idx >= len(block.entries):
+            return jsonify({
+                "error": f"Invalid entry reference in block {block_idx}: {entry_idx}",
+                "valid_range": f"0-{len(block.entries) - 1}"
+            }), 400
+
+    # Validate dispute clarity
+    is_valid, reason = dispute_manager.validate_dispute_clarity(description)
+    if not is_valid:
+        return jsonify({
+            "error": "Dispute validation failed",
+            "reason": reason
+        }), 400
+
+    try:
+        # Create dispute
+        dispute_data = dispute_manager.create_dispute(
+            claimant=claimant,
+            respondent=respondent,
+            contested_refs=contested_refs,
+            description=description,
+            escalation_path=data.get("escalation_path", DisputeManager.ESCALATION_MEDIATOR),
+            supporting_evidence=data.get("supporting_evidence")
+        )
+
+        # Format dispute content
+        formatted_content = dispute_manager.format_dispute_entry(
+            DisputeManager.TYPE_DECLARATION,
+            description,
+            dispute_data["dispute_id"]
+        )
+
+        # Create blockchain entry
+        entry = NaturalLanguageEntry(
+            content=formatted_content,
+            author=claimant,
+            intent=f"File dispute against {respondent}",
+            metadata=dispute_data
+        )
+        entry.validation_status = "valid"
+
+        # Add to blockchain
+        result = blockchain.add_entry(entry)
+
+        # Auto-mine if requested
+        auto_mine = data.get("auto_mine", False)
+        mined_block = None
+        if auto_mine:
+            mined_block = blockchain.mine_pending_entries()
+            save_chain()
+
+        response = {
+            "status": "success",
+            "message": "Dispute filed successfully",
+            "dispute_id": dispute_data["dispute_id"],
+            "entry": result,
+            "evidence_frozen": True,
+            "frozen_entries_count": len(contested_refs)
+        }
+
+        if mined_block:
+            response["mined_block"] = {
+                "index": mined_block.index,
+                "hash": mined_block.hash
+            }
+
+        return jsonify(response), 201
+
+    except Exception as e:
+        return jsonify({
+            "error": "Failed to file dispute",
+            "reason": str(e)
+        }), 500
+
+
+@app.route('/dispute/list', methods=['GET'])
+def list_disputes():
+    """
+    List all disputes, optionally filtered.
+
+    Query params:
+        status: Filter by status (open, clarifying, escalated, resolved)
+        claimant: Filter by claimant
+        respondent: Filter by respondent
+
+    Returns:
+        List of dispute entries
+    """
+    status_filter = request.args.get('status')
+    claimant_filter = request.args.get('claimant')
+    respondent_filter = request.args.get('respondent')
+
+    disputes = []
+
+    for block in blockchain.chain:
+        for entry_idx, entry in enumerate(block.entries):
+            metadata = entry.metadata or {}
+
+            # Skip if not a dispute declaration
+            if not metadata.get("is_dispute"):
+                continue
+            if metadata.get("dispute_type") != DisputeManager.TYPE_DECLARATION:
+                continue
+
+            # Apply filters
+            if status_filter and metadata.get("status") != status_filter:
+                continue
+
+            if claimant_filter and metadata.get("claimant") != claimant_filter:
+                continue
+
+            if respondent_filter and metadata.get("respondent") != respondent_filter:
+                continue
+
+            disputes.append({
+                "block_index": block.index,
+                "block_hash": block.hash,
+                "entry_index": entry_idx,
+                "dispute_id": metadata.get("dispute_id"),
+                "claimant": metadata.get("claimant"),
+                "respondent": metadata.get("respondent"),
+                "status": metadata.get("status"),
+                "created_at": metadata.get("created_at"),
+                "entry": entry.to_dict()
+            })
+
+    return jsonify({
+        "count": len(disputes),
+        "disputes": disputes
+    })
+
+
+@app.route('/dispute/<dispute_id>', methods=['GET'])
+def get_dispute(dispute_id: str):
+    """
+    Get detailed status of a specific dispute.
+
+    Args:
+        dispute_id: The dispute identifier
+
+    Returns:
+        Complete dispute status and history
+    """
+    if not dispute_manager:
+        return jsonify({"error": "Dispute features not initialized"}), 503
+
+    status = dispute_manager.get_dispute_status(dispute_id, blockchain)
+
+    if not status:
+        return jsonify({
+            "error": "Dispute not found",
+            "dispute_id": dispute_id
+        }), 404
+
+    return jsonify(status)
+
+
+@app.route('/dispute/<dispute_id>/evidence', methods=['POST'])
+def add_dispute_evidence(dispute_id: str):
+    """
+    Add evidence to an existing dispute.
+
+    Evidence is append-only and timestamped.
+
+    Request body:
+    {
+        "author": "who is submitting",
+        "evidence_content": "description/content of evidence",
+        "evidence_type": "document" | "testimony" | "receipt" | "screenshot" | "other",
+        "evidence_hash": "hash of external file" (optional)
+    }
+
+    Returns:
+        Evidence entry confirmation
+    """
+    if not dispute_manager:
+        return jsonify({"error": "Dispute features not initialized"}), 503
+
+    # Verify dispute exists
+    status = dispute_manager.get_dispute_status(dispute_id, blockchain)
+    if not status:
+        return jsonify({
+            "error": "Dispute not found",
+            "dispute_id": dispute_id
+        }), 404
+
+    if status.get("is_resolved"):
+        return jsonify({
+            "error": "Cannot add evidence to resolved dispute",
+            "dispute_id": dispute_id
+        }), 400
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    author = data.get("author")
+    evidence_content = data.get("evidence_content")
+
+    if not all([author, evidence_content]):
+        return jsonify({
+            "error": "Missing required fields",
+            "required": ["author", "evidence_content"]
+        }), 400
+
+    try:
+        evidence_data = dispute_manager.add_evidence(
+            dispute_id=dispute_id,
+            author=author,
+            evidence_content=evidence_content,
+            evidence_type=data.get("evidence_type", "document"),
+            evidence_hash=data.get("evidence_hash")
+        )
+
+        formatted_content = dispute_manager.format_dispute_entry(
+            DisputeManager.TYPE_EVIDENCE,
+            evidence_content,
+            dispute_id
+        )
+
+        entry = NaturalLanguageEntry(
+            content=formatted_content,
+            author=author,
+            intent=f"Submit evidence for dispute {dispute_id}",
+            metadata=evidence_data
+        )
+        entry.validation_status = "valid"
+
+        result = blockchain.add_entry(entry)
+
+        return jsonify({
+            "status": "success",
+            "message": "Evidence added to dispute",
+            "dispute_id": dispute_id,
+            "evidence_hash": evidence_data.get("evidence_hash"),
+            "entry": result
+        }), 201
+
+    except Exception as e:
+        return jsonify({
+            "error": "Failed to add evidence",
+            "reason": str(e)
+        }), 500
+
+
+@app.route('/dispute/<dispute_id>/escalate', methods=['POST'])
+def escalate_dispute(dispute_id: str):
+    """
+    Escalate a dispute to higher authority.
+
+    Request body:
+    {
+        "escalating_party": "who is escalating",
+        "escalation_path": "mediator_node" | "external_arbitrator" | "legal_court",
+        "escalation_reason": "why escalation is needed",
+        "escalation_authority": "specific authority if known" (optional)
+    }
+
+    Returns:
+        Escalation entry confirmation
+    """
+    if not dispute_manager:
+        return jsonify({"error": "Dispute features not initialized"}), 503
+
+    # Verify dispute exists
+    status = dispute_manager.get_dispute_status(dispute_id, blockchain)
+    if not status:
+        return jsonify({
+            "error": "Dispute not found",
+            "dispute_id": dispute_id
+        }), 404
+
+    if status.get("is_resolved"):
+        return jsonify({
+            "error": "Cannot escalate resolved dispute",
+            "dispute_id": dispute_id
+        }), 400
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    escalating_party = data.get("escalating_party")
+    escalation_path = data.get("escalation_path")
+    escalation_reason = data.get("escalation_reason")
+
+    if not all([escalating_party, escalation_path, escalation_reason]):
+        return jsonify({
+            "error": "Missing required fields",
+            "required": ["escalating_party", "escalation_path", "escalation_reason"]
+        }), 400
+
+    try:
+        escalation_data = dispute_manager.escalate_dispute(
+            dispute_id=dispute_id,
+            escalating_party=escalating_party,
+            escalation_path=escalation_path,
+            escalation_reason=escalation_reason,
+            escalation_authority=data.get("escalation_authority")
+        )
+
+        formatted_content = dispute_manager.format_dispute_entry(
+            DisputeManager.TYPE_ESCALATION,
+            escalation_reason,
+            dispute_id
+        )
+
+        entry = NaturalLanguageEntry(
+            content=formatted_content,
+            author=escalating_party,
+            intent=f"Escalate dispute {dispute_id} to {escalation_path}",
+            metadata=escalation_data
+        )
+        entry.validation_status = "valid"
+
+        result = blockchain.add_entry(entry)
+
+        return jsonify({
+            "status": "success",
+            "message": f"Dispute escalated to {escalation_path}",
+            "dispute_id": dispute_id,
+            "escalation_path": escalation_path,
+            "entry": result
+        }), 201
+
+    except Exception as e:
+        return jsonify({
+            "error": "Failed to escalate dispute",
+            "reason": str(e)
+        }), 500
+
+
+@app.route('/dispute/<dispute_id>/resolve', methods=['POST'])
+def resolve_dispute(dispute_id: str):
+    """
+    Record the resolution of a dispute.
+
+    Note: Per Refusal Doctrine, this only RECORDS resolution.
+    Actual resolution is determined by humans/authorities.
+
+    Request body:
+    {
+        "resolution_authority": "who authorized the resolution",
+        "resolution_type": "settled" | "arbitrated" | "adjudicated" | "withdrawn",
+        "resolution_content": "Natural language resolution description",
+        "findings": {"key": "value"} (optional),
+        "remedies": ["remedy1", "remedy2", ...] (optional)
+    }
+
+    Returns:
+        Resolution entry with unfrozen entries
+    """
+    if not dispute_manager:
+        return jsonify({"error": "Dispute features not initialized"}), 503
+
+    # Verify dispute exists
+    status = dispute_manager.get_dispute_status(dispute_id, blockchain)
+    if not status:
+        return jsonify({
+            "error": "Dispute not found",
+            "dispute_id": dispute_id
+        }), 404
+
+    if status.get("is_resolved"):
+        return jsonify({
+            "error": "Dispute already resolved",
+            "dispute_id": dispute_id
+        }), 400
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    resolution_authority = data.get("resolution_authority")
+    resolution_type = data.get("resolution_type")
+    resolution_content = data.get("resolution_content")
+
+    if not all([resolution_authority, resolution_type, resolution_content]):
+        return jsonify({
+            "error": "Missing required fields",
+            "required": ["resolution_authority", "resolution_type", "resolution_content"]
+        }), 400
+
+    valid_resolution_types = ["settled", "arbitrated", "adjudicated", "withdrawn"]
+    if resolution_type not in valid_resolution_types:
+        return jsonify({
+            "error": f"Invalid resolution_type. Must be one of: {valid_resolution_types}"
+        }), 400
+
+    try:
+        resolution_data = dispute_manager.record_resolution(
+            dispute_id=dispute_id,
+            resolution_authority=resolution_authority,
+            resolution_type=resolution_type,
+            resolution_content=resolution_content,
+            findings=data.get("findings"),
+            remedies=data.get("remedies")
+        )
+
+        formatted_content = dispute_manager.format_dispute_entry(
+            DisputeManager.TYPE_RESOLUTION,
+            resolution_content,
+            dispute_id
+        )
+
+        entry = NaturalLanguageEntry(
+            content=formatted_content,
+            author=resolution_authority,
+            intent=f"Resolve dispute {dispute_id}: {resolution_type}",
+            metadata=resolution_data
+        )
+        entry.validation_status = "valid"
+
+        result = blockchain.add_entry(entry)
+        save_chain()
+
+        return jsonify({
+            "status": "success",
+            "message": f"Dispute resolved: {resolution_type}",
+            "dispute_id": dispute_id,
+            "entries_unfrozen": resolution_data.get("entries_unfrozen", 0),
+            "entry": result
+        }), 201
+
+    except Exception as e:
+        return jsonify({
+            "error": "Failed to record resolution",
+            "reason": str(e)
+        }), 500
+
+
+@app.route('/dispute/<dispute_id>/package', methods=['GET'])
+def get_dispute_package(dispute_id: str):
+    """
+    Generate a complete dispute package for external arbitration.
+
+    This package contains all information needed for an external
+    authority to review and resolve the dispute.
+
+    Query params:
+        include_entries: true/false (whether to include full frozen entries, default true)
+
+    Returns:
+        Complete dispute package with integrity hash
+    """
+    if not dispute_manager:
+        return jsonify({"error": "Dispute features not initialized"}), 503
+
+    # Verify dispute exists
+    status = dispute_manager.get_dispute_status(dispute_id, blockchain)
+    if not status:
+        return jsonify({
+            "error": "Dispute not found",
+            "dispute_id": dispute_id
+        }), 404
+
+    include_entries = request.args.get('include_entries', 'true').lower() == 'true'
+
+    try:
+        package = dispute_manager.generate_dispute_package(
+            dispute_id=dispute_id,
+            blockchain=blockchain,
+            include_frozen_entries=include_entries
+        )
+
+        return jsonify(package)
+
+    except Exception as e:
+        return jsonify({
+            "error": "Failed to generate dispute package",
+            "reason": str(e)
+        }), 500
+
+
+@app.route('/dispute/<dispute_id>/analyze', methods=['GET'])
+def analyze_dispute(dispute_id: str):
+    """
+    Get LLM analysis of a dispute (for understanding, not resolution).
+
+    Note: Per Refusal Doctrine, this analysis is for UNDERSTANDING only.
+    LLMs do not resolve disputes.
+
+    Returns:
+        Dispute analysis with key issues identified
+    """
+    if not dispute_manager or not dispute_manager.client:
+        return jsonify({
+            "error": "Dispute analysis not available",
+            "reason": "LLM features not configured"
+        }), 503
+
+    # Verify dispute exists and get details
+    status = dispute_manager.get_dispute_status(dispute_id, blockchain)
+    if not status:
+        return jsonify({
+            "error": "Dispute not found",
+            "dispute_id": dispute_id
+        }), 404
+
+    # Get the dispute description and contested content
+    dispute_description = None
+    contested_content = []
+
+    for block in blockchain.chain:
+        for entry in block.entries:
+            metadata = entry.metadata or {}
+
+            if metadata.get("dispute_id") == dispute_id:
+                if metadata.get("dispute_type") == DisputeManager.TYPE_DECLARATION:
+                    dispute_description = entry.content
+
+                    # Get contested entries
+                    for ref in metadata.get("contested_refs", []):
+                        block_idx = ref.get("block", 0)
+                        entry_idx = ref.get("entry", 0)
+                        if block_idx < len(blockchain.chain):
+                            contested_block = blockchain.chain[block_idx]
+                            if entry_idx < len(contested_block.entries):
+                                contested_entry = contested_block.entries[entry_idx]
+                                contested_content.append(contested_entry.content)
+                    break
+
+    if not dispute_description:
+        return jsonify({
+            "error": "Could not find dispute description",
+            "dispute_id": dispute_id
+        }), 404
+
+    try:
+        analysis = dispute_manager.analyze_dispute(
+            dispute_description=dispute_description,
+            contested_content="\n\n---\n\n".join(contested_content)
+        )
+
+        if not analysis:
+            return jsonify({
+                "error": "Analysis failed",
+                "reason": "LLM analysis returned empty result"
+            }), 500
+
+        return jsonify({
+            "dispute_id": dispute_id,
+            "analysis": analysis,
+            "disclaimer": "This analysis is for understanding only. Per NatLangChain Refusal Doctrine, dispute resolution requires human judgment."
+        })
+
+    except Exception as e:
+        return jsonify({
+            "error": "Analysis failed",
+            "reason": str(e)
+        }), 500
+
+
+@app.route('/entry/frozen/<int:block_index>/<int:entry_index>', methods=['GET'])
+def check_entry_frozen(block_index: int, entry_index: int):
+    """
+    Check if an entry is frozen due to dispute.
+
+    Args:
+        block_index: Block index
+        entry_index: Entry index
+
+    Returns:
+        Frozen status and dispute ID if frozen
+    """
+    if not dispute_manager:
+        return jsonify({
+            "frozen": False,
+            "dispute_id": None,
+            "message": "Dispute features not initialized"
+        })
+
+    is_frozen, dispute_id = dispute_manager.is_entry_frozen(block_index, entry_index)
+
+    return jsonify({
+        "block_index": block_index,
+        "entry_index": entry_index,
+        "frozen": is_frozen,
+        "dispute_id": dispute_id
+    })
 
 
 @app.errorhandler(404)
