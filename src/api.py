@@ -5,8 +5,11 @@ API endpoints for Agent OS to interact with the blockchain
 
 import os
 import json
+import secrets
+import time
 from typing import Dict, Any, Optional
-from flask import Flask, request, jsonify
+from functools import wraps
+from flask import Flask, request, jsonify, g
 from dotenv import load_dotenv
 
 from blockchain import NatLangChain, NaturalLanguageEntry, Block
@@ -37,6 +40,142 @@ load_dotenv()
 # Initialize Flask app
 app = Flask(__name__)
 app.config['JSON_SORT_KEYS'] = False
+
+# ============================================================
+# Security Configuration
+# ============================================================
+
+# Request size limit (16MB max)
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+
+# API Key for authentication (set via environment or generate secure default)
+API_KEY = os.getenv("NATLANGCHAIN_API_KEY", None)
+API_KEY_REQUIRED = os.getenv("NATLANGCHAIN_REQUIRE_AUTH", "false").lower() == "true"
+
+# Rate limiting configuration
+RATE_LIMIT_REQUESTS = int(os.getenv("RATE_LIMIT_REQUESTS", "100"))
+RATE_LIMIT_WINDOW = int(os.getenv("RATE_LIMIT_WINDOW", "60"))  # seconds
+rate_limit_store: Dict[str, Dict[str, Any]] = {}
+
+# Bounded parameters - max values for iteration parameters
+MAX_VALIDATORS = 10
+MAX_ORACLES = 10
+MAX_RESULTS = 100
+
+
+def get_client_ip() -> str:
+    """Get client IP address, considering proxies."""
+    if request.headers.get('X-Forwarded-For'):
+        return request.headers.get('X-Forwarded-For').split(',')[0].strip()
+    return request.remote_addr or 'unknown'
+
+
+def check_rate_limit() -> Optional[Dict[str, Any]]:
+    """
+    Check if client has exceeded rate limit.
+
+    Returns:
+        None if within limit, error dict if exceeded
+    """
+    client_ip = get_client_ip()
+    current_time = time.time()
+
+    if client_ip not in rate_limit_store:
+        rate_limit_store[client_ip] = {
+            "count": 0,
+            "window_start": current_time
+        }
+
+    client_data = rate_limit_store[client_ip]
+
+    # Reset window if expired
+    if current_time - client_data["window_start"] > RATE_LIMIT_WINDOW:
+        client_data["count"] = 0
+        client_data["window_start"] = current_time
+
+    # Check limit
+    if client_data["count"] >= RATE_LIMIT_REQUESTS:
+        return {
+            "error": "Rate limit exceeded",
+            "retry_after": int(RATE_LIMIT_WINDOW - (current_time - client_data["window_start"]))
+        }
+
+    client_data["count"] += 1
+    return None
+
+
+def require_api_key(f):
+    """Decorator to require API key authentication."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not API_KEY_REQUIRED:
+            return f(*args, **kwargs)
+
+        # Check for API key in header
+        provided_key = request.headers.get('X-API-Key')
+
+        if not provided_key:
+            return jsonify({
+                "error": "API key required",
+                "hint": "Provide API key in X-API-Key header"
+            }), 401
+
+        if not API_KEY:
+            return jsonify({
+                "error": "Server API key not configured",
+                "hint": "Set NATLANGCHAIN_API_KEY environment variable"
+            }), 503
+
+        if not secrets.compare_digest(provided_key, API_KEY):
+            return jsonify({"error": "Invalid API key"}), 403
+
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+@app.before_request
+def before_request_security():
+    """Apply security checks before each request."""
+    # Skip for health check endpoint
+    if request.endpoint == 'health_check':
+        return None
+
+    # Rate limiting
+    rate_error = check_rate_limit()
+    if rate_error:
+        response = jsonify(rate_error)
+        response.status_code = 429
+        response.headers['Retry-After'] = str(rate_error.get('retry_after', 60))
+        return response
+
+    return None
+
+
+@app.after_request
+def add_security_headers(response):
+    """Add security headers to all responses."""
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+
+    # CORS headers (configurable origins)
+    allowed_origins = os.getenv("CORS_ALLOWED_ORIGINS", "*")
+    response.headers['Access-Control-Allow-Origin'] = allowed_origins
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, X-API-Key, Authorization'
+
+    return response
+
+
+@app.errorhandler(413)
+def request_entity_too_large(error):
+    """Handle request too large error."""
+    return jsonify({
+        "error": "Request too large",
+        "max_size_mb": app.config['MAX_CONTENT_LENGTH'] / (1024 * 1024)
+    }), 413
 
 # Initialize blockchain and validator
 blockchain = NatLangChain()
@@ -5839,16 +5978,20 @@ def run_server():
     """Run the Flask development server."""
     host = os.getenv("HOST", "0.0.0.0")
     port = int(os.getenv("PORT", 5000))
+    debug = os.getenv("FLASK_DEBUG", "false").lower() == "true"
 
     print(f"\n{'='*60}")
     print("NatLangChain API Server")
     print(f"{'='*60}")
     print(f"Listening on: http://{host}:{port}")
+    print(f"Debug Mode: {'ENABLED (not for production!)' if debug else 'Disabled'}")
+    print(f"Auth Required: {'Yes' if API_KEY_REQUIRED else 'No'}")
+    print(f"Rate Limit: {RATE_LIMIT_REQUESTS} req/{RATE_LIMIT_WINDOW}s")
     print(f"LLM Validation: {'Enabled' if llm_validator else 'Disabled'}")
     print(f"Blockchain: {len(blockchain.chain)} blocks loaded")
     print(f"{'='*60}\n")
 
-    app.run(host=host, port=port, debug=True)
+    app.run(host=host, port=port, debug=debug)
 
 
 if __name__ == '__main__':

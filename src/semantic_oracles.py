@@ -312,6 +312,9 @@ Return JSON:
                 "oracle_type": "otc_settlement"
             }
 
+    # Maximum oracles to prevent DoS
+    MAX_ORACLES = 10
+
     def multi_oracle_consensus(
         self,
         condition: str,
@@ -326,11 +329,13 @@ Return JSON:
         Args:
             condition: Contract condition
             event: External event
-            num_oracles: Number of oracle evaluations
+            num_oracles: Number of oracle evaluations (max 10)
 
         Returns:
             Consensus result
         """
+        # Bound the number of oracles to prevent DoS
+        num_oracles = min(num_oracles, self.MAX_ORACLES)
         evaluations = []
 
         for i in range(num_oracles):

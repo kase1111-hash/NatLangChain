@@ -112,6 +112,9 @@ Respond in JSON format:
                 }
             }
 
+    # Maximum validators to prevent DoS
+    MAX_VALIDATORS = 10
+
     def multi_validator_consensus(
         self,
         content: str,
@@ -129,11 +132,13 @@ Respond in JSON format:
             content: Entry content
             intent: Stated intent
             author: Entry author
-            num_validators: Number of validator nodes to simulate
+            num_validators: Number of validator nodes to simulate (max 10)
 
         Returns:
             Consensus result with all validator opinions
         """
+        # Bound the number of validators to prevent DoS
+        num_validators = min(num_validators, self.MAX_VALIDATORS)
         validations = []
 
         for i in range(num_validators):
