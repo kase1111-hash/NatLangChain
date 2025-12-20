@@ -26,6 +26,7 @@ from anti_harassment import AntiHarassmentManager, InitiationPath, DisputeResolu
 from treasury import NatLangChainTreasury, InflowType, SubsidyStatus
 from fido2_auth import FIDO2AuthManager, SignatureType, UserVerification
 from zk_privacy import ZKPrivacyManager, ProofStatus, VoteStatus
+from negotiation_engine import AutomatedNegotiationEngine, NegotiationPhase, OfferType, ClauseType
 
 
 # Load environment variables
@@ -55,6 +56,7 @@ anti_harassment_manager = None
 treasury = None
 fido2_manager = None
 zk_privacy_manager = None
+negotiation_engine = None
 
 # Data file for persistence
 CHAIN_DATA_FILE = os.getenv("CHAIN_DATA_FILE", "chain_data.json")
@@ -62,7 +64,7 @@ CHAIN_DATA_FILE = os.getenv("CHAIN_DATA_FILE", "chain_data.json")
 
 def init_validators():
     """Initialize validators and advanced features if API key is available."""
-    global llm_validator, hybrid_validator, drift_detector, search_engine, dialectic_validator, contract_parser, contract_matcher, temporal_fixity, semantic_oracle, circuit_breaker, multi_model_consensus, dispute_manager, escalation_fork_manager, observance_burn_manager, anti_harassment_manager, treasury, fido2_manager, zk_privacy_manager
+    global llm_validator, hybrid_validator, drift_detector, search_engine, dialectic_validator, contract_parser, contract_matcher, temporal_fixity, semantic_oracle, circuit_breaker, multi_model_consensus, dispute_manager, escalation_fork_manager, observance_burn_manager, anti_harassment_manager, treasury, fido2_manager, zk_privacy_manager, negotiation_engine
     api_key = os.getenv("ANTHROPIC_API_KEY")
 
     # Initialize temporal fixity (doesn't require API key)
@@ -98,7 +100,8 @@ def init_validators():
             treasury = NatLangChainTreasury(anti_harassment_manager=anti_harassment_manager)
             fido2_manager = FIDO2AuthManager()
             zk_privacy_manager = ZKPrivacyManager()
-            print("LLM-based features initialized (contracts, oracles, disputes, forks, burns, anti-harassment, treasury, FIDO2, ZK privacy, multi-model consensus)")
+            negotiation_engine = AutomatedNegotiationEngine(api_key)
+            print("LLM-based features initialized (contracts, oracles, disputes, forks, burns, anti-harassment, treasury, FIDO2, ZK privacy, negotiation, multi-model consensus)")
         except Exception as e:
             print(f"Warning: Could not initialize LLM features: {e}")
             print("API will operate without LLM validation")
@@ -4284,6 +4287,538 @@ def get_zk_privacy_audit():
     return jsonify({
         "count": len(trail),
         "audit_trail": trail
+    })
+
+
+# ========== Automated Negotiation Engine Endpoints ==========
+
+@app.route('/negotiation/session', methods=['POST'])
+def initiate_negotiation_session():
+    """
+    Initiate a new negotiation session.
+
+    Request body:
+    {
+        "initiator": "alice",
+        "counterparty": "bob",
+        "subject": "Software development contract",
+        "initiator_statement": "I want to hire a developer for 3 months...",
+        "initial_terms": {"budget": "50000", "timeline": "3 months"} (optional)
+    }
+
+    Returns:
+        Session info with ID and next steps
+    """
+    if not negotiation_engine:
+        return jsonify({
+            "error": "Negotiation engine not available",
+            "reason": "Features not initialized"
+        }), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    required_fields = ["initiator", "counterparty", "subject", "initiator_statement"]
+    missing = [f for f in required_fields if f not in data]
+
+    if missing:
+        return jsonify({
+            "error": "Missing required fields",
+            "missing": missing
+        }), 400
+
+    success, result = negotiation_engine.initiate_session(
+        initiator=data["initiator"],
+        counterparty=data["counterparty"],
+        subject=data["subject"],
+        initiator_statement=data["initiator_statement"],
+        initial_terms=data.get("initial_terms")
+    )
+
+    if not success:
+        return jsonify(result), 400
+
+    return jsonify(result), 201
+
+
+@app.route('/negotiation/session/<session_id>/join', methods=['POST'])
+def join_negotiation_session(session_id: str):
+    """
+    Counterparty joins a negotiation session.
+
+    Request body:
+    {
+        "counterparty": "bob",
+        "counterparty_statement": "I'm available for contract work..."
+    }
+
+    Returns:
+        Alignment analysis and next steps
+    """
+    if not negotiation_engine:
+        return jsonify({"error": "Negotiation engine not available"}), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    if "counterparty" not in data or "counterparty_statement" not in data:
+        return jsonify({
+            "error": "Missing required fields",
+            "required": ["counterparty", "counterparty_statement"]
+        }), 400
+
+    success, result = negotiation_engine.join_session(
+        session_id=session_id,
+        counterparty=data["counterparty"],
+        counterparty_statement=data["counterparty_statement"]
+    )
+
+    if not success:
+        return jsonify(result), 400
+
+    return jsonify(result)
+
+
+@app.route('/negotiation/session/<session_id>', methods=['GET'])
+def get_negotiation_session(session_id: str):
+    """Get negotiation session details."""
+    if not negotiation_engine:
+        return jsonify({"error": "Negotiation engine not available"}), 503
+
+    session = negotiation_engine.get_session(session_id)
+
+    if not session:
+        return jsonify({"error": "Session not found"}), 404
+
+    return jsonify(session)
+
+
+@app.route('/negotiation/session/<session_id>/advance', methods=['POST'])
+def advance_negotiation_phase(session_id: str):
+    """
+    Advance session to next phase.
+
+    Request body:
+    {
+        "party": "alice"
+    }
+
+    Returns:
+        Phase transition info
+    """
+    if not negotiation_engine:
+        return jsonify({"error": "Negotiation engine not available"}), 503
+
+    data = request.get_json()
+
+    if not data or "party" not in data:
+        return jsonify({"error": "Missing required field: party"}), 400
+
+    success, result = negotiation_engine.advance_phase(
+        session_id=session_id,
+        party=data["party"]
+    )
+
+    if not success:
+        return jsonify(result), 400
+
+    return jsonify(result)
+
+
+@app.route('/negotiation/session/<session_id>/clause', methods=['POST'])
+def add_negotiation_clause(session_id: str):
+    """
+    Add a clause to the session.
+
+    Request body:
+    {
+        "clause_type": "payment|delivery|quality|timeline|...",
+        "parameters": {"amount": "50000", "method": "wire transfer", ...},
+        "proposed_by": "alice"
+    }
+
+    Returns:
+        Generated clause with alternatives
+    """
+    if not negotiation_engine:
+        return jsonify({"error": "Negotiation engine not available"}), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    required_fields = ["clause_type", "parameters", "proposed_by"]
+    missing = [f for f in required_fields if f not in data]
+
+    if missing:
+        return jsonify({
+            "error": "Missing required fields",
+            "missing": missing
+        }), 400
+
+    try:
+        clause_type = ClauseType(data["clause_type"])
+    except ValueError:
+        return jsonify({
+            "error": "Invalid clause_type",
+            "valid_values": [t.value for t in ClauseType]
+        }), 400
+
+    success, result = negotiation_engine.add_clause(
+        session_id=session_id,
+        clause_type=clause_type,
+        parameters=data["parameters"],
+        proposed_by=data["proposed_by"]
+    )
+
+    if not success:
+        return jsonify(result), 400
+
+    return jsonify(result), 201
+
+
+@app.route('/negotiation/session/<session_id>/clause/<clause_id>/respond', methods=['POST'])
+def respond_to_negotiation_clause(session_id: str, clause_id: str):
+    """
+    Respond to a proposed clause.
+
+    Request body:
+    {
+        "party": "bob",
+        "response": "accept|reject|modify",
+        "modified_content": "New clause text..." (required if modify)
+    }
+
+    Returns:
+        Clause status update
+    """
+    if not negotiation_engine:
+        return jsonify({"error": "Negotiation engine not available"}), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    if "party" not in data or "response" not in data:
+        return jsonify({
+            "error": "Missing required fields",
+            "required": ["party", "response"]
+        }), 400
+
+    if data["response"] not in ["accept", "reject", "modify"]:
+        return jsonify({
+            "error": "Invalid response",
+            "valid_values": ["accept", "reject", "modify"]
+        }), 400
+
+    success, result = negotiation_engine.respond_to_clause(
+        session_id=session_id,
+        clause_id=clause_id,
+        party=data["party"],
+        response=data["response"],
+        modified_content=data.get("modified_content")
+    )
+
+    if not success:
+        return jsonify(result), 400
+
+    return jsonify(result)
+
+
+@app.route('/negotiation/session/<session_id>/clauses', methods=['GET'])
+def get_negotiation_clauses(session_id: str):
+    """Get all clauses in a session."""
+    if not negotiation_engine:
+        return jsonify({"error": "Negotiation engine not available"}), 503
+
+    clauses = negotiation_engine.get_session_clauses(session_id)
+
+    return jsonify({
+        "session_id": session_id,
+        "count": len(clauses),
+        "clauses": clauses
+    })
+
+
+@app.route('/negotiation/session/<session_id>/offer', methods=['POST'])
+def make_negotiation_offer(session_id: str):
+    """
+    Make an offer in the negotiation.
+
+    Request body:
+    {
+        "from_party": "alice",
+        "terms": {"price": "45000", "timeline": "2.5 months", ...},
+        "message": "I've adjusted the timeline to accommodate...",
+        "offer_type": "initial|counter|final" (optional, default initial)
+    }
+
+    Returns:
+        Offer confirmation
+    """
+    if not negotiation_engine:
+        return jsonify({"error": "Negotiation engine not available"}), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    required_fields = ["from_party", "terms", "message"]
+    missing = [f for f in required_fields if f not in data]
+
+    if missing:
+        return jsonify({
+            "error": "Missing required fields",
+            "missing": missing
+        }), 400
+
+    offer_type = OfferType.INITIAL
+    if data.get("offer_type"):
+        try:
+            offer_type = OfferType(data["offer_type"])
+        except ValueError:
+            return jsonify({
+                "error": "Invalid offer_type",
+                "valid_values": [t.value for t in OfferType]
+            }), 400
+
+    success, result = negotiation_engine.make_offer(
+        session_id=session_id,
+        from_party=data["from_party"],
+        terms=data["terms"],
+        message=data["message"],
+        offer_type=offer_type
+    )
+
+    if not success:
+        return jsonify(result), 400
+
+    return jsonify(result), 201
+
+
+@app.route('/negotiation/session/<session_id>/offer/<offer_id>/respond', methods=['POST'])
+def respond_to_negotiation_offer(session_id: str, offer_id: str):
+    """
+    Respond to an offer.
+
+    Request body:
+    {
+        "party": "bob",
+        "response": "accept|reject|counter",
+        "counter_terms": {...} (required if counter),
+        "message": "Response message..." (optional)
+    }
+
+    Returns:
+        Response result (agreement if accepted)
+    """
+    if not negotiation_engine:
+        return jsonify({"error": "Negotiation engine not available"}), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    if "party" not in data or "response" not in data:
+        return jsonify({
+            "error": "Missing required fields",
+            "required": ["party", "response"]
+        }), 400
+
+    if data["response"] not in ["accept", "reject", "counter"]:
+        return jsonify({
+            "error": "Invalid response",
+            "valid_values": ["accept", "reject", "counter"]
+        }), 400
+
+    success, result = negotiation_engine.respond_to_offer(
+        session_id=session_id,
+        offer_id=offer_id,
+        party=data["party"],
+        response=data["response"],
+        counter_terms=data.get("counter_terms"),
+        message=data.get("message")
+    )
+
+    if not success:
+        return jsonify(result), 400
+
+    return jsonify(result)
+
+
+@app.route('/negotiation/session/<session_id>/offers', methods=['GET'])
+def get_negotiation_offers(session_id: str):
+    """Get all offers in a session."""
+    if not negotiation_engine:
+        return jsonify({"error": "Negotiation engine not available"}), 503
+
+    offers = negotiation_engine.get_session_offers(session_id)
+
+    return jsonify({
+        "session_id": session_id,
+        "count": len(offers),
+        "offers": offers
+    })
+
+
+@app.route('/negotiation/session/<session_id>/auto-counter', methods=['POST'])
+def auto_draft_counter_offer(session_id: str):
+    """
+    Automatically draft a counter-offer using AI.
+
+    Request body:
+    {
+        "party": "bob",
+        "strategy": "aggressive|balanced|cooperative" (optional, default balanced)
+    }
+
+    Returns:
+        AI-drafted counter-offer
+    """
+    if not negotiation_engine:
+        return jsonify({"error": "Negotiation engine not available"}), 503
+
+    data = request.get_json()
+
+    if not data or "party" not in data:
+        return jsonify({"error": "Missing required field: party"}), 400
+
+    strategy = data.get("strategy", "balanced")
+    if strategy not in ["aggressive", "balanced", "cooperative"]:
+        return jsonify({
+            "error": "Invalid strategy",
+            "valid_values": ["aggressive", "balanced", "cooperative"]
+        }), 400
+
+    success, result = negotiation_engine.auto_draft_counter(
+        session_id=session_id,
+        party=data["party"],
+        strategy=strategy
+    )
+
+    if not success:
+        return jsonify(result), 400
+
+    return jsonify(result), 201
+
+
+@app.route('/negotiation/session/<session_id>/strategies', methods=['GET'])
+def get_alignment_strategies(session_id: str):
+    """
+    Get alignment strategies for a party.
+
+    Query params:
+        party: Party to get strategies for
+    """
+    if not negotiation_engine:
+        return jsonify({"error": "Negotiation engine not available"}), 503
+
+    party = request.args.get("party")
+    if not party:
+        return jsonify({"error": "Missing required query param: party"}), 400
+
+    strategies = negotiation_engine.get_alignment_strategies(session_id, party)
+
+    return jsonify({
+        "session_id": session_id,
+        "party": party,
+        "strategies": strategies
+    })
+
+
+@app.route('/negotiation/session/<session_id>/finalize', methods=['POST'])
+def finalize_negotiation_agreement(session_id: str):
+    """
+    Finalize an agreed negotiation into a contract.
+
+    Request body:
+    {
+        "party": "alice"
+    }
+
+    Returns:
+        Final contract document
+    """
+    if not negotiation_engine:
+        return jsonify({"error": "Negotiation engine not available"}), 503
+
+    data = request.get_json()
+
+    if not data or "party" not in data:
+        return jsonify({"error": "Missing required field: party"}), 400
+
+    success, result = negotiation_engine.finalize_agreement(
+        session_id=session_id,
+        party=data["party"]
+    )
+
+    if not success:
+        return jsonify(result), 400
+
+    return jsonify(result)
+
+
+@app.route('/negotiation/stats', methods=['GET'])
+def get_negotiation_stats():
+    """Get negotiation engine statistics."""
+    if not negotiation_engine:
+        return jsonify({"error": "Negotiation engine not available"}), 503
+
+    stats = negotiation_engine.get_statistics()
+    return jsonify(stats)
+
+
+@app.route('/negotiation/audit', methods=['GET'])
+def get_negotiation_audit():
+    """
+    Get negotiation audit trail.
+
+    Query params:
+        limit: Maximum entries (default 100)
+    """
+    if not negotiation_engine:
+        return jsonify({"error": "Negotiation engine not available"}), 503
+
+    limit = request.args.get("limit", 100, type=int)
+
+    trail = negotiation_engine.get_audit_trail(limit=limit)
+
+    return jsonify({
+        "count": len(trail),
+        "audit_trail": trail
+    })
+
+
+@app.route('/negotiation/clause-types', methods=['GET'])
+def get_clause_types():
+    """Get available clause types."""
+    return jsonify({
+        "clause_types": [
+            {
+                "value": t.value,
+                "name": t.name,
+                "description": {
+                    "payment": "Payment terms and conditions",
+                    "delivery": "Delivery location and timing",
+                    "quality": "Quality standards and verification",
+                    "timeline": "Project timeline and milestones",
+                    "liability": "Liability limits and exclusions",
+                    "termination": "Contract termination conditions",
+                    "dispute_resolution": "Dispute resolution method",
+                    "confidentiality": "Confidentiality and NDA terms",
+                    "custom": "Custom clause"
+                }.get(t.value, "Contract clause")
+            }
+            for t in ClauseType
+        ]
     })
 
 
