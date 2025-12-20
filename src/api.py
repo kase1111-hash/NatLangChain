@@ -22,6 +22,7 @@ from semantic_oracles import SemanticOracle, SemanticCircuitBreaker
 from multi_model_consensus import MultiModelConsensus
 from escalation_fork import EscalationForkManager, ForkStatus, TriggerReason
 from observance_burn import ObservanceBurnManager, BurnReason
+from anti_harassment import AntiHarassmentManager, InitiationPath, DisputeResolution
 
 
 # Load environment variables
@@ -47,6 +48,7 @@ multi_model_consensus = None
 dispute_manager = None
 escalation_fork_manager = None
 observance_burn_manager = None
+anti_harassment_manager = None
 
 # Data file for persistence
 CHAIN_DATA_FILE = os.getenv("CHAIN_DATA_FILE", "chain_data.json")
@@ -54,7 +56,7 @@ CHAIN_DATA_FILE = os.getenv("CHAIN_DATA_FILE", "chain_data.json")
 
 def init_validators():
     """Initialize validators and advanced features if API key is available."""
-    global llm_validator, hybrid_validator, drift_detector, search_engine, dialectic_validator, contract_parser, contract_matcher, temporal_fixity, semantic_oracle, circuit_breaker, multi_model_consensus, dispute_manager, escalation_fork_manager, observance_burn_manager
+    global llm_validator, hybrid_validator, drift_detector, search_engine, dialectic_validator, contract_parser, contract_matcher, temporal_fixity, semantic_oracle, circuit_breaker, multi_model_consensus, dispute_manager, escalation_fork_manager, observance_burn_manager, anti_harassment_manager
     api_key = os.getenv("ANTHROPIC_API_KEY")
 
     # Initialize temporal fixity (doesn't require API key)
@@ -86,7 +88,8 @@ def init_validators():
             dispute_manager = DisputeManager(api_key)
             escalation_fork_manager = EscalationForkManager()
             observance_burn_manager = ObservanceBurnManager()
-            print("LLM-based features initialized (contracts, oracles, disputes, forks, burns, multi-model consensus)")
+            anti_harassment_manager = AntiHarassmentManager(burn_manager=observance_burn_manager)
+            print("LLM-based features initialized (contracts, oracles, disputes, forks, burns, anti-harassment, multi-model consensus)")
         except Exception as e:
             print(f"Warning: Could not initialize LLM features: {e}")
             print("API will operate without LLM validation")
@@ -2176,6 +2179,430 @@ def calculate_escalation_burn():
         "burn_percentage": observance_burn_manager.DEFAULT_ESCALATION_BURN_PERCENTAGE * 100,
         "required_burn": burn_amount,
         "message": f"To escalate, you must burn {burn_amount} tokens (5% of stake)"
+    })
+
+
+# ========== Anti-Harassment Economic Layer Endpoints ==========
+
+@app.route('/harassment/breach-dispute', methods=['POST'])
+def initiate_breach_dispute():
+    """
+    Initiate a Breach/Drift Dispute with symmetric staking.
+
+    This path requires evidence of violation/drift and symmetric staking.
+    Initiator MUST stake first. Counterparty can match or decline.
+
+    Request body:
+    {
+        "initiator": "alice",
+        "counterparty": "bob",
+        "contract_ref": "CONTRACT-123",
+        "stake_amount": 100.0,
+        "evidence_refs": [{"block": 1, "entry": 0}],
+        "description": "Bob violated the delivery terms..."
+    }
+
+    Returns:
+        Escrow details with stake window
+    """
+    if not anti_harassment_manager:
+        return jsonify({
+            "error": "Anti-harassment features not available",
+            "reason": "Features not initialized"
+        }), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    required_fields = ["initiator", "counterparty", "contract_ref", "stake_amount", "evidence_refs", "description"]
+    missing = [f for f in required_fields if f not in data]
+
+    if missing:
+        return jsonify({
+            "error": "Missing required fields",
+            "missing": missing
+        }), 400
+
+    success, result = anti_harassment_manager.initiate_breach_dispute(
+        initiator=data["initiator"],
+        counterparty=data["counterparty"],
+        contract_ref=data["contract_ref"],
+        stake_amount=data["stake_amount"],
+        evidence_refs=data["evidence_refs"],
+        description=data["description"]
+    )
+
+    if not success:
+        return jsonify(result), 400
+
+    return jsonify(result), 201
+
+
+@app.route('/harassment/match-stake', methods=['POST'])
+def match_dispute_stake():
+    """
+    Match stake to enter symmetric dispute resolution.
+
+    Request body:
+    {
+        "escrow_id": "ESCROW-XXX",
+        "counterparty": "bob",
+        "stake_amount": 100.0
+    }
+    """
+    if not anti_harassment_manager:
+        return jsonify({"error": "Anti-harassment features not available"}), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    required_fields = ["escrow_id", "counterparty", "stake_amount"]
+    missing = [f for f in required_fields if f not in data]
+
+    if missing:
+        return jsonify({
+            "error": "Missing required fields",
+            "missing": missing
+        }), 400
+
+    success, result = anti_harassment_manager.match_stake(
+        escrow_id=data["escrow_id"],
+        counterparty=data["counterparty"],
+        stake_amount=data["stake_amount"]
+    )
+
+    if not success:
+        return jsonify(result), 400
+
+    return jsonify(result)
+
+
+@app.route('/harassment/decline-stake', methods=['POST'])
+def decline_dispute_stake():
+    """
+    Decline to match stake (FREE for counterparty, resolves to fallback).
+
+    This is the harassment-resistant path: counterparty pays nothing,
+    initiator gets no leverage, and initiator enters cooldown.
+
+    Request body:
+    {
+        "escrow_id": "ESCROW-XXX",
+        "counterparty": "bob"
+    }
+    """
+    if not anti_harassment_manager:
+        return jsonify({"error": "Anti-harassment features not available"}), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    if "escrow_id" not in data or "counterparty" not in data:
+        return jsonify({
+            "error": "Missing required fields",
+            "required": ["escrow_id", "counterparty"]
+        }), 400
+
+    success, result = anti_harassment_manager.decline_stake(
+        escrow_id=data["escrow_id"],
+        counterparty=data["counterparty"]
+    )
+
+    if not success:
+        return jsonify(result), 400
+
+    return jsonify(result)
+
+
+@app.route('/harassment/voluntary-request', methods=['POST'])
+def initiate_voluntary_request():
+    """
+    Initiate a Voluntary Request (can be ignored at zero cost by recipient).
+
+    Request body:
+    {
+        "initiator": "alice",
+        "recipient": "bob",
+        "request_type": "negotiation|amendment|reconciliation",
+        "description": "I'd like to discuss...",
+        "burn_fee": 0.1  (optional)
+    }
+    """
+    if not anti_harassment_manager:
+        return jsonify({"error": "Anti-harassment features not available"}), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    required_fields = ["initiator", "recipient", "request_type", "description"]
+    missing = [f for f in required_fields if f not in data]
+
+    if missing:
+        return jsonify({
+            "error": "Missing required fields",
+            "missing": missing
+        }), 400
+
+    success, result = anti_harassment_manager.initiate_voluntary_request(
+        initiator=data["initiator"],
+        recipient=data["recipient"],
+        request_type=data["request_type"],
+        description=data["description"],
+        burn_fee=data.get("burn_fee")
+    )
+
+    if not success:
+        return jsonify(result), 400
+
+    return jsonify(result), 201
+
+
+@app.route('/harassment/respond-request', methods=['POST'])
+def respond_to_voluntary_request():
+    """
+    Respond to a voluntary request (optional - ignoring is free).
+
+    Request body:
+    {
+        "request_id": "VREQ-XXX",
+        "recipient": "bob",
+        "response": "I accept...",
+        "accept": true
+    }
+    """
+    if not anti_harassment_manager:
+        return jsonify({"error": "Anti-harassment features not available"}), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    required_fields = ["request_id", "recipient", "response", "accept"]
+    missing = [f for f in required_fields if f not in data]
+
+    if missing:
+        return jsonify({
+            "error": "Missing required fields",
+            "missing": missing
+        }), 400
+
+    success, result = anti_harassment_manager.respond_to_voluntary_request(
+        request_id=data["request_id"],
+        recipient=data["recipient"],
+        response=data["response"],
+        accept=data["accept"]
+    )
+
+    if not success:
+        return jsonify(result), 400
+
+    return jsonify(result)
+
+
+@app.route('/harassment/counter-proposal', methods=['POST'])
+def submit_counter_proposal():
+    """
+    Submit a counter-proposal with exponential fee enforcement.
+
+    Counter-proposals are limited (default 3 per party).
+    Fees increase exponentially: base_fee × 2ⁿ
+
+    Request body:
+    {
+        "dispute_ref": "BREACH-XXX",
+        "party": "alice",
+        "proposal_content": "My counter-proposal is..."
+    }
+    """
+    if not anti_harassment_manager:
+        return jsonify({"error": "Anti-harassment features not available"}), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    required_fields = ["dispute_ref", "party", "proposal_content"]
+    missing = [f for f in required_fields if f not in data]
+
+    if missing:
+        return jsonify({
+            "error": "Missing required fields",
+            "missing": missing
+        }), 400
+
+    success, result = anti_harassment_manager.submit_counter_proposal(
+        dispute_ref=data["dispute_ref"],
+        party=data["party"],
+        proposal_content=data["proposal_content"]
+    )
+
+    if not success:
+        return jsonify(result), 400
+
+    return jsonify(result)
+
+
+@app.route('/harassment/counter-status/<dispute_ref>/<party>', methods=['GET'])
+def get_counter_proposal_status(dispute_ref: str, party: str):
+    """
+    Get counter-proposal status for a party in a dispute.
+
+    Shows remaining counters and upcoming fees.
+    """
+    if not anti_harassment_manager:
+        return jsonify({"error": "Anti-harassment features not available"}), 503
+
+    status = anti_harassment_manager.get_counter_proposal_status(dispute_ref, party)
+    return jsonify(status)
+
+
+@app.route('/harassment/score/<address>', methods=['GET'])
+def get_harassment_score(address: str):
+    """
+    Get harassment score and profile for an address.
+
+    Higher scores indicate patterns of non-resolving behavior.
+    Scores affect stake requirements and initiation costs.
+    """
+    if not anti_harassment_manager:
+        return jsonify({"error": "Anti-harassment features not available"}), 503
+
+    profile = anti_harassment_manager.get_harassment_score(address)
+    return jsonify(profile)
+
+
+@app.route('/harassment/escrow/<escrow_id>', methods=['GET'])
+def get_escrow_status(escrow_id: str):
+    """Get status of a stake escrow."""
+    if not anti_harassment_manager:
+        return jsonify({"error": "Anti-harassment features not available"}), 503
+
+    if escrow_id not in anti_harassment_manager.escrows:
+        return jsonify({"error": "Escrow not found"}), 404
+
+    escrow = anti_harassment_manager.escrows[escrow_id]
+
+    return jsonify({
+        "escrow_id": escrow.escrow_id,
+        "dispute_ref": escrow.dispute_ref,
+        "initiator": escrow.initiator,
+        "counterparty": escrow.counterparty,
+        "initiator_stake": escrow.stake_amount,
+        "counterparty_stake": escrow.counterparty_stake,
+        "status": escrow.status,
+        "resolution": escrow.resolution,
+        "stake_window_ends": escrow.stake_window_ends,
+        "created_at": escrow.created_at
+    })
+
+
+@app.route('/harassment/resolve', methods=['POST'])
+def resolve_harassment_dispute():
+    """
+    Resolve a matched dispute.
+
+    Request body:
+    {
+        "escrow_id": "ESCROW-XXX",
+        "resolution": "mutual|escalated|withdrawn",
+        "resolver": "mediator_node_1",
+        "details": "Both parties agreed to..."
+    }
+    """
+    if not anti_harassment_manager:
+        return jsonify({"error": "Anti-harassment features not available"}), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    required_fields = ["escrow_id", "resolution", "resolver", "details"]
+    missing = [f for f in required_fields if f not in data]
+
+    if missing:
+        return jsonify({
+            "error": "Missing required fields",
+            "missing": missing
+        }), 400
+
+    try:
+        resolution = DisputeResolution(data["resolution"])
+    except ValueError:
+        return jsonify({
+            "error": "Invalid resolution type",
+            "valid_values": [r.value for r in DisputeResolution]
+        }), 400
+
+    success, result = anti_harassment_manager.resolve_dispute(
+        escrow_id=data["escrow_id"],
+        resolution=resolution,
+        resolver=data["resolver"],
+        resolution_details=data["details"]
+    )
+
+    if not success:
+        return jsonify(result), 400
+
+    return jsonify(result)
+
+
+@app.route('/harassment/check-timeouts', methods=['POST'])
+def check_stake_timeouts():
+    """
+    Check for stake window timeouts and resolve to fallback.
+
+    This should be called periodically by a cron job or similar.
+    """
+    if not anti_harassment_manager:
+        return jsonify({"error": "Anti-harassment features not available"}), 503
+
+    resolved = anti_harassment_manager.check_stake_timeouts()
+
+    return jsonify({
+        "timeouts_resolved": len(resolved),
+        "escrows": resolved
+    })
+
+
+@app.route('/harassment/stats', methods=['GET'])
+def get_harassment_stats():
+    """Get anti-harassment system statistics."""
+    if not anti_harassment_manager:
+        return jsonify({"error": "Anti-harassment features not available"}), 503
+
+    stats = anti_harassment_manager.get_statistics()
+    return jsonify(stats)
+
+
+@app.route('/harassment/audit', methods=['GET'])
+def get_harassment_audit_trail():
+    """
+    Get anti-harassment audit trail.
+
+    Query params:
+        limit: Maximum entries (default 100)
+    """
+    if not anti_harassment_manager:
+        return jsonify({"error": "Anti-harassment features not available"}), 503
+
+    limit = request.args.get("limit", 100, type=int)
+
+    trail = anti_harassment_manager.get_audit_trail(limit=limit)
+
+    return jsonify({
+        "count": len(trail),
+        "audit_trail": trail
     })
 
 
