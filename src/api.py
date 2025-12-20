@@ -27,6 +27,7 @@ from treasury import NatLangChainTreasury, InflowType, SubsidyStatus
 from fido2_auth import FIDO2AuthManager, SignatureType, UserVerification
 from zk_privacy import ZKPrivacyManager, ProofStatus, VoteStatus
 from negotiation_engine import AutomatedNegotiationEngine, NegotiationPhase, OfferType, ClauseType
+from market_pricing import MarketAwarePricingManager, PricingStrategy, AssetClass, MarketCondition
 
 
 # Load environment variables
@@ -57,6 +58,7 @@ treasury = None
 fido2_manager = None
 zk_privacy_manager = None
 negotiation_engine = None
+market_pricing = None
 
 # Data file for persistence
 CHAIN_DATA_FILE = os.getenv("CHAIN_DATA_FILE", "chain_data.json")
@@ -64,7 +66,7 @@ CHAIN_DATA_FILE = os.getenv("CHAIN_DATA_FILE", "chain_data.json")
 
 def init_validators():
     """Initialize validators and advanced features if API key is available."""
-    global llm_validator, hybrid_validator, drift_detector, search_engine, dialectic_validator, contract_parser, contract_matcher, temporal_fixity, semantic_oracle, circuit_breaker, multi_model_consensus, dispute_manager, escalation_fork_manager, observance_burn_manager, anti_harassment_manager, treasury, fido2_manager, zk_privacy_manager, negotiation_engine
+    global llm_validator, hybrid_validator, drift_detector, search_engine, dialectic_validator, contract_parser, contract_matcher, temporal_fixity, semantic_oracle, circuit_breaker, multi_model_consensus, dispute_manager, escalation_fork_manager, observance_burn_manager, anti_harassment_manager, treasury, fido2_manager, zk_privacy_manager, negotiation_engine, market_pricing
     api_key = os.getenv("ANTHROPIC_API_KEY")
 
     # Initialize temporal fixity (doesn't require API key)
@@ -101,7 +103,8 @@ def init_validators():
             fido2_manager = FIDO2AuthManager()
             zk_privacy_manager = ZKPrivacyManager()
             negotiation_engine = AutomatedNegotiationEngine(api_key)
-            print("LLM-based features initialized (contracts, oracles, disputes, forks, burns, anti-harassment, treasury, FIDO2, ZK privacy, negotiation, multi-model consensus)")
+            market_pricing = MarketAwarePricingManager(api_key)
+            print("LLM-based features initialized (contracts, oracles, disputes, forks, burns, anti-harassment, treasury, FIDO2, ZK privacy, negotiation, market pricing, multi-model consensus)")
         except Exception as e:
             print(f"Warning: Could not initialize LLM features: {e}")
             print("API will operate without LLM validation")
@@ -4819,6 +4822,449 @@ def get_clause_types():
             }
             for t in ClauseType
         ]
+    })
+
+
+# ========== Market-Aware Pricing Endpoints ==========
+
+@app.route('/market/price/<asset>', methods=['GET'])
+def get_market_price(asset: str):
+    """
+    Get current price for an asset.
+
+    Path params:
+        asset: Asset symbol (e.g., BTC, ETH, EUR/USD, GOLD)
+
+    Returns:
+        Current price data
+    """
+    if not market_pricing:
+        return jsonify({
+            "error": "Market pricing not available",
+            "reason": "Features not initialized"
+        }), 503
+
+    price = market_pricing.get_price(asset)
+
+    if not price:
+        return jsonify({"error": f"Price not found for asset: {asset}"}), 404
+
+    return jsonify(price)
+
+
+@app.route('/market/prices', methods=['POST'])
+def get_market_prices():
+    """
+    Get prices for multiple assets.
+
+    Request body:
+    {
+        "assets": ["BTC", "ETH", "GOLD", ...]
+    }
+
+    Returns:
+        Prices for all requested assets
+    """
+    if not market_pricing:
+        return jsonify({"error": "Market pricing not available"}), 503
+
+    data = request.get_json()
+
+    if not data or "assets" not in data:
+        return jsonify({"error": "Missing required field: assets"}), 400
+
+    prices = market_pricing.get_prices(data["assets"])
+
+    return jsonify({
+        "count": len(prices),
+        "prices": prices
+    })
+
+
+@app.route('/market/analyze/<asset>', methods=['GET'])
+def analyze_market_asset(asset: str):
+    """
+    Get market analysis for an asset.
+
+    Path params:
+        asset: Asset to analyze
+
+    Returns:
+        Market analysis (condition, trend, volatility, etc.)
+    """
+    if not market_pricing:
+        return jsonify({"error": "Market pricing not available"}), 503
+
+    analysis = market_pricing.analyze_market(asset)
+
+    return jsonify(analysis)
+
+
+@app.route('/market/summary', methods=['POST'])
+def get_market_summary():
+    """
+    Get market summary for multiple assets.
+
+    Request body:
+    {
+        "assets": ["BTC", "ETH", "SPX", ...]
+    }
+
+    Returns:
+        Summary with analysis for each asset
+    """
+    if not market_pricing:
+        return jsonify({"error": "Market pricing not available"}), 503
+
+    data = request.get_json()
+
+    if not data or "assets" not in data:
+        return jsonify({"error": "Missing required field: assets"}), 400
+
+    summary = market_pricing.get_market_summary(data["assets"])
+
+    return jsonify(summary)
+
+
+@app.route('/market/suggest-price', methods=['POST'])
+def suggest_market_price():
+    """
+    Get a price suggestion for a negotiation.
+
+    Request body:
+    {
+        "asset_or_service": "BTC" or "Software Development",
+        "base_amount": 1.5,
+        "currency": "USD" (optional),
+        "strategy": "market|premium|discount|anchored|competitive|value_based" (optional),
+        "context": "Optional negotiation context" (optional)
+    }
+
+    Returns:
+        Price suggestion with range and reasoning
+    """
+    if not market_pricing:
+        return jsonify({"error": "Market pricing not available"}), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    if "asset_or_service" not in data or "base_amount" not in data:
+        return jsonify({
+            "error": "Missing required fields",
+            "required": ["asset_or_service", "base_amount"]
+        }), 400
+
+    suggestion = market_pricing.suggest_price(
+        asset_or_service=data["asset_or_service"],
+        base_amount=data["base_amount"],
+        currency=data.get("currency", "USD"),
+        strategy=data.get("strategy", "market"),
+        context=data.get("context")
+    )
+
+    return jsonify(suggestion)
+
+
+@app.route('/market/adjust-price', methods=['POST'])
+def adjust_market_price():
+    """
+    Adjust a price based on market conditions.
+
+    Request body:
+    {
+        "base_price": 50000.0,
+        "asset": "BTC",
+        "adjustment_type": "auto|conservative|aggressive" (optional)
+    }
+
+    Returns:
+        Adjusted price with reasoning
+    """
+    if not market_pricing:
+        return jsonify({"error": "Market pricing not available"}), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    if "base_price" not in data or "asset" not in data:
+        return jsonify({
+            "error": "Missing required fields",
+            "required": ["base_price", "asset"]
+        }), 400
+
+    result = market_pricing.adjust_price(
+        base_price=data["base_price"],
+        asset=data["asset"],
+        adjustment_type=data.get("adjustment_type", "auto")
+    )
+
+    return jsonify(result)
+
+
+@app.route('/market/counteroffer', methods=['POST'])
+def generate_market_counteroffer():
+    """
+    Generate a market-aware counter-offer price.
+
+    Request body:
+    {
+        "their_offer": 45000.0,
+        "your_target": 50000.0,
+        "asset": "BTC",
+        "round_number": 2,
+        "max_rounds": 10 (optional)
+    }
+
+    Returns:
+        Counter-offer price with reasoning
+    """
+    if not market_pricing:
+        return jsonify({"error": "Market pricing not available"}), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    required_fields = ["their_offer", "your_target", "asset", "round_number"]
+    missing = [f for f in required_fields if f not in data]
+
+    if missing:
+        return jsonify({
+            "error": "Missing required fields",
+            "missing": missing
+        }), 400
+
+    result = market_pricing.generate_counteroffer(
+        their_offer=data["their_offer"],
+        your_target=data["your_target"],
+        asset=data["asset"],
+        round_number=data["round_number"],
+        max_rounds=data.get("max_rounds", 10)
+    )
+
+    return jsonify(result)
+
+
+@app.route('/market/history/<asset>', methods=['GET'])
+def get_price_history(asset: str):
+    """
+    Get price history with statistics.
+
+    Path params:
+        asset: Asset symbol
+
+    Query params:
+        hours: Hours of history (default 168 = 7 days)
+
+    Returns:
+        Price history with statistics
+    """
+    if not market_pricing:
+        return jsonify({"error": "Market pricing not available"}), 503
+
+    hours = request.args.get("hours", 168, type=int)
+
+    history = market_pricing.get_price_history(asset, hours)
+
+    return jsonify(history)
+
+
+@app.route('/market/benchmark/<asset>', methods=['GET'])
+def get_price_benchmark(asset: str):
+    """
+    Get price benchmark analysis.
+
+    Path params:
+        asset: Asset to benchmark
+
+    Query params:
+        days: Benchmark period in days (default 30)
+
+    Returns:
+        Benchmark analysis
+    """
+    if not market_pricing:
+        return jsonify({"error": "Market pricing not available"}), 503
+
+    days = request.args.get("days", 30, type=int)
+
+    benchmark = market_pricing.get_price_benchmark(asset, days)
+
+    return jsonify(benchmark)
+
+
+@app.route('/market/similar-prices', methods=['POST'])
+def find_similar_market_prices():
+    """
+    Find historical periods with similar prices.
+
+    Request body:
+    {
+        "asset": "BTC",
+        "target_price": 42000.0,
+        "tolerance": 0.05 (optional, default 5%)
+    }
+
+    Returns:
+        Historical periods with similar prices
+    """
+    if not market_pricing:
+        return jsonify({"error": "Market pricing not available"}), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    if "asset" not in data or "target_price" not in data:
+        return jsonify({
+            "error": "Missing required fields",
+            "required": ["asset", "target_price"]
+        }), 400
+
+    result = market_pricing.find_similar_prices(
+        asset=data["asset"],
+        target_price=data["target_price"],
+        tolerance=data.get("tolerance", 0.05)
+    )
+
+    return jsonify(result)
+
+
+@app.route('/market/asset', methods=['POST'])
+def add_custom_market_asset():
+    """
+    Add a custom asset for pricing.
+
+    Request body:
+    {
+        "asset": "CUSTOM_TOKEN",
+        "price": 100.0,
+        "asset_class": "crypto|forex|commodity|equity|service|custom" (optional),
+        "currency": "USD" (optional),
+        "volatility": 0.02 (optional)
+    }
+
+    Returns:
+        Confirmation of asset addition
+    """
+    if not market_pricing:
+        return jsonify({"error": "Market pricing not available"}), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    if "asset" not in data or "price" not in data:
+        return jsonify({
+            "error": "Missing required fields",
+            "required": ["asset", "price"]
+        }), 400
+
+    result = market_pricing.add_custom_asset(
+        asset=data["asset"],
+        price=data["price"],
+        asset_class=data.get("asset_class", "custom"),
+        currency=data.get("currency", "USD"),
+        volatility=data.get("volatility", 0.02)
+    )
+
+    return jsonify(result), 201
+
+
+@app.route('/market/assets', methods=['GET'])
+def get_available_market_assets():
+    """Get list of available assets."""
+    if not market_pricing:
+        return jsonify({"error": "Market pricing not available"}), 503
+
+    assets = market_pricing.get_available_assets()
+
+    return jsonify({
+        "count": len(assets),
+        "assets": assets
+    })
+
+
+@app.route('/market/strategies', methods=['GET'])
+def get_pricing_strategies():
+    """Get available pricing strategies."""
+    return jsonify({
+        "strategies": [
+            {
+                "value": s.value,
+                "name": s.name,
+                "description": {
+                    "market": "Follow current market price",
+                    "premium": "Price above market (10% premium)",
+                    "discount": "Price below market (10% discount)",
+                    "anchored": "Use provided anchor price",
+                    "competitive": "Slightly below market for competitiveness",
+                    "value_based": "Based on fair value analysis"
+                }.get(s.value, "Pricing strategy")
+            }
+            for s in PricingStrategy
+        ]
+    })
+
+
+@app.route('/market/conditions', methods=['GET'])
+def get_market_conditions():
+    """Get market condition types."""
+    return jsonify({
+        "conditions": [
+            {
+                "value": c.value,
+                "name": c.name,
+                "description": {
+                    "bullish": "Strong upward trend",
+                    "bearish": "Strong downward trend",
+                    "neutral": "Sideways/stable market",
+                    "volatile": "High volatility, no clear direction",
+                    "trending_up": "Moderate upward movement",
+                    "trending_down": "Moderate downward movement"
+                }.get(c.value, "Market condition")
+            }
+            for c in MarketCondition
+        ]
+    })
+
+
+@app.route('/market/stats', methods=['GET'])
+def get_market_pricing_stats():
+    """Get market pricing statistics."""
+    if not market_pricing:
+        return jsonify({"error": "Market pricing not available"}), 503
+
+    stats = market_pricing.get_statistics()
+    return jsonify(stats)
+
+
+@app.route('/market/audit', methods=['GET'])
+def get_market_pricing_audit():
+    """
+    Get market pricing audit trail.
+
+    Query params:
+        limit: Maximum entries (default 100)
+    """
+    if not market_pricing:
+        return jsonify({"error": "Market pricing not available"}), 503
+
+    limit = request.args.get("limit", 100, type=int)
+
+    trail = market_pricing.get_audit_trail(limit=limit)
+
+    return jsonify({
+        "count": len(trail),
+        "audit_trail": trail
     })
 
 
