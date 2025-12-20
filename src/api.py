@@ -23,6 +23,7 @@ from multi_model_consensus import MultiModelConsensus
 from escalation_fork import EscalationForkManager, ForkStatus, TriggerReason
 from observance_burn import ObservanceBurnManager, BurnReason
 from anti_harassment import AntiHarassmentManager, InitiationPath, DisputeResolution
+from treasury import NatLangChainTreasury, InflowType, SubsidyStatus
 
 
 # Load environment variables
@@ -49,6 +50,7 @@ dispute_manager = None
 escalation_fork_manager = None
 observance_burn_manager = None
 anti_harassment_manager = None
+treasury = None
 
 # Data file for persistence
 CHAIN_DATA_FILE = os.getenv("CHAIN_DATA_FILE", "chain_data.json")
@@ -56,7 +58,7 @@ CHAIN_DATA_FILE = os.getenv("CHAIN_DATA_FILE", "chain_data.json")
 
 def init_validators():
     """Initialize validators and advanced features if API key is available."""
-    global llm_validator, hybrid_validator, drift_detector, search_engine, dialectic_validator, contract_parser, contract_matcher, temporal_fixity, semantic_oracle, circuit_breaker, multi_model_consensus, dispute_manager, escalation_fork_manager, observance_burn_manager, anti_harassment_manager
+    global llm_validator, hybrid_validator, drift_detector, search_engine, dialectic_validator, contract_parser, contract_matcher, temporal_fixity, semantic_oracle, circuit_breaker, multi_model_consensus, dispute_manager, escalation_fork_manager, observance_burn_manager, anti_harassment_manager, treasury
     api_key = os.getenv("ANTHROPIC_API_KEY")
 
     # Initialize temporal fixity (doesn't require API key)
@@ -89,7 +91,8 @@ def init_validators():
             escalation_fork_manager = EscalationForkManager()
             observance_burn_manager = ObservanceBurnManager()
             anti_harassment_manager = AntiHarassmentManager(burn_manager=observance_burn_manager)
-            print("LLM-based features initialized (contracts, oracles, disputes, forks, burns, anti-harassment, multi-model consensus)")
+            treasury = NatLangChainTreasury(anti_harassment_manager=anti_harassment_manager)
+            print("LLM-based features initialized (contracts, oracles, disputes, forks, burns, anti-harassment, treasury, multi-model consensus)")
         except Exception as e:
             print(f"Warning: Could not initialize LLM features: {e}")
             print("API will operate without LLM validation")
@@ -2603,6 +2606,402 @@ def get_harassment_audit_trail():
     return jsonify({
         "count": len(trail),
         "audit_trail": trail
+    })
+
+
+# ========== Treasury System Endpoints ==========
+
+@app.route('/treasury/balance', methods=['GET'])
+def get_treasury_balance():
+    """
+    Get current treasury balance and statistics.
+
+    Returns:
+        Balance details including available for subsidies
+    """
+    if not treasury:
+        return jsonify({
+            "error": "Treasury not available",
+            "reason": "Features not initialized"
+        }), 503
+
+    balance = treasury.get_balance()
+    return jsonify(balance)
+
+
+@app.route('/treasury/deposit', methods=['POST'])
+def deposit_to_treasury():
+    """
+    Deposit funds into treasury.
+
+    Request body:
+    {
+        "amount": 100.0,
+        "inflow_type": "timeout_burn|counter_fee|escalated_stake|voluntary_burn|protocol_fee|donation",
+        "source": "DISPUTE-123 or address",
+        "tx_hash": "0x..." (optional),
+        "metadata": {} (optional)
+    }
+    """
+    if not treasury:
+        return jsonify({"error": "Treasury not available"}), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    required_fields = ["amount", "inflow_type", "source"]
+    missing = [f for f in required_fields if f not in data]
+
+    if missing:
+        return jsonify({
+            "error": "Missing required fields",
+            "missing": missing
+        }), 400
+
+    try:
+        inflow_type = InflowType(data["inflow_type"])
+    except ValueError:
+        return jsonify({
+            "error": "Invalid inflow_type",
+            "valid_values": [t.value for t in InflowType]
+        }), 400
+
+    success, result = treasury.deposit(
+        amount=data["amount"],
+        inflow_type=inflow_type,
+        source=data["source"],
+        tx_hash=data.get("tx_hash"),
+        metadata=data.get("metadata")
+    )
+
+    if not success:
+        return jsonify(result), 400
+
+    return jsonify(result), 201
+
+
+@app.route('/treasury/deposit/timeout-burn', methods=['POST'])
+def deposit_timeout_burn():
+    """
+    Deposit from a dispute timeout burn.
+
+    Request body:
+    {
+        "dispute_id": "DISPUTE-123",
+        "amount": 50.0,
+        "initiator": "alice"
+    }
+    """
+    if not treasury:
+        return jsonify({"error": "Treasury not available"}), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    required_fields = ["dispute_id", "amount", "initiator"]
+    missing = [f for f in required_fields if f not in data]
+
+    if missing:
+        return jsonify({
+            "error": "Missing required fields",
+            "missing": missing
+        }), 400
+
+    success, result = treasury.deposit_timeout_burn(
+        dispute_id=data["dispute_id"],
+        amount=data["amount"],
+        initiator=data["initiator"]
+    )
+
+    if not success:
+        return jsonify(result), 400
+
+    return jsonify(result), 201
+
+
+@app.route('/treasury/deposit/counter-fee', methods=['POST'])
+def deposit_counter_fee():
+    """
+    Deposit from counter-proposal fee burn.
+
+    Request body:
+    {
+        "dispute_id": "DISPUTE-123",
+        "amount": 2.0,
+        "party": "alice",
+        "counter_number": 2
+    }
+    """
+    if not treasury:
+        return jsonify({"error": "Treasury not available"}), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    required_fields = ["dispute_id", "amount", "party", "counter_number"]
+    missing = [f for f in required_fields if f not in data]
+
+    if missing:
+        return jsonify({
+            "error": "Missing required fields",
+            "missing": missing
+        }), 400
+
+    success, result = treasury.deposit_counter_fee(
+        dispute_id=data["dispute_id"],
+        amount=data["amount"],
+        party=data["party"],
+        counter_number=data["counter_number"]
+    )
+
+    if not success:
+        return jsonify(result), 400
+
+    return jsonify(result), 201
+
+
+@app.route('/treasury/inflows', methods=['GET'])
+def get_treasury_inflows():
+    """
+    Get treasury inflow history.
+
+    Query params:
+        limit: Maximum inflows (default 50)
+        type: Filter by inflow type (optional)
+    """
+    if not treasury:
+        return jsonify({"error": "Treasury not available"}), 503
+
+    limit = request.args.get("limit", 50, type=int)
+    inflow_type_str = request.args.get("type")
+
+    inflow_type = None
+    if inflow_type_str:
+        try:
+            inflow_type = InflowType(inflow_type_str)
+        except ValueError:
+            return jsonify({
+                "error": "Invalid inflow type",
+                "valid_values": [t.value for t in InflowType]
+            }), 400
+
+    history = treasury.get_inflow_history(limit=limit, inflow_type=inflow_type)
+    return jsonify(history)
+
+
+@app.route('/treasury/subsidy/request', methods=['POST'])
+def request_treasury_subsidy():
+    """
+    Request a defensive stake subsidy.
+
+    Eligibility:
+    - Must be target of dispute (not initiator)
+    - Must have good on-chain dispute history
+    - Dispute must not already be subsidized
+    - Must not exceed per-participant cap
+
+    Request body:
+    {
+        "dispute_id": "DISPUTE-123",
+        "requester": "bob",
+        "stake_required": 100.0,
+        "is_dispute_target": true
+    }
+    """
+    if not treasury:
+        return jsonify({"error": "Treasury not available"}), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    required_fields = ["dispute_id", "requester", "stake_required"]
+    missing = [f for f in required_fields if f not in data]
+
+    if missing:
+        return jsonify({
+            "error": "Missing required fields",
+            "missing": missing
+        }), 400
+
+    success, result = treasury.request_subsidy(
+        dispute_id=data["dispute_id"],
+        requester=data["requester"],
+        stake_required=data["stake_required"],
+        is_dispute_target=data.get("is_dispute_target", True)
+    )
+
+    if not success:
+        return jsonify(result), 400
+
+    return jsonify(result), 201
+
+
+@app.route('/treasury/subsidy/disburse', methods=['POST'])
+def disburse_treasury_subsidy():
+    """
+    Disburse an approved subsidy to the stake escrow.
+
+    Request body:
+    {
+        "request_id": "SUBSIDY-XXX",
+        "escrow_address": "0x..."
+    }
+    """
+    if not treasury:
+        return jsonify({"error": "Treasury not available"}), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    if "request_id" not in data or "escrow_address" not in data:
+        return jsonify({
+            "error": "Missing required fields",
+            "required": ["request_id", "escrow_address"]
+        }), 400
+
+    success, result = treasury.disburse_subsidy(
+        request_id=data["request_id"],
+        escrow_address=data["escrow_address"]
+    )
+
+    if not success:
+        return jsonify(result), 400
+
+    return jsonify(result)
+
+
+@app.route('/treasury/subsidy/<request_id>', methods=['GET'])
+def get_subsidy_request(request_id: str):
+    """Get details of a subsidy request."""
+    if not treasury:
+        return jsonify({"error": "Treasury not available"}), 503
+
+    request_data = treasury.get_subsidy_request(request_id)
+
+    if not request_data:
+        return jsonify({"error": "Subsidy request not found"}), 404
+
+    return jsonify(request_data)
+
+
+@app.route('/treasury/subsidy/simulate', methods=['POST'])
+def simulate_subsidy():
+    """
+    Simulate a subsidy request without creating a record.
+    Useful for UI to show potential subsidy before committing.
+
+    Request body:
+    {
+        "requester": "bob",
+        "stake_required": 100.0
+    }
+    """
+    if not treasury:
+        return jsonify({"error": "Treasury not available"}), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    if "requester" not in data or "stake_required" not in data:
+        return jsonify({
+            "error": "Missing required fields",
+            "required": ["requester", "stake_required"]
+        }), 400
+
+    result = treasury.simulate_subsidy(
+        requester=data["requester"],
+        stake_required=data["stake_required"]
+    )
+
+    return jsonify(result)
+
+
+@app.route('/treasury/participant/<address>', methods=['GET'])
+def get_participant_subsidy_status(address: str):
+    """
+    Get subsidy status for a participant.
+
+    Shows eligibility, usage, and remaining cap.
+    """
+    if not treasury:
+        return jsonify({"error": "Treasury not available"}), 503
+
+    status = treasury.get_participant_subsidy_status(address)
+    return jsonify(status)
+
+
+@app.route('/treasury/dispute/<dispute_id>/subsidized', methods=['GET'])
+def check_dispute_subsidized(dispute_id: str):
+    """Check if a dispute has been subsidized."""
+    if not treasury:
+        return jsonify({"error": "Treasury not available"}), 503
+
+    is_subsidized, request_id = treasury.is_dispute_subsidized(dispute_id)
+
+    return jsonify({
+        "dispute_id": dispute_id,
+        "is_subsidized": is_subsidized,
+        "subsidy_request_id": request_id
+    })
+
+
+@app.route('/treasury/stats', methods=['GET'])
+def get_treasury_stats():
+    """Get comprehensive treasury statistics."""
+    if not treasury:
+        return jsonify({"error": "Treasury not available"}), 503
+
+    stats = treasury.get_statistics()
+    return jsonify(stats)
+
+
+@app.route('/treasury/audit', methods=['GET'])
+def get_treasury_audit():
+    """
+    Get treasury audit trail.
+
+    Query params:
+        limit: Maximum entries (default 100)
+    """
+    if not treasury:
+        return jsonify({"error": "Treasury not available"}), 503
+
+    limit = request.args.get("limit", 100, type=int)
+
+    trail = treasury.get_audit_trail(limit=limit)
+
+    return jsonify({
+        "count": len(trail),
+        "audit_trail": trail
+    })
+
+
+@app.route('/treasury/cleanup', methods=['POST'])
+def cleanup_treasury_records():
+    """
+    Clean up expired usage records.
+    Should be called periodically by a cron job.
+    """
+    if not treasury:
+        return jsonify({"error": "Treasury not available"}), 503
+
+    removed = treasury.cleanup_expired_usage()
+
+    return jsonify({
+        "status": "cleanup_complete",
+        "records_removed": removed
     })
 
 
