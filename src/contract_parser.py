@@ -6,7 +6,7 @@ Enables self-seeking live contracts with AI-mediated matching
 
 import re
 import json
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional, Tuple, List
 from anthropic import Anthropic
 import os
 
