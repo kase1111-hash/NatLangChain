@@ -1,5 +1,5 @@
 # NatLangChain Technical Specification
-## Updated: December 19, 2025
+## Updated: December 20, 2025
 
 ---
 
@@ -8,12 +8,16 @@
 2. [Ecosystem Architecture](#ecosystem-architecture)
 3. [Core Architecture](#core-architecture)
 4. [Mediator Protocol Suite (MP-01 to MP-05)](#mediator-protocol-suite)
-5. [Implementation Status Matrix](#implementation-status-matrix)
-6. [Implemented Features](#implemented-features)
-7. [Unimplemented Ideas](#unimplemented-ideas)
-8. [Cross-Repo Integration Specifications](#cross-repo-integration-specifications)
-9. [Implementation Plans](#implementation-plans)
-10. [Technical Roadmap](#technical-roadmap)
+5. [Anti-Harassment Design](#anti-harassment-design)
+6. [Treasury System](#treasury-system)
+7. [FIDO2/YubiKey Security Integration](#fido2yubikey-security-integration)
+8. [ZK Privacy Infrastructure](#zk-privacy-infrastructure)
+9. [Implementation Status Matrix](#implementation-status-matrix)
+10. [Implemented Features](#implemented-features)
+11. [Unimplemented Ideas](#unimplemented-ideas)
+12. [Cross-Repo Integration Specifications](#cross-repo-integration-specifications)
+13. [Implementation Plans](#implementation-plans)
+14. [Technical Roadmap](#technical-roadmap)
 
 ---
 
@@ -259,6 +263,230 @@ Ceremonial token destruction that serves economic and signaling purposes:
 
 ---
 
+## Anti-Harassment Design
+
+NatLangChain introduces economic pressure to compress conflict. Without constraints, such pressure could be abused to impose unwanted cost, attention, or friction on another party. Harassment is defined as any use of negotiation or dispute mechanisms without a legitimate intent to reach resolution.
+
+### Core Principle
+> **Any attempt to harass must be strictly more expensive for the harasser than for the target.**
+
+This property is achieved through asymmetric initiation costs, free non-engagement, bounded interaction surfaces, and escalating penalties for non-resolving behavior.
+
+### Dual Initiation Paths
+
+All interactions MUST fall into one of two mutually exclusive initiation paths:
+
+| Path | Trigger Condition | Initiator Cost | Counterparty Obligation | Harassment Exposure |
+|------|-------------------|----------------|-------------------------|---------------------|
+| **Breach / Drift Dispute** | On-chain evidence of violation or semantic drift in existing agreement | Immediate symmetric stake S (escrowed) | Must match stake within T_stake or accept fallback outcome | Low — initiator is economically exposed first |
+| **Voluntary Request** | New negotiation, amendment, or reconciliation request without breach | Small non-refundable burn fee | None — may ignore indefinitely at zero cost | Very Low — ignored requests impose only self-cost |
+
+### Frivolous Breach Claim Protection
+
+- Initiator MUST stake first and fully in all breach or drift disputes
+- If counterparty declines to match stake:
+  - Dispute resolves immediately to predefined fallback state
+  - Initiator gains no further leverage or escalation rights
+- Repeated breach initiations on same contract trigger escalating minimum stakes (+50% per recent non-resolving dispute)
+- Per-contract cooldown window (e.g., 30 days) after resolution before new breach claims permitted
+
+### Counter-Proposal Griefing Limits
+
+- Counter-proposals per dispute strictly capped (default: 3)
+- Counter-proposal fees increase exponentially (base_fee × 2ⁿ)
+- All counter-proposal fees burned immediately
+- Maximum cost of prolonged disagreement is predictable, finite, and borne primarily by the extending party
+
+### Protection for Low-Resource Parties
+
+- Protocol treasury MAY subsidize defensive stakes for participants with demonstrated good-faith engagement
+- Subsidies MUST be: opt-in, transparent, derived solely from on-chain dispute outcomes
+- Public harassment score derived from dispute patterns automatically increases future initiation costs for flagged actors
+
+### Design Outcome
+
+When correctly implemented, the anti-harassment design guarantees:
+- Ignoring harassment is always free
+- Engaging is optional and symmetrically priced
+- Executing harassment is expensive, bounded, and self-limiting
+
+No additional authority, moderation, or judgment is required. The economic layer itself neutralizes the abuse vector.
+
+---
+
+## Treasury System
+
+### Purpose
+
+The NatLangChain Treasury is a fully on-chain, algorithmic fund that:
+- Holds protocol funds from burns, counter-fees, and escalated stakes
+- Subsidizes defensive stakes for low-resource participants in ILRM disputes
+- Maintains no discretionary control by nodes or humans
+
+### High-Level Flow
+
+#### Inflows
+- Burns from unresolved disputes (TimeoutWithBurn)
+- Counter-proposal fees (exponential fees burned to treasury)
+- Escalated stakes from repeated frivolous initiation
+
+#### Eligibility Check
+- Participant must be target of dispute (not initiator)
+- Must opt in for subsidy (e.g., call `requestSubsidy`)
+- Must have good on-chain dispute history (low harassment score)
+
+#### Subsidy Calculation
+- Match stake required to participate in ILRM
+- Partial subsidy (50–100%) based on treasury balance and per-user caps
+
+### Anti-Sybil / Abuse Protections
+
+| Protection | Mechanism |
+|------------|-----------|
+| Single subsidy per dispute | `disputeSubsidized[disputeId]` mapping |
+| Rolling window per participant | `maxPerParticipant` cap |
+| Reputation check | `harassmentScore` threshold |
+| Treasury sustainability | Balance check before payout |
+
+### Key Features
+
+| Feature | Design Choice | Reason |
+|---------|---------------|--------|
+| Treasury holder | Smart contract only | Trustless, transparent |
+| Subsidy mechanism | Opt-in, dispute-specific | Avoid Sybil / abuse |
+| Anti-Sybil | Single subsidy per dispute, rolling caps, reputation check | Prevent griefer exploitation |
+| Maximum exposure | Max per dispute, max per participant | Treasury sustainability |
+| Automatic inflows | Burns, counter-fees, escalated stakes | Closed-loop economy |
+| Transparency | All actions emitted as events | On-chain verification |
+
+### Optional Enhancements
+- Dynamic caps: Scale max per participant based on treasury size
+- Tiered subsidies: Low harassment score → full subsidy, higher score → partial
+- Cross-contract integration: ILRM calls treasury to automatically fund defensive stake escrow
+- Time-window enforcement: Reset `participantSubsidyUsed` periodically
+- Multi-token support: Accept multiple staking tokens or native ETH
+
+---
+
+## FIDO2/YubiKey Security Integration
+
+FIDO2 hardware security keys (YubiKeys) provide phishing-resistant authentication and hardware-backed signing across NatLangChain modules.
+
+### Module Integration Priority
+
+#### 1. IP & Licensing Reconciliation Module (ILRM) — High Priority
+**Purpose:** Handle disputes, stakes, proposals, and acceptances with identity-sensitive operations.
+
+**Integration Points:**
+- FIDO2 signature verification in `acceptProposal` and `submitLLMProposal`
+- YubiKey public key registration on-chain (via WebAuthn challenge-response)
+- Sign proposals with FIDO2 message (e.g., hash of `disputeId + "accept"`)
+
+**Benefits:**
+- Proves initiator identity without address exposure
+- Aligns with ZKP privacy layer
+- Secures reactive dispute flows
+
+#### 2. NatLangChain Negotiation Module — Medium-High Priority
+**Purpose:** Proactive drafting layer for intent alignment and contract finalization.
+
+**Integration Points:**
+- Frontend: Auth users via YubiKey before submitting clauses/hashes
+- On-Chain: Verify FIDO2 signatures for commitment transactions
+
+**Benefits:**
+- Passwordless login to negotiation interface
+- Prevents unauthorized clause changes
+- Hardware-backed contract signing
+
+#### 3. RRA Module — Medium Priority
+**Purpose:** Autonomous agent orchestration across modules.
+
+**Integration Points:**
+- FIDO2 auth in agent's mobile/off-chain component
+- Sign agent delegation commands
+- On-Chain: RRA contracts verify signatures for automated executions
+
+**Benefits:**
+- Hardware-backed agent control
+- Secure user auth for triggering RRA actions
+
+---
+
+## ZK Privacy Infrastructure
+
+### Dispute Membership Circuit
+
+A Circom circuit using Poseidon hashing for Ethereum-compatible ZK proofs. Proves "I know a secret that hashes to the on-chain `identityManager`" without leaking the secret.
+
+**Circuit: `prove_identity.circom`**
+```circom
+pragma circom 2.1.6;
+include "circomlib/poseidon.circom";
+
+template ProveIdentity() {
+    signal input identitySecret;    // Private: User's secret salt/key
+    signal input identityManager;   // Public: On-chain hash (e.g., initiatorHash)
+
+    component hasher = Poseidon(1);
+    hasher.inputs[0] <== identitySecret;
+    hasher.out === identityManager; // Constraint: Must match public hash
+}
+
+component main {public [identityManager]} = ProveIdentity();
+```
+
+**On-Chain Verification:**
+```solidity
+function submitIdentityProof(
+    uint256 _disputeId,
+    uint[2] calldata _proofA,
+    uint[2][2] calldata _proofB,
+    uint[2] calldata _proofC,
+    uint[1] calldata _publicSignals
+) external {
+    Dispute storage d = disputes[_disputeId];
+    require(verifyProof(_proofA, _proofB, _proofC, _publicSignals), "Invalid proof");
+    // _publicSignals[0] == d.initiatorHash or counterpartyHash
+}
+```
+
+### Viewing Key Infrastructure
+
+Selective de-anonymization for legal compliance while maintaining privacy.
+
+**Components:**
+| Component | Purpose |
+|-----------|---------|
+| **Pedersen Commitment** | On-chain commitment to evidence/identity without revelation |
+| **Off-Chain Storage** | Encrypt metadata with viewing key, store on IPFS/Arweave |
+| **Viewing Key (ECIES)** | Per-dispute key on secp256k1 curve |
+| **Shamir's Secret Sharing** | m-of-n key split (e.g., 3-of-5: user, protocol DAO, neutral escrows) |
+
+**Implementation:**
+- Add `viewingKeyCommitment` to Dispute struct
+- User submits ZKP proving they hold the key
+- On legal request, reconstruct key from shares to decrypt IPFS data
+
+### Inference Attack Mitigations
+
+| Mitigation | Implementation |
+|------------|----------------|
+| **Batching** | Buffer submissions in queue contract; release in batches every X blocks |
+| **Dummy Transactions** | Treasury funds automated "noop" calls at random intervals via oracles |
+| **Mixnet Integration** | Nym or Hopr for tx submission to obscure origins |
+| **Aggregate ZK Stats** | Prove "X disputes this week" without per-dispute details |
+
+### Threshold Decryption for Legal Compliance
+
+Decentralized "Compliance Council" using BLS or FROST threshold signatures:
+- Key reconstruction requires m-of-n signatures (e.g., 3: user opt-in rep, protocol gov, independent auditor)
+- Legal warrants trigger governance vote to release shares
+- Transparent on-chain voting for reveals (emits events)
+- No single point of failure
+
+---
+
 ## Implementation Status Matrix
 
 ### ✅ FULLY IMPLEMENTED (Production Ready)
@@ -311,6 +539,14 @@ Ceremonial token destruction that serves economic and signaling purposes:
 | **Escrow Integration** | CONTRACTS.md | HIGH 🔴 | Medium | Value Ledger |
 | **Web UI / Sandbox** | roadmap.md | HIGH 🔴 | Medium | NatLangChain |
 | **MP-03 Dispute Protocol** | MP-03-spec.md | HIGH 🔴 | Medium | NatLangChain |
+| **Anti-Harassment Economic Layer** | Anti-Harassment.md | HIGH 🔴 | Medium | NatLangChain |
+| **Treasury System** | Treasury.md | HIGH 🔴 | Medium | NatLangChain |
+| **FIDO2/YubiKey Integration** | FIDO-Yubi.md | HIGH 🔴 | Medium | ILRM, NatLangChain |
+| **ZK Dispute Membership Circuit** | Dispute-membership-circuit.md | HIGH 🔴 | High | NatLangChain |
+| **Viewing Key Infrastructure** | Dispute-membership-circuit.md | HIGH 🔴 | High | NatLangChain |
+| **Automated Negotiation Engine** | final-features.md | HIGH 🔴 | Medium | NatLangChain |
+| **Market-Aware Pricing** | final-features.md | MEDIUM 🟡 | Medium | NatLangChain |
+| **Mobile Deployment** | final-features.md | MEDIUM 🟡 | High | All Modules |
 | **Daily Work Output Automation** | future.md | MEDIUM 🟡 | Medium | RRA-Module |
 | **Chain Subscription & Sync** | future.md | MEDIUM 🟡 | High | NatLangChain |
 | **Cosmos SDK Integration** | cosmos.md | MEDIUM 🟡 | Very High | NatLangChain |
@@ -319,10 +555,11 @@ Ceremonial token destruction that serves economic and signaling purposes:
 | **Database Backend** | API.md | MEDIUM 🟡 | Low | NatLangChain |
 | **Async Validation Pipeline** | API.md | MEDIUM 🟡 | Medium | NatLangChain |
 | **LNI Multi-Agent Testing** | lni-testable-theory.md | MEDIUM 🟡 | High | Agent OS |
+| **Threshold Decryption Compliance** | Dispute-membership-circuit.md | MEDIUM 🟡 | High | NatLangChain |
+| **Inference Attack Mitigations** | Dispute-membership-circuit.md | MEDIUM 🟡 | Medium | NatLangChain |
 | **Prediction Markets** | COMPLIANCE.md | LOW 🟢 | High | NatLangChain |
 | **Narrative Staking** | COMPLIANCE.md | LOW 🟢 | High | NatLangChain |
 | **Insurance Premium Integration** | COMPLIANCE.md | LOW 🟢 | Medium | Value Ledger |
-| **ZK Proofs for Privacy** | README.md | LOW 🟢 | Very High | NatLangChain |
 | **Smart Contracts in NL** | API.md | LOW 🟢 | High | NatLangChain |
 
 ---
@@ -1003,6 +1240,145 @@ POST /entry
 
 ---
 
+### Plan 11: Anti-Harassment Economic Layer 🔴
+**Target:** NatLangChain
+
+#### Phase 11A: Dual Initiation Paths
+- Implement Breach/Drift Dispute path with symmetric staking
+- Implement Voluntary Request path with burn fees
+- Add fallback resolution for unmatched stakes
+
+**Deliverables:**
+- Stake escrow contract
+- Voluntary request burn mechanism
+
+#### Phase 11B: Griefing Limits
+- Counter-proposal cap (default: 3)
+- Exponential fee escalation (base_fee × 2ⁿ)
+- Immediate fee burning
+
+#### Phase 11C: Harassment Scoring
+- On-chain harassment score derivation
+- Escalating initiation costs for flagged actors
+- Cooldown windows per contract
+
+---
+
+### Plan 12: Treasury System 🔴
+**Target:** NatLangChain
+
+#### Phase 12A: Treasury Contract
+- Deploy NatLangChainTreasury contract
+- Implement deposit mechanisms (burns, counter-fees, escalated stakes)
+- Add balance queries and event emission
+
+#### Phase 12B: Subsidy System
+- Implement `requestSubsidy` function
+- Add eligibility checks (target-only, opt-in, reputation)
+- Per-dispute and per-participant caps
+
+#### Phase 12C: Anti-Sybil Protections
+- Single subsidy per dispute enforcement
+- Rolling window cap per participant
+- Harassment score integration
+
+**Deliverables:**
+- Fully autonomous treasury with no discretionary control
+- Closed-loop economic system
+
+---
+
+### Plan 13: FIDO2/YubiKey Integration 🔴
+**Target:** ILRM, NatLangChain
+
+#### Phase 13A: ILRM Integration (High Priority)
+- Add FIDO2 signature verification to `acceptProposal` and `submitLLMProposal`
+- Implement YubiKey public key registration on-chain
+- WebAuthn challenge-response flow
+
+#### Phase 13B: Negotiation Module Integration
+- Frontend YubiKey authentication
+- On-chain FIDO2 signature verification for commitment transactions
+- Passwordless login flow
+
+#### Phase 13C: RRA Module Integration
+- FIDO2 auth for agent mobile/off-chain components
+- Agent delegation signature verification
+
+**Deliverables:**
+- Phishing-resistant authentication across all modules
+- Hardware-backed contract signing
+
+---
+
+### Plan 14: ZK Privacy Infrastructure 🔴
+**Target:** NatLangChain
+
+#### Phase 14A: Dispute Membership Circuit
+- Implement Circom circuit (`prove_identity.circom`)
+- Deploy Poseidon hasher with verifier contract
+- Integrate `submitIdentityProof` into ILRM
+
+#### Phase 14B: Viewing Key Infrastructure
+- Pedersen commitment integration
+- Off-chain encrypted storage (IPFS/Arweave)
+- ECIES viewing key generation per dispute
+- Shamir's Secret Sharing (m-of-n) for key escrow
+
+#### Phase 14C: Inference Attack Mitigations
+- Batching queue contract
+- Dummy transaction automation via Chainlink
+- Mixnet integration exploration
+
+#### Phase 14D: Threshold Decryption
+- BLS/FROST threshold signature implementation
+- Compliance Council governance
+- Legal warrant voting mechanism
+
+**Deliverables:**
+- ZK proof verification on-chain
+- Selective de-anonymization for legal compliance
+- No single point of failure in key management
+
+---
+
+### Plan 15: Automated Negotiation Engine 🔴
+**Target:** NatLangChain
+
+- Core natural-language contract negotiation engine
+- Proactive alignment layer for intent matching
+- LLM-powered clause generation and counter-offer drafting
+- Integration with existing contract_matcher.py
+
+**Deliverables:**
+- Fully automated negotiation from intent to agreement proposal
+
+---
+
+### Plan 16: Market-Aware Pricing 🟡
+**Target:** NatLangChain
+
+- Oracle integration for real-time market data
+- Dynamic offer/counteroffer generation based on market conditions
+- Price suggestion during negotiation prompts
+- Historical pricing analysis
+
+---
+
+### Plan 17: Mobile Deployment 🟡
+**Target:** All Modules
+
+- Edge AI optimization for on-device inference
+- Mobile wallet integration (WalletConnect, native)
+- Portable system architecture (NatLangChain, ILRM, RRA)
+- Offline-first capability with sync
+
+**Deliverables:**
+- Full protocol functionality on mobile devices
+- Hardware wallet support via mobile
+
+---
+
 ## Technical Roadmap
 
 ### Phase 1: Foundation (Complete ✅)
@@ -1012,7 +1388,29 @@ POST /entry
 - ✅ Live contracts
 - ✅ Advanced features
 
-### Phase 2: Decentralization (Q1-Q2 2026)
+### Phase 2: Security & Economic Safety (Q1 2026)
+**Priority:** HIGH 🔴
+- Anti-Harassment Economic Layer
+- Treasury System
+- FIDO2/YubiKey Integration
+
+**Deliverables:**
+- Harassment-resistant initiation paths
+- Autonomous treasury for defensive subsidies
+- Hardware-backed authentication
+
+### Phase 3: Privacy Infrastructure (Q1-Q2 2026)
+**Priority:** HIGH 🔴
+- ZK Dispute Membership Circuit
+- Viewing Key Infrastructure
+- Threshold Decryption for Compliance
+
+**Deliverables:**
+- On-chain ZK proof verification
+- Selective de-anonymization
+- Decentralized key management
+
+### Phase 4: Decentralization (Q2-Q3 2026)
 **Priority:** HIGH 🔴
 - Distributed P2P network
 - Real-time mediation network
@@ -1023,46 +1421,52 @@ POST /entry
 - Competitive mediation market
 - End-to-end payment settlement
 
-### Phase 3: User Experience (Q2-Q3 2026)
+### Phase 5: User Experience (Q3-Q4 2026)
 **Priority:** HIGH 🔴
 - Web UI
 - Database backend
 - MP-03 Dispute Protocol
+- Automated Negotiation Engine
 
 **Deliverables:**
 - Public web interface
 - Scalable storage
 - Full dispute handling
+- AI-driven negotiation from intent to agreement
 
-### Phase 4: Automation & Intelligence (Q3-Q4 2026)
+### Phase 6: Automation & Intelligence (Q4 2026 - Q1 2027)
 **Priority:** MEDIUM 🟡
 - Daily work automation
 - Agent-OS integration
 - Multi-chain branching
 - LNI testing
+- Market-Aware Pricing
 
 **Deliverables:**
 - Automatic contract generation from Git
 - Autonomous agent participation
 - Privacy through branching
+- Oracle-integrated dynamic pricing
 
-### Phase 5: Global & Enterprise (Q4 2026 - Q1 2027)
+### Phase 7: Global & Enterprise (Q1-Q2 2027)
 **Priority:** MEDIUM 🟡
 - Multilingual support
 - Cosmos SDK integration
 - Benchmark suite
+- Mobile Deployment
 
 **Deliverables:**
 - Multi-language contracts
 - IBC interoperability
 - Published performance metrics
+- Full protocol on mobile devices
 
-### Phase 6: Advanced Features (2027+)
+### Phase 8: Advanced Features (2027+)
 **Priority:** LOW 🟢
-- Zero-knowledge proofs
 - Prediction markets
 - Narrative staking
 - Smart contract execution
+- Inference Attack Mitigations
 
 ---
 
@@ -1075,26 +1479,33 @@ NatLangChain has achieved **solid implementation** of its core vision:
 - ✅ **Temporal fixity for legal defense** - Working
 - ✅ **Semantic search and drift detection** - Working
 
-**The gap** is primarily in **decentralization, scale, and ecosystem integration**:
+**The gap** is primarily in **security, privacy, decentralization, and ecosystem integration**:
 - ❌ Single-node (needs P2P)
 - ❌ Manual usage (needs automation via RRA-Module)
 - ❌ Developer-only (needs Web UI)
 - ❌ Prototype storage (needs database)
 - ❌ Incomplete MP suite (MP-03, MP-04, MP-05)
 - ❌ Limited cross-repo integration
+- ❌ No anti-harassment economic layer
+- ❌ No treasury system for defensive subsidies
+- ❌ No hardware-backed authentication (FIDO2/YubiKey)
+- ❌ No ZK privacy infrastructure
 
 **Next critical steps:**
-1. **P2P Network** - Move from proof-of-concept to distributed system
-2. **Web UI** - Enable non-technical user adoption
-3. **Escrow** - Enable real economic transactions
-4. **Mediation Network** - Realize the "mediation mining" vision
-5. **Cross-Repo Integration** - Connect all 12 ecosystem repos
+1. **Anti-Harassment & Treasury** - Economic safety layer for harassment resistance
+2. **FIDO2/YubiKey Integration** - Hardware-backed security for identity-sensitive operations
+3. **ZK Privacy Infrastructure** - Dispute membership proofs and viewing keys
+4. **P2P Network** - Move from proof-of-concept to distributed system
+5. **Web UI** - Enable non-technical user adoption
+6. **Automated Negotiation** - AI-driven negotiation from intent to agreement
+7. **Mobile Deployment** - Full protocol functionality on edge devices
+8. **Cross-Repo Integration** - Connect all 12 ecosystem repos
 
 **The foundation is solid.** The architecture is sound. The innovation is real. Now it's time to scale.
 
 ---
 
-**Document Version:** 2.0
-**Last Updated:** December 19, 2025
+**Document Version:** 3.0
+**Last Updated:** December 20, 2025
 **Maintained By:** kase1111-hash
 **License:** CC BY-SA 4.0
