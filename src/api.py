@@ -24,6 +24,7 @@ from escalation_fork import EscalationForkManager, ForkStatus, TriggerReason
 from observance_burn import ObservanceBurnManager, BurnReason
 from anti_harassment import AntiHarassmentManager, InitiationPath, DisputeResolution
 from treasury import NatLangChainTreasury, InflowType, SubsidyStatus
+from fido2_auth import FIDO2AuthManager, SignatureType, UserVerification
 
 
 # Load environment variables
@@ -51,6 +52,7 @@ escalation_fork_manager = None
 observance_burn_manager = None
 anti_harassment_manager = None
 treasury = None
+fido2_manager = None
 
 # Data file for persistence
 CHAIN_DATA_FILE = os.getenv("CHAIN_DATA_FILE", "chain_data.json")
@@ -58,7 +60,7 @@ CHAIN_DATA_FILE = os.getenv("CHAIN_DATA_FILE", "chain_data.json")
 
 def init_validators():
     """Initialize validators and advanced features if API key is available."""
-    global llm_validator, hybrid_validator, drift_detector, search_engine, dialectic_validator, contract_parser, contract_matcher, temporal_fixity, semantic_oracle, circuit_breaker, multi_model_consensus, dispute_manager, escalation_fork_manager, observance_burn_manager, anti_harassment_manager, treasury
+    global llm_validator, hybrid_validator, drift_detector, search_engine, dialectic_validator, contract_parser, contract_matcher, temporal_fixity, semantic_oracle, circuit_breaker, multi_model_consensus, dispute_manager, escalation_fork_manager, observance_burn_manager, anti_harassment_manager, treasury, fido2_manager
     api_key = os.getenv("ANTHROPIC_API_KEY")
 
     # Initialize temporal fixity (doesn't require API key)
@@ -92,7 +94,8 @@ def init_validators():
             observance_burn_manager = ObservanceBurnManager()
             anti_harassment_manager = AntiHarassmentManager(burn_manager=observance_burn_manager)
             treasury = NatLangChainTreasury(anti_harassment_manager=anti_harassment_manager)
-            print("LLM-based features initialized (contracts, oracles, disputes, forks, burns, anti-harassment, treasury, multi-model consensus)")
+            fido2_manager = FIDO2AuthManager()
+            print("LLM-based features initialized (contracts, oracles, disputes, forks, burns, anti-harassment, treasury, FIDO2, multi-model consensus)")
         except Exception as e:
             print(f"Warning: Could not initialize LLM features: {e}")
             print("API will operate without LLM validation")
@@ -3002,6 +3005,660 @@ def cleanup_treasury_records():
     return jsonify({
         "status": "cleanup_complete",
         "records_removed": removed
+    })
+
+
+# ========== FIDO2/WebAuthn Endpoints ==========
+
+@app.route('/fido2/register/begin', methods=['POST'])
+def begin_fido2_registration():
+    """
+    Begin FIDO2 credential registration (WebAuthn).
+
+    Generates a challenge for the authenticator to sign during registration.
+
+    Request body:
+    {
+        "user_id": "alice",
+        "user_name": "alice@example.com",
+        "display_name": "Alice Smith",
+        "authenticator_attachment": "platform|cross-platform" (optional),
+        "user_verification": "required|preferred|discouraged" (optional)
+    }
+
+    Returns:
+        Registration options to pass to WebAuthn API
+    """
+    if not fido2_manager:
+        return jsonify({
+            "error": "FIDO2 authentication not available",
+            "reason": "Features not initialized"
+        }), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    required_fields = ["user_id", "user_name", "display_name"]
+    missing = [f for f in required_fields if f not in data]
+
+    if missing:
+        return jsonify({
+            "error": "Missing required fields",
+            "missing": missing
+        }), 400
+
+    # Parse user verification preference
+    user_verification = None
+    if data.get("user_verification"):
+        try:
+            user_verification = UserVerification(data["user_verification"])
+        except ValueError:
+            return jsonify({
+                "error": "Invalid user_verification",
+                "valid_values": [v.value for v in UserVerification]
+            }), 400
+
+    success, result = fido2_manager.begin_registration(
+        user_id=data["user_id"],
+        user_name=data["user_name"],
+        display_name=data["display_name"],
+        authenticator_attachment=data.get("authenticator_attachment"),
+        user_verification=user_verification
+    )
+
+    if not success:
+        return jsonify(result), 400
+
+    return jsonify(result)
+
+
+@app.route('/fido2/register/complete', methods=['POST'])
+def complete_fido2_registration():
+    """
+    Complete FIDO2 credential registration.
+
+    Verifies the authenticator response and stores the credential.
+
+    Request body:
+    {
+        "challenge_id": "CHALLENGE-XXX",
+        "credential_id": "base64-encoded-credential-id",
+        "public_key": "base64-encoded-public-key",
+        "attestation_object": "base64-encoded-attestation",
+        "client_data_json": "base64-encoded-client-data",
+        "device_name": "My YubiKey 5" (optional)
+    }
+
+    Returns:
+        Credential confirmation with fingerprint
+    """
+    if not fido2_manager:
+        return jsonify({"error": "FIDO2 authentication not available"}), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    required_fields = ["challenge_id", "credential_id", "public_key", "attestation_object", "client_data_json"]
+    missing = [f for f in required_fields if f not in data]
+
+    if missing:
+        return jsonify({
+            "error": "Missing required fields",
+            "missing": missing
+        }), 400
+
+    success, result = fido2_manager.complete_registration(
+        challenge_id=data["challenge_id"],
+        credential_id=data["credential_id"],
+        public_key=data["public_key"],
+        attestation_object=data["attestation_object"],
+        client_data_json=data["client_data_json"],
+        device_name=data.get("device_name")
+    )
+
+    if not success:
+        return jsonify(result), 400
+
+    return jsonify(result), 201
+
+
+@app.route('/fido2/authenticate/begin', methods=['POST'])
+def begin_fido2_authentication():
+    """
+    Begin FIDO2 authentication challenge.
+
+    Request body:
+    {
+        "user_id": "alice",
+        "user_verification": "required|preferred|discouraged" (optional)
+    }
+
+    Returns:
+        Authentication options to pass to WebAuthn API
+    """
+    if not fido2_manager:
+        return jsonify({"error": "FIDO2 authentication not available"}), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    if "user_id" not in data:
+        return jsonify({
+            "error": "Missing required field: user_id"
+        }), 400
+
+    # Parse user verification preference
+    user_verification = None
+    if data.get("user_verification"):
+        try:
+            user_verification = UserVerification(data["user_verification"])
+        except ValueError:
+            return jsonify({
+                "error": "Invalid user_verification",
+                "valid_values": [v.value for v in UserVerification]
+            }), 400
+
+    success, result = fido2_manager.begin_authentication(
+        user_id=data["user_id"],
+        user_verification=user_verification
+    )
+
+    if not success:
+        return jsonify(result), 400
+
+    return jsonify(result)
+
+
+@app.route('/fido2/authenticate/verify', methods=['POST'])
+def verify_fido2_authentication():
+    """
+    Verify FIDO2 authentication response.
+
+    Request body:
+    {
+        "challenge_id": "CHALLENGE-XXX",
+        "credential_id": "base64-encoded-credential-id",
+        "authenticator_data": "base64-encoded-auth-data",
+        "client_data_json": "base64-encoded-client-data",
+        "signature": "base64-encoded-signature"
+    }
+
+    Returns:
+        Authentication result with session token
+    """
+    if not fido2_manager:
+        return jsonify({"error": "FIDO2 authentication not available"}), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    required_fields = ["challenge_id", "credential_id", "authenticator_data", "client_data_json", "signature"]
+    missing = [f for f in required_fields if f not in data]
+
+    if missing:
+        return jsonify({
+            "error": "Missing required fields",
+            "missing": missing
+        }), 400
+
+    success, result = fido2_manager.verify_authentication(
+        challenge_id=data["challenge_id"],
+        credential_id=data["credential_id"],
+        authenticator_data=data["authenticator_data"],
+        client_data_json=data["client_data_json"],
+        signature=data["signature"]
+    )
+
+    if not success:
+        return jsonify(result), 400
+
+    return jsonify(result)
+
+
+@app.route('/fido2/sign/proposal', methods=['POST'])
+def sign_proposal_with_fido2():
+    """
+    Sign a proposal with FIDO2 hardware key.
+
+    Used for acceptProposal and submitLLMProposal operations
+    requiring hardware-backed authorization.
+
+    Request body:
+    {
+        "user_id": "alice",
+        "credential_id": "base64-encoded-credential-id",
+        "proposal_hash": "0x...",
+        "proposal_content": "Full proposal text",
+        "signature": "base64-encoded-signature",
+        "authenticator_data": "base64-encoded-auth-data",
+        "client_data_json": "base64-encoded-client-data"
+    }
+
+    Returns:
+        Signed proposal with verification proof
+    """
+    if not fido2_manager:
+        return jsonify({"error": "FIDO2 authentication not available"}), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    required_fields = ["user_id", "credential_id", "proposal_hash", "proposal_content",
+                       "signature", "authenticator_data", "client_data_json"]
+    missing = [f for f in required_fields if f not in data]
+
+    if missing:
+        return jsonify({
+            "error": "Missing required fields",
+            "missing": missing
+        }), 400
+
+    success, result = fido2_manager.sign_proposal(
+        user_id=data["user_id"],
+        credential_id=data["credential_id"],
+        proposal_hash=data["proposal_hash"],
+        proposal_content=data["proposal_content"],
+        signature=data["signature"],
+        authenticator_data=data["authenticator_data"],
+        client_data_json=data["client_data_json"]
+    )
+
+    if not success:
+        return jsonify(result), 400
+
+    return jsonify(result), 201
+
+
+@app.route('/fido2/sign/contract', methods=['POST'])
+def sign_contract_with_fido2():
+    """
+    Sign a contract with FIDO2 hardware key.
+
+    Provides hardware-backed authorization for contract execution.
+
+    Request body:
+    {
+        "user_id": "alice",
+        "credential_id": "base64-encoded-credential-id",
+        "contract_hash": "0x...",
+        "contract_content": "Full contract text",
+        "counterparty": "bob",
+        "signature": "base64-encoded-signature",
+        "authenticator_data": "base64-encoded-auth-data",
+        "client_data_json": "base64-encoded-client-data"
+    }
+
+    Returns:
+        Signed contract with verification proof
+    """
+    if not fido2_manager:
+        return jsonify({"error": "FIDO2 authentication not available"}), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    required_fields = ["user_id", "credential_id", "contract_hash", "contract_content",
+                       "counterparty", "signature", "authenticator_data", "client_data_json"]
+    missing = [f for f in required_fields if f not in data]
+
+    if missing:
+        return jsonify({
+            "error": "Missing required fields",
+            "missing": missing
+        }), 400
+
+    success, result = fido2_manager.sign_contract(
+        user_id=data["user_id"],
+        credential_id=data["credential_id"],
+        contract_hash=data["contract_hash"],
+        contract_content=data["contract_content"],
+        counterparty=data["counterparty"],
+        signature=data["signature"],
+        authenticator_data=data["authenticator_data"],
+        client_data_json=data["client_data_json"]
+    )
+
+    if not success:
+        return jsonify(result), 400
+
+    return jsonify(result), 201
+
+
+@app.route('/fido2/delegation/begin', methods=['POST'])
+def begin_agent_delegation():
+    """
+    Begin hardware-authorized agent delegation.
+
+    Creates a challenge for authorizing an agent to act on user's behalf
+    with specified permissions and limits.
+
+    Request body:
+    {
+        "user_id": "alice",
+        "agent_id": "agent-bot-1",
+        "permissions": ["submit_proposals", "sign_contracts"],
+        "spending_limit": 1000.0 (optional),
+        "expires_in_hours": 24 (optional),
+        "contract_refs": ["CONTRACT-123"] (optional, limit to specific contracts)
+    }
+
+    Returns:
+        Delegation challenge to sign
+    """
+    if not fido2_manager:
+        return jsonify({"error": "FIDO2 authentication not available"}), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    required_fields = ["user_id", "agent_id", "permissions"]
+    missing = [f for f in required_fields if f not in data]
+
+    if missing:
+        return jsonify({
+            "error": "Missing required fields",
+            "missing": missing
+        }), 400
+
+    success, result = fido2_manager.begin_agent_delegation(
+        user_id=data["user_id"],
+        agent_id=data["agent_id"],
+        permissions=data["permissions"],
+        spending_limit=data.get("spending_limit"),
+        expires_in_hours=data.get("expires_in_hours", 24),
+        contract_refs=data.get("contract_refs")
+    )
+
+    if not success:
+        return jsonify(result), 400
+
+    return jsonify(result)
+
+
+@app.route('/fido2/delegation/complete', methods=['POST'])
+def complete_agent_delegation():
+    """
+    Complete agent delegation with hardware signature.
+
+    Request body:
+    {
+        "challenge_id": "CHALLENGE-XXX",
+        "credential_id": "base64-encoded-credential-id",
+        "signature": "base64-encoded-signature",
+        "authenticator_data": "base64-encoded-auth-data",
+        "client_data_json": "base64-encoded-client-data"
+    }
+
+    Returns:
+        Active delegation with token
+    """
+    if not fido2_manager:
+        return jsonify({"error": "FIDO2 authentication not available"}), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    required_fields = ["challenge_id", "credential_id", "signature", "authenticator_data", "client_data_json"]
+    missing = [f for f in required_fields if f not in data]
+
+    if missing:
+        return jsonify({
+            "error": "Missing required fields",
+            "missing": missing
+        }), 400
+
+    success, result = fido2_manager.complete_agent_delegation(
+        challenge_id=data["challenge_id"],
+        credential_id=data["credential_id"],
+        signature=data["signature"],
+        authenticator_data=data["authenticator_data"],
+        client_data_json=data["client_data_json"]
+    )
+
+    if not success:
+        return jsonify(result), 400
+
+    return jsonify(result), 201
+
+
+@app.route('/fido2/delegation/<delegation_id>', methods=['GET'])
+def get_agent_delegation(delegation_id: str):
+    """Get details of an agent delegation."""
+    if not fido2_manager:
+        return jsonify({"error": "FIDO2 authentication not available"}), 503
+
+    delegation = fido2_manager.get_delegation(delegation_id)
+
+    if not delegation:
+        return jsonify({"error": "Delegation not found"}), 404
+
+    return jsonify(delegation)
+
+
+@app.route('/fido2/delegation/<delegation_id>/revoke', methods=['POST'])
+def revoke_agent_delegation(delegation_id: str):
+    """
+    Revoke an agent delegation.
+
+    Request body:
+    {
+        "user_id": "alice",
+        "reason": "Optional revocation reason"
+    }
+
+    Returns:
+        Revocation confirmation
+    """
+    if not fido2_manager:
+        return jsonify({"error": "FIDO2 authentication not available"}), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    if "user_id" not in data:
+        return jsonify({
+            "error": "Missing required field: user_id"
+        }), 400
+
+    success, result = fido2_manager.revoke_delegation(
+        delegation_id=delegation_id,
+        user_id=data["user_id"],
+        reason=data.get("reason")
+    )
+
+    if not success:
+        return jsonify(result), 400
+
+    return jsonify(result)
+
+
+@app.route('/fido2/delegation/user/<user_id>', methods=['GET'])
+def get_user_delegations(user_id: str):
+    """
+    Get all delegations for a user.
+
+    Query params:
+        active_only: true/false (default true)
+    """
+    if not fido2_manager:
+        return jsonify({"error": "FIDO2 authentication not available"}), 503
+
+    active_only = request.args.get("active_only", "true").lower() == "true"
+
+    delegations = fido2_manager.get_user_delegations(user_id, active_only=active_only)
+
+    return jsonify({
+        "user_id": user_id,
+        "count": len(delegations),
+        "delegations": delegations
+    })
+
+
+@app.route('/fido2/delegation/verify', methods=['POST'])
+def verify_agent_action():
+    """
+    Verify an agent action against its delegation.
+
+    Request body:
+    {
+        "delegation_id": "DELEG-XXX",
+        "agent_id": "agent-bot-1",
+        "action": "submit_proposals|sign_contracts|...",
+        "spending_amount": 50.0 (optional),
+        "contract_ref": "CONTRACT-123" (optional)
+    }
+
+    Returns:
+        Verification result
+    """
+    if not fido2_manager:
+        return jsonify({"error": "FIDO2 authentication not available"}), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    required_fields = ["delegation_id", "agent_id", "action"]
+    missing = [f for f in required_fields if f not in data]
+
+    if missing:
+        return jsonify({
+            "error": "Missing required fields",
+            "missing": missing
+        }), 400
+
+    is_valid, result = fido2_manager.verify_agent_action(
+        delegation_id=data["delegation_id"],
+        agent_id=data["agent_id"],
+        action=data["action"],
+        spending_amount=data.get("spending_amount"),
+        contract_ref=data.get("contract_ref")
+    )
+
+    return jsonify({
+        "valid": is_valid,
+        "result": result
+    })
+
+
+@app.route('/fido2/credentials/<user_id>', methods=['GET'])
+def get_user_credentials(user_id: str):
+    """Get all FIDO2 credentials for a user."""
+    if not fido2_manager:
+        return jsonify({"error": "FIDO2 authentication not available"}), 503
+
+    credentials = fido2_manager.get_user_credentials(user_id)
+
+    return jsonify({
+        "user_id": user_id,
+        "count": len(credentials),
+        "credentials": credentials
+    })
+
+
+@app.route('/fido2/credentials/<user_id>/<credential_id>', methods=['DELETE'])
+def remove_user_credential(user_id: str, credential_id: str):
+    """
+    Remove a FIDO2 credential.
+
+    Note: User must have at least one remaining credential.
+    """
+    if not fido2_manager:
+        return jsonify({"error": "FIDO2 authentication not available"}), 503
+
+    success, result = fido2_manager.remove_credential(user_id, credential_id)
+
+    if not success:
+        return jsonify(result), 400
+
+    return jsonify(result)
+
+
+@app.route('/fido2/signatures/<user_id>', methods=['GET'])
+def get_signature_history(user_id: str):
+    """
+    Get signature history for a user.
+
+    Query params:
+        limit: Maximum signatures (default 50)
+        signature_type: proposal|contract|delegation|authentication (optional)
+    """
+    if not fido2_manager:
+        return jsonify({"error": "FIDO2 authentication not available"}), 503
+
+    limit = request.args.get("limit", 50, type=int)
+    sig_type_str = request.args.get("signature_type")
+
+    signature_type = None
+    if sig_type_str:
+        try:
+            signature_type = SignatureType(sig_type_str)
+        except ValueError:
+            return jsonify({
+                "error": "Invalid signature_type",
+                "valid_values": [t.value for t in SignatureType]
+            }), 400
+
+    history = fido2_manager.get_signature_history(
+        user_id=user_id,
+        limit=limit,
+        signature_type=signature_type
+    )
+
+    return jsonify({
+        "user_id": user_id,
+        "count": len(history),
+        "signatures": history
+    })
+
+
+@app.route('/fido2/stats', methods=['GET'])
+def get_fido2_stats():
+    """Get FIDO2 authentication statistics."""
+    if not fido2_manager:
+        return jsonify({"error": "FIDO2 authentication not available"}), 503
+
+    stats = fido2_manager.get_statistics()
+    return jsonify(stats)
+
+
+@app.route('/fido2/audit', methods=['GET'])
+def get_fido2_audit():
+    """
+    Get FIDO2 audit trail.
+
+    Query params:
+        limit: Maximum entries (default 100)
+    """
+    if not fido2_manager:
+        return jsonify({"error": "FIDO2 authentication not available"}), 503
+
+    limit = request.args.get("limit", 100, type=int)
+
+    trail = fido2_manager.get_audit_trail(limit=limit)
+
+    return jsonify({
+        "count": len(trail),
+        "audit_trail": trail
     })
 
 
