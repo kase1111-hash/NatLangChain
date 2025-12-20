@@ -394,8 +394,8 @@ class EdgeAIRuntime:
         model = self.loaded_models[model_id]
         config = self.MODEL_CONFIGS[model.model_size]
 
-        # Check cache
-        cache_key = hashlib.md5(f"{model_id}:{input_text}".encode()).hexdigest()
+        # Check cache (using SHA-256 for consistency with security standards)
+        cache_key = hashlib.sha256(f"{model_id}:{input_text}".encode()).hexdigest()[:32]
         if cache_key in self.inference_cache:
             self.cache_hits += 1
             model.inference_count += 1
