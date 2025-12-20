@@ -25,6 +25,7 @@ from observance_burn import ObservanceBurnManager, BurnReason
 from anti_harassment import AntiHarassmentManager, InitiationPath, DisputeResolution
 from treasury import NatLangChainTreasury, InflowType, SubsidyStatus
 from fido2_auth import FIDO2AuthManager, SignatureType, UserVerification
+from zk_privacy import ZKPrivacyManager, ProofStatus, VoteStatus
 
 
 # Load environment variables
@@ -53,6 +54,7 @@ observance_burn_manager = None
 anti_harassment_manager = None
 treasury = None
 fido2_manager = None
+zk_privacy_manager = None
 
 # Data file for persistence
 CHAIN_DATA_FILE = os.getenv("CHAIN_DATA_FILE", "chain_data.json")
@@ -60,7 +62,7 @@ CHAIN_DATA_FILE = os.getenv("CHAIN_DATA_FILE", "chain_data.json")
 
 def init_validators():
     """Initialize validators and advanced features if API key is available."""
-    global llm_validator, hybrid_validator, drift_detector, search_engine, dialectic_validator, contract_parser, contract_matcher, temporal_fixity, semantic_oracle, circuit_breaker, multi_model_consensus, dispute_manager, escalation_fork_manager, observance_burn_manager, anti_harassment_manager, treasury, fido2_manager
+    global llm_validator, hybrid_validator, drift_detector, search_engine, dialectic_validator, contract_parser, contract_matcher, temporal_fixity, semantic_oracle, circuit_breaker, multi_model_consensus, dispute_manager, escalation_fork_manager, observance_burn_manager, anti_harassment_manager, treasury, fido2_manager, zk_privacy_manager
     api_key = os.getenv("ANTHROPIC_API_KEY")
 
     # Initialize temporal fixity (doesn't require API key)
@@ -95,7 +97,8 @@ def init_validators():
             anti_harassment_manager = AntiHarassmentManager(burn_manager=observance_burn_manager)
             treasury = NatLangChainTreasury(anti_harassment_manager=anti_harassment_manager)
             fido2_manager = FIDO2AuthManager()
-            print("LLM-based features initialized (contracts, oracles, disputes, forks, burns, anti-harassment, treasury, FIDO2, multi-model consensus)")
+            zk_privacy_manager = ZKPrivacyManager()
+            print("LLM-based features initialized (contracts, oracles, disputes, forks, burns, anti-harassment, treasury, FIDO2, ZK privacy, multi-model consensus)")
         except Exception as e:
             print(f"Warning: Could not initialize LLM features: {e}")
             print("API will operate without LLM validation")
@@ -3655,6 +3658,628 @@ def get_fido2_audit():
     limit = request.args.get("limit", 100, type=int)
 
     trail = fido2_manager.get_audit_trail(limit=limit)
+
+    return jsonify({
+        "count": len(trail),
+        "audit_trail": trail
+    })
+
+
+# ========== ZK Privacy Infrastructure Endpoints ==========
+
+# ----- Phase 14A: Dispute Membership Circuit -----
+
+@app.route('/zk/identity/commitment', methods=['POST'])
+def generate_identity_commitment():
+    """
+    Generate identity commitment for on-chain registration.
+
+    Creates a secret and its Poseidon hash for privacy-preserving
+    dispute membership proofs.
+
+    Request body:
+    {
+        "user_address": "0x...",
+        "salt": "optional-salt-hex" (optional)
+    }
+
+    Returns:
+        Identity secret and hash for on-chain commitment
+    """
+    if not zk_privacy_manager:
+        return jsonify({
+            "error": "ZK privacy not available",
+            "reason": "Features not initialized"
+        }), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    if "user_address" not in data:
+        return jsonify({
+            "error": "Missing required field: user_address"
+        }), 400
+
+    result = zk_privacy_manager.generate_identity_commitment(
+        user_address=data["user_address"],
+        salt=data.get("salt")
+    )
+
+    return jsonify(result), 201
+
+
+@app.route('/zk/identity/proof', methods=['POST'])
+def generate_identity_proof():
+    """
+    Generate ZK proof of dispute membership.
+
+    Proves "I know a secret that hashes to the on-chain identity"
+    without revealing the secret or address.
+
+    Request body:
+    {
+        "dispute_id": "DISPUTE-XXX",
+        "prover_address": "0x...",
+        "identity_secret": "salt:address",
+        "identity_manager": "0x..." (on-chain hash)
+    }
+
+    Returns:
+        ZK proof components (a, b, c) and public signals
+    """
+    if not zk_privacy_manager:
+        return jsonify({"error": "ZK privacy not available"}), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    required_fields = ["dispute_id", "prover_address", "identity_secret", "identity_manager"]
+    missing = [f for f in required_fields if f not in data]
+
+    if missing:
+        return jsonify({
+            "error": "Missing required fields",
+            "missing": missing
+        }), 400
+
+    success, result = zk_privacy_manager.generate_identity_proof(
+        dispute_id=data["dispute_id"],
+        prover_address=data["prover_address"],
+        identity_secret=data["identity_secret"],
+        identity_manager=data["identity_manager"]
+    )
+
+    if not success:
+        return jsonify(result), 400
+
+    return jsonify(result), 201
+
+
+@app.route('/zk/identity/verify', methods=['POST'])
+def verify_identity_proof():
+    """
+    Verify ZK identity proof on-chain (simulated).
+
+    Request body:
+    {
+        "proof_id": "PROOF-XXX",
+        "expected_identity_hash": "0x..." (from dispute struct)
+    }
+
+    Returns:
+        Verification result
+    """
+    if not zk_privacy_manager:
+        return jsonify({"error": "ZK privacy not available"}), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    if "proof_id" not in data or "expected_identity_hash" not in data:
+        return jsonify({
+            "error": "Missing required fields",
+            "required": ["proof_id", "expected_identity_hash"]
+        }), 400
+
+    success, result = zk_privacy_manager.verify_identity_proof(
+        proof_id=data["proof_id"],
+        expected_identity_hash=data["expected_identity_hash"]
+    )
+
+    if not success:
+        return jsonify(result), 400
+
+    return jsonify(result)
+
+
+@app.route('/zk/identity/proof/<proof_id>', methods=['GET'])
+def get_identity_proof(proof_id: str):
+    """Get identity proof details."""
+    if not zk_privacy_manager:
+        return jsonify({"error": "ZK privacy not available"}), 503
+
+    proof = zk_privacy_manager.membership_circuit.get_proof(proof_id)
+
+    if not proof:
+        return jsonify({"error": "Proof not found"}), 404
+
+    return jsonify(proof)
+
+
+# ----- Phase 14B: Viewing Key Infrastructure -----
+
+@app.route('/zk/viewing-key/create', methods=['POST'])
+def create_viewing_key():
+    """
+    Create a viewing key for dispute metadata.
+
+    Generates ECIES keypair, encrypts metadata, and splits
+    the private key via Shamir's Secret Sharing.
+
+    Request body:
+    {
+        "dispute_id": "DISPUTE-XXX",
+        "metadata": {"evidence": "...", "parties": [...]},
+        "share_holders": ["holder1", "holder2", ...] (optional),
+        "threshold": 3 (optional)
+    }
+
+    Returns:
+        Key info, encrypted metadata, and share distribution
+    """
+    if not zk_privacy_manager:
+        return jsonify({"error": "ZK privacy not available"}), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    if "dispute_id" not in data or "metadata" not in data:
+        return jsonify({
+            "error": "Missing required fields",
+            "required": ["dispute_id", "metadata"]
+        }), 400
+
+    success, result = zk_privacy_manager.create_viewing_key(
+        dispute_id=data["dispute_id"],
+        metadata=data["metadata"],
+        share_holders=data.get("share_holders"),
+        threshold=data.get("threshold", 3)
+    )
+
+    if not success:
+        return jsonify(result), 400
+
+    return jsonify(result), 201
+
+
+@app.route('/zk/viewing-key/share', methods=['POST'])
+def submit_viewing_key_share():
+    """
+    Submit a key share for reconstruction.
+
+    Share holders submit their shares when key reconstruction
+    is authorized (e.g., legal warrant).
+
+    Request body:
+    {
+        "key_id": "VKEY-XXX",
+        "holder": "holder_address",
+        "share_data": "0x..."
+    }
+
+    Returns:
+        Share submission status
+    """
+    if not zk_privacy_manager:
+        return jsonify({"error": "ZK privacy not available"}), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    required_fields = ["key_id", "holder", "share_data"]
+    missing = [f for f in required_fields if f not in data]
+
+    if missing:
+        return jsonify({
+            "error": "Missing required fields",
+            "missing": missing
+        }), 400
+
+    success, result = zk_privacy_manager.submit_key_share(
+        key_id=data["key_id"],
+        holder=data["holder"],
+        share_data=data["share_data"]
+    )
+
+    if not success:
+        return jsonify(result), 400
+
+    return jsonify(result)
+
+
+@app.route('/zk/viewing-key/reconstruct', methods=['POST'])
+def reconstruct_viewing_key():
+    """
+    Reconstruct viewing key from submitted shares.
+
+    Requires sufficient shares (m-of-n) and valid authorization.
+
+    Request body:
+    {
+        "key_id": "VKEY-XXX",
+        "authorization": "warrant_hash_or_approval_id"
+    }
+
+    Returns:
+        Reconstructed private key
+    """
+    if not zk_privacy_manager:
+        return jsonify({"error": "ZK privacy not available"}), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    if "key_id" not in data or "authorization" not in data:
+        return jsonify({
+            "error": "Missing required fields",
+            "required": ["key_id", "authorization"]
+        }), 400
+
+    success, result = zk_privacy_manager.reconstruct_viewing_key(
+        key_id=data["key_id"],
+        authorization=data["authorization"]
+    )
+
+    if not success:
+        return jsonify(result), 400
+
+    return jsonify(result)
+
+
+@app.route('/zk/viewing-key/<key_id>', methods=['GET'])
+def get_viewing_key_status(key_id: str):
+    """Get viewing key status."""
+    if not zk_privacy_manager:
+        return jsonify({"error": "ZK privacy not available"}), 503
+
+    status = zk_privacy_manager.viewing_keys.get_key_status(key_id)
+
+    if not status:
+        return jsonify({"error": "Viewing key not found"}), 404
+
+    return jsonify(status)
+
+
+# ----- Phase 14C: Inference Attack Mitigations -----
+
+@app.route('/zk/batch/submit', methods=['POST'])
+def submit_to_batch():
+    """
+    Submit transaction to batching queue.
+
+    Transactions are aggregated and released in batches
+    to prevent timing correlation attacks.
+
+    Request body:
+    {
+        "tx_type": "identity_proof|viewing_key|...",
+        "tx_data": {...}
+    }
+
+    Returns:
+        Batch assignment info
+    """
+    if not zk_privacy_manager:
+        return jsonify({"error": "ZK privacy not available"}), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    if "tx_type" not in data or "tx_data" not in data:
+        return jsonify({
+            "error": "Missing required fields",
+            "required": ["tx_type", "tx_data"]
+        }), 400
+
+    success, result = zk_privacy_manager.submit_to_batch(
+        tx_type=data["tx_type"],
+        tx_data=data["tx_data"]
+    )
+
+    if not success:
+        return jsonify(result), 400
+
+    return jsonify(result)
+
+
+@app.route('/zk/batch/advance', methods=['POST'])
+def advance_block_release():
+    """
+    Advance block and release ready batches.
+
+    Also potentially generates dummy transactions.
+
+    Request body:
+    {
+        "new_block": 12345
+    }
+
+    Returns:
+        Released transactions
+    """
+    if not zk_privacy_manager:
+        return jsonify({"error": "ZK privacy not available"}), 503
+
+    data = request.get_json()
+
+    if not data or "new_block" not in data:
+        return jsonify({
+            "error": "Missing required field: new_block"
+        }), 400
+
+    released = zk_privacy_manager.advance_block(data["new_block"])
+
+    return jsonify({
+        "block": data["new_block"],
+        "released_count": len(released),
+        "transactions": released
+    })
+
+
+@app.route('/zk/batch/<batch_id>', methods=['GET'])
+def get_batch_status(batch_id: str):
+    """Get batch status."""
+    if not zk_privacy_manager:
+        return jsonify({"error": "ZK privacy not available"}), 503
+
+    status = zk_privacy_manager.batching_queue.get_batch_status(batch_id)
+
+    if not status:
+        return jsonify({"error": "Batch not found"}), 404
+
+    return jsonify(status)
+
+
+@app.route('/zk/dummy/generate', methods=['POST'])
+def generate_dummy_transaction():
+    """
+    Manually generate a dummy transaction.
+
+    Normally automated via Chainlink, but available for testing.
+
+    Returns:
+        Generated dummy transaction
+    """
+    if not zk_privacy_manager:
+        return jsonify({"error": "ZK privacy not available"}), 503
+
+    dummy = zk_privacy_manager.dummy_generator.generate_dummy()
+
+    return jsonify(dummy)
+
+
+@app.route('/zk/dummy/stats', methods=['GET'])
+def get_dummy_stats():
+    """Get dummy transaction statistics."""
+    if not zk_privacy_manager:
+        return jsonify({"error": "ZK privacy not available"}), 503
+
+    stats = zk_privacy_manager.dummy_generator.get_statistics()
+    return jsonify(stats)
+
+
+# ----- Phase 14D: Threshold Decryption / Compliance -----
+
+@app.route('/zk/compliance/request', methods=['POST'])
+def submit_compliance_request():
+    """
+    Submit compliance request for key disclosure.
+
+    Initiates voting by the Compliance Council.
+
+    Request body:
+    {
+        "key_id": "VKEY-XXX",
+        "requester": "legal_authority",
+        "warrant_hash": "0x...",
+        "justification": "Court order #12345..."
+    }
+
+    Returns:
+        Request info with voting requirements
+    """
+    if not zk_privacy_manager:
+        return jsonify({"error": "ZK privacy not available"}), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    required_fields = ["key_id", "requester", "warrant_hash", "justification"]
+    missing = [f for f in required_fields if f not in data]
+
+    if missing:
+        return jsonify({
+            "error": "Missing required fields",
+            "missing": missing
+        }), 400
+
+    success, result = zk_privacy_manager.submit_compliance_request(
+        key_id=data["key_id"],
+        requester=data["requester"],
+        warrant_hash=data["warrant_hash"],
+        justification=data["justification"]
+    )
+
+    if not success:
+        return jsonify(result), 400
+
+    return jsonify(result), 201
+
+
+@app.route('/zk/compliance/vote', methods=['POST'])
+def submit_compliance_vote():
+    """
+    Submit vote on compliance request.
+
+    Council members vote to approve or reject key disclosure.
+
+    Request body:
+    {
+        "request_id": "CREQ-XXX",
+        "voter": "council_member_address",
+        "approve": true/false,
+        "signature": "BLS_signature"
+    }
+
+    Returns:
+        Vote status and current tally
+    """
+    if not zk_privacy_manager:
+        return jsonify({"error": "ZK privacy not available"}), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    required_fields = ["request_id", "voter", "approve", "signature"]
+    missing = [f for f in required_fields if f not in data]
+
+    if missing:
+        return jsonify({
+            "error": "Missing required fields",
+            "missing": missing
+        }), 400
+
+    success, result = zk_privacy_manager.submit_compliance_vote(
+        request_id=data["request_id"],
+        voter=data["voter"],
+        approve=data["approve"],
+        signature=data["signature"]
+    )
+
+    if not success:
+        return jsonify(result), 400
+
+    return jsonify(result)
+
+
+@app.route('/zk/compliance/<request_id>', methods=['GET'])
+def get_compliance_request_status(request_id: str):
+    """Get compliance request status."""
+    if not zk_privacy_manager:
+        return jsonify({"error": "ZK privacy not available"}), 503
+
+    status = zk_privacy_manager.get_compliance_status(request_id)
+
+    if not status:
+        return jsonify({"error": "Compliance request not found"}), 404
+
+    return jsonify(status)
+
+
+@app.route('/zk/compliance/threshold-sign', methods=['POST'])
+def generate_threshold_signature():
+    """
+    Generate threshold signature for approved request.
+
+    Aggregates partial BLS signatures from approving council members.
+
+    Request body:
+    {
+        "request_id": "CREQ-XXX",
+        "message": "message to sign"
+    }
+
+    Returns:
+        Aggregated threshold signature
+    """
+    if not zk_privacy_manager:
+        return jsonify({"error": "ZK privacy not available"}), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    if "request_id" not in data or "message" not in data:
+        return jsonify({
+            "error": "Missing required fields",
+            "required": ["request_id", "message"]
+        }), 400
+
+    success, result = zk_privacy_manager.threshold_decryption.generate_threshold_signature(
+        request_id=data["request_id"],
+        message=data["message"]
+    )
+
+    if not success:
+        return jsonify(result), 400
+
+    return jsonify(result)
+
+
+@app.route('/zk/compliance/council', methods=['GET'])
+def get_compliance_council():
+    """Get compliance council members."""
+    if not zk_privacy_manager:
+        return jsonify({"error": "ZK privacy not available"}), 503
+
+    council = zk_privacy_manager.threshold_decryption.council_members
+    public_keys = zk_privacy_manager.threshold_decryption.member_public_keys
+
+    return jsonify({
+        "council_size": len(council),
+        "default_threshold": zk_privacy_manager.threshold_decryption.DEFAULT_THRESHOLD,
+        "members": [
+            {"address": m, "public_key": public_keys.get(m, "unknown")}
+            for m in council
+        ]
+    })
+
+
+# ----- ZK Privacy General -----
+
+@app.route('/zk/stats', methods=['GET'])
+def get_zk_privacy_stats():
+    """Get ZK privacy infrastructure statistics."""
+    if not zk_privacy_manager:
+        return jsonify({"error": "ZK privacy not available"}), 503
+
+    stats = zk_privacy_manager.get_statistics()
+    return jsonify(stats)
+
+
+@app.route('/zk/audit', methods=['GET'])
+def get_zk_privacy_audit():
+    """
+    Get ZK privacy audit trail.
+
+    Query params:
+        limit: Maximum entries (default 100)
+    """
+    if not zk_privacy_manager:
+        return jsonify({"error": "ZK privacy not available"}), 503
+
+    limit = request.args.get("limit", 100, type=int)
+
+    trail = zk_privacy_manager.get_audit_trail(limit=limit)
 
     return jsonify({
         "count": len(trail),
