@@ -1066,9 +1066,9 @@ def file_dispute():
     Returns:
         Dispute entry with frozen evidence confirmation
     """
+    global dispute_manager
     if not dispute_manager:
         # Initialize basic dispute manager without LLM
-        global dispute_manager
         dispute_manager = DisputeManager()
 
     data = request.get_json()
