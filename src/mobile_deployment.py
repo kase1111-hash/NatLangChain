@@ -41,13 +41,15 @@ class DeviceType(Enum):
 
 class WalletType(Enum):
     """Wallet types for mobile integration."""
-    WALLET_CONNECT = "wallet_connect"
+    WALLETCONNECT = "walletconnect"
+    WALLET_CONNECT = "wallet_connect"  # Alias
     METAMASK = "metamask"
     COINBASE = "coinbase"
     TRUST = "trust"
     LEDGER = "ledger"
     TREZOR = "trezor"
     NATIVE = "native"
+    HARDWARE = "hardware"
 
 
 class SyncStatus(Enum):
@@ -62,7 +64,9 @@ class SyncStatus(Enum):
 class ConnectionState(Enum):
     """Connection state for mobile devices."""
     ONLINE = "online"
+    CONNECTED = "connected"
     OFFLINE = "offline"
+    DISCONNECTED = "disconnected"
     DEGRADED = "degraded"
     SYNCING = "syncing"
 
@@ -85,16 +89,20 @@ class DeviceProfile:
     """Mobile device profile."""
     device_id: str
     device_type: DeviceType
-    os_version: str
-    app_version: str
-    capabilities: Dict[str, bool] = field(default_factory=dict)
+    device_name: str = "Unknown Device"
+    os_version: str = "1.0"
+    app_version: str = "1.0"
+    platform_version: str = "1.0"
+    capabilities: Dict[str, Any] = field(default_factory=dict)
     memory_mb: int = 2048
     storage_mb: int = 1024
     cpu_cores: int = 4
     has_gpu: bool = False
     has_npu: bool = False  # Neural Processing Unit
     battery_optimization: bool = True
-    registered_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    is_active: bool = True
+    registered_at: datetime = field(default_factory=datetime.utcnow)
+    last_sync: Optional[datetime] = None
     last_seen: str = field(default_factory=lambda: datetime.utcnow().isoformat())
 
 
@@ -104,12 +112,15 @@ class WalletConnection:
     connection_id: str
     wallet_type: WalletType
     wallet_address: str
-    chain_id: int
-    connected_at: str
+    chain_id: int = 1
+    connected_at: Optional[datetime] = None
+    state: ConnectionState = ConnectionState.ONLINE
+    device_id: Optional[str] = None
     session_topic: Optional[str] = None  # WalletConnect session
     is_hardware: bool = False
     permissions: List[str] = field(default_factory=list)
     expires_at: Optional[str] = None
+    signature_count: int = 0
 
 
 @dataclass
@@ -137,6 +148,43 @@ class LocalState:
     last_modified: str
     is_dirty: bool = False
     sync_status: SyncStatus = SyncStatus.SYNCED
+
+
+@dataclass
+class SyncConflict:
+    """Sync conflict record."""
+    conflict_id: str
+    resource_type: str
+    resource_id: str
+    local_data: Dict[str, Any]
+    remote_data: Dict[str, Any]
+    conflict_type: str
+    detected_at: datetime
+    resolved: bool = False
+    resolution: Optional[str] = None
+
+
+@dataclass
+class LoadedModel:
+    """Loaded AI model configuration."""
+    model_id: str
+    model_type: str
+    model_path: Optional[str] = None
+    model_size: ModelSize = ModelSize.SMALL
+    is_quantized: bool = False
+    loaded_at: datetime = field(default_factory=datetime.utcnow)
+    inference_count: int = 0
+    memory_mb: int = 100
+    optimizations: List[str] = field(default_factory=list)
+
+
+@dataclass
+class ResourceLimits:
+    """Edge AI resource limits."""
+    max_memory_mb: int = 512
+    max_cpu_percent: float = 50.0
+    max_battery_drain_percent: float = 10.0
+    prefer_wifi: bool = True
 
 
 # ============================================================
@@ -195,13 +243,14 @@ class EdgeAIRuntime:
 
     def __init__(self):
         """Initialize edge AI runtime."""
-        self.loaded_models: Dict[str, Dict[str, Any]] = {}
+        self.loaded_models: Dict[str, LoadedModel] = {}
         self.inference_cache: Dict[str, Any] = {}
         self.resource_usage: Dict[str, float] = {
             "memory_mb": 0,
             "cpu_percent": 0,
             "battery_impact": 0
         }
+        self.resource_limits = ResourceLimits()
         self.inference_count = 0
         self.cache_hits = 0
         self.fallback_count = 0
@@ -238,7 +287,9 @@ class EdgeAIRuntime:
         self,
         model_id: str,
         size: ModelSize,
-        device: DeviceProfile
+        device: DeviceProfile,
+        model_type: str = "generic",
+        model_path: Optional[str] = None
     ) -> Tuple[bool, Dict[str, Any]]:
         """
         Load a model for on-device inference.
@@ -247,6 +298,8 @@ class EdgeAIRuntime:
             model_id: Model identifier
             size: Model size
             device: Device profile
+            model_type: Type of model
+            model_path: Path to model file
 
         Returns:
             Tuple of (success, model info)
@@ -258,20 +311,33 @@ class EdgeAIRuntime:
             # Unload least recently used model
             self._unload_lru_model()
 
-        # Simulate model loading
-        model_info = {
+        # Create LoadedModel instance
+        is_quantized = config["quantization"] in ["int4", "int8"]
+        optimizations = self._get_optimizations(device, size)
+
+        loaded_model = LoadedModel(
+            model_id=model_id,
+            model_type=model_type,
+            model_path=model_path,
+            model_size=size,
+            is_quantized=is_quantized,
+            loaded_at=datetime.utcnow(),
+            inference_count=0,
+            memory_mb=config["memory_mb"],
+            optimizations=optimizations
+        )
+
+        self.loaded_models[model_id] = loaded_model
+        self.resource_usage["memory_mb"] += config["memory_mb"]
+
+        return True, {
             "model_id": model_id,
             "size": size.value,
             "config": config,
-            "loaded_at": datetime.utcnow().isoformat(),
+            "loaded_at": loaded_model.loaded_at.isoformat(),
             "device_id": device.device_id,
-            "optimizations": self._get_optimizations(device, size)
+            "optimizations": optimizations
         }
-
-        self.loaded_models[model_id] = model_info
-        self.resource_usage["memory_mb"] += config["memory_mb"]
-
-        return True, model_info
 
     def _get_optimizations(self, device: DeviceProfile, size: ModelSize) -> List[str]:
         """Get applicable optimizations for device."""
@@ -298,11 +364,11 @@ class EdgeAIRuntime:
         # Find oldest model
         oldest = min(
             self.loaded_models.items(),
-            key=lambda x: x[1]["loaded_at"]
+            key=lambda x: x[1].loaded_at
         )
 
-        model_id, model_info = oldest
-        self.resource_usage["memory_mb"] -= model_info["config"]["memory_mb"]
+        model_id, model = oldest
+        self.resource_usage["memory_mb"] -= model.memory_mb
         del self.loaded_models[model_id]
 
     def run_inference(
@@ -326,12 +392,13 @@ class EdgeAIRuntime:
             return False, {"error": "Model not loaded"}
 
         model = self.loaded_models[model_id]
-        config = model["config"]
+        config = self.MODEL_CONFIGS[model.model_size]
 
         # Check cache
         cache_key = hashlib.md5(f"{model_id}:{input_text}".encode()).hexdigest()
         if cache_key in self.inference_cache:
             self.cache_hits += 1
+            model.inference_count += 1
             return True, {
                 "cached": True,
                 "result": self.inference_cache[cache_key]
@@ -353,6 +420,7 @@ class EdgeAIRuntime:
         # Cache result
         self.inference_cache[cache_key] = result
         self.inference_count += 1
+        model.inference_count += 1
 
         # Limit cache size
         if len(self.inference_cache) > 100:
@@ -404,6 +472,17 @@ class EdgeAIRuntime:
             "memory_mb": self.resource_usage["memory_mb"],
             "loaded_models": len(self.loaded_models),
             "inference_count": self.inference_count,
+            "cache_hits": self.cache_hits,
+            "cache_hit_rate": self.cache_hits / max(self.inference_count, 1),
+            "fallback_count": self.fallback_count
+        }
+
+    def get_statistics(self) -> Dict[str, Any]:
+        """Get edge AI statistics."""
+        return {
+            "models_loaded": len(self.loaded_models),
+            "total_inferences": self.inference_count,
+            "memory_mb": self.resource_usage["memory_mb"],
             "cache_hits": self.cache_hits,
             "cache_hit_rate": self.cache_hits / max(self.inference_count, 1),
             "fallback_count": self.fallback_count
@@ -782,7 +861,9 @@ class OfflineFirstManager:
     def __init__(self):
         """Initialize offline-first manager."""
         self.local_state: Dict[str, LocalState] = {}
-        self.sync_queue: List[SyncOperation] = []
+        self.local_states: Dict[str, Dict[str, Any]] = {}  # Per-device states
+        self.sync_queue: Dict[str, List[SyncOperation]] = {}  # Per-device queues
+        self.conflicts: Dict[str, List[SyncConflict]] = {}  # Per-device conflicts
         self.connection_state = ConnectionState.ONLINE
         self.last_sync: Optional[str] = None
         self.conflict_handlers: Dict[str, Callable] = {}
@@ -1093,7 +1174,63 @@ class PortableArchitecture:
             "biometric_auth": True
         }
 
+    @property
+    def devices(self) -> Dict[str, DeviceProfile]:
+        """Alias for registered_devices."""
+        return self.registered_devices
+
     def register_device(
+        self,
+        device_type: DeviceType,
+        device_name: str = "Unknown Device",
+        capabilities: Optional[Dict[str, Any]] = None,
+        os_version: str = "1.0",
+        app_version: str = "1.0",
+        memory_mb: int = 2048,
+        storage_mb: int = 1024,
+        cpu_cores: int = 4,
+        has_gpu: bool = False,
+        has_npu: bool = False
+    ) -> str:
+        """
+        Register a mobile device.
+
+        Args:
+            device_type: Type of device
+            device_name: User-friendly device name
+            capabilities: Device capabilities
+            os_version: OS version
+            app_version: App version
+            memory_mb: Available memory
+            storage_mb: Available storage
+            cpu_cores: CPU cores
+            has_gpu: GPU availability
+            has_npu: NPU availability
+
+        Returns:
+            Device ID
+        """
+        device_id = f"DEVICE-{secrets.token_hex(8).upper()}"
+
+        device = DeviceProfile(
+            device_id=device_id,
+            device_type=device_type,
+            device_name=device_name,
+            os_version=os_version,
+            app_version=app_version,
+            capabilities=capabilities or {},
+            memory_mb=memory_mb,
+            storage_mb=storage_mb,
+            cpu_cores=cpu_cores,
+            has_gpu=has_gpu,
+            has_npu=has_npu
+        )
+
+        self.registered_devices[device_id] = device
+
+        return device_id
+
+    def register_device_full(
         self,
         device_type: DeviceType,
         os_version: str,
@@ -1106,30 +1243,16 @@ class PortableArchitecture:
         has_npu: bool = False
     ) -> Tuple[bool, Dict[str, Any]]:
         """
-        Register a mobile device.
-
-        Args:
-            device_type: Type of device
-            os_version: OS version
-            app_version: App version
-            capabilities: Device capabilities
-            memory_mb: Available memory
-            storage_mb: Available storage
-            cpu_cores: CPU cores
-            has_gpu: GPU availability
-            has_npu: NPU availability
+        Register a mobile device with full response.
 
         Returns:
             Tuple of (success, device info)
         """
-        device_id = f"DEVICE-{secrets.token_hex(8).upper()}"
-
-        device = DeviceProfile(
-            device_id=device_id,
+        device_id = self.register_device(
             device_type=device_type,
+            capabilities=capabilities,
             os_version=os_version,
             app_version=app_version,
-            capabilities=capabilities,
             memory_mb=memory_mb,
             storage_mb=storage_mb,
             cpu_cores=cpu_cores,
@@ -1137,7 +1260,7 @@ class PortableArchitecture:
             has_npu=has_npu
         )
 
-        self.registered_devices[device_id] = device
+        device = self.registered_devices[device_id]
 
         # Determine available features
         available_features = self._get_available_features(device)
@@ -1145,7 +1268,7 @@ class PortableArchitecture:
         return True, {
             "device_id": device_id,
             "device_type": device_type.value,
-            "registered_at": device.registered_at,
+            "registered_at": device.registered_at.isoformat(),
             "available_features": available_features,
             "recommended_model_size": self._get_recommended_model_size(device)
         }
@@ -1268,41 +1391,50 @@ class MobileDeploymentManager:
 
     def register_device(
         self,
-        device_type: str,
-        os_version: str,
-        app_version: str,
-        capabilities: Dict[str, bool],
-        memory_mb: int = 2048,
-        storage_mb: int = 1024,
-        cpu_cores: int = 4,
-        has_gpu: bool = False,
-        has_npu: bool = False
-    ) -> Tuple[bool, Dict[str, Any]]:
-        """Register a mobile device."""
-        try:
-            dt = DeviceType(device_type)
-        except ValueError:
-            dt = DeviceType.WEB
+        device_type: DeviceType,
+        device_name: str = "Unknown Device",
+        capabilities: Optional[Dict[str, Any]] = None
+    ) -> str:
+        """
+        Register a mobile device.
 
-        success, result = self.portable.register_device(
-            device_type=dt,
-            os_version=os_version,
-            app_version=app_version,
-            capabilities=capabilities,
-            memory_mb=memory_mb,
-            storage_mb=storage_mb,
-            cpu_cores=cpu_cores,
-            has_gpu=has_gpu,
-            has_npu=has_npu
+        Args:
+            device_type: Type of device
+            device_name: User-friendly device name
+            capabilities: Device capabilities
+
+        Returns:
+            Device ID
+        """
+        device_id = self.portable.register_device(
+            device_type=device_type,
+            device_name=device_name,
+            capabilities=capabilities
         )
 
-        if success:
-            self._log_audit("device_registered", {
-                "device_id": result["device_id"],
-                "device_type": device_type
-            })
+        self._log_audit("device_registered", {
+            "device_id": device_id,
+            "device_type": device_type.value,
+            "device_name": device_name
+        })
 
-        return success, result
+        return device_id
+
+    def get_device_features(self, device_id: str) -> Optional[Dict[str, bool]]:
+        """Get feature flags for a device."""
+        if device_id not in self.portable.devices:
+            return None
+
+        device = self.portable.devices[device_id]
+        features = dict(self.portable.feature_flags)
+
+        # Adjust based on device capabilities
+        if device.device_type == DeviceType.WEB:
+            features["biometric_auth"] = False
+
+        features["edge_ai_enabled"] = device.has_npu or device.has_gpu or device.memory_mb >= 2048
+
+        return features
 
     def get_device_config(self, device_id: str) -> Optional[Dict[str, Any]]:
         """Get device configuration."""
@@ -1312,25 +1444,89 @@ class MobileDeploymentManager:
 
     def load_edge_model(
         self,
-        device_id: str,
         model_id: str,
-        size: Optional[str] = None
-    ) -> Tuple[bool, Dict[str, Any]]:
-        """Load an edge AI model."""
-        if device_id not in self.portable.registered_devices:
-            return False, {"error": "Device not registered"}
+        model_type: str = "generic",
+        model_path: Optional[str] = None,
+        device_id: Optional[str] = None
+    ) -> bool:
+        """
+        Load an edge AI model.
 
-        device = self.portable.registered_devices[device_id]
+        Args:
+            model_id: Unique model identifier
+            model_type: Type of model
+            model_path: Path to model file
+            device_id: Device to load on
 
-        if size:
-            try:
-                model_size = ModelSize(size)
-            except ValueError:
-                model_size = self.edge_ai.get_optimal_model_size(device)
+        Returns:
+            True if loaded successfully
+        """
+        # Get device or use default profile
+        if device_id and device_id in self.portable.devices:
+            device = self.portable.devices[device_id]
         else:
-            model_size = self.edge_ai.get_optimal_model_size(device)
+            device = DeviceProfile(
+                device_id="default",
+                device_type=DeviceType.WEB,
+                memory_mb=2048
+            )
 
-        return self.edge_ai.load_model(model_id, model_size, device)
+        model_size = self.edge_ai.get_optimal_model_size(device)
+
+        success, _ = self.edge_ai.load_model(
+            model_id=model_id,
+            size=model_size,
+            device=device,
+            model_type=model_type,
+            model_path=model_path
+        )
+
+        if success:
+            self._log_audit("model_loaded", {
+                "model_id": model_id,
+                "model_type": model_type,
+                "device_id": device_id
+            })
+
+        return success
+
+    def run_inference(
+        self,
+        model_id: str,
+        input_data: Any,
+        device_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Run inference on a loaded model.
+
+        Args:
+            model_id: Model to use
+            input_data: Input data (can be dict with 'text' key or string)
+            device_id: Device to run on
+
+        Returns:
+            Inference result
+        """
+        # Extract text from input
+        if isinstance(input_data, dict):
+            input_text = input_data.get("text", str(input_data))
+        else:
+            input_text = str(input_data)
+
+        success, result = self.edge_ai.run_inference(model_id, input_text)
+
+        if success:
+            return {
+                "success": True,
+                "result": {
+                    "output": result.get("output", ""),
+                    "confidence": 0.85,  # Simulated
+                    "latency_ms": result.get("latency_ms", 100),
+                    "on_device": result.get("on_device", True)
+                }
+            }
+        else:
+            return {"success": False, "error": result.get("error", "Inference failed")}
 
     def run_edge_inference(
         self,
@@ -1338,14 +1534,109 @@ class MobileDeploymentManager:
         input_text: str,
         max_tokens: Optional[int] = None
     ) -> Tuple[bool, Dict[str, Any]]:
-        """Run edge AI inference."""
+        """Run edge AI inference (legacy method)."""
         return self.edge_ai.run_inference(model_id, input_text, max_tokens)
 
     def get_edge_resource_usage(self) -> Dict[str, Any]:
         """Get edge AI resource usage."""
         return self.edge_ai.get_resource_usage()
 
-    # ===== Wallet =====
+    # ===== Wallet (Convenience Methods) =====
+
+    def connect_wallet(
+        self,
+        wallet_type: WalletType,
+        device_id: Optional[str] = None,
+        wallet_address: Optional[str] = None
+    ) -> Optional[str]:
+        """
+        Connect a mobile wallet.
+
+        Args:
+            wallet_type: Type of wallet
+            device_id: Device connecting
+            wallet_address: Wallet address
+
+        Returns:
+            Connection ID or None on failure
+        """
+        connection_id = secrets.token_hex(16)
+
+        connection = WalletConnection(
+            connection_id=connection_id,
+            wallet_type=wallet_type,
+            wallet_address=wallet_address or f"0x{secrets.token_hex(20)}",
+            chain_id=1,
+            connected_at=datetime.utcnow(),
+            state=ConnectionState.CONNECTED,
+            device_id=device_id,
+            is_hardware=wallet_type == WalletType.HARDWARE
+        )
+
+        self.wallet_manager.connections[connection_id] = connection
+
+        self._log_audit("wallet_connected", {
+            "connection_id": connection_id,
+            "wallet_type": wallet_type.value,
+            "device_id": device_id
+        })
+
+        return connection_id
+
+    def disconnect_wallet(self, connection_id: str) -> bool:
+        """Disconnect a wallet."""
+        if connection_id not in self.wallet_manager.connections:
+            return False
+
+        conn = self.wallet_manager.connections[connection_id]
+        conn.state = ConnectionState.DISCONNECTED
+
+        self._log_audit("wallet_disconnected", {
+            "connection_id": connection_id
+        })
+
+        return True
+
+    def sign_message(
+        self,
+        connection_id: str,
+        message: str,
+        sign_type: str = "personal"
+    ) -> Dict[str, Any]:
+        """
+        Sign a message with connected wallet.
+
+        Args:
+            connection_id: Wallet connection ID
+            message: Message to sign
+            sign_type: Type of signature
+
+        Returns:
+            Signature result
+        """
+        if connection_id not in self.wallet_manager.connections:
+            return {"success": False, "error": "Connection not found"}
+
+        conn = self.wallet_manager.connections[connection_id]
+
+        # Simulate signature
+        signature = "0x" + hashlib.sha256(
+            f"{message}:{conn.wallet_address}:{sign_type}".encode()
+        ).hexdigest()
+
+        conn.signature_count += 1
+
+        self._log_audit("message_signed", {
+            "connection_id": connection_id,
+            "sign_type": sign_type
+        })
+
+        return {
+            "success": True,
+            "signature": signature,
+            "sign_type": sign_type,
+            "wallet_address": conn.wallet_address
+        }
 
     def initiate_wallet_connect(
         self,
@@ -1415,7 +1706,202 @@ class MobileDeploymentManager:
         """Get connected wallets."""
         return self.wallet_manager.get_connected_wallets()
 
-    # ===== Offline =====
+    # ===== Offline (Convenience Methods) =====
+
+    def save_offline_state(
+        self,
+        device_id: str,
+        state_type: str,
+        state_data: Dict[str, Any]
+    ) -> str:
+        """
+        Save state for offline access.
+
+        Args:
+            device_id: Device to save for
+            state_type: Type of state
+            state_data: State data
+
+        Returns:
+            State ID
+        """
+        state_id = f"STATE-{secrets.token_hex(8)}"
+
+        # Store in offline manager
+        if device_id not in self.offline_manager.local_states:
+            self.offline_manager.local_states[device_id] = {}
+
+        self.offline_manager.local_states[device_id][state_type] = {
+            "state_id": state_id,
+            "data": state_data,
+            "saved_at": datetime.utcnow().isoformat()
+        }
+
+        self._log_audit("offline_state_saved", {
+            "device_id": device_id,
+            "state_type": state_type,
+            "state_id": state_id
+        })
+
+        return state_id
+
+    def get_offline_state(
+        self,
+        device_id: str,
+        state_type: Optional[str] = None
+    ) -> Any:
+        """
+        Get offline state for a device.
+
+        Args:
+            device_id: Device ID
+            state_type: Optional specific state type
+
+        Returns:
+            State data or all states
+        """
+        if device_id not in self.offline_manager.local_states:
+            return None if state_type else {}
+
+        states = self.offline_manager.local_states[device_id]
+
+        if state_type:
+            return states.get(state_type)
+        return states
+
+    def queue_offline_operation(
+        self,
+        device_id: str,
+        operation_type: str,
+        resource_type: str,
+        resource_data: Dict[str, Any]
+    ) -> str:
+        """
+        Add an operation to the offline sync queue.
+
+        Args:
+            device_id: Device adding the operation
+            operation_type: Type of operation
+            resource_type: Type of resource
+            resource_data: Operation data
+
+        Returns:
+            Operation ID
+        """
+        operation_id = f"OP-{secrets.token_hex(8)}"
+
+        operation = SyncOperation(
+            operation_id=operation_id,
+            operation_type=operation_type,
+            data={
+                "device_id": device_id,
+                "resource_type": resource_type,
+                "resource_data": resource_data
+            },
+            status=SyncStatus.PENDING,
+            created_at=datetime.utcnow().isoformat()
+        )
+
+        if device_id not in self.offline_manager.sync_queue:
+            self.offline_manager.sync_queue[device_id] = []
+
+        self.offline_manager.sync_queue[device_id].append(operation)
+
+        return operation_id
+
+    def sync_device(
+        self,
+        device_id: str,
+        force: bool = False
+    ) -> Dict[str, Any]:
+        """
+        Synchronize device with server.
+
+        Args:
+            device_id: Device to sync
+            force: Force sync even with conflicts
+
+        Returns:
+            Sync result
+        """
+        queue = self.offline_manager.sync_queue.get(device_id, [])
+        synced_count = len(queue)
+
+        # Clear queue (simulate sync)
+        self.offline_manager.sync_queue[device_id] = []
+
+        # Update device last sync
+        if device_id in self.portable.devices:
+            self.portable.devices[device_id].last_sync = datetime.utcnow()
+
+        self._log_audit("device_synced", {
+            "device_id": device_id,
+            "synced_count": synced_count,
+            "forced": force
+        })
+
+        return {
+            "success": True,
+            "synced_count": synced_count,
+            "conflicts": 0,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+
+    def get_sync_queue(self, device_id: str) -> List[Dict[str, Any]]:
+        """Get pending sync operations for a device."""
+        queue = self.offline_manager.sync_queue.get(device_id, [])
+        return [
+            {
+                "operation_id": op.operation_id,
+                "operation_type": op.operation_type,
+                "status": op.status.value,
+                "created_at": op.created_at
+            }
+            for op in queue
+        ]
+
+    def get_conflicts(self, device_id: str) -> List[Dict[str, Any]]:
+        """Get sync conflicts for a device."""
+        conflicts = self.offline_manager.conflicts.get(device_id, [])
+        return [
+            {
+                "conflict_id": c.conflict_id,
+                "resource_type": c.resource_type,
+                "resource_id": c.resource_id,
+                "conflict_type": c.conflict_type,
+                "detected_at": c.detected_at.isoformat()
+            }
+            for c in conflicts if not c.resolved
+        ]
+
+    def resolve_conflict(
+        self,
+        conflict_id: str,
+        resolution: str,
+        merged_data: Optional[Dict[str, Any]] = None
+    ) -> bool:
+        """
+        Resolve a sync conflict.
+
+        Args:
+            conflict_id: Conflict to resolve
+            resolution: Resolution strategy
+            merged_data: Merged data if using merge
+
+        Returns:
+            True if resolved
+        """
+        for device_id, conflicts in self.offline_manager.conflicts.items():
+            for conflict in conflicts:
+                if conflict.conflict_id == conflict_id:
+                    conflict.resolved = True
+                    conflict.resolution = resolution
+                    self._log_audit("conflict_resolved", {
+                        "conflict_id": conflict_id,
+                        "resolution": resolution
+                    })
+                    return True
+        return False
 
     def set_connection_state(self, state: str):
         """Set connection state."""
@@ -1460,11 +1946,26 @@ class MobileDeploymentManager:
 
     def get_statistics(self) -> Dict[str, Any]:
         """Get mobile deployment statistics."""
+        total_synced = sum(
+            len(self.offline_manager.sync_queue.get(d, []))
+            for d in self.portable.devices
+        )
+
         return {
-            "registered_devices": len(self.portable.registered_devices),
-            "connected_wallets": len(self.wallet_manager.connections),
-            "edge_ai": self.edge_ai.get_resource_usage(),
-            "offline": self.offline_manager.get_sync_status(),
+            "devices": {
+                "total": len(self.portable.registered_devices),
+                "by_type": {}
+            },
+            "edge_ai": self.edge_ai.get_statistics(),
+            "wallets": {
+                "total_connections": len(self.wallet_manager.connections),
+                "active": sum(1 for c in self.wallet_manager.connections.values()
+                             if c.state == ConnectionState.ONLINE)
+            },
+            "offline": {
+                "pending_operations": total_synced,
+                "operations_synced": len(self.audit_trail)
+            },
             "feature_flags": self.portable.feature_flags
         }
 
