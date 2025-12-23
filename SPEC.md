@@ -1,5 +1,5 @@
 # NatLangChain Technical Specification
-## Updated: December 20, 2025
+## Updated: December 23, 2025
 
 ---
 
@@ -8,16 +8,17 @@
 2. [Ecosystem Architecture](#ecosystem-architecture)
 3. [Core Architecture](#core-architecture)
 4. [Mediator Protocol Suite (MP-01 to MP-05)](#mediator-protocol-suite)
-5. [Anti-Harassment Design](#anti-harassment-design)
-6. [Treasury System](#treasury-system)
-7. [FIDO2/YubiKey Security Integration](#fido2yubikey-security-integration)
-8. [ZK Privacy Infrastructure](#zk-privacy-infrastructure)
-9. [Implementation Status Matrix](#implementation-status-matrix)
-10. [Implemented Features](#implemented-features)
-11. [Unimplemented Ideas](#unimplemented-ideas)
-12. [Cross-Repo Integration Specifications](#cross-repo-integration-specifications)
-13. [Implementation Plans](#implementation-plans)
-14. [Technical Roadmap](#technical-roadmap)
+5. [NCIP Governance Framework](#ncip-governance-framework)
+6. [Anti-Harassment Design](#anti-harassment-design)
+7. [Treasury System](#treasury-system)
+8. [FIDO2/YubiKey Security Integration](#fido2yubikey-security-integration)
+9. [ZK Privacy Infrastructure](#zk-privacy-infrastructure)
+10. [Implementation Status Matrix](#implementation-status-matrix)
+11. [Implemented Features](#implemented-features)
+12. [Unimplemented Ideas](#unimplemented-ideas)
+13. [Cross-Repo Integration Specifications](#cross-repo-integration-specifications)
+14. [Implementation Plans](#implementation-plans)
+15. [Technical Roadmap](#technical-roadmap)
 
 ---
 
@@ -260,6 +261,137 @@ Ceremonial token destruction that serves economic and signaling purposes:
 - [ ] Capitalization Interface generator
 - [ ] External system hooks (accounting, payment rails)
 - [ ] Partial/staged settlement support
+
+---
+
+## NCIP Governance Framework
+
+> **Reference Document:** [NCIP-000+](docs/NCIP-000+.md) — Consolidated NCIP Index (Canonical)
+
+The NatLangChain Improvement Proposals (NCIPs) establish a comprehensive semantic governance framework. All validators, mediators, agents, and governance processes MUST comply with this framework.
+
+### NCIP Registry (001–015)
+
+| NCIP | Title | Scope | Depends On |
+|------|-------|-------|------------|
+| NCIP-001 | Canonical Term Registry | Semantic primitives & definitions | NatLangChain Spec |
+| NCIP-002 | Semantic Drift Thresholds & Validator Responses | Drift detection & enforcement | NCIP-001 |
+| NCIP-003 | Multilingual Semantic Alignment & Drift | Cross-language meaning preservation | NCIP-001, NCIP-002 |
+| NCIP-004 | Proof of Understanding (PoU) Generation & Verification | Semantic comprehension validation | NCIP-001, NCIP-002 |
+| NCIP-005 | Dispute Escalation, Cooling Periods & Semantic Locking | Dispute lifecycle & meaning freeze | NCIP-002, NCIP-004 |
+| NCIP-006 | Jurisdictional Interpretation & Legal Bridging | Law–semantics boundary | NCIP-001–005 |
+| NCIP-007 | Validator Trust Scoring & Reliability Weighting | Validator reputation & weighting | NCIP-002, NCIP-004 |
+| NCIP-008 | Semantic Appeals, Precedent & Case Law Encoding | Meaning appeals & precedent | NCIP-002, NCIP-005, NCIP-007 |
+| NCIP-009 | Regulatory Interface Modules & Compliance Proofs | External regulatory proofs | NCIP-004, NCIP-006 |
+| NCIP-010 | Mediator Reputation, Slashing & Market Dynamics | Mediation incentives & penalties | NCIP-005, NCIP-007 |
+| NCIP-011 | Validator–Mediator Interaction & Weight Coupling | Joint trust dynamics | NCIP-007, NCIP-010 |
+| NCIP-012 | Human Ratification UX & Cognitive Load Limits | Human decision safety | NCIP-004, NCIP-005 |
+| NCIP-013 | Emergency Overrides, Force Majeure & Semantic Fallbacks | Crisis handling | NCIP-005, NCIP-006 |
+| NCIP-014 | Protocol Amendments & Constitutional Change | Meta-governance | NCIP-001–013 |
+| NCIP-015 | Sunset Clauses, Archival Finality & Historical Semantics | End-of-life meaning | NCIP-005, NCIP-014 |
+
+### Conceptual Groupings
+
+| Group | NCIPs | Purpose |
+|-------|-------|---------|
+| **Semantic Core** | 001 → 002 → 003 → 004 | Foundational definitions and validation |
+| **Dispute & Stability** | 005 → 008 → 013 → 015 | Conflict resolution and archival |
+| **Trust & Markets** | 007 → 010 → 011 | Reputation and economic incentives |
+| **Law & Reality Interfaces** | 006 → 009 | Legal compliance bridging |
+| **Human Safety** | 012 | UX and cognitive limits |
+| **Constitutional Layer** | 014 | Meta-governance (depends on all lower NCIPs) |
+
+### Validator Load Order (Normative)
+
+Validators MUST load NCIPs in sequential order from 001 through 015:
+
+```
+NCIP-001 → NCIP-002 → NCIP-003 → NCIP-004 → NCIP-005 → NCIP-006 →
+NCIP-007 → NCIP-008 → NCIP-009 → NCIP-010 → NCIP-011 → NCIP-012 →
+NCIP-013 → NCIP-014 → NCIP-015
+```
+
+> **Failure to load any dependency invalidates higher-layer NCIPs.**
+
+### Constitutional Interpretation Rule (Normative)
+
+> **"Higher-numbered NCIPs may constrain behavior but may not redefine semantics established by lower-numbered NCIPs."**
+
+Specific prohibitions:
+- NCIP-014 cannot alter historical meaning
+- NCIP-015 cannot reopen locked semantics
+- NCIP-006 cannot override canonical definitions
+- NCIP-012 cannot simplify meaning beyond PoU guarantees
+
+### MP-to-NCIP Mapping
+
+The Mediator Protocol (MP) suite maps to the NCIP governance framework:
+
+| MP | Primary NCIP Alignment | Notes |
+|----|------------------------|-------|
+| MP-01 (Negotiation & Ratification) | NCIP-001, NCIP-004 | Uses canonical terms and PoU validation |
+| MP-02 (Proof-of-Effort) | NCIP-004 | Direct implementation of PoU Generation & Verification |
+| MP-03 (Dispute & Escalation) | NCIP-005, NCIP-008 | Implements dispute lifecycle and semantic locking |
+| MP-04 (Licensing & Delegation) | NCIP-001 | Relies on canonical definitions |
+| MP-05 (Settlement & Capitalization) | NCIP-015, NCIP-014 | End-of-life semantics and protocol amendments |
+
+### ⚠️ DISCREPANCIES REQUIRING REVIEW
+
+The following discrepancies exist between NCIP-000+ governance and current implementation. Review required to determine which procedure is correct:
+
+#### 1. Semantic Locking Not Implemented
+- **NCIP-005 requires:** "Semantic Locking" — the ability to freeze meaning during disputes
+- **Current MP-03 implements:** Evidence freezing only
+- **Gap:** No semantic locking mechanism to prevent meaning drift during active disputes
+- **Status:** ⚠️ REVIEW NEEDED
+
+#### 2. Cooling Periods Not Specified
+- **NCIP-005 requires:** "Cooling Periods" — mandatory waiting periods during dispute lifecycle
+- **Current MP-03 implements:** 7-day solver window (Escalation Fork only)
+- **Gap:** No general cooling period mechanism for standard disputes
+- **Status:** ⚠️ REVIEW NEEDED
+
+#### 3. Validator Trust Scoring Not Implemented
+- **NCIP-007 requires:** Validator Trust Scoring & Reliability Weighting
+- **Current spec shows:** "Reputation Systems 🚧 10%" with only basic miner tracking
+- **Gap:** Full validator trust scoring per NCIP-007 not implemented
+- **Status:** ⚠️ REVIEW NEEDED
+
+#### 4. Mediator Reputation vs Escalation Fork
+- **NCIP-010 requires:** Mediator Reputation, Slashing & Market Dynamics
+- **Current implementation:** Escalation Fork with solver reputation (+10/-2 scoring)
+- **Question:** Does Escalation Fork solver reputation satisfy NCIP-010, or is separate mediator reputation required?
+- **Status:** ⚠️ REVIEW NEEDED
+
+#### 5. Validator-Mediator Weight Coupling Missing
+- **NCIP-011 requires:** Joint trust dynamics between validators and mediators
+- **Current implementation:** Validators and mediators operate independently
+- **Gap:** No weight coupling mechanism
+- **Status:** ⚠️ REVIEW NEEDED
+
+#### 6. Human Ratification UX Limits
+- **NCIP-012 requires:** Cognitive Load Limits for human decision-making
+- **Current MP-01 implements:** Simple ratification (accept/reject)
+- **Gap:** No cognitive load measurement or protection
+- **Status:** ⚠️ REVIEW NEEDED
+
+#### 7. Emergency Override Protocol
+- **NCIP-013 requires:** Emergency Overrides, Force Majeure & Semantic Fallbacks
+- **Current implementation:** Circuit breakers in semantic_oracles.py (basic)
+- **Gap:** No formal emergency override protocol or force majeure handling
+- **Status:** ⚠️ REVIEW NEEDED
+
+#### 8. Constitutional Amendment Process
+- **NCIP-014 requires:** Formal Protocol Amendments & Constitutional Change procedures
+- **Current implementation:** Informal (document updates)
+- **Gap:** No formal amendment ratification process
+- **Status:** ⚠️ REVIEW NEEDED
+
+#### 9. Multilingual Alignment
+- **NCIP-003 requires:** Cross-language meaning preservation with drift detection
+- **Current implementation:** English only (noted in gaps)
+- **Gap:** No parallel language entries or cross-language validation
+- **Status:** ⚠️ REVIEW NEEDED (lower priority, marked MEDIUM in roadmap)
 
 ---
 
@@ -1505,7 +1637,7 @@ NatLangChain has achieved **solid implementation** of its core vision:
 
 ---
 
-**Document Version:** 3.0
-**Last Updated:** December 20, 2025
+**Document Version:** 3.1
+**Last Updated:** December 23, 2025
 **Maintained By:** kase1111-hash
 **License:** CC BY-SA 4.0
