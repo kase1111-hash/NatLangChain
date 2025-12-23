@@ -335,63 +335,69 @@ The Mediator Protocol (MP) suite maps to the NCIP governance framework:
 | MP-04 (Licensing & Delegation) | NCIP-001 | Relies on canonical definitions |
 | MP-05 (Settlement & Capitalization) | NCIP-015, NCIP-014 | End-of-life semantics and protocol amendments |
 
-### ⚠️ DISCREPANCIES REQUIRING REVIEW
+### Discrepancy Resolution Status
 
-The following discrepancies exist between NCIP-000+ governance and current implementation. Review required to determine which procedure is correct:
+The following discrepancies between NCIP-000+ governance and current implementation have been reviewed:
+
+#### NCIP Authoritative (Implementation Required)
 
 #### 1. Semantic Locking Not Implemented
 - **NCIP-005 requires:** "Semantic Locking" — the ability to freeze meaning during disputes
 - **Current MP-03 implements:** Evidence freezing only
 - **Gap:** No semantic locking mechanism to prevent meaning drift during active disputes
-- **Status:** ⚠️ REVIEW NEEDED
+- **Resolution:** ✅ NCIP-005 IS AUTHORITATIVE — implement semantic locking in MP-03
 
 #### 2. Cooling Periods Not Specified
 - **NCIP-005 requires:** "Cooling Periods" — mandatory waiting periods during dispute lifecycle
 - **Current MP-03 implements:** 7-day solver window (Escalation Fork only)
 - **Gap:** No general cooling period mechanism for standard disputes
-- **Status:** ⚠️ REVIEW NEEDED
+- **Resolution:** ✅ NCIP-005 IS AUTHORITATIVE — implement cooling periods in MP-03
 
 #### 3. Validator Trust Scoring Not Implemented
 - **NCIP-007 requires:** Validator Trust Scoring & Reliability Weighting
 - **Current spec shows:** "Reputation Systems 🚧 10%" with only basic miner tracking
 - **Gap:** Full validator trust scoring per NCIP-007 not implemented
-- **Status:** ⚠️ REVIEW NEEDED
-
-#### 4. Mediator Reputation vs Escalation Fork
-- **NCIP-010 requires:** Mediator Reputation, Slashing & Market Dynamics
-- **Current implementation:** Escalation Fork with solver reputation (+10/-2 scoring)
-- **Question:** Does Escalation Fork solver reputation satisfy NCIP-010, or is separate mediator reputation required?
-- **Status:** ⚠️ REVIEW NEEDED
-
-#### 5. Validator-Mediator Weight Coupling Missing
-- **NCIP-011 requires:** Joint trust dynamics between validators and mediators
-- **Current implementation:** Validators and mediators operate independently
-- **Gap:** No weight coupling mechanism
-- **Status:** ⚠️ REVIEW NEEDED
-
-#### 6. Human Ratification UX Limits
-- **NCIP-012 requires:** Cognitive Load Limits for human decision-making
-- **Current MP-01 implements:** Simple ratification (accept/reject)
-- **Gap:** No cognitive load measurement or protection
-- **Status:** ⚠️ REVIEW NEEDED
-
-#### 7. Emergency Override Protocol
-- **NCIP-013 requires:** Emergency Overrides, Force Majeure & Semantic Fallbacks
-- **Current implementation:** Circuit breakers in semantic_oracles.py (basic)
-- **Gap:** No formal emergency override protocol or force majeure handling
-- **Status:** ⚠️ REVIEW NEEDED
-
-#### 8. Constitutional Amendment Process
-- **NCIP-014 requires:** Formal Protocol Amendments & Constitutional Change procedures
-- **Current implementation:** Informal (document updates)
-- **Gap:** No formal amendment ratification process
-- **Status:** ⚠️ REVIEW NEEDED
+- **Resolution:** ✅ NCIP-007 IS AUTHORITATIVE — implement full validator trust scoring
 
 #### 9. Multilingual Alignment
 - **NCIP-003 requires:** Cross-language meaning preservation with drift detection
 - **Current implementation:** English only (noted in gaps)
 - **Gap:** No parallel language entries or cross-language validation
-- **Status:** ⚠️ REVIEW NEEDED (lower priority, marked MEDIUM in roadmap)
+- **Resolution:** ✅ NCIP-003 IS AUTHORITATIVE — implement when prioritized (marked MEDIUM in roadmap)
+
+#### Pending Definition (Both Documents)
+
+#### 4. Mediator Reputation vs Escalation Fork
+- **NCIP-010 requires:** Mediator Reputation, Slashing & Market Dynamics
+- **Current implementation:** Escalation Fork with solver reputation (+10/-2 scoring)
+- **Question:** Does Escalation Fork solver reputation satisfy NCIP-010, or is separate mediator reputation required?
+- **Resolution:** 🟡 PENDING — both NCIP-010 and spec require further definition
+
+#### 5. Validator-Mediator Weight Coupling Missing
+- **NCIP-011 requires:** Joint trust dynamics between validators and mediators
+- **Current implementation:** Validators and mediators operate independently
+- **Gap:** No weight coupling mechanism
+- **Resolution:** 🟡 PENDING — both NCIP-011 and spec require further definition
+
+#### 6. Human Ratification UX Limits
+- **NCIP-012 requires:** Cognitive Load Limits for human decision-making
+- **Current MP-01 implements:** Simple ratification (accept/reject)
+- **Gap:** No cognitive load measurement or protection
+- **Resolution:** 🟡 PENDING — both NCIP-012 and spec require further definition
+
+#### 7. Emergency Override Protocol
+- **NCIP-013 requires:** Emergency Overrides, Force Majeure & Semantic Fallbacks
+- **Current implementation:** Circuit breakers in semantic_oracles.py (basic)
+- **Gap:** No formal emergency override protocol or force majeure handling
+- **Resolution:** 🟡 PENDING — both NCIP-013 and spec require further definition
+
+#### Pre-Launch Requirement
+
+#### 8. Constitutional Amendment Process
+- **NCIP-014 requires:** Formal Protocol Amendments & Constitutional Change procedures
+- **Current implementation:** Informal (document updates via GitHub)
+- **Gap:** No formal amendment ratification process
+- **Resolution:** 📋 NCIP-014 AUTHORITATIVE PRE-LAUNCH — informal updates acceptable during development; formal process required before production
 
 ---
 

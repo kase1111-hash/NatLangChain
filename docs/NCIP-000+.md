@@ -3,7 +3,7 @@ Consolidated NCIP Index
 Document: NCIP-000+
 Status: Canonical
 Applies To: All NatLangChain validators, mediators, agents, governance processes
-Last Updated: December 22, 2025
+Last Updated: December 23, 2025
 
 NCIP Registry (001–015)
 NCIP	Title	Scope	Depends On
@@ -127,3 +127,19 @@ NCIP-015 cannot reopen locked semantics
 NCIP-006 cannot override canonical definitions
 
 NCIP-012 cannot simplify meaning beyond PoU guarantees
+
+Implementation Status Notes
+
+The following NCIPs require further definition before implementation:
+
+🟡 PENDING DEFINITION:
+
+NCIP-010 (Mediator Reputation, Slashing & Market Dynamics) — Relationship to Escalation Fork solver reputation requires clarification
+
+NCIP-011 (Validator–Mediator Interaction & Weight Coupling) — Joint trust dynamics mechanism not yet specified
+
+NCIP-012 (Human Ratification UX & Cognitive Load Limits) — Cognitive load measurement approach not yet defined
+
+NCIP-013 (Emergency Overrides, Force Majeure & Semantic Fallbacks) — Formal override protocol not yet specified
+
+Last reviewed: December 23, 2025
