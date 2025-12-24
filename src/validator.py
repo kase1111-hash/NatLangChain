@@ -78,6 +78,26 @@ try:
 except ImportError:
     NCIP_014_AVAILABLE = False
 
+# Import NCIP-003 Multilingual Semantic Alignment & Drift
+try:
+    from multilingual import (
+        MultilingualAlignmentManager,
+        MultilingualContract,
+        LanguageEntry,
+        LanguageRole,
+        DriftLevel,
+        ValidatorAction,
+        TranslationViolation,
+        CanonicalTermMapping,
+        ClauseDriftResult,
+        MultilingualRatification,
+        AlignmentRules,
+        SUPPORTED_LANGUAGE_CODES,
+    )
+    NCIP_003_AVAILABLE = True
+except ImportError:
+    NCIP_003_AVAILABLE = False
+
 
 class ProofOfUnderstanding:
     """
@@ -2353,4 +2373,486 @@ class HybridValidator:
             "total_amendments": len(manager.amendments),
             "active_emergencies": len([e for e in manager.emergency_amendments.values() if e.is_active]),
             "forks": len(manager.get_forks())
+        }
+
+    # =========================================================================
+    # NCIP-003: Multilingual Semantic Alignment & Drift
+    # =========================================================================
+
+    def get_multilingual_manager(self) -> Optional[Any]:
+        """
+        Get the multilingual alignment manager for NCIP-003 operations.
+
+        Returns:
+            MultilingualAlignmentManager instance or None if unavailable
+        """
+        if not NCIP_003_AVAILABLE:
+            return None
+
+        if not hasattr(self, '_multilingual_manager'):
+            self._multilingual_manager = MultilingualAlignmentManager()
+        return self._multilingual_manager
+
+    def create_multilingual_contract(
+        self,
+        contract_id: str,
+        canonical_anchor_language: str = "en"
+    ) -> Dict[str, Any]:
+        """
+        Create a new multilingual contract with CSAL declaration.
+
+        Per NCIP-003 Section 2, every multilingual contract MUST declare
+        a Canonical Semantic Anchor Language. Default is English (en).
+
+        Args:
+            contract_id: Unique identifier for the contract
+            canonical_anchor_language: ISO 639-1 code for CSAL
+
+        Returns:
+            Contract creation result
+        """
+        if not NCIP_003_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-003 multilingual module not available",
+                "ncip_003_enabled": False
+            }
+
+        manager = self.get_multilingual_manager()
+        contract = manager.create_contract(contract_id, canonical_anchor_language)
+
+        return {
+            "status": "created",
+            "contract_id": contract_id,
+            "csal": canonical_anchor_language,
+            "csal_explicit": contract.is_csal_declared(),
+            "ncip_003_enabled": True
+        }
+
+    def add_contract_language(
+        self,
+        contract_id: str,
+        language_code: str,
+        role: str,
+        content: str,
+        drift_tolerance: float = 0.25
+    ) -> Dict[str, Any]:
+        """
+        Add a language entry to a multilingual contract.
+
+        Per NCIP-003 Section 3, each language MUST declare one role:
+        - anchor: Canonical meaning source
+        - aligned: Verified semantic equivalent
+        - informational: Human convenience only (non-executable)
+
+        Args:
+            contract_id: Contract to add language to
+            language_code: ISO 639-1 language code
+            role: Language role (anchor, aligned, informational)
+            content: Content in this language
+            drift_tolerance: Maximum acceptable drift (default 0.25 per D2)
+
+        Returns:
+            Language addition result
+        """
+        if not NCIP_003_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-003 module not available"
+            }
+
+        manager = self.get_multilingual_manager()
+        contract = manager.get_contract(contract_id)
+
+        if not contract:
+            return {
+                "status": "error",
+                "message": f"Contract {contract_id} not found"
+            }
+
+        role_map = {
+            "anchor": LanguageRole.ANCHOR,
+            "aligned": LanguageRole.ALIGNED,
+            "informational": LanguageRole.INFORMATIONAL
+        }
+        lang_role = role_map.get(role.lower())
+        if not lang_role:
+            return {
+                "status": "error",
+                "message": f"Invalid role: {role}. Must be anchor, aligned, or informational"
+            }
+
+        success, msg = contract.add_language(language_code, lang_role, content, drift_tolerance)
+
+        return {
+            "status": "added" if success else "error",
+            "message": msg,
+            "language_code": language_code,
+            "role": role,
+            "is_executable": lang_role in [LanguageRole.ANCHOR, LanguageRole.ALIGNED]
+        }
+
+    def validate_multilingual_contract(
+        self,
+        contract_id: str
+    ) -> Dict[str, Any]:
+        """
+        Validate alignment of all languages in a multilingual contract.
+
+        Per NCIP-003 Section 5.2:
+        - Drift is computed per clause and per term
+        - Maximum drift score governs validator response
+        - Drift in any aligned language applies to whole contract
+
+        Args:
+            contract_id: Contract to validate
+
+        Returns:
+            Validation report with drift scores and actions
+        """
+        if not NCIP_003_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-003 module not available"
+            }
+
+        manager = self.get_multilingual_manager()
+        contract = manager.get_contract(contract_id)
+
+        if not contract:
+            return {
+                "status": "error",
+                "message": f"Contract {contract_id} not found"
+            }
+
+        valid, report = manager.validate_contract_alignment(contract)
+        return report
+
+    def measure_cross_language_drift(
+        self,
+        anchor_text: str,
+        aligned_text: str,
+        language_code: str
+    ) -> Dict[str, Any]:
+        """
+        Measure semantic drift between anchor and aligned text.
+
+        Per NCIP-003 Section 5.1:
+        drift(Lᵢ) = semantic_distance(anchor, Lᵢ)
+
+        Args:
+            anchor_text: Text in anchor language
+            aligned_text: Text in aligned language
+            language_code: ISO 639-1 code of aligned language
+
+        Returns:
+            Drift measurement result
+        """
+        if not NCIP_003_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-003 module not available"
+            }
+
+        manager = self.get_multilingual_manager()
+        drift_score, drift_level = manager.measure_cross_language_drift(
+            anchor_text, aligned_text, language_code
+        )
+        action = manager.get_validator_action(drift_level)
+
+        return {
+            "status": "measured",
+            "drift_score": drift_score,
+            "drift_level": drift_level.value,
+            "validator_action": action.value,
+            "within_d2_threshold": drift_score <= 0.45
+        }
+
+    def check_translation_violations(
+        self,
+        anchor_text: str,
+        aligned_text: str,
+        language_code: str
+    ) -> Dict[str, Any]:
+        """
+        Check for prohibited behaviors in aligned translation.
+
+        Per NCIP-003 Section 4.2, an aligned translation MUST NOT:
+        - Introduce new constraints
+        - Remove obligations
+        - Narrow or broaden scope
+        - Replace canonical terms with non-registry concepts
+
+        Args:
+            anchor_text: Text in anchor language
+            aligned_text: Text in aligned language
+            language_code: ISO 639-1 code
+
+        Returns:
+            Violation check result
+        """
+        if not NCIP_003_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-003 module not available"
+            }
+
+        manager = self.get_multilingual_manager()
+        violations = manager.check_translation_violations(
+            anchor_text, aligned_text, language_code
+        )
+
+        return {
+            "status": "checked",
+            "has_violations": len(violations) > 0,
+            "violations": [v.value for v in violations],
+            "violation_count": len(violations)
+        }
+
+    def create_multilingual_ratification(
+        self,
+        contract_id: str,
+        ratifier_id: str,
+        reviewed_languages: List[str]
+    ) -> Dict[str, Any]:
+        """
+        Create multilingual ratification per NCIP-003 Section 8.
+
+        Human ratification MUST:
+        - Reference the CSAL explicitly
+        - Acknowledge reviewed aligned languages
+        - Bind all translations to the anchor meaning
+
+        Args:
+            contract_id: Contract to ratify
+            ratifier_id: ID of person ratifying
+            reviewed_languages: List of language codes reviewed
+
+        Returns:
+            Ratification creation result
+        """
+        if not NCIP_003_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-003 module not available"
+            }
+
+        manager = self.get_multilingual_manager()
+        contract = manager.get_contract(contract_id)
+
+        if not contract:
+            return {
+                "status": "error",
+                "message": f"Contract {contract_id} not found"
+            }
+
+        ratification = manager.create_multilingual_ratification(
+            contract, ratifier_id, reviewed_languages
+        )
+
+        return {
+            "status": "created",
+            "ratification_id": ratification.ratification_id,
+            "anchor_language": ratification.anchor_language,
+            "reviewed_languages": ratification.reviewed_languages,
+            "statement": ratification.statement
+        }
+
+    def confirm_multilingual_ratification(
+        self,
+        contract_id: str,
+        ratification_id: str
+    ) -> Dict[str, Any]:
+        """
+        Confirm multilingual ratification binding.
+
+        User acknowledges that translations are bound to anchor meaning.
+
+        Args:
+            contract_id: Contract ID
+            ratification_id: Ratification to confirm
+
+        Returns:
+            Confirmation result
+        """
+        if not NCIP_003_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-003 module not available"
+            }
+
+        manager = self.get_multilingual_manager()
+        contract = manager.get_contract(contract_id)
+
+        if not contract:
+            return {
+                "status": "error",
+                "message": f"Contract {contract_id} not found"
+            }
+
+        # Find the ratification
+        ratification = None
+        for r in contract.ratifications:
+            if r.ratification_id == ratification_id:
+                ratification = r
+                break
+
+        if not ratification:
+            return {
+                "status": "error",
+                "message": f"Ratification {ratification_id} not found"
+            }
+
+        success, statement = manager.confirm_ratification(ratification)
+
+        return {
+            "status": "confirmed" if success else "error",
+            "message": statement if success else "Confirmation failed",
+            "binding_acknowledged": ratification.binding_acknowledged
+        }
+
+    def get_validator_drift_report(
+        self,
+        contract_id: str,
+        language_code: str
+    ) -> Dict[str, Any]:
+        """
+        Generate validator report for drift per NCIP-003 Section 6.
+
+        Validators MUST report:
+        - Language pair
+        - Affected clauses
+        - Drift score
+        - Canonical terms involved
+
+        Args:
+            contract_id: Contract to report on
+            language_code: Language to report drift for
+
+        Returns:
+            Validator drift report
+        """
+        if not NCIP_003_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-003 module not available"
+            }
+
+        manager = self.get_multilingual_manager()
+        return manager.validator_report_drift(contract_id, language_code)
+
+    def generate_alignment_spec(
+        self,
+        contract_id: str
+    ) -> Dict[str, Any]:
+        """
+        Generate machine-readable multilingual alignment spec.
+
+        Per NCIP-003 Section 10, validators MUST support this structure.
+
+        Args:
+            contract_id: Contract to generate spec for
+
+        Returns:
+            YAML-compatible alignment specification
+        """
+        if not NCIP_003_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-003 module not available"
+            }
+
+        manager = self.get_multilingual_manager()
+        contract = manager.get_contract(contract_id)
+
+        if not contract:
+            return {
+                "status": "error",
+                "message": f"Contract {contract_id} not found"
+            }
+
+        return manager.generate_alignment_spec(contract)
+
+    def validate_term_mapping(
+        self,
+        contract_id: str,
+        term_id: str,
+        anchor_term: str,
+        translated_term: str,
+        language_code: str
+    ) -> Dict[str, Any]:
+        """
+        Validate canonical term mapping across languages.
+
+        Per NCIP-003 Section 7.1:
+        - Terms MUST remain semantically identical across languages
+        - MAY be translated lexically
+        - MUST map to the same registry ID
+
+        Args:
+            contract_id: Contract containing the term
+            term_id: Registry ID from NCIP-001
+            anchor_term: Term in anchor language
+            translated_term: Term in target language
+            language_code: Target language code
+
+        Returns:
+            Term mapping validation result
+        """
+        if not NCIP_003_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-003 module not available"
+            }
+
+        manager = self.get_multilingual_manager()
+        contract = manager.get_contract(contract_id)
+
+        if not contract:
+            return {
+                "status": "error",
+                "message": f"Contract {contract_id} not found"
+            }
+
+        success, msg = manager.validate_term_mapping(
+            contract, term_id, anchor_term, translated_term, language_code
+        )
+
+        return {
+            "status": "valid" if success else "error",
+            "message": msg,
+            "term_id": term_id,
+            "anchor_term": anchor_term,
+            "translated_term": translated_term,
+            "language_code": language_code
+        }
+
+    def is_ncip_003_enabled(self) -> bool:
+        """Check if NCIP-003 multilingual alignment is available."""
+        return NCIP_003_AVAILABLE
+
+    def get_ncip_003_status(self) -> Dict[str, Any]:
+        """Get NCIP-003 implementation status and configuration."""
+        if not NCIP_003_AVAILABLE:
+            return {
+                "enabled": False,
+                "message": "NCIP-003 module not available"
+            }
+
+        manager = self.get_multilingual_manager()
+        summary = manager.get_status_summary()
+
+        return {
+            "enabled": True,
+            "default_csal": "en",
+            "supported_languages": len(SUPPORTED_LANGUAGE_CODES),
+            "language_roles": ["anchor", "aligned", "informational"],
+            "drift_thresholds": summary["drift_thresholds"],
+            "total_contracts": summary["total_contracts"],
+            "validator_actions": {
+                "D0-D1": "accept",
+                "D2": "pause_clarify",
+                "D3": "require_ratification",
+                "D4": "reject_escalate"
+            }
         }
