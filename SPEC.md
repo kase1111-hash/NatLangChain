@@ -1,5 +1,5 @@
 # NatLangChain Technical Specification
-## Updated: December 23, 2025
+## Updated: December 24, 2025
 
 ---
 
@@ -385,11 +385,11 @@ The following discrepancies between NCIP-000+ governance and current implementat
 - **Features:** Cognitive Load Budget (CLB), rate limits, cooling periods, information hierarchy, PoU gate, UI safeguards
 - **Resolution:** ✅ NCIP-012 IS AUTHORITATIVE — full cognitive load management implemented
 
-#### 7. Emergency Override Protocol
+#### 7. Emergency Override Protocol ✅ RESOLVED
 - **NCIP-013 requires:** Emergency Overrides, Force Majeure & Semantic Fallbacks
-- **Current implementation:** Circuit breakers in semantic_oracles.py (basic)
-- **Gap:** No formal emergency override protocol or force majeure handling
-- **Resolution:** 🟡 PENDING — both NCIP-013 and spec require further definition
+- **Status:** ✅ IMPLEMENTED in `src/emergency_overrides.py`
+- **Features:** 6 force majeure classes, emergency declarations, semantic fallbacks, oracle evidence, dispute handling, timeout/expiry, abuse prevention
+- **Resolution:** ✅ NCIP-013 IS AUTHORITATIVE — full emergency override protocol implemented
 
 #### Pre-Launch Requirement
 
@@ -415,11 +415,11 @@ The following table summarizes all NCIP requirements and their implementation st
 | NCIP-008 | Semantic Appeals & Precedent | ✅ Implemented | `src/appeals.py`, SCR generation, precedent decay, validator integration |
 | NCIP-009 | Regulatory Interface Modules | ❌ Not Implemented | No RIMs, no compliance proof generation |
 | NCIP-010 | Mediator Reputation & Slashing | ✅ Implemented | `src/mediator_reputation.py`, integrated with `src/dispute.py` |
-| NCIP-011 | Validator-Mediator Weight Coupling | ❌ Not Implemented | No influence gate, no semantic consistency scoring |
+| NCIP-011 | Validator-Mediator Weight Coupling | ✅ Implemented | `src/validator_mediator_coupling.py`, influence gate, role separation, collusion resistance |
 | NCIP-012 | Human Ratification UX Limits | ✅ Implemented | `src/cognitive_load.py`, integrated with `src/validator.py` |
-| NCIP-013 | Emergency Overrides & Force Majeure | 🚧 Partial (15%) | Basic circuit breakers; no formal emergency declarations, no semantic fallbacks |
+| NCIP-013 | Emergency Overrides & Force Majeure | ✅ Implemented | `src/emergency_overrides.py`, 6 force majeure classes, semantic fallbacks, oracle evidence, dispute handling |
 | NCIP-014 | Protocol Amendments | ✅ Implemented | `src/protocol_amendments.py`, full amendment lifecycle, ratification process |
-| NCIP-015 | Sunset Clauses & Archival Finality | ❌ Not Implemented | No sunset triggers, no state machine, no archival finality |
+| NCIP-015 | Sunset Clauses & Archival Finality | ✅ Implemented | `src/sunset_clauses.py`, 6 trigger types, state machine, archival finality, temporal context binding |
 
 ### Detailed NCIP Implementation Requirements
 
@@ -593,15 +593,28 @@ The following table summarizes all NCIP requirements and their implementation st
 - [x] Comprehensive test suite (15 tests)
 
 #### NCIP-011: Validator-Mediator Weight Coupling
-**Priority:** MEDIUM 🟡
-**Files Needed:** `src/weight_coupling.py`
+**Status:** ✅ IMPLEMENTED
+**Files:** `src/validator_mediator_coupling.py`, `tests/test_validator_mediator_coupling.py`
 
-**Missing Features:**
-- [ ] Role separation enforcement (Protocol Violation PV-V3)
-- [ ] Influence gate: `∑(Validator VW × semantic_consistency_score) ≥ GateThreshold`
-- [ ] Semantic consistency scoring for mediator proposals
-- [ ] Dispute-time behavior: mediator influence reduced, validator authority elevated
-- [ ] Delayed weight updates (anti-gaming)
+**Implemented Features:**
+- [x] Role separation enforcement (Protocol Violation PV-V3 for crossing roles)
+- [x] Validators: assess semantic validity, drift, PoU quality (may NOT propose or negotiate)
+- [x] Mediators: propose alignments and settlements (may NOT validate or override)
+- [x] Humans: ratify, reject, escalate (may NOT delegate final authority)
+- [x] Separate weight domains: ValidatorWeight (VW) from NCIP-007, MediatorWeight (MW) from NCIP-010
+- [x] Influence gate: `∑(Validator VW × semantic_consistency_score) >= GateThreshold` (default 0.68)
+- [x] Semantic consistency scoring: intent alignment, term registry consistency, drift risk, PoU symmetry
+- [x] Competitive mediation: proposals sorted by MW (primary), time ordering, human selection
+- [x] Hidden proposals: those below gate threshold are not visible
+- [x] Dispute-time behavior: VW elevated, MW reduced, no new proposals during lock
+- [x] Delayed weight updates: 3 epochs (anti-gaming per Section 8.2)
+- [x] Retroactive adjustment allowed for appeal-based scoring
+- [x] Collusion resistance: separate weight ledgers, gated interaction, delayed updates
+- [x] Collusion detection: high pass rate detection, synchronized update detection
+- [x] Machine-readable coupling schema per Section 11
+- [x] HybridValidator integration with 15+ methods for coupling management
+- [x] Core principle enforced: "Validators measure meaning. Mediators surface alignment. Neither may substitute."
+- [x] Comprehensive test suite (36 tests)
 
 #### NCIP-012: Human Ratification UX Limits
 **Status:** ✅ IMPLEMENTED
@@ -625,15 +638,25 @@ The following table summarizes all NCIP requirements and their implementation st
 - [x] Comprehensive test suite (40+ tests)
 
 #### NCIP-013: Emergency Overrides & Force Majeure
-**Priority:** MEDIUM 🟡
-**Files to Update:** `src/semantic_oracles.py`
+**Status:** ✅ IMPLEMENTED
+**Files:** `src/emergency_overrides.py`, `tests/test_emergency_overrides.py`
 
-**Missing Features:**
-- [ ] Emergency declaration entry type with required fields
-- [ ] Force majeure classes: natural_disaster, government_action, armed_conflict, infrastructure_failure, medical_incapacity, systemic_protocol_failure
-- [ ] Semantic fallback definitions (declared at contract creation)
-- [ ] Emergency disputes with semantic lock
-- [ ] Timeout and reversion rules (review_after, max_duration)
+**Implemented Features:**
+- [x] EmergencyManager class with full emergency lifecycle management
+- [x] Force majeure classes: natural_disaster, government_action, armed_conflict, infrastructure_failure, medical_incapacity, systemic_protocol_failure
+- [x] Emergency declarations with required fields (scope, affected_refs, declared_reason, review_after, max_duration)
+- [x] Semantic fallbacks declared at contract creation (post-hoc fallbacks rejected per Section 7)
+- [x] Execution effects: pause_execution, delay_deadlines, freeze_settlement, trigger_fallback
+- [x] Prohibited effects enforcement: redefine_obligations, impose_new_duties, alter_intent, collapse_uncertainty
+- [x] Oracle evidence handling (evidence, not authority per Section 5)
+- [x] Emergency disputes with semantic lock and burden of proof on declarer
+- [x] Timeout and reversion rules (review_after, max_duration, silent continuation forbidden)
+- [x] Escalation threshold (30 days unresolved)
+- [x] Abuse prevention with harassment penalties and repeat multiplier
+- [x] Machine-readable emergency policy generation
+- [x] Validator behavior checks (skeptical treatment, scope/duration validation)
+- [x] HybridValidator integration with NCIP-013 imports
+- [x] Comprehensive test suite (39 tests)
 
 #### NCIP-014: Protocol Amendments
 **Status:** ✅ IMPLEMENTED
@@ -656,16 +679,25 @@ The following table summarizes all NCIP requirements and their implementation st
 - [x] HybridValidator integration with 12 methods for amendment management
 - [x] Comprehensive test suite
 
-#### NCIP-015: Sunset Clauses & Archival
-**Priority:** MEDIUM 🟡
-**Files Needed:** `src/sunset.py`, `src/archival.py`
+#### NCIP-015: Sunset Clauses & Archival Finality
+**Status:** ✅ IMPLEMENTED
+**Files:** `src/sunset_clauses.py`, `tests/test_sunset_clauses.py`
 
-**Missing Features:**
-- [ ] Sunset trigger types: time_based, event_based, condition_fulfilled, exhaustion, revocation, constitutional
-- [ ] State machine: DRAFT → RATIFIED → ACTIVE → SUNSET_PENDING → SUNSET → ARCHIVED
-- [ ] Archival finality: semantics frozen, drift detection disabled, no reinterpretation
-- [ ] Temporal context binding (registry version, language, jurisdiction, PoUs, validator snapshot)
-- [ ] Default sunset policies: contracts=20yr, licenses=10yr, delegations=2yr, standing_intents=1yr
+**Implemented Features:**
+- [x] SunsetManager class with full lifecycle management
+- [x] Sunset trigger types: time_based, event_based, condition_fulfilled, exhaustion, revocation, constitutional
+- [x] State machine: DRAFT → RATIFIED → ACTIVE → SUNSET_PENDING → SUNSET → ARCHIVED (no backward transitions)
+- [x] Archival finality: semantics frozen forever, drift detection disabled, no reinterpretation permitted
+- [x] Temporal context binding (registry version, language, jurisdiction, PoUs, validator snapshot)
+- [x] Default sunset policies: contracts=20yr, licenses=10yr, delegations=2yr, standing_intents=1yr, settlements=immediate
+- [x] Historical semantics preservation (meaning at T₀ retained regardless of later changes)
+- [x] Validator behavior: enforce triggers exactly, disable drift post-archive, reject reactivation without restatement
+- [x] Mediator constraints: can cite as context, cannot propose actions on expired authority, must restate to reactivate
+- [x] Emergency integration: sunset timers pause during emergency, semantics unchanged
+- [x] Archive integrity verification with hash
+- [x] Machine-readable sunset & archive schema
+- [x] HybridValidator integration with NCIP-015 imports
+- [x] Comprehensive test suite (51 tests)
 
 ---
 
@@ -1911,7 +1943,7 @@ NatLangChain has achieved **solid implementation** of its core vision:
 
 ---
 
-**Document Version:** 3.6
+**Document Version:** 3.7
 **Last Updated:** December 24, 2025
 **Maintained By:** kase1111-hash
 **License:** CC BY-SA 4.0
