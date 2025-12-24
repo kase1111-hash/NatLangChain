@@ -5,7 +5,7 @@ Type: Governance / Meta-Specification
 Version: 1.0
 Created: December 22, 2025
 Applies To: All NatLangChain repositories and dependent systems
-Author: NatLangChain Originator
+Author: Kase Branham, NatLangChain Originator
 License: CC BY-SA 4.0
 Supersedes: None (foundational)
 
