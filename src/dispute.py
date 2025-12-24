@@ -2,6 +2,8 @@
 NatLangChain - Dispute Protocol (MP-03)
 Handles dispute declaration, evidence freezing, escalation, and resolution
 Per the Refusal Doctrine: disputes are signals, not failures
+
+Integrates NCIP-005: Semantic Locking & Cooling Periods
 """
 
 import json
@@ -14,6 +16,26 @@ try:
     from anthropic import Anthropic
 except ImportError:
     Anthropic = None
+
+# Import NCIP-005 semantic locking
+try:
+    from semantic_locking import (
+        SemanticLockManager,
+        SemanticLock,
+        DisputeLevel,
+        DisputeTrigger,
+        LockAction,
+        EscalationStage,
+        ResolutionOutcome,
+        CoolingPeriodStatus,
+        get_ncip_005_config,
+        get_cooling_period_hours,
+        is_action_allowed_during_cooling,
+        is_action_forbidden_during_lock
+    )
+    NCIP_005_AVAILABLE = True
+except ImportError:
+    NCIP_005_AVAILABLE = False
 
 
 class DisputeManager:
@@ -616,3 +638,330 @@ Return JSON:
                 status["frozen_entries_count"] += 1
 
         return status
+
+    # =========================================================================
+    # NCIP-005: Semantic Locking & Cooling Periods
+    # =========================================================================
+
+    def create_dispute_ncip_005(
+        self,
+        contract_id: str,
+        claimant: str,
+        respondent: str,
+        trigger: str,
+        claimed_divergence: str,
+        registry_version: str,
+        prose_content: str,
+        anchor_language: str = "en",
+        verified_pou_hashes: Optional[List[str]] = None
+    ) -> Dict[str, Any]:
+        """
+        Create a dispute with NCIP-005 semantic locking.
+
+        This method:
+        1. Activates a semantic lock
+        2. Starts the cooling period (24h D3 / 72h D4)
+        3. Halts execution
+        4. Freezes semantic state
+
+        Args:
+            contract_id: The prose contract being disputed
+            claimant: Party filing the dispute
+            respondent: Party being disputed against
+            trigger: Dispute trigger (drift_level_d3, drift_level_d4, pou_failure, etc.)
+            claimed_divergence: Description of semantic divergence
+            registry_version: Current registry version
+            prose_content: Contract prose content
+            anchor_language: Anchor language
+            verified_pou_hashes: Optional verified PoU hashes
+
+        Returns:
+            Dispute and lock information
+        """
+        if not NCIP_005_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-005 semantic locking not available",
+                "ncip_005_enabled": False
+            }
+
+        # Get or create lock manager
+        if not hasattr(self, '_lock_manager'):
+            self._lock_manager = SemanticLockManager(validator_id="dispute_manager")
+
+        # Map trigger string to enum
+        trigger_map = {
+            "drift_level_d3": DisputeTrigger.DRIFT_D3,
+            "drift_level_d4": DisputeTrigger.DRIFT_D4,
+            "pou_failure": DisputeTrigger.POU_FAILURE,
+            "pou_contradiction": DisputeTrigger.POU_CONTRADICTION,
+            "conflicting_ratifications": DisputeTrigger.CONFLICTING_RATIFICATIONS,
+            "multilingual_misalignment": DisputeTrigger.MULTILINGUAL_MISALIGNMENT,
+            "material_breach": DisputeTrigger.MATERIAL_BREACH
+        }
+
+        dispute_trigger = trigger_map.get(trigger)
+        if not dispute_trigger:
+            return {
+                "status": "error",
+                "message": f"Unknown trigger: {trigger}. Valid triggers: {list(trigger_map.keys())}"
+            }
+
+        try:
+            # Initiate dispute with semantic lock
+            lock, dispute_entry = self._lock_manager.initiate_dispute(
+                contract_id=contract_id,
+                trigger=dispute_trigger,
+                claimed_divergence=claimed_divergence,
+                initiator_id=claimant,
+                registry_version=registry_version,
+                prose_content=prose_content,
+                anchor_language=anchor_language,
+                verified_pou_hashes=verified_pou_hashes
+            )
+
+            # Create traditional dispute data
+            dispute_data = self.create_dispute(
+                claimant=claimant,
+                respondent=respondent,
+                contested_refs=[{"contract_id": contract_id}],
+                description=claimed_divergence,
+                escalation_path=self.ESCALATION_MEDIATOR
+            )
+
+            # Add NCIP-005 lock info
+            dispute_data["ncip_005"] = {
+                "enabled": True,
+                "lock_id": lock.lock_id,
+                "lock_time": lock.lock_time,
+                "dispute_level": lock.dispute_level.value,
+                "cooling_ends_at": lock.cooling_ends_at,
+                "current_stage": lock.current_stage.value,
+                "execution_halted": lock.execution_halted,
+                "locked_state": {
+                    "registry_version": lock.locked_state.registry_version,
+                    "anchor_language": lock.locked_state.anchor_language,
+                    "prose_hash": lock.locked_state.prose_content_hash[:16] + "..."
+                }
+            }
+
+            return dispute_data
+
+        except ValueError as e:
+            return {
+                "status": "error",
+                "message": str(e)
+            }
+
+    def check_action_allowed(
+        self,
+        contract_id: str,
+        action: str
+    ) -> Dict[str, Any]:
+        """
+        Check if an action is allowed given any active semantic lock.
+
+        Per NCIP-005 Section 5.2 and 6.3.
+
+        Args:
+            contract_id: The contract ID
+            action: The action to check (clarification, escalation, enforcement, etc.)
+
+        Returns:
+            Dict with allowed status and reason
+        """
+        if not NCIP_005_AVAILABLE or not hasattr(self, '_lock_manager'):
+            return {
+                "allowed": True,
+                "reason": "No NCIP-005 lock manager active"
+            }
+
+        lock = self._lock_manager.get_lock_by_contract(contract_id)
+        if not lock:
+            return {
+                "allowed": True,
+                "reason": "No active lock for this contract"
+            }
+
+        # Map action string to enum
+        action_map = {
+            "clarification": LockAction.CLARIFICATION,
+            "settlement_proposal": LockAction.SETTLEMENT_PROPOSAL,
+            "mediator_assignment": LockAction.MEDIATOR_ASSIGNMENT,
+            "evidence_submission": LockAction.EVIDENCE_SUBMISSION,
+            "escalation": LockAction.ESCALATION,
+            "enforcement": LockAction.ENFORCEMENT,
+            "semantic_change": LockAction.SEMANTIC_CHANGE,
+            "contract_amendment": LockAction.CONTRACT_AMENDMENT,
+            "re_translation": LockAction.RE_TRANSLATION,
+            "registry_upgrade": LockAction.REGISTRY_UPGRADE,
+            "pou_regeneration": LockAction.POU_REGENERATION
+        }
+
+        lock_action = action_map.get(action)
+        if not lock_action:
+            return {
+                "allowed": True,
+                "reason": f"Unknown action: {action}"
+            }
+
+        return self._lock_manager.get_validator_response(lock.lock_id, lock_action)
+
+    def get_cooling_status(self, contract_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get the cooling period status for a contract.
+
+        Args:
+            contract_id: The contract ID
+
+        Returns:
+            Cooling period status or None
+        """
+        if not NCIP_005_AVAILABLE or not hasattr(self, '_lock_manager'):
+            return None
+
+        lock = self._lock_manager.get_lock_by_contract(contract_id)
+        if not lock:
+            return None
+
+        status = self._lock_manager.get_cooling_status(lock.lock_id)
+        if not status:
+            return None
+
+        return {
+            "dispute_level": status.dispute_level.value,
+            "started_at": status.started_at,
+            "ends_at": status.ends_at,
+            "duration_hours": status.duration_hours,
+            "is_active": status.is_active,
+            "time_remaining_seconds": status.time_remaining_seconds,
+            "time_remaining_hours": status.time_remaining_seconds / 3600
+        }
+
+    def advance_escalation(
+        self,
+        contract_id: str,
+        actor_id: str,
+        reason: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Advance to the next escalation stage per NCIP-005 Section 7.
+
+        Escalation path:
+        COOLING -> MUTUAL_SETTLEMENT -> MEDIATOR_REVIEW -> ADJUDICATION -> BINDING_RESOLUTION
+
+        Args:
+            contract_id: The contract ID
+            actor_id: Who is advancing the escalation
+            reason: Optional reason for advancement
+
+        Returns:
+            Result of advancement attempt
+        """
+        if not NCIP_005_AVAILABLE or not hasattr(self, '_lock_manager'):
+            return {
+                "success": False,
+                "message": "NCIP-005 not available"
+            }
+
+        lock = self._lock_manager.get_lock_by_contract(contract_id)
+        if not lock:
+            return {
+                "success": False,
+                "message": "No active lock for this contract"
+            }
+
+        success, message, new_stage = self._lock_manager.advance_stage(
+            lock.lock_id, actor_id, reason
+        )
+
+        return {
+            "success": success,
+            "message": message,
+            "new_stage": new_stage.value if new_stage else None,
+            "lock_id": lock.lock_id
+        }
+
+    def resolve_dispute_ncip_005(
+        self,
+        contract_id: str,
+        outcome: str,
+        resolution_authority: str,
+        resolution_details: str,
+        findings: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """
+        Resolve a dispute and release the semantic lock per NCIP-005.
+
+        Args:
+            contract_id: The contract ID
+            outcome: Resolution outcome (dismissed, clarified, amended, terminated, compensated)
+            resolution_authority: Who authorized the resolution
+            resolution_details: Description of resolution
+            findings: Optional structured findings
+
+        Returns:
+            Resolution result
+        """
+        if not NCIP_005_AVAILABLE or not hasattr(self, '_lock_manager'):
+            return {
+                "success": False,
+                "message": "NCIP-005 not available"
+            }
+
+        lock = self._lock_manager.get_lock_by_contract(contract_id)
+        if not lock:
+            return {
+                "success": False,
+                "message": "No active lock for this contract"
+            }
+
+        # Map outcome string to enum
+        outcome_map = {
+            "dismissed": ResolutionOutcome.DISMISSED,
+            "clarified": ResolutionOutcome.CLARIFIED,
+            "amended": ResolutionOutcome.AMENDED,
+            "terminated": ResolutionOutcome.TERMINATED,
+            "compensated": ResolutionOutcome.COMPENSATED
+        }
+
+        resolution_outcome = outcome_map.get(outcome)
+        if not resolution_outcome:
+            return {
+                "success": False,
+                "message": f"Unknown outcome: {outcome}. Valid: {list(outcome_map.keys())}"
+            }
+
+        success, message = self._lock_manager.resolve_dispute(
+            lock.lock_id,
+            resolution_outcome,
+            resolution_authority,
+            resolution_details,
+            findings
+        )
+
+        return {
+            "success": success,
+            "message": message,
+            "outcome": outcome,
+            "lock_id": lock.lock_id
+        }
+
+    def get_lock_summary(self, contract_id: str) -> Optional[Dict[str, Any]]:
+        """Get a summary of the semantic lock for a contract."""
+        if not NCIP_005_AVAILABLE or not hasattr(self, '_lock_manager'):
+            return None
+
+        lock = self._lock_manager.get_lock_by_contract(contract_id)
+        if not lock:
+            return None
+
+        return self._lock_manager.get_lock_summary(lock.lock_id)
+
+    def is_execution_halted(self, contract_id: str) -> bool:
+        """Check if execution is halted for a contract due to dispute."""
+        if not NCIP_005_AVAILABLE or not hasattr(self, '_lock_manager'):
+            return False
+
+        lock = self._lock_manager.get_lock_by_contract(contract_id)
+        return lock is not None and lock.is_active and lock.execution_halted

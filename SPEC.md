@@ -409,7 +409,7 @@ The following table summarizes all NCIP requirements and their implementation st
 | NCIP-002 | Semantic Drift Thresholds | ✅ Implemented | `src/drift_thresholds.py`, integrated with `src/semantic_diff.py` |
 | NCIP-003 | Multilingual Semantic Alignment | ❌ Not Implemented | English only; no CSAL declaration, no cross-language drift |
 | NCIP-004 | Proof of Understanding | ✅ Implemented | `src/pou_scoring.py`, integrated with `src/validator.py` |
-| NCIP-005 | Dispute Escalation & Semantic Locking | 🚧 Partial (30%) | Evidence freezing exists; semantic locking, cooling periods (24h/72h) not implemented |
+| NCIP-005 | Dispute Escalation & Semantic Locking | ✅ Implemented | `src/semantic_locking.py`, integrated with `src/dispute.py` |
 | NCIP-006 | Jurisdictional Interpretation | ❌ Not Implemented | No jurisdiction declaration, no Legal Translation Artifacts |
 | NCIP-007 | Validator Trust Scoring | ❌ Not Implemented | No Trust Profile, no scoped scores, no decay/recovery |
 | NCIP-008 | Semantic Appeals & Precedent | ❌ Not Implemented | No appeal system, no Semantic Case Records |
@@ -479,15 +479,21 @@ The following table summarizes all NCIP requirements and their implementation st
 - [x] 47 passing unit tests
 
 #### NCIP-005: Semantic Locking & Cooling Periods
-**Priority:** HIGH 🔴
-**Files to Update:** `src/dispute.py`
+**Status:** ✅ IMPLEMENTED
+**Files:** `src/semantic_locking.py`, `src/dispute.py`, `tests/test_semantic_locking.py`
 
-**Missing Features:**
-- [ ] Semantic Lock mechanism (freeze registry version, prose wording, anchor semantics, PoUs, NCIPs)
-- [ ] Lock Time (Tₗ) tracking
-- [ ] Cooling periods: 24h for D3 disputes, 72h for D4 disputes
-- [ ] Allowed actions during cooling (clarification, settlement, mediator assignment)
-- [ ] Prohibited actions (escalation, enforcement, semantic changes)
+**Implemented Features:**
+- [x] Semantic Lock mechanism (freezes registry version, prose wording, anchor semantics, PoUs, NCIPs)
+- [x] Lock Time (Tₗ = Tᵢ) tracking per NCIP-005 Section 4
+- [x] Cooling periods: 24h for D3 disputes, 72h for D4 disputes
+- [x] Allowed actions during cooling (clarification, settlement_proposal, mediator_assignment, evidence_submission)
+- [x] Prohibited actions during cooling (escalation, enforcement, semantic_change)
+- [x] Prohibited actions during ANY lock (contract_amendment, re_translation, registry_upgrade, pou_regeneration)
+- [x] Escalation path state machine: COOLING → MUTUAL_SETTLEMENT → MEDIATOR_REVIEW → ADJUDICATION → BINDING_RESOLUTION → RESOLVED
+- [x] Resolution outcomes: dismissed, clarified, amended, terminated, compensated
+- [x] Lock verification against frozen state
+- [x] `DisputeManager.create_dispute_ncip_005()` for full NCIP-005 compliance
+- [x] 37 passing unit tests
 
 #### NCIP-006: Jurisdictional Bridging
 **Priority:** MEDIUM 🟡
