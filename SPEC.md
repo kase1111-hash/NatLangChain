@@ -407,7 +407,7 @@ The following table summarizes all NCIP requirements and their implementation st
 |------|-------|----------------------|----------|
 | NCIP-001 | Canonical Term Registry | ✅ Implemented | `config/canonical_terms.yaml`, `src/term_registry.py`, validator integration |
 | NCIP-002 | Semantic Drift Thresholds | ✅ Implemented | `src/drift_thresholds.py`, integrated with `src/semantic_diff.py` |
-| NCIP-003 | Multilingual Semantic Alignment | ❌ Not Implemented | English only; no CSAL declaration, no cross-language drift |
+| NCIP-003 | Multilingual Semantic Alignment | ✅ Implemented | `src/multilingual.py`, CSAL declarations, cross-language drift, validator integration |
 | NCIP-004 | Proof of Understanding | ✅ Implemented | `src/pou_scoring.py`, integrated with `src/validator.py` |
 | NCIP-005 | Dispute Escalation & Semantic Locking | ✅ Implemented | `src/semantic_locking.py`, integrated with `src/dispute.py` |
 | NCIP-006 | Jurisdictional Interpretation | ❌ Not Implemented | No jurisdiction declaration, no Legal Translation Artifacts |
@@ -451,15 +451,22 @@ The following table summarizes all NCIP requirements and their implementation st
 - [x] `SemanticDriftClassifier` with 54 passing tests
 
 #### NCIP-003: Multilingual Semantic Alignment
-**Priority:** MEDIUM 🟡
-**Files Needed:** `src/multilingual.py`
+**Status:** ✅ IMPLEMENTED
+**Files:** `src/multilingual.py`, `tests/test_multilingual.py`
 
-**Missing Features:**
-- [ ] Canonical Semantic Anchor Language (CSAL) declaration per contract
-- [ ] Language roles: anchor, aligned, informational
-- [ ] Cross-language drift measurement
-- [ ] Translation validation (no added/removed obligations)
-- [ ] Validator language pair reporting
+**Implemented Features:**
+- [x] Canonical Semantic Anchor Language (CSAL) declaration per contract (default: English)
+- [x] Language roles: anchor (canonical source), aligned (semantic equivalent), informational (non-executable)
+- [x] Cross-language drift measurement using NCIP-002 thresholds (D0-D4)
+- [x] Translation validation (no added/removed obligations, no scope changes)
+- [x] Validator language pair reporting with drift scores
+- [x] MultilingualAlignmentManager class for contract management
+- [x] CanonicalTermMapping for registry integration per NCIP-001
+- [x] Human ratification in multilingual contexts (reference CSAL, acknowledge aligned)
+- [x] Machine-readable alignment spec (YAML structure per Section 10)
+- [x] 40+ supported ISO 639-1 language codes
+- [x] HybridValidator integration with 12 methods for multilingual operations
+- [x] Comprehensive test suite
 
 #### NCIP-004: Proof of Understanding Scoring
 **Status:** ✅ IMPLEMENTED
@@ -1880,7 +1887,7 @@ NatLangChain has achieved **solid implementation** of its core vision:
 
 ---
 
-**Document Version:** 3.3
+**Document Version:** 3.4
 **Last Updated:** December 24, 2025
 **Maintained By:** kase1111-hash
 **License:** CC BY-SA 4.0
