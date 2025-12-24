@@ -415,7 +415,7 @@ The following table summarizes all NCIP requirements and their implementation st
 | NCIP-008 | Semantic Appeals & Precedent | ✅ Implemented | `src/appeals.py`, SCR generation, precedent decay, validator integration |
 | NCIP-009 | Regulatory Interface Modules | ❌ Not Implemented | No RIMs, no compliance proof generation |
 | NCIP-010 | Mediator Reputation & Slashing | ✅ Implemented | `src/mediator_reputation.py`, integrated with `src/dispute.py` |
-| NCIP-011 | Validator-Mediator Weight Coupling | ❌ Not Implemented | No influence gate, no semantic consistency scoring |
+| NCIP-011 | Validator-Mediator Weight Coupling | ✅ Implemented | `src/validator_mediator_coupling.py`, influence gate, role separation, collusion resistance |
 | NCIP-012 | Human Ratification UX Limits | ✅ Implemented | `src/cognitive_load.py`, integrated with `src/validator.py` |
 | NCIP-013 | Emergency Overrides & Force Majeure | 🚧 Partial (15%) | Basic circuit breakers; no formal emergency declarations, no semantic fallbacks |
 | NCIP-014 | Protocol Amendments | ✅ Implemented | `src/protocol_amendments.py`, full amendment lifecycle, ratification process |
@@ -593,15 +593,28 @@ The following table summarizes all NCIP requirements and their implementation st
 - [x] Comprehensive test suite (15 tests)
 
 #### NCIP-011: Validator-Mediator Weight Coupling
-**Priority:** MEDIUM 🟡
-**Files Needed:** `src/weight_coupling.py`
+**Status:** ✅ IMPLEMENTED
+**Files:** `src/validator_mediator_coupling.py`, `tests/test_validator_mediator_coupling.py`
 
-**Missing Features:**
-- [ ] Role separation enforcement (Protocol Violation PV-V3)
-- [ ] Influence gate: `∑(Validator VW × semantic_consistency_score) ≥ GateThreshold`
-- [ ] Semantic consistency scoring for mediator proposals
-- [ ] Dispute-time behavior: mediator influence reduced, validator authority elevated
-- [ ] Delayed weight updates (anti-gaming)
+**Implemented Features:**
+- [x] Role separation enforcement (Protocol Violation PV-V3 for crossing roles)
+- [x] Validators: assess semantic validity, drift, PoU quality (may NOT propose or negotiate)
+- [x] Mediators: propose alignments and settlements (may NOT validate or override)
+- [x] Humans: ratify, reject, escalate (may NOT delegate final authority)
+- [x] Separate weight domains: ValidatorWeight (VW) from NCIP-007, MediatorWeight (MW) from NCIP-010
+- [x] Influence gate: `∑(Validator VW × semantic_consistency_score) >= GateThreshold` (default 0.68)
+- [x] Semantic consistency scoring: intent alignment, term registry consistency, drift risk, PoU symmetry
+- [x] Competitive mediation: proposals sorted by MW (primary), time ordering, human selection
+- [x] Hidden proposals: those below gate threshold are not visible
+- [x] Dispute-time behavior: VW elevated, MW reduced, no new proposals during lock
+- [x] Delayed weight updates: 3 epochs (anti-gaming per Section 8.2)
+- [x] Retroactive adjustment allowed for appeal-based scoring
+- [x] Collusion resistance: separate weight ledgers, gated interaction, delayed updates
+- [x] Collusion detection: high pass rate detection, synchronized update detection
+- [x] Machine-readable coupling schema per Section 11
+- [x] HybridValidator integration with 15+ methods for coupling management
+- [x] Core principle enforced: "Validators measure meaning. Mediators surface alignment. Neither may substitute."
+- [x] Comprehensive test suite (36 tests)
 
 #### NCIP-012: Human Ratification UX Limits
 **Status:** ✅ IMPLEMENTED
@@ -1911,7 +1924,7 @@ NatLangChain has achieved **solid implementation** of its core vision:
 
 ---
 
-**Document Version:** 3.6
+**Document Version:** 3.7
 **Last Updated:** December 24, 2025
 **Maintained By:** kase1111-hash
 **License:** CC BY-SA 4.0

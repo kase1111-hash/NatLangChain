@@ -139,6 +139,23 @@ try:
 except ImportError:
     NCIP_008_AVAILABLE = False
 
+# Import NCIP-011 Validator–Mediator Interaction & Weight Coupling
+try:
+    from validator_mediator_coupling import (
+        ValidatorMediatorCoupling,
+        ValidatorWeight,
+        MediatorWeight,
+        SemanticConsistencyScore,
+        MediatorProposal,
+        ActorRole,
+        ProtocolViolationType,
+        DisputePhase,
+        WeightUpdateStatus,
+    )
+    NCIP_011_AVAILABLE = True
+except ImportError:
+    NCIP_011_AVAILABLE = False
+
 
 class ProofOfUnderstanding:
     """
@@ -3824,6 +3841,435 @@ class HybridValidator:
                 "medium": "3-12 months",
                 "low": "> 12 months",
                 "zero": "superseded registry"
+            },
+            "principle": summary["principle"]
+        }
+
+    # -------------------------------------------------------------------------
+    # NCIP-011: Validator–Mediator Interaction & Weight Coupling Integration
+    # -------------------------------------------------------------------------
+
+    _coupling_manager: Optional["ValidatorMediatorCoupling"] = None
+
+    def get_coupling_manager(self) -> Optional["ValidatorMediatorCoupling"]:
+        """Get or create the validator-mediator coupling manager instance."""
+        if not NCIP_011_AVAILABLE:
+            return None
+        if self._coupling_manager is None:
+            self._coupling_manager = ValidatorMediatorCoupling()
+        return self._coupling_manager
+
+    def check_role_permission(
+        self,
+        actor_id: str,
+        actor_role: str,
+        action: str
+    ) -> Dict[str, Any]:
+        """
+        Check if an actor has permission for an action.
+
+        Per NCIP-011 Section 3: Any attempt to cross roles triggers PV-V3.
+        """
+        if not NCIP_011_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-011 module not available"
+            }
+
+        manager = self.get_coupling_manager()
+
+        try:
+            role_enum = ActorRole(actor_role)
+        except ValueError:
+            return {
+                "status": "error",
+                "message": f"Invalid role: {actor_role}"
+            }
+
+        allowed, violation = manager.check_role_permission(actor_id, role_enum, action)
+
+        result = {
+            "actor_id": actor_id,
+            "actor_role": actor_role,
+            "action": action,
+            "allowed": allowed
+        }
+
+        if violation:
+            result["violation"] = {
+                "violation_id": violation.violation_id,
+                "type": violation.violation_type.value,
+                "details": violation.details
+            }
+
+        return result
+
+    def register_validator_coupling(
+        self,
+        validator_id: str,
+        historical_accuracy: float = 0.5,
+        drift_precision: float = 0.5,
+        pou_consistency: float = 0.5,
+        appeal_survival_rate: float = 0.5
+    ) -> Dict[str, Any]:
+        """Register a validator with weight components per NCIP-011."""
+        if not NCIP_011_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-011 module not available"
+            }
+
+        manager = self.get_coupling_manager()
+        vw = manager.register_validator(
+            validator_id, historical_accuracy, drift_precision,
+            pou_consistency, appeal_survival_rate
+        )
+
+        return {
+            "status": "registered",
+            "validator_id": validator_id,
+            "weight": vw.weight,
+            "components": {
+                "historical_accuracy": historical_accuracy,
+                "drift_precision": drift_precision,
+                "pou_consistency": pou_consistency,
+                "appeal_survival_rate": appeal_survival_rate
+            }
+        }
+
+    def register_mediator_coupling(
+        self,
+        mediator_id: str,
+        acceptance_rate: float = 0.5,
+        settlement_completion: float = 0.5,
+        post_settlement_dispute_frequency: float = 0.5,
+        time_efficiency: float = 0.5
+    ) -> Dict[str, Any]:
+        """Register a mediator with weight components per NCIP-011."""
+        if not NCIP_011_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-011 module not available"
+            }
+
+        manager = self.get_coupling_manager()
+        mw = manager.register_mediator(
+            mediator_id, acceptance_rate, settlement_completion,
+            post_settlement_dispute_frequency, time_efficiency
+        )
+
+        return {
+            "status": "registered",
+            "mediator_id": mediator_id,
+            "weight": mw.weight,
+            "components": {
+                "acceptance_rate": acceptance_rate,
+                "settlement_completion": settlement_completion,
+                "post_settlement_dispute_frequency": post_settlement_dispute_frequency,
+                "time_efficiency": time_efficiency
+            }
+        }
+
+    def submit_mediator_proposal(
+        self,
+        mediator_id: str,
+        proposal_type: str,
+        content: str
+    ) -> Dict[str, Any]:
+        """
+        Submit a mediator proposal.
+
+        The proposal must pass the influence gate to be presented.
+        """
+        if not NCIP_011_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-011 module not available"
+            }
+
+        manager = self.get_coupling_manager()
+        proposal, errors = manager.submit_proposal(mediator_id, proposal_type, content)
+
+        if errors:
+            return {
+                "status": "error",
+                "errors": errors
+            }
+
+        return {
+            "status": "submitted",
+            "proposal_id": proposal.proposal_id,
+            "mediator_id": mediator_id,
+            "proposal_type": proposal_type,
+            "gate_threshold": proposal.gate_threshold,
+            "message": "Awaiting semantic consistency scoring from validators"
+        }
+
+    def compute_semantic_consistency(
+        self,
+        proposal_id: str,
+        validator_id: str,
+        intent_alignment: float,
+        term_registry_consistency: float,
+        drift_risk_projection: float,
+        pou_symmetry: float
+    ) -> Dict[str, Any]:
+        """
+        Compute semantic consistency score for a proposal.
+
+        Per NCIP-011 Section 6: This score does NOT approve the proposal.
+        It only gates whether it may be presented.
+        """
+        if not NCIP_011_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-011 module not available"
+            }
+
+        manager = self.get_coupling_manager()
+        score = manager.compute_semantic_consistency(
+            proposal_id, validator_id,
+            intent_alignment, term_registry_consistency,
+            drift_risk_projection, pou_symmetry
+        )
+
+        return {
+            "status": "computed",
+            "proposal_id": proposal_id,
+            "validator_id": validator_id,
+            "score": score.score,
+            "components": {
+                "intent_alignment": intent_alignment,
+                "term_registry_consistency": term_registry_consistency,
+                "drift_risk_projection": drift_risk_projection,
+                "pou_symmetry": pou_symmetry
+            },
+            "note": "Score does NOT approve proposal, only gates visibility"
+        }
+
+    def check_influence_gate(self, proposal_id: str) -> Dict[str, Any]:
+        """
+        Check if a proposal passes the influence gate.
+
+        Per NCIP-011 Section 5.1:
+        ∑(Validator VW × semantic_consistency_score) >= GateThreshold
+        """
+        if not NCIP_011_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-011 module not available"
+            }
+
+        manager = self.get_coupling_manager()
+        result = manager.check_influence_gate(proposal_id)
+
+        return {
+            "status": "checked",
+            "proposal_id": proposal_id,
+            "passed": result.passed,
+            "gate_score": result.gate_score,
+            "threshold": result.threshold,
+            "validator_contributions": result.validator_contributions,
+            "message": result.message
+        }
+
+    def get_visible_proposals(self) -> Dict[str, Any]:
+        """
+        Get all visible proposals (those that passed the gate).
+
+        Per NCIP-011 Section 7: Proposals below gate are hidden.
+        """
+        if not NCIP_011_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-011 module not available"
+            }
+
+        manager = self.get_coupling_manager()
+        visible = manager.get_visible_proposals()
+
+        return {
+            "status": "success",
+            "count": len(visible),
+            "proposals": [
+                {
+                    "proposal_id": p.proposal_id,
+                    "mediator_id": p.mediator_id,
+                    "proposal_type": p.proposal_type,
+                    "gate_score": p.gate_score,
+                    "competition_rank": p.competition_rank,
+                    "selected": p.selected
+                }
+                for p in visible
+            ]
+        }
+
+    def select_proposal(
+        self,
+        proposal_id: str,
+        selector_id: str
+    ) -> Dict[str, Any]:
+        """Human selects a proposal from visible options."""
+        if not NCIP_011_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-011 module not available"
+            }
+
+        manager = self.get_coupling_manager()
+        success, msg = manager.select_proposal(proposal_id, selector_id)
+
+        return {
+            "status": "selected" if success else "error",
+            "proposal_id": proposal_id,
+            "selector_id": selector_id,
+            "message": msg
+        }
+
+    def enter_coupling_dispute_phase(self, contract_id: str) -> Dict[str, Any]:
+        """
+        Enter dispute phase for coupling.
+
+        Per NCIP-011 Section 8.1:
+        - Validator VW influence increases
+        - Mediator MW influence decreases
+        - No new proposals allowed
+        """
+        if not NCIP_011_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-011 module not available"
+            }
+
+        manager = self.get_coupling_manager()
+        return manager.enter_dispute_phase(contract_id)
+
+    def exit_coupling_dispute_phase(
+        self,
+        contract_id: str,
+        resolution_outcome: str
+    ) -> Dict[str, Any]:
+        """Exit dispute phase after resolution."""
+        if not NCIP_011_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-011 module not available"
+            }
+
+        manager = self.get_coupling_manager()
+        return manager.exit_dispute_phase(contract_id, resolution_outcome)
+
+    def schedule_coupling_weight_update(
+        self,
+        actor_id: str,
+        actor_role: str,
+        field_name: str,
+        new_value: float,
+        reason: str
+    ) -> Dict[str, Any]:
+        """
+        Schedule a weight update with delay.
+
+        Per NCIP-011 Section 8.2: Weight changes are delayed (anti-gaming).
+        """
+        if not NCIP_011_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-011 module not available"
+            }
+
+        manager = self.get_coupling_manager()
+
+        try:
+            role_enum = ActorRole(actor_role)
+        except ValueError:
+            return {
+                "status": "error",
+                "message": f"Invalid role: {actor_role}"
+            }
+
+        update = manager.schedule_weight_update(
+            actor_id, role_enum, field_name, new_value, reason
+        )
+
+        if not update:
+            return {
+                "status": "error",
+                "message": f"Actor {actor_id} not found or invalid field"
+            }
+
+        return {
+            "status": "scheduled",
+            "update_id": update.update_id,
+            "actor_id": actor_id,
+            "field_name": field_name,
+            "old_value": update.old_value,
+            "new_value": update.new_value,
+            "apply_after": update.apply_after.isoformat() if update.apply_after else None,
+            "delay_epochs": update.delay_epochs
+        }
+
+    def detect_collusion_signals(
+        self,
+        validator_id: str,
+        mediator_id: str
+    ) -> Dict[str, Any]:
+        """
+        Detect potential collusion signals.
+
+        Per NCIP-011 Section 10: Collusion resistance mechanisms.
+        """
+        if not NCIP_011_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-011 module not available"
+            }
+
+        manager = self.get_coupling_manager()
+        return manager.detect_collusion_signals(validator_id, mediator_id)
+
+    def generate_coupling_schema(self) -> Dict[str, Any]:
+        """Generate machine-readable coupling schema per NCIP-011 Section 11."""
+        if not NCIP_011_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-011 module not available"
+            }
+
+        manager = self.get_coupling_manager()
+        return manager.generate_coupling_schema()
+
+    def is_ncip_011_enabled(self) -> bool:
+        """Check if NCIP-011 validator-mediator coupling is available."""
+        return NCIP_011_AVAILABLE
+
+    def get_ncip_011_status(self) -> Dict[str, Any]:
+        """Get NCIP-011 implementation status and configuration."""
+        if not NCIP_011_AVAILABLE:
+            return {
+                "enabled": False,
+                "message": "NCIP-011 module not available"
+            }
+
+        manager = self.get_coupling_manager()
+        summary = manager.get_status_summary()
+
+        return {
+            "enabled": True,
+            "total_validators": summary["total_validators"],
+            "total_mediators": summary["total_mediators"],
+            "total_proposals": summary["total_proposals"],
+            "visible_proposals": summary["visible_proposals"],
+            "hidden_proposals": summary["hidden_proposals"],
+            "pending_weight_updates": summary["pending_weight_updates"],
+            "protocol_violations": summary["protocol_violations"],
+            "active_disputes": summary["active_disputes"],
+            "gate_threshold": summary["gate_threshold"],
+            "delay_epochs": summary["delay_epochs"],
+            "role_separation": {
+                "validator": ["assess_semantic_validity", "assess_drift", "assess_pou_quality"],
+                "mediator": ["propose_alignments", "propose_settlements"],
+                "human": ["ratify", "reject", "escalate"]
             },
             "principle": summary["principle"]
         }
