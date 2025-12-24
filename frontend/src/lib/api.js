@@ -3,7 +3,10 @@
  * Handles all communication with the Flask backend
  */
 
-const API_BASE = '/api';
+// In development, Vite proxies /api to localhost:5000
+// In production (Tauri), we need to call the Flask server directly
+const isDev = import.meta.env.DEV;
+const API_BASE = isDev ? '/api' : 'http://localhost:5000';
 
 /**
  * Generic fetch wrapper with error handling
