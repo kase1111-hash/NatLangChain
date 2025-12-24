@@ -1,6 +1,8 @@
 <script>
   import { onMount } from 'svelte';
   import { getChainInfo, getBlock } from '../lib/api.js';
+  import Tooltip from './Tooltip.svelte';
+  import { ncipDefinitions } from '../lib/ncip-definitions.js';
 
   let blocks = [];
   let selectedBlock = null;
@@ -81,19 +83,27 @@
 
           <div class="detail-section">
             <div class="detail-row">
-              <span class="detail-label">Hash:</span>
+              <Tooltip text={ncipDefinitions.blockHash.text} ncipRef={ncipDefinitions.blockHash.ncipRef} position="right">
+                <span class="detail-label">Hash:</span>
+              </Tooltip>
               <span class="detail-value mono">{selectedBlock.hash}</span>
             </div>
             <div class="detail-row">
-              <span class="detail-label">Previous Hash:</span>
+              <Tooltip text={ncipDefinitions.previousHash.text} ncipRef={ncipDefinitions.previousHash.ncipRef} position="right">
+                <span class="detail-label">Previous Hash:</span>
+              </Tooltip>
               <span class="detail-value mono">{selectedBlock.previous_hash}</span>
             </div>
             <div class="detail-row">
-              <span class="detail-label">Timestamp:</span>
+              <Tooltip text={ncipDefinitions.temporalFixity.text} ncipRef={ncipDefinitions.temporalFixity.ncipRef} position="right">
+                <span class="detail-label">Timestamp:</span>
+              </Tooltip>
               <span class="detail-value">{formatTimestamp(selectedBlock.timestamp)}</span>
             </div>
             <div class="detail-row">
-              <span class="detail-label">Nonce:</span>
+              <Tooltip text={ncipDefinitions.nonce.text} ncipRef={ncipDefinitions.nonce.ncipRef} position="right">
+                <span class="detail-label">Nonce:</span>
+              </Tooltip>
               <span class="detail-value">{selectedBlock.nonce}</span>
             </div>
           </div>

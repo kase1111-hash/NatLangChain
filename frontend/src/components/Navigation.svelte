@@ -1,16 +1,18 @@
 <script>
   import { createEventDispatcher } from 'svelte';
+  import Tooltip from './Tooltip.svelte';
+  import { ncipDefinitions } from '../lib/ncip-definitions.js';
 
   export let currentView = 'dashboard';
 
   const dispatch = createEventDispatcher();
 
   const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-    { id: 'explorer', label: 'Chain Explorer', icon: '🔗' },
-    { id: 'submit', label: 'Submit Entry', icon: '✏️' },
-    { id: 'contracts', label: 'Contracts', icon: '📜' },
-    { id: 'search', label: 'Search', icon: '🔍' },
+    { id: 'dashboard', label: 'Dashboard', icon: '📊', tooltip: ncipDefinitions.dashboard },
+    { id: 'explorer', label: 'Chain Explorer', icon: '🔗', tooltip: ncipDefinitions.chainExplorer },
+    { id: 'submit', label: 'Submit Entry', icon: '✏️', tooltip: ncipDefinitions.submitEntry },
+    { id: 'contracts', label: 'Contracts', icon: '📜', tooltip: ncipDefinitions.contracts },
+    { id: 'search', label: 'Search', icon: '🔍', tooltip: ncipDefinitions.search },
   ];
 
   function navigate(view) {
@@ -22,13 +24,15 @@
   <ul>
     {#each navItems as item}
       <li>
-        <button
-          class:active={currentView === item.id}
-          on:click={() => navigate(item.id)}
-        >
-          <span class="icon">{item.icon}</span>
-          <span class="label">{item.label}</span>
-        </button>
+        <Tooltip text={item.tooltip.text} ncipRef={item.tooltip.ncipRef} position="bottom">
+          <button
+            class:active={currentView === item.id}
+            on:click={() => navigate(item.id)}
+          >
+            <span class="icon">{item.icon}</span>
+            <span class="label">{item.label}</span>
+          </button>
+        </Tooltip>
       </li>
     {/each}
   </ul>
