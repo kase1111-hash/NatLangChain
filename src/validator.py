@@ -193,6 +193,24 @@ try:
 except ImportError:
     NCIP_015_AVAILABLE = False
 
+# Import NCIP-009 Regulatory Interface Modules & Compliance Proofs
+try:
+    from regulatory_interface import (
+        RegulatoryInterfaceManager,
+        RegulatoryInterfaceModule,
+        RegulatoryRegime,
+        ComplianceClaimType,
+        ComplianceProof,
+        ProofMechanism,
+        DisclosureScope,
+        ProofStatus,
+        ZKProof,
+        WORMCertificate,
+    )
+    NCIP_009_AVAILABLE = True
+except ImportError:
+    NCIP_009_AVAILABLE = False
+
 
 class ProofOfUnderstanding:
     """
