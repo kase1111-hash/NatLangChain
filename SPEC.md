@@ -412,7 +412,7 @@ The following table summarizes all NCIP requirements and their implementation st
 | NCIP-005 | Dispute Escalation & Semantic Locking | ✅ Implemented | `src/semantic_locking.py`, integrated with `src/dispute.py` |
 | NCIP-006 | Jurisdictional Interpretation | ✅ Implemented | `src/jurisdictional.py`, integrated with `src/validator.py` |
 | NCIP-007 | Validator Trust Scoring | ✅ Implemented | `src/validator_trust.py`, integrated with `src/validator.py` |
-| NCIP-008 | Semantic Appeals & Precedent | ❌ Not Implemented | No appeal system, no Semantic Case Records |
+| NCIP-008 | Semantic Appeals & Precedent | ✅ Implemented | `src/appeals.py`, SCR generation, precedent decay, validator integration |
 | NCIP-009 | Regulatory Interface Modules | ❌ Not Implemented | No RIMs, no compliance proof generation |
 | NCIP-010 | Mediator Reputation & Slashing | ✅ Implemented | `src/mediator_reputation.py`, integrated with `src/dispute.py` |
 | NCIP-011 | Validator-Mediator Weight Coupling | ❌ Not Implemented | No influence gate, no semantic consistency scoring |
@@ -540,15 +540,30 @@ The following table summarizes all NCIP requirements and their implementation st
 - [x] Comprehensive test suite (18 tests)
 
 #### NCIP-008: Semantic Appeals & Precedent
-**Priority:** MEDIUM 🟡
-**Files Needed:** `src/appeals.py`, `src/precedent.py`
+**Status:** ✅ IMPLEMENTED
+**Files:** `src/appeals.py`, `tests/test_appeals.py`
 
-**Missing Features:**
-- [ ] Appeal lifecycle: declared → scoped lock → review → resolution
-- [ ] Appealable items: validator rejection, drift classification, PoU mismatch, mediator interpretation
-- [ ] Appeal review panel (N≥3 validators, distinct implementations)
-- [ ] Semantic Case Records (SCR) with required fields
-- [ ] Precedent weight decay: <3 months High, 3-12 months Medium, >12 months Low
+**Implemented Features:**
+- [x] Appeal lifecycle: declared → scoped lock → review → awaiting_ratification → resolved
+- [x] Appealable items: validator_rejection (D2-D4), drift_classification, pou_mismatch, mediator_interpretation
+- [x] Non-appealable items: term_registry_mapping (requires NCIP-001), settlement_outcome
+- [x] Appeal review panel (N≥3 validators, distinct implementations, no original validator overlap)
+- [x] Semantic Case Records (SCR) with all required fields per Section 5.2
+- [x] SCR integrity verification (hash-based, append-only)
+- [x] Precedent weight decay: <3 months High, 3-12 months Medium, >12 months Low, superseded registry Zero
+- [x] Precedent indexing by canonical_term_id, drift_class, jurisdiction_context, date_range
+- [x] Advisory precedent signals (increase confidence, reduce uncertainty, flag interpretations)
+- [x] Validators MUST NOT auto-accept/reject based on precedent (explicit prose takes priority)
+- [x] Abuse prevention: non-refundable burn fees, escalating fees for repeated appeals
+- [x] Cooldown periods after failed appeals (30 days default, escalating)
+- [x] Harassment score impact for frivolous appeals
+- [x] Scoped semantic lock during appeals (only disputed terms locked)
+- [x] Human ratification required for outcome finalization
+- [x] Precedent divergence warnings per Section 7
+- [x] Machine-readable SCR index per Section 11
+- [x] HybridValidator integration with 15+ methods for appeal management
+- [x] Core principle enforced: "Past meaning may inform — but never replace explicit present intent"
+- [x] Comprehensive test suite (35 tests)
 
 #### NCIP-009: Regulatory Interface Modules
 **Priority:** LOW 🟢
@@ -1896,7 +1911,7 @@ NatLangChain has achieved **solid implementation** of its core vision:
 
 ---
 
-**Document Version:** 3.5
+**Document Version:** 3.6
 **Last Updated:** December 24, 2025
 **Maintained By:** kase1111-hash
 **License:** CC BY-SA 4.0
