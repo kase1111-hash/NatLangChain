@@ -393,16 +393,108 @@ class HybridValidator:
 
     Per the spec: "Hybrid Tiers: Symbolic checks for basic validity;
     full LLM validation for complex/contested entries"
+
+    Integrates NCIP-001 term registry for canonical term enforcement.
     """
 
-    def __init__(self, llm_validator: ProofOfUnderstanding):
+    def __init__(self, llm_validator: ProofOfUnderstanding, enable_term_validation: bool = True):
         """
         Initialize hybrid validator.
 
         Args:
             llm_validator: The LLM-powered validator
+            enable_term_validation: Whether to enable NCIP-001 term validation
         """
         self.llm_validator = llm_validator
+        self.enable_term_validation = enable_term_validation
+        self._term_registry = None
+
+    @property
+    def term_registry(self):
+        """Lazy-load the term registry."""
+        if self._term_registry is None and self.enable_term_validation:
+            try:
+                from term_registry import get_registry
+                self._term_registry = get_registry()
+            except ImportError:
+                # Term registry not available
+                self._term_registry = None
+            except Exception:
+                # Registry load failed
+                self._term_registry = None
+        return self._term_registry
+
+    def validate_terms(
+        self,
+        content: str,
+        intent: str
+    ) -> Dict[str, Any]:
+        """
+        Validate terms against NCIP-001 Canonical Term Registry.
+
+        Per NCIP-001:
+        - Validators MAY reject unknown canonical terms
+        - Validators MAY warn on deprecated or overloaded usage
+        - Validators MAY flag semantic collisions
+
+        Args:
+            content: Entry content
+            intent: Entry intent
+
+        Returns:
+            Term validation result with warnings and issues
+        """
+        result = {
+            "enabled": self.enable_term_validation,
+            "valid": True,
+            "issues": [],
+            "warnings": [],
+            "terms_found": {
+                "core": [],
+                "protocol_bound": [],
+                "extension": []
+            },
+            "synonym_recommendations": []
+        }
+
+        if not self.enable_term_validation or self.term_registry is None:
+            result["enabled"] = False
+            return result
+
+        try:
+            # Validate text against term registry
+            validation = self.term_registry.validate_text(content + " " + intent)
+
+            # Report found terms by category
+            result["terms_found"]["core"] = validation.core_terms_found
+            result["terms_found"]["protocol_bound"] = validation.protocol_terms_found
+            result["terms_found"]["extension"] = validation.extension_terms_found
+
+            # Deprecated terms are issues (per NCIP-001 Section 7.1)
+            for deprecated in validation.deprecated_terms:
+                result["issues"].append(
+                    f"Deprecated term used: '{deprecated}'. "
+                    "This term is no longer valid per NCIP-001."
+                )
+
+            # Synonym usage generates warnings with recommendations
+            for used, canonical in validation.synonym_usage:
+                result["warnings"].append(
+                    f"Synonym '{used}' used instead of canonical term '{canonical}'"
+                )
+                result["synonym_recommendations"].append({
+                    "used": used,
+                    "canonical": canonical
+                })
+
+            # Set validity based on issues (not warnings)
+            result["valid"] = len(result["issues"]) == 0
+
+        except Exception as e:
+            # Term validation failure should not block validation
+            result["warnings"].append(f"Term validation encountered error: {str(e)}")
+
+        return result
 
     def symbolic_validation(
         self,
@@ -418,6 +510,7 @@ class HybridValidator:
         - Content meets minimum length
         - No obvious malicious patterns
         - Basic structural validity
+        - NCIP-001 term validation (if enabled)
 
         Args:
             content: Entry content
@@ -428,6 +521,7 @@ class HybridValidator:
             Symbolic validation result
         """
         issues = []
+        warnings = []
 
         # Basic checks
         if not content or len(content.strip()) == 0:
@@ -455,9 +549,18 @@ class HybridValidator:
             if pattern.lower() in content.lower():
                 issues.append(f"Suspicious pattern detected: {pattern}")
 
+        # NCIP-001 term validation
+        term_validation = self.validate_terms(content, intent)
+
+        # Add term validation issues
+        issues.extend(term_validation.get("issues", []))
+        warnings.extend(term_validation.get("warnings", []))
+
         return {
             "valid": len(issues) == 0,
-            "issues": issues
+            "issues": issues,
+            "warnings": warnings,
+            "term_validation": term_validation
         }
 
     def validate(
@@ -471,6 +574,8 @@ class HybridValidator:
         """
         Perform hybrid validation.
 
+        Includes NCIP-001 term validation as part of symbolic checks.
+
         Args:
             content: Entry content
             intent: Entry intent
@@ -479,20 +584,31 @@ class HybridValidator:
             multi_validator: Whether to use multi-validator consensus
 
         Returns:
-            Complete validation result
+            Complete validation result including:
+            - symbolic_validation: Basic checks including term validation
+            - llm_validation: LLM-powered semantic validation (if enabled)
+            - term_validation: NCIP-001 term registry validation details
+            - overall_decision: Final validation decision
         """
-        # Always do symbolic validation first
+        # Always do symbolic validation first (includes term validation)
         symbolic_result = self.symbolic_validation(content, intent, author)
 
         result = {
             "symbolic_validation": symbolic_result,
+            "term_validation": symbolic_result.get("term_validation"),
             "llm_validation": None
         }
+
+        # Include term validation warnings in result
+        if symbolic_result.get("warnings"):
+            result["warnings"] = symbolic_result["warnings"]
 
         # If symbolic validation fails, don't proceed to LLM
         if not symbolic_result["valid"]:
             result["overall_decision"] = "INVALID"
             result["reason"] = "Failed symbolic validation"
+            if symbolic_result.get("issues"):
+                result["issues"] = symbolic_result["issues"]
             return result
 
         # LLM validation if enabled
