@@ -410,7 +410,7 @@ The following table summarizes all NCIP requirements and their implementation st
 | NCIP-003 | Multilingual Semantic Alignment | ✅ Implemented | `src/multilingual.py`, CSAL declarations, cross-language drift, validator integration |
 | NCIP-004 | Proof of Understanding | ✅ Implemented | `src/pou_scoring.py`, integrated with `src/validator.py` |
 | NCIP-005 | Dispute Escalation & Semantic Locking | ✅ Implemented | `src/semantic_locking.py`, integrated with `src/dispute.py` |
-| NCIP-006 | Jurisdictional Interpretation | ❌ Not Implemented | No jurisdiction declaration, no Legal Translation Artifacts |
+| NCIP-006 | Jurisdictional Interpretation | ✅ Implemented | `src/jurisdictional.py`, integrated with `src/validator.py` |
 | NCIP-007 | Validator Trust Scoring | ✅ Implemented | `src/validator_trust.py`, integrated with `src/validator.py` |
 | NCIP-008 | Semantic Appeals & Precedent | ❌ Not Implemented | No appeal system, no Semantic Case Records |
 | NCIP-009 | Regulatory Interface Modules | ❌ Not Implemented | No RIMs, no compliance proof generation |
@@ -503,14 +503,23 @@ The following table summarizes all NCIP requirements and their implementation st
 - [x] 37 passing unit tests
 
 #### NCIP-006: Jurisdictional Bridging
-**Priority:** MEDIUM 🟡
-**Files Needed:** `src/jurisdiction.py`
+**Status:** ✅ IMPLEMENTED
+**Files:** `src/jurisdictional.py`, `tests/test_jurisdictional.py`
 
-**Missing Features:**
-- [ ] Jurisdiction declaration requirement (ISO 3166-1 codes)
-- [ ] Jurisdiction roles: enforcement, interpretive, procedural
-- [ ] Legal Translation Artifacts (LTAs) with non-authoritative status
-- [ ] Validator rejection of LTAs introducing new obligations
+**Implemented Features:**
+- [x] Jurisdiction declaration requirement (ISO 3166-1 country codes + US state subdivisions)
+- [x] Jurisdiction roles: enforcement, interpretive, procedural (NCIP-006 Section 4)
+- [x] Legal Translation Artifacts (LTAs) with non-authoritative status
+- [x] LTA validation: reject if introduces obligations, narrows/broadens scope
+- [x] LTA drift detection (D3/D4 = excessive drift, rejection required)
+- [x] Semantic authority disclaimer auto-generation
+- [x] Court ruling handling with semantic lock preservation
+- [x] Semantic override rulings automatically rejected
+- [x] Cross-jurisdiction conflict resolution with most-restrictive enforcement
+- [x] Machine-readable jurisdiction bridge spec (YAML format, Section 11)
+- [x] Core principle enforced: "Law constrains enforcement, not meaning"
+- [x] Validator integration: 10+ integration methods in `validator.py`
+- [x] Comprehensive test suite (12+ tests)
 
 #### NCIP-007: Validator Trust Scoring
 **Status:** ✅ IMPLEMENTED
@@ -1887,7 +1896,7 @@ NatLangChain has achieved **solid implementation** of its core vision:
 
 ---
 
-**Document Version:** 3.4
+**Document Version:** 3.5
 **Last Updated:** December 24, 2025
 **Maintained By:** kase1111-hash
 **License:** CC BY-SA 4.0

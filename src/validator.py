@@ -98,6 +98,27 @@ try:
 except ImportError:
     NCIP_003_AVAILABLE = False
 
+# Import NCIP-006 Jurisdictional Interpretation & Legal Bridging
+try:
+    from jurisdictional import (
+        JurisdictionalManager,
+        JurisdictionalBridge,
+        JurisdictionDeclaration,
+        JurisdictionRole,
+        LegalTranslationArtifact,
+        LTAViolation,
+        CourtRuling,
+        CourtRulingType,
+        JurisdictionConflict,
+        DriftLevel as JurisdictionalDriftLevel,
+        VALID_COUNTRY_CODES,
+        US_STATE_CODES,
+        validate_jurisdiction_code,
+    )
+    NCIP_006_AVAILABLE = True
+except ImportError:
+    NCIP_006_AVAILABLE = False
+
 
 class ProofOfUnderstanding:
     """
@@ -2855,4 +2876,385 @@ class HybridValidator:
                 "D3": "require_ratification",
                 "D4": "reject_escalate"
             }
+        }
+
+    # -------------------------------------------------------------------------
+    # NCIP-006: Jurisdictional Interpretation & Legal Bridging Integration
+    # -------------------------------------------------------------------------
+
+    _jurisdictional_manager: Optional["JurisdictionalManager"] = None
+
+    def get_jurisdictional_manager(self) -> Optional["JurisdictionalManager"]:
+        """Get or create the jurisdictional manager instance."""
+        if not NCIP_006_AVAILABLE:
+            return None
+        if self._jurisdictional_manager is None:
+            self._jurisdictional_manager = JurisdictionalManager()
+        return self._jurisdictional_manager
+
+    def create_jurisdictional_bridge(
+        self,
+        prose_contract_id: str
+    ) -> Dict[str, Any]:
+        """
+        Create a jurisdictional bridge for a Prose Contract.
+
+        Per NCIP-006: Any Prose Contract with legal or economic impact
+        MUST declare governing jurisdictions.
+        """
+        if not NCIP_006_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-006 module not available"
+            }
+
+        manager = self.get_jurisdictional_manager()
+        bridge = manager.create_bridge(prose_contract_id)
+
+        return {
+            "status": "created",
+            "prose_contract_id": prose_contract_id,
+            "semantic_authority": bridge.semantic_authority_source,
+            "allow_external_override": bridge.allow_external_semantic_override,
+            "ltas_authoritative": bridge.ltas_authoritative
+        }
+
+    def add_jurisdiction(
+        self,
+        prose_contract_id: str,
+        code: str,
+        role: str
+    ) -> Dict[str, Any]:
+        """
+        Add a jurisdiction declaration to a bridge.
+
+        Args:
+            prose_contract_id: ID of the Prose Contract
+            code: ISO 3166-1 jurisdiction code (e.g., "US", "US-CA")
+            role: Jurisdiction role ("enforcement", "interpretive", "procedural")
+        """
+        if not NCIP_006_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-006 module not available"
+            }
+
+        manager = self.get_jurisdictional_manager()
+        bridge = manager.get_bridge(prose_contract_id)
+
+        if not bridge:
+            return {
+                "status": "error",
+                "message": f"No bridge found for {prose_contract_id}"
+            }
+
+        try:
+            jurisdiction_role = JurisdictionRole(role)
+        except ValueError:
+            return {
+                "status": "error",
+                "message": f"Invalid role: {role}. Use: enforcement, interpretive, procedural"
+            }
+
+        success, msg = bridge.add_jurisdiction(code, jurisdiction_role)
+
+        return {
+            "status": "added" if success else "error",
+            "message": msg,
+            "code": code,
+            "role": role
+        }
+
+    def validate_jurisdiction_declaration(
+        self,
+        prose_contract_id: str
+    ) -> Dict[str, Any]:
+        """
+        Validate jurisdiction declaration for a Prose Contract.
+
+        Per NCIP-006 Section 3.1: If omitted, validators emit D2
+        and execution pauses until declared.
+        """
+        if not NCIP_006_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-006 module not available"
+            }
+
+        manager = self.get_jurisdictional_manager()
+        result = manager.validator_check_jurisdiction(prose_contract_id)
+
+        return result
+
+    def create_legal_translation_artifact(
+        self,
+        prose_contract_id: str,
+        target_jurisdiction: str,
+        legal_prose: str,
+        registry_version: str,
+        temporal_fixity_timestamp: str,
+        referenced_terms: Optional[List[str]] = None
+    ) -> Dict[str, Any]:
+        """
+        Create a Legal Translation Artifact (LTA).
+
+        Per NCIP-006 Section 6: LTAs are jurisdiction-specific renderings
+        of Prose Contracts. They are derived and non-authoritative.
+        """
+        if not NCIP_006_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-006 module not available"
+            }
+
+        manager = self.get_jurisdictional_manager()
+
+        from datetime import datetime
+        try:
+            t0 = datetime.fromisoformat(temporal_fixity_timestamp)
+        except ValueError:
+            return {
+                "status": "error",
+                "message": f"Invalid timestamp format: {temporal_fixity_timestamp}"
+            }
+
+        lta, errors = manager.create_lta(
+            prose_contract_id=prose_contract_id,
+            target_jurisdiction=target_jurisdiction,
+            legal_prose=legal_prose,
+            registry_version=registry_version,
+            temporal_fixity_timestamp=t0,
+            referenced_terms=referenced_terms
+        )
+
+        if errors:
+            return {
+                "status": "error",
+                "errors": errors
+            }
+
+        return {
+            "status": "created",
+            "lta_id": lta.lta_id,
+            "prose_contract_id": lta.prose_contract_id,
+            "target_jurisdiction": lta.target_jurisdiction,
+            "has_required_references": lta.has_required_references,
+            "disclaimer_present": bool(lta.semantic_authority_disclaimer)
+        }
+
+    def validate_legal_translation_artifact(
+        self,
+        lta_id: str,
+        prose_contract_id: str,
+        original_prose: str
+    ) -> Dict[str, Any]:
+        """
+        Validate a Legal Translation Artifact against its source.
+
+        Per NCIP-006 Section 7: Validators MUST reject LTAs that:
+        - Introduce new obligations
+        - Narrow or broaden scope
+        - Have drift >= D3
+        - Claim semantic authority
+        """
+        if not NCIP_006_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-006 module not available"
+            }
+
+        manager = self.get_jurisdictional_manager()
+        bridge = manager.get_bridge(prose_contract_id)
+
+        if not bridge:
+            return {
+                "status": "error",
+                "message": f"No bridge found for {prose_contract_id}"
+            }
+
+        lta = bridge.ltas.get(lta_id)
+        if not lta:
+            return {
+                "status": "error",
+                "message": f"LTA {lta_id} not found"
+            }
+
+        result = manager.validator_check_lta(lta, original_prose)
+
+        return result
+
+    def handle_court_ruling(
+        self,
+        prose_contract_id: str,
+        jurisdiction: str,
+        ruling_type: str,
+        summary: str,
+        enforcement_outcome: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Handle a court ruling per NCIP-006 Section 8.
+
+        Per NCIP-006: Law constrains enforcement, not meaning.
+        - Semantic Lock remains intact
+        - Meaning does not change
+        - Only enforcement outcome is applied
+        - Semantic override rulings are automatically rejected
+        """
+        if not NCIP_006_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-006 module not available"
+            }
+
+        manager = self.get_jurisdictional_manager()
+
+        try:
+            ruling_type_enum = CourtRulingType(ruling_type)
+        except ValueError:
+            return {
+                "status": "error",
+                "message": f"Invalid ruling type: {ruling_type}"
+            }
+
+        ruling = manager.handle_court_ruling(
+            prose_contract_id=prose_contract_id,
+            jurisdiction=jurisdiction,
+            ruling_type=ruling_type_enum,
+            summary=summary,
+            enforcement_outcome=enforcement_outcome
+        )
+
+        return {
+            "status": "handled",
+            "ruling_id": ruling.ruling_id,
+            "ruling_type": ruling.ruling_type.value,
+            "semantic_lock_preserved": ruling.semantic_lock_preserved,
+            "rejected": ruling.rejected,
+            "rejection_reason": ruling.rejection_reason,
+            "execution_halted": ruling.execution_halted,
+            "enforcement_outcome": ruling.enforcement_outcome
+        }
+
+    def handle_jurisdiction_conflict(
+        self,
+        prose_contract_id: str,
+        jurisdictions: List[str],
+        conflict_type: str,
+        description: str
+    ) -> Dict[str, Any]:
+        """
+        Handle cross-jurisdiction conflict per NCIP-006 Section 10.
+
+        When jurisdictions conflict:
+        - Semantic Lock applies
+        - Most restrictive enforcement outcome applies
+        - Meaning remains unchanged
+        """
+        if not NCIP_006_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-006 module not available"
+            }
+
+        manager = self.get_jurisdictional_manager()
+
+        conflict = manager.handle_jurisdiction_conflict(
+            prose_contract_id=prose_contract_id,
+            jurisdictions=jurisdictions,
+            conflict_type=conflict_type,
+            description=description
+        )
+
+        return {
+            "status": "created",
+            "conflict_id": conflict.conflict_id,
+            "jurisdictions": conflict.jurisdictions,
+            "conflict_type": conflict.conflict_type,
+            "semantic_lock_applied": conflict.semantic_lock_applied
+        }
+
+    def resolve_jurisdiction_conflict(
+        self,
+        prose_contract_id: str,
+        conflict_id: str,
+        most_restrictive_outcome: str,
+        resolution_notes: str
+    ) -> Dict[str, Any]:
+        """Resolve a jurisdiction conflict with most restrictive outcome."""
+        if not NCIP_006_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-006 module not available"
+            }
+
+        manager = self.get_jurisdictional_manager()
+        bridge = manager.get_bridge(prose_contract_id)
+
+        if not bridge:
+            return {
+                "status": "error",
+                "message": f"No bridge found for {prose_contract_id}"
+            }
+
+        conflict = None
+        for c in bridge.conflicts:
+            if c.conflict_id == conflict_id:
+                conflict = c
+                break
+
+        if not conflict:
+            return {
+                "status": "error",
+                "message": f"Conflict {conflict_id} not found"
+            }
+
+        manager.resolve_conflict(conflict, most_restrictive_outcome, resolution_notes)
+
+        return {
+            "status": "resolved",
+            "conflict_id": conflict_id,
+            "most_restrictive_outcome": most_restrictive_outcome,
+            "resolution_notes": resolution_notes,
+            "resolved_at": conflict.resolved_at.isoformat() if conflict.resolved_at else None
+        }
+
+    def generate_bridge_spec(self, prose_contract_id: str) -> Dict[str, Any]:
+        """Generate machine-readable jurisdiction bridge spec per NCIP-006 Section 11."""
+        if not NCIP_006_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-006 module not available"
+            }
+
+        manager = self.get_jurisdictional_manager()
+        return manager.generate_bridge_spec(prose_contract_id)
+
+    def is_ncip_006_enabled(self) -> bool:
+        """Check if NCIP-006 jurisdictional bridging is available."""
+        return NCIP_006_AVAILABLE
+
+    def get_ncip_006_status(self) -> Dict[str, Any]:
+        """Get NCIP-006 implementation status and configuration."""
+        if not NCIP_006_AVAILABLE:
+            return {
+                "enabled": False,
+                "message": "NCIP-006 module not available"
+            }
+
+        manager = self.get_jurisdictional_manager()
+        summary = manager.get_status_summary()
+
+        return {
+            "enabled": True,
+            "supported_countries": len(VALID_COUNTRY_CODES),
+            "us_subdivisions_supported": len(US_STATE_CODES),
+            "jurisdiction_roles": ["enforcement", "interpretive", "procedural"],
+            "court_ruling_types": ["enforcement", "semantic", "procedural", "void_contract"],
+            "semantic_authority": summary["semantic_authority"],
+            "external_override_allowed": summary["external_override_allowed"],
+            "total_bridges": summary["total_bridges"],
+            "total_ltas": summary["total_ltas"],
+            "total_court_rulings": summary["total_court_rulings"],
+            "total_conflicts": summary["total_conflicts"],
+            "principle": "Law constrains enforcement, not meaning"
         }
