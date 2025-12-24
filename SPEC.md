@@ -406,7 +406,7 @@ The following table summarizes all NCIP requirements and their implementation st
 | NCIP | Title | Implementation Status | Key Gaps |
 |------|-------|----------------------|----------|
 | NCIP-001 | Canonical Term Registry | ✅ Implemented | `config/canonical_terms.yaml`, `src/term_registry.py`, validator integration |
-| NCIP-002 | Semantic Drift Thresholds | 🚧 Partial (40%) | Basic drift detection exists; formal D0-D4 thresholds and mandatory responses not enforced |
+| NCIP-002 | Semantic Drift Thresholds | ✅ Implemented | `src/drift_thresholds.py`, integrated with `src/semantic_diff.py` |
 | NCIP-003 | Multilingual Semantic Alignment | ❌ Not Implemented | English only; no CSAL declaration, no cross-language drift |
 | NCIP-004 | Proof of Understanding | 🚧 Partial (60%) | PoU generation exists; formal scoring (Coverage, Fidelity, Consistency, Completeness) not implemented |
 | NCIP-005 | Dispute Escalation & Semantic Locking | 🚧 Partial (30%) | Evidence freezing exists; semantic locking, cooling periods (24h/72h) not implemented |
@@ -437,15 +437,18 @@ The following table summarizes all NCIP requirements and their implementation st
 - [x] Comprehensive test suite
 
 #### NCIP-002: Semantic Drift Thresholds
-**Priority:** HIGH 🔴
-**Files to Update:** `src/semantic_diff.py`, `src/validator.py`
+**Status:** ✅ IMPLEMENTED
+**Files:** `src/drift_thresholds.py`, `src/semantic_diff.py`, `tests/test_drift_thresholds.py`
 
-**Missing Features:**
-- [ ] Formal drift levels: D0 (0.00-0.10), D1 (0.10-0.25), D2 (0.25-0.45), D3 (0.45-0.70), D4 (0.70-1.00)
-- [ ] Mandatory validator responses per level (warn, pause, require ratification, reject)
-- [ ] Drift aggregation rules (max score governs)
-- [ ] Temporal Fixity enforcement (T₀ context evaluation)
-- [ ] Logging requirements for D2+ events
+**Implemented Features:**
+- [x] Formal drift levels: D0 (0.00-0.10), D1 (0.10-0.25), D2 (0.25-0.45), D3 (0.45-0.70), D4 (0.70-1.00)
+- [x] Mandatory validator responses per level (proceed, warn, pause, require_ratification, reject, escalate_dispute)
+- [x] Drift aggregation rules (max score governs per NCIP-002 Section 6)
+- [x] Temporal Fixity context (`TemporalFixityContext` class with T₀ binding)
+- [x] Logging requirements for D1+ events with `DriftLogEntry`
+- [x] Human override constraints (D2/D3 allowed, D4 requires formal dispute)
+- [x] Integration with `SemanticDriftDetector` for NCIP-002 compliance
+- [x] `SemanticDriftClassifier` with 54 passing tests
 
 #### NCIP-003: Multilingual Semantic Alignment
 **Priority:** MEDIUM 🟡
