@@ -408,7 +408,7 @@ The following table summarizes all NCIP requirements and their implementation st
 | NCIP-001 | Canonical Term Registry | ✅ Implemented | `config/canonical_terms.yaml`, `src/term_registry.py`, validator integration |
 | NCIP-002 | Semantic Drift Thresholds | ✅ Implemented | `src/drift_thresholds.py`, integrated with `src/semantic_diff.py` |
 | NCIP-003 | Multilingual Semantic Alignment | ❌ Not Implemented | English only; no CSAL declaration, no cross-language drift |
-| NCIP-004 | Proof of Understanding | 🚧 Partial (60%) | PoU generation exists; formal scoring (Coverage, Fidelity, Consistency, Completeness) not implemented |
+| NCIP-004 | Proof of Understanding | ✅ Implemented | `src/pou_scoring.py`, integrated with `src/validator.py` |
 | NCIP-005 | Dispute Escalation & Semantic Locking | 🚧 Partial (30%) | Evidence freezing exists; semantic locking, cooling periods (24h/72h) not implemented |
 | NCIP-006 | Jurisdictional Interpretation | ❌ Not Implemented | No jurisdiction declaration, no Legal Translation Artifacts |
 | NCIP-007 | Validator Trust Scoring | ❌ Not Implemented | No Trust Profile, no scoped scores, no decay/recovery |
@@ -462,14 +462,21 @@ The following table summarizes all NCIP requirements and their implementation st
 - [ ] Validator language pair reporting
 
 #### NCIP-004: Proof of Understanding Scoring
-**Priority:** HIGH 🔴
-**Files to Update:** `src/validator.py`
+**Status:** ✅ IMPLEMENTED
+**Files:** `src/pou_scoring.py`, `src/validator.py`, `tests/test_pou_scoring.py`
 
-**Missing Features:**
-- [ ] PoU scoring dimensions: Coverage, Fidelity, Consistency, Completeness
-- [ ] Score thresholds: ≥0.90 Verified, 0.75-0.89 Marginal, 0.50-0.74 Insufficient, <0.50 Failed
-- [ ] Binding effect: verified PoU fixes meaning, waives misunderstanding claims
-- [ ] Semantic fingerprint generation and storage
+**Implemented Features:**
+- [x] PoU scoring dimensions: Coverage, Fidelity, Consistency, Completeness
+- [x] Score thresholds: ≥0.90 Verified, 0.75-0.89 Marginal, 0.50-0.74 Insufficient, <0.50 Failed
+- [x] Minimum dimension score governs overall status (per NCIP-004 Section 6)
+- [x] Binding effect: verified PoU fixes meaning, waives misunderstanding claims
+- [x] Semantic fingerprint generation with SHA-256 hashing
+- [x] PoU structure validation per NCIP-004 Section 4.1
+- [x] Mandatory validator actions per status level
+- [x] `BindingPoURecord` for storing bound PoUs
+- [x] `HybridValidator.validate_pou()` method for NCIP-004 compliance
+- [x] `is_pou_required()` helper per NCIP-004 Section 3
+- [x] 47 passing unit tests
 
 #### NCIP-005: Semantic Locking & Cooling Periods
 **Priority:** HIGH 🔴

@@ -1,11 +1,28 @@
 """
 NatLangChain - Linguistic Validation
 Implements Proof of Understanding using LLM-powered semantic validation
+
+Integrates NCIP-004: PoU scoring dimensions (Coverage, Fidelity, Consistency, Completeness)
 """
 
 import os
 from typing import Dict, List, Tuple, Any, Optional
 from anthropic import Anthropic
+
+# Import NCIP-004 PoU scoring
+try:
+    from pou_scoring import (
+        PoUScorer,
+        PoUStatus,
+        PoUScoreResult,
+        PoUValidationResult,
+        score_pou,
+        classify_pou_score,
+        get_pou_config
+    )
+    NCIP_004_AVAILABLE = True
+except ImportError:
+    NCIP_004_AVAILABLE = False
 
 
 class ProofOfUnderstanding:
@@ -632,3 +649,187 @@ class HybridValidator:
             result["overall_decision"] = "VALID"
 
         return result
+
+    # =========================================================================
+    # NCIP-004: Proof of Understanding Scoring
+    # =========================================================================
+
+    def validate_pou(
+        self,
+        pou_data: Dict[str, Any],
+        contract_content: str,
+        contract_clauses: Optional[List[str]] = None
+    ) -> Dict[str, Any]:
+        """
+        Validate a Proof of Understanding submission per NCIP-004.
+
+        Scores the PoU on four dimensions:
+        - Coverage: All material clauses addressed
+        - Fidelity: Meaning matches canonical intent
+        - Consistency: No contradictions
+        - Completeness: Obligations + consequences acknowledged
+
+        Returns status based on minimum dimension score:
+        - ≥0.90: Verified (accept, bind interpretation)
+        - 0.75-0.89: Marginal (warn, allow resubmission)
+        - 0.50-0.74: Insufficient (reject, require retry)
+        - <0.50: Failed (reject, escalate)
+
+        Args:
+            pou_data: PoU submission in NCIP-004 schema format
+            contract_content: The original contract content
+            contract_clauses: Optional list of material clauses
+
+        Returns:
+            Dict with scores, status, actions, and fingerprint
+        """
+        if not NCIP_004_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-004 PoU scoring module not available",
+                "ncip_004_enabled": False
+            }
+
+        try:
+            scorer = PoUScorer(validator_id="hybrid_validator")
+            return scorer.get_validator_response(
+                pou_data,
+                contract_content,
+                contract_clauses
+            )
+        except Exception as e:
+            return {
+                "status": "error",
+                "message": f"PoU validation failed: {str(e)}",
+                "ncip_004_enabled": True
+            }
+
+    def validate_pou_with_llm(
+        self,
+        pou_data: Dict[str, Any],
+        contract_content: str,
+        contract_clauses: Optional[List[str]] = None
+    ) -> Dict[str, Any]:
+        """
+        Validate PoU with both NCIP-004 scoring and LLM semantic analysis.
+
+        This combines:
+        1. NCIP-004 dimension scoring (Coverage, Fidelity, Consistency, Completeness)
+        2. LLM-powered semantic drift detection
+        3. LLM paraphrase analysis
+
+        Args:
+            pou_data: PoU submission in NCIP-004 schema format
+            contract_content: The original contract content
+            contract_clauses: Optional list of material clauses
+
+        Returns:
+            Combined validation result
+        """
+        result = {
+            "ncip_004_validation": None,
+            "llm_validation": None,
+            "combined_status": None
+        }
+
+        # Get NCIP-004 scores
+        ncip_result = self.validate_pou(pou_data, contract_content, contract_clauses)
+        result["ncip_004_validation"] = ncip_result
+
+        # Extract summary for LLM validation
+        summary = pou_data.get("sections", {}).get("summary", {}).get("text", "")
+
+        if summary and self.llm_validator:
+            # Check for semantic drift between PoU summary and contract
+            drift_result = self.llm_validator.detect_semantic_drift(
+                contract_content,
+                summary
+            )
+            result["llm_validation"] = {
+                "drift_analysis": drift_result
+            }
+
+            # Combine results
+            ncip_status = ncip_result.get("status", "error")
+            drift_score = drift_result.get("drift_score")
+
+            if ncip_status == "verified" and drift_score is not None and drift_score < 0.25:
+                result["combined_status"] = "verified"
+            elif ncip_status in ["verified", "marginal"] and drift_score is not None and drift_score < 0.45:
+                result["combined_status"] = "marginal"
+            elif ncip_status == "insufficient":
+                result["combined_status"] = "insufficient"
+            else:
+                result["combined_status"] = "failed"
+        else:
+            result["combined_status"] = ncip_result.get("status", "error")
+
+        return result
+
+    def is_pou_required(
+        self,
+        drift_level: Optional[str] = None,
+        has_multilingual: bool = False,
+        has_economic_obligations: bool = False,
+        requires_human_ratification: bool = False,
+        has_mediator_escalation: bool = False
+    ) -> bool:
+        """
+        Determine if PoU is required per NCIP-004 Section 3.
+
+        PoU is mandatory when any of the following apply:
+        - Drift level ≥ D2 (NCIP-002)
+        - Multilingual alignment is used (NCIP-003)
+        - Economic or legal obligations exist
+        - Human ratification is required
+        - Mediator escalation has occurred
+
+        Args:
+            drift_level: Current drift level (D0-D4)
+            has_multilingual: Whether multilingual alignment is used
+            has_economic_obligations: Whether economic/legal obligations exist
+            requires_human_ratification: Whether human ratification is required
+            has_mediator_escalation: Whether mediator escalation has occurred
+
+        Returns:
+            True if PoU is required
+        """
+        # Check drift level
+        if drift_level in ["D2", "D3", "D4"]:
+            return True
+
+        # Check other conditions
+        if has_multilingual:
+            return True
+        if has_economic_obligations:
+            return True
+        if requires_human_ratification:
+            return True
+        if has_mediator_escalation:
+            return True
+
+        return False
+
+    def get_pou_status_from_score(self, score: float) -> str:
+        """
+        Get PoU status string from a score.
+
+        Args:
+            score: Score in range [0.0, 1.0]
+
+        Returns:
+            Status string: "verified", "marginal", "insufficient", or "failed"
+        """
+        if not NCIP_004_AVAILABLE:
+            # Fallback classification
+            if score >= 0.90:
+                return "verified"
+            elif score >= 0.75:
+                return "marginal"
+            elif score >= 0.50:
+                return "insufficient"
+            else:
+                return "failed"
+
+        status = classify_pou_score(score)
+        return status.value
