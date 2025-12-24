@@ -1,6 +1,8 @@
 <script>
   import { onMount } from 'svelte';
   import { getChainInfo, validateChain, getPendingEntries } from '../lib/api.js';
+  import Tooltip from './Tooltip.svelte';
+  import { ncipDefinitions } from '../lib/ncip-definitions.js';
 
   let chainInfo = null;
   let isValid = null;
@@ -44,37 +46,45 @@
     </div>
   {:else if chainInfo}
     <div class="stats-grid">
-      <div class="stat-card">
-        <div class="stat-icon">🔗</div>
-        <div class="stat-content">
-          <div class="stat-value">{chainInfo.length || 0}</div>
-          <div class="stat-label">Total Blocks</div>
+      <Tooltip text="Blocks form the immutable chain. Each block contains one or more entries and links to the previous block." ncipRef="NCIP-001" position="bottom">
+        <div class="stat-card">
+          <div class="stat-icon">🔗</div>
+          <div class="stat-content">
+            <div class="stat-value">{chainInfo.length || 0}</div>
+            <div class="stat-label">Total Blocks</div>
+          </div>
         </div>
-      </div>
+      </Tooltip>
 
-      <div class="stat-card">
-        <div class="stat-icon">📝</div>
-        <div class="stat-content">
-          <div class="stat-value">{chainInfo.total_entries || 0}</div>
-          <div class="stat-label">Total Entries</div>
+      <Tooltip text={ncipDefinitions.entry.text} ncipRef={ncipDefinitions.entry.ncipRef} position="bottom">
+        <div class="stat-card">
+          <div class="stat-icon">📝</div>
+          <div class="stat-content">
+            <div class="stat-value">{chainInfo.total_entries || 0}</div>
+            <div class="stat-label">Total Entries</div>
+          </div>
         </div>
-      </div>
+      </Tooltip>
 
-      <div class="stat-card">
-        <div class="stat-icon">⏳</div>
-        <div class="stat-content">
-          <div class="stat-value">{pendingCount}</div>
-          <div class="stat-label">Pending Entries</div>
+      <Tooltip text={ncipDefinitions.pendingEntries.text} ncipRef={ncipDefinitions.pendingEntries.ncipRef} position="bottom">
+        <div class="stat-card">
+          <div class="stat-icon">⏳</div>
+          <div class="stat-content">
+            <div class="stat-value">{pendingCount}</div>
+            <div class="stat-label">Pending Entries</div>
+          </div>
         </div>
-      </div>
+      </Tooltip>
 
-      <div class="stat-card" class:valid={isValid === true} class:invalid={isValid === false}>
-        <div class="stat-icon">{isValid === true ? '✅' : isValid === false ? '❌' : '❓'}</div>
-        <div class="stat-content">
-          <div class="stat-value">{isValid === true ? 'Valid' : isValid === false ? 'Invalid' : 'Unknown'}</div>
-          <div class="stat-label">Chain Status</div>
+      <Tooltip text={isValid === true ? ncipDefinitions.chainValid.text : isValid === false ? ncipDefinitions.chainInvalid.text : 'Chain validation status is pending.'} ncipRef={isValid === true ? ncipDefinitions.chainValid.ncipRef : ncipDefinitions.chainInvalid.ncipRef} position="bottom">
+        <div class="stat-card" class:valid={isValid === true} class:invalid={isValid === false}>
+          <div class="stat-icon">{isValid === true ? '✅' : isValid === false ? '❌' : '❓'}</div>
+          <div class="stat-content">
+            <div class="stat-value">{isValid === true ? 'Valid' : isValid === false ? 'Invalid' : 'Unknown'}</div>
+            <div class="stat-label">Chain Status</div>
+          </div>
         </div>
-      </div>
+      </Tooltip>
     </div>
 
     {#if chainInfo.latest_block}

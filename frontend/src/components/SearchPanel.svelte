@@ -1,5 +1,7 @@
 <script>
   import { searchEntries, semanticSearch } from '../lib/api.js';
+  import Tooltip from './Tooltip.svelte';
+  import { ncipDefinitions } from '../lib/ncip-definitions.js';
 
   let query = '';
   let searchType = 'basic';
@@ -82,14 +84,18 @@
 
     <div class="search-options">
       <div class="option-group">
-        <label class="radio-label">
-          <input type="radio" bind:group={searchType} value="basic" />
-          <span>Basic Search</span>
-        </label>
-        <label class="radio-label">
-          <input type="radio" bind:group={searchType} value="semantic" />
-          <span>Semantic Search</span>
-        </label>
+        <Tooltip text={ncipDefinitions.basicSearch.text} ncipRef={ncipDefinitions.basicSearch.ncipRef} position="bottom">
+          <label class="radio-label">
+            <input type="radio" bind:group={searchType} value="basic" />
+            <span>Basic Search</span>
+          </label>
+        </Tooltip>
+        <Tooltip text={ncipDefinitions.semanticSearch.text} ncipRef={ncipDefinitions.semanticSearch.ncipRef} position="bottom">
+          <label class="radio-label">
+            <input type="radio" bind:group={searchType} value="semantic" />
+            <span>Semantic Search</span>
+          </label>
+        </Tooltip>
       </div>
 
       <div class="limit-group">

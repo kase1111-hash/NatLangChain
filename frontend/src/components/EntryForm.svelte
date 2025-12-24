@@ -1,5 +1,7 @@
 <script>
   import { submitEntry, validateEntry, mineBlock } from '../lib/api.js';
+  import Tooltip from './Tooltip.svelte';
+  import { ncipDefinitions } from '../lib/ncip-definitions.js';
 
   let content = '';
   let author = '';
@@ -89,7 +91,9 @@
 
   <form on:submit|preventDefault={handleSubmit}>
     <div class="form-group">
-      <label for="author">Author *</label>
+      <Tooltip text={ncipDefinitions.author.text} ncipRef={ncipDefinitions.author.ncipRef} position="right">
+        <label for="author">Author *</label>
+      </Tooltip>
       <input
         id="author"
         type="text"
@@ -100,7 +104,9 @@
     </div>
 
     <div class="form-group">
-      <label for="intent">Intent *</label>
+      <Tooltip text={ncipDefinitions.intent.text} ncipRef={ncipDefinitions.intent.ncipRef} position="right">
+        <label for="intent">Intent *</label>
+      </Tooltip>
       <input
         id="intent"
         type="text"
@@ -111,7 +117,9 @@
     </div>
 
     <div class="form-group">
-      <label for="content">Content *</label>
+      <Tooltip text={ncipDefinitions.content.text} ncipRef={ncipDefinitions.content.ncipRef} position="right">
+        <label for="content">Content *</label>
+      </Tooltip>
       <textarea
         id="content"
         bind:value={content}
@@ -122,10 +130,12 @@
     </div>
 
     <div class="form-group checkbox-group">
-      <label>
-        <input type="checkbox" bind:checked={isContract} />
-        This is a contract entry
-      </label>
+      <Tooltip text={ncipDefinitions.agreement.text} ncipRef={ncipDefinitions.agreement.ncipRef} position="right">
+        <label>
+          <input type="checkbox" bind:checked={isContract} />
+          This is a contract entry
+        </label>
+      </Tooltip>
     </div>
 
     {#if isContract}
@@ -145,22 +155,26 @@
     {/if}
 
     <div class="form-actions">
-      <button
-        type="button"
-        class="btn-secondary"
-        on:click={handleValidate}
-        disabled={validating || !content || !author || !intent}
-      >
-        {validating ? 'Validating...' : 'Validate First'}
-      </button>
+      <Tooltip text={ncipDefinitions.validateFirst.text} ncipRef={ncipDefinitions.validateFirst.ncipRef} position="top">
+        <button
+          type="button"
+          class="btn-secondary"
+          on:click={handleValidate}
+          disabled={validating || !content || !author || !intent}
+        >
+          {validating ? 'Validating...' : 'Validate First'}
+        </button>
+      </Tooltip>
 
-      <button
-        type="submit"
-        class="btn-primary"
-        disabled={submitting || !content || !author || !intent}
-      >
-        {submitting ? 'Submitting...' : 'Submit Entry'}
-      </button>
+      <Tooltip text={ncipDefinitions.entry.text} ncipRef={ncipDefinitions.entry.ncipRef} position="top">
+        <button
+          type="submit"
+          class="btn-primary"
+          disabled={submitting || !content || !author || !intent}
+        >
+          {submitting ? 'Submitting...' : 'Submit Entry'}
+        </button>
+      </Tooltip>
 
       <button type="button" class="btn-ghost" on:click={clearForm}>
         Clear
@@ -198,13 +212,15 @@
         <div class="result-status success">Entry Submitted</div>
         <p>Your entry has been added to the pending pool.</p>
 
-        <button
-          class="btn-primary mine-btn"
-          on:click={handleMine}
-          disabled={mining}
-        >
-          {mining ? 'Mining...' : 'Mine Block Now'}
-        </button>
+        <Tooltip text={ncipDefinitions.mining.text} ncipRef={ncipDefinitions.mining.ncipRef} position="top">
+          <button
+            class="btn-primary mine-btn"
+            on:click={handleMine}
+            disabled={mining}
+          >
+            {mining ? 'Mining...' : 'Mine Block Now'}
+          </button>
+        </Tooltip>
 
         {#if result.mined}
           <div class="mined-info">

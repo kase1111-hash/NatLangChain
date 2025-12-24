@@ -1,6 +1,8 @@
 <script>
   import { onMount } from 'svelte';
   import { getOpenContracts, parseContract, findContractMatches, getPendingEntries } from '../lib/api.js';
+  import Tooltip from './Tooltip.svelte';
+  import { ncipDefinitions } from '../lib/ncip-definitions.js';
 
   let contracts = [];
   let pendingEntries = [];
@@ -94,7 +96,9 @@
     <div class="contracts-grid">
       <!-- Contract Parser -->
       <div class="panel parse-panel">
-        <h3>Parse Contract</h3>
+        <Tooltip text={ncipDefinitions.contractParse.text} ncipRef={ncipDefinitions.contractParse.ncipRef} position="right">
+          <h3>Parse Contract</h3>
+        </Tooltip>
         <p class="panel-desc">Analyze natural language contract text</p>
 
         <textarea
@@ -105,13 +109,15 @@ Example: 'I, Alice, agree to deliver 100 widgets to Bob by January 15, 2025, in 
           rows="6"
         ></textarea>
 
-        <button
-          class="btn-primary"
-          on:click={handleParse}
-          disabled={parsing || !parseInput.trim()}
-        >
-          {parsing ? 'Parsing...' : 'Parse Contract'}
-        </button>
+        <Tooltip text={ncipDefinitions.contractParse.text} ncipRef={ncipDefinitions.contractParse.ncipRef} position="top">
+          <button
+            class="btn-primary"
+            on:click={handleParse}
+            disabled={parsing || !parseInput.trim()}
+          >
+            {parsing ? 'Parsing...' : 'Parse Contract'}
+          </button>
+        </Tooltip>
 
         {#if parseResult}
           <div class="parse-result">
@@ -119,11 +125,15 @@ Example: 'I, Alice, agree to deliver 100 widgets to Bob by January 15, 2025, in 
             {#if parseResult.terms}
               <div class="terms-list">
                 <div class="term-item">
-                  <span class="term-label">Parties:</span>
+                  <Tooltip text={ncipDefinitions.parties.text} ncipRef={ncipDefinitions.parties.ncipRef} position="right">
+                    <span class="term-label">Parties:</span>
+                  </Tooltip>
                   <span class="term-value">{parseResult.terms.parties?.join(', ') || 'None identified'}</span>
                 </div>
                 <div class="term-item">
-                  <span class="term-label">Obligations:</span>
+                  <Tooltip text={ncipDefinitions.obligations.text} ncipRef={ncipDefinitions.obligations.ncipRef} position="right">
+                    <span class="term-label">Obligations:</span>
+                  </Tooltip>
                   <ul>
                     {#each parseResult.terms.obligations || [] as obligation}
                       <li>{obligation}</li>
@@ -131,7 +141,9 @@ Example: 'I, Alice, agree to deliver 100 widgets to Bob by January 15, 2025, in 
                   </ul>
                 </div>
                 <div class="term-item">
-                  <span class="term-label">Conditions:</span>
+                  <Tooltip text={ncipDefinitions.conditions.text} ncipRef={ncipDefinitions.conditions.ncipRef} position="right">
+                    <span class="term-label">Conditions:</span>
+                  </Tooltip>
                   <ul>
                     {#each parseResult.terms.conditions || [] as condition}
                       <li>{condition}</li>
@@ -154,7 +166,9 @@ Example: 'I, Alice, agree to deliver 100 widgets to Bob by January 15, 2025, in 
 
       <!-- Open Contracts -->
       <div class="panel contracts-list-panel">
-        <h3>Open Contracts ({contracts.length})</h3>
+        <Tooltip text={ncipDefinitions.agreement.text} ncipRef={ncipDefinitions.agreement.ncipRef} position="right">
+          <h3>Open Contracts ({contracts.length})</h3>
+        </Tooltip>
         <p class="panel-desc">Contracts awaiting fulfillment or response</p>
 
         {#if contracts.length === 0}
@@ -189,21 +203,27 @@ Example: 'I, Alice, agree to deliver 100 widgets to Bob by January 15, 2025, in 
 
       <!-- Contract Matching -->
       <div class="panel matching-panel">
-        <h3>Contract Matching</h3>
+        <Tooltip text={ncipDefinitions.contractMatching.text} ncipRef={ncipDefinitions.contractMatching.ncipRef} position="right">
+          <h3>Contract Matching</h3>
+        </Tooltip>
         <p class="panel-desc">Find matching offers and seeks</p>
 
-        <div class="pending-info">
-          <span class="pending-count">{pendingEntries.length}</span>
-          <span>pending entries to match</span>
-        </div>
+        <Tooltip text={ncipDefinitions.pendingEntries.text} ncipRef={ncipDefinitions.pendingEntries.ncipRef} position="right">
+          <div class="pending-info">
+            <span class="pending-count">{pendingEntries.length}</span>
+            <span>pending entries to match</span>
+          </div>
+        </Tooltip>
 
-        <button
-          class="btn-primary"
-          on:click={handleFindMatches}
-          disabled={matching || pendingEntries.length === 0}
-        >
-          {matching ? 'Finding Matches...' : 'Find Matches'}
-        </button>
+        <Tooltip text={ncipDefinitions.contractMatching.text} ncipRef={ncipDefinitions.contractMatching.ncipRef} position="top">
+          <button
+            class="btn-primary"
+            on:click={handleFindMatches}
+            disabled={matching || pendingEntries.length === 0}
+          >
+            {matching ? 'Finding Matches...' : 'Find Matches'}
+          </button>
+        </Tooltip>
 
         {#if matchResults}
           <div class="match-results">
