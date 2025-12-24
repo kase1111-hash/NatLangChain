@@ -413,7 +413,7 @@ The following table summarizes all NCIP requirements and their implementation st
 | NCIP-006 | Jurisdictional Interpretation | ✅ Implemented | `src/jurisdictional.py`, integrated with `src/validator.py` |
 | NCIP-007 | Validator Trust Scoring | ✅ Implemented | `src/validator_trust.py`, integrated with `src/validator.py` |
 | NCIP-008 | Semantic Appeals & Precedent | ✅ Implemented | `src/appeals.py`, SCR generation, precedent decay, validator integration |
-| NCIP-009 | Regulatory Interface Modules | ❌ Not Implemented | No RIMs, no compliance proof generation |
+| NCIP-009 | Regulatory Interface Modules | ✅ Implemented | `src/regulatory_interface.py`, RIMs for SEC/GDPR/HIPAA/SOX, ZK proofs, WORM certificates |
 | NCIP-010 | Mediator Reputation & Slashing | ✅ Implemented | `src/mediator_reputation.py`, integrated with `src/dispute.py` |
 | NCIP-011 | Validator-Mediator Weight Coupling | ✅ Implemented | `src/validator_mediator_coupling.py`, influence gate, role separation, collusion resistance |
 | NCIP-012 | Human Ratification UX Limits | ✅ Implemented | `src/cognitive_load.py`, integrated with `src/validator.py` |
@@ -565,15 +565,27 @@ The following table summarizes all NCIP requirements and their implementation st
 - [x] Core principle enforced: "Past meaning may inform — but never replace explicit present intent"
 - [x] Comprehensive test suite (35 tests)
 
-#### NCIP-009: Regulatory Interface Modules
-**Priority:** LOW 🟢
-**Files Needed:** `src/compliance.py`
+#### NCIP-009: Regulatory Interface Modules & Compliance Proofs
+**Status:** ✅ IMPLEMENTED
+**Files:** `src/regulatory_interface.py`, `tests/test_regulatory_interface.py`
 
-**Missing Features:**
-- [ ] Regulatory Interface Module (RIM) framework
-- [ ] Compliance proof types: immutability, retention, consent, access control, privacy
-- [ ] Proof package structure with minimal disclosure
-- [ ] ZK proof integration for privacy-preserving compliance
+**Implemented Features:**
+- [x] RegulatoryInterfaceManager with full compliance proof lifecycle
+- [x] Default RIMs for SEC 17a-4, GDPR, HIPAA, SOX regimes
+- [x] 8 compliance claim types: immutability, retention, consent, access_control, privacy, authorship, integrity, audit_trail
+- [x] Proof mechanisms: hash_chain, worm_certificate, ratified_pou, zero_knowledge, merkle_proof, signature
+- [x] Zero-Knowledge Proof generation and verification for privacy claims
+- [x] WORM (Write-Once-Read-Many) certificates for retention proofs
+- [x] Access logging with Boundary Daemon integration
+- [x] Proof constraints enforcement: minimal, purpose-bound, non-semantic
+- [x] Disclosure scopes: regulator_only, auditor_only, court_order, public
+- [x] Abuse prevention: fishing expedition detection, semantic leakage prevention
+- [x] Validator verification with scope minimality checks
+- [x] Proof package structure per NCIP-009 Section 6
+- [x] Proof expiration and revocation
+- [x] HybridValidator integration with NCIP-009 imports
+- [x] Comprehensive test suite (42 tests)
+- [x] Core principle: "Compliance is proven cryptographically, not narratively."
 
 #### NCIP-010: Mediator Reputation & Slashing
 **Status:** ✅ IMPLEMENTED
