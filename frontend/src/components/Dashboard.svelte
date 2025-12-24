@@ -41,8 +41,23 @@
     <div class="loading">Loading chain data...</div>
   {:else if error}
     <div class="error">
-      <p>Error loading data: {error}</p>
-      <button on:click={loadDashboard}>Retry</button>
+      <div class="error-icon">⚠️</div>
+      <h3>Backend Not Connected</h3>
+      {#if error.includes('<!DOCTYPE') || error.includes('Unexpected token')}
+        <p>The NatLangChain API server is not running.</p>
+        <div class="error-instructions">
+          <p><strong>To start the backend:</strong></p>
+          <ol>
+            <li>Open a terminal in the NatLangChain directory</li>
+            <li>Run: <code>python src/api.py</code></li>
+            <li>Wait for "Running on http://localhost:5000"</li>
+            <li>Click Retry below</li>
+          </ol>
+        </div>
+      {:else}
+        <p>Error: {error}</p>
+      {/if}
+      <button on:click={loadDashboard}>Retry Connection</button>
     </div>
   {:else if chainInfo}
     <div class="stats-grid">
@@ -139,6 +154,51 @@
     text-align: center;
   }
 
+  .error-icon {
+    font-size: 2.5rem;
+    margin-bottom: 12px;
+  }
+
+  .error h3 {
+    color: #ef4444;
+    margin-bottom: 8px;
+    font-size: 1.25rem;
+  }
+
+  .error p {
+    color: #a1a1aa;
+    margin-bottom: 8px;
+  }
+
+  .error-instructions {
+    text-align: left;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 6px;
+    padding: 16px;
+    margin: 16px auto;
+    max-width: 400px;
+  }
+
+  .error-instructions ol {
+    margin: 8px 0 0 0;
+    padding-left: 20px;
+    color: #d4d4d8;
+  }
+
+  .error-instructions li {
+    margin: 6px 0;
+    line-height: 1.5;
+  }
+
+  .error-instructions code {
+    background: rgba(102, 126, 234, 0.2);
+    color: #667eea;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.9rem;
+  }
+
   .error button {
     margin-top: 12px;
     padding: 8px 16px;
@@ -147,6 +207,11 @@
     border: none;
     border-radius: 6px;
     cursor: pointer;
+    transition: background 0.2s ease;
+  }
+
+  .error button:hover {
+    background: #dc2626;
   }
 
   .stats-grid {
