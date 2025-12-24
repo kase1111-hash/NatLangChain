@@ -246,24 +246,68 @@ Return JSON:
                 messages=[{"role": "user", "content": prompt}]
             )
 
-            # Extract text from response
+            # Safe access to API response
+            if not message.content:
+                raise ValueError(f"Empty response from API in {role}: no content returned")
+            if not hasattr(message.content[0], 'text'):
+                raise ValueError(f"Invalid API response format in {role}: missing 'text' attribute")
+
             response_text = message.content[0].text
 
-            # Handle markdown code blocks
-            if "```json" in response_text:
-                json_start = response_text.find("```json") + 7
-                json_end = response_text.find("```", json_start)
-                response_text = response_text[json_start:json_end].strip()
-            elif "```" in response_text:
-                json_start = response_text.find("```") + 3
-                json_end = response_text.find("```", json_start)
-                response_text = response_text[json_start:json_end].strip()
+            # Extract JSON with validation
+            response_text = self._extract_json_from_response(response_text)
 
-            return json.loads(response_text)
+            try:
+                return json.loads(response_text)
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Failed to parse JSON in {role}: {e.msg} at position {e.pos}")
 
-        except Exception as e:
+        except json.JSONDecodeError as e:
             return {
-                "error": str(e),
+                "error": f"JSON parsing error: {str(e)}",
                 "role": role,
                 "status": "ERROR"
             }
+        except ValueError as e:
+            return {
+                "error": f"Validation error: {str(e)}",
+                "role": role,
+                "status": "ERROR"
+            }
+        except Exception as e:
+            return {
+                "error": f"Unexpected error: {str(e)}",
+                "role": role,
+                "status": "ERROR"
+            }
+
+    def _extract_json_from_response(self, response_text: str) -> str:
+        """
+        Extract JSON from a response that may contain markdown code blocks.
+
+        Args:
+            response_text: Raw response text
+
+        Returns:
+            Extracted JSON string
+
+        Raises:
+            ValueError: If JSON extraction fails
+        """
+        if not response_text or not response_text.strip():
+            raise ValueError("Empty response text received")
+
+        if "```json" in response_text:
+            json_start = response_text.find("```json") + 7
+            json_end = response_text.find("```", json_start)
+            if json_end == -1:
+                raise ValueError("Malformed response: unclosed JSON code block")
+            return response_text[json_start:json_end].strip()
+        elif "```" in response_text:
+            json_start = response_text.find("```") + 3
+            json_end = response_text.find("```", json_start)
+            if json_end == -1:
+                raise ValueError("Malformed response: unclosed code block")
+            return response_text[json_start:json_end].strip()
+
+        return response_text.strip()

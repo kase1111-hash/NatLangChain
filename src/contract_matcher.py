@@ -193,30 +193,82 @@ Return JSON:
                 messages=[{"role": "user", "content": prompt}]
             )
 
+            # Safe access to API response
+            if not message.content:
+                raise ValueError("Empty response from API: no content returned during match computation")
+            if not hasattr(message.content[0], 'text'):
+                raise ValueError("Invalid API response format: missing 'text' attribute")
+
             response_text = message.content[0].text
 
-            # Extract JSON
-            if "```json" in response_text:
-                json_start = response_text.find("```json") + 7
-                json_end = response_text.find("```", json_start)
-                response_text = response_text[json_start:json_end].strip()
-            elif "```" in response_text:
-                json_start = response_text.find("```") + 3
-                json_end = response_text.find("```", json_start)
-                response_text = response_text[json_start:json_end].strip()
+            # Extract JSON with validation
+            response_text = self._extract_json_from_response(response_text)
 
-            result = json.loads(response_text)
+            try:
+                result = json.loads(response_text)
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Failed to parse match result JSON: {e.msg} at position {e.pos}")
+
             return result
 
-        except Exception as e:
-            print(f"Match computation failed: {e}")
+        except json.JSONDecodeError as e:
+            print(f"Match computation failed - JSON parsing error: {e}")
+            return {
+                "score": 0,
+                "compatibility": "",
+                "conflicts": [f"JSON parsing error: {str(e)}"],
+                "recommendation": "NO_MATCH",
+                "reasoning": f"Failed to parse API response: {str(e)}"
+            }
+        except ValueError as e:
+            print(f"Match computation failed - validation error: {e}")
             return {
                 "score": 0,
                 "compatibility": "",
                 "conflicts": [str(e)],
                 "recommendation": "NO_MATCH",
-                "reasoning": f"Error: {str(e)}"
+                "reasoning": f"API response validation failed: {str(e)}"
             }
+        except Exception as e:
+            print(f"Match computation failed - unexpected error: {e}")
+            return {
+                "score": 0,
+                "compatibility": "",
+                "conflicts": [str(e)],
+                "recommendation": "NO_MATCH",
+                "reasoning": f"Unexpected error: {str(e)}"
+            }
+
+    def _extract_json_from_response(self, response_text: str) -> str:
+        """
+        Extract JSON from a response that may contain markdown code blocks.
+
+        Args:
+            response_text: Raw response text
+
+        Returns:
+            Extracted JSON string
+
+        Raises:
+            ValueError: If JSON extraction fails
+        """
+        if not response_text or not response_text.strip():
+            raise ValueError("Empty response text received")
+
+        if "```json" in response_text:
+            json_start = response_text.find("```json") + 7
+            json_end = response_text.find("```", json_start)
+            if json_end == -1:
+                raise ValueError("Malformed response: unclosed JSON code block")
+            return response_text[json_start:json_end].strip()
+        elif "```" in response_text:
+            json_start = response_text.find("```") + 3
+            json_end = response_text.find("```", json_start)
+            if json_end == -1:
+                raise ValueError("Malformed response: unclosed code block")
+            return response_text[json_start:json_end].strip()
+
+        return response_text.strip()
 
     def _generate_proposal(
         self,
@@ -266,6 +318,12 @@ Write in clear, contract-appropriate language."""
                 max_tokens=512,
                 messages=[{"role": "user", "content": prompt}]
             )
+
+            # Safe access to API response
+            if not message.content:
+                raise ValueError("Empty response from API: no content returned during proposal generation")
+            if not hasattr(message.content[0], 'text'):
+                raise ValueError("Invalid API response format: missing 'text' attribute in proposal generation")
 
             merged_prose = message.content[0].text.strip()
 
@@ -368,28 +426,51 @@ Return JSON:
                 messages=[{"role": "user", "content": prompt}]
             )
 
+            # Safe access to API response
+            if not message.content:
+                raise ValueError("Empty response from API: no content returned during mediation")
+            if not hasattr(message.content[0], 'text'):
+                raise ValueError("Invalid API response format: missing 'text' attribute in mediation")
+
             response_text = message.content[0].text
 
-            # Extract JSON
-            if "```json" in response_text:
-                json_start = response_text.find("```json") + 7
-                json_end = response_text.find("```", json_start)
-                response_text = response_text[json_start:json_end].strip()
-            elif "```" in response_text:
-                json_start = response_text.find("```") + 3
-                json_end = response_text.find("```", json_start)
-                response_text = response_text[json_start:json_end].strip()
+            # Extract JSON with validation
+            response_text = self._extract_json_from_response(response_text)
 
-            result = json.loads(response_text)
+            try:
+                result = json.loads(response_text)
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Failed to parse mediation result JSON: {e.msg} at position {e.pos}")
+
             return result
 
-        except Exception as e:
-            print(f"Mediation failed: {e}")
+        except json.JSONDecodeError as e:
+            print(f"Mediation failed - JSON parsing error: {e}")
             return {
                 "points_of_agreement": [],
                 "differences": [],
                 "suggested_compromise": "",
                 "recommended_action": "TERMINATE",
-                "reasoning": f"Mediation error: {str(e)}",
+                "reasoning": f"JSON parsing error: {str(e)}",
+                "revised_terms": {}
+            }
+        except ValueError as e:
+            print(f"Mediation failed - validation error: {e}")
+            return {
+                "points_of_agreement": [],
+                "differences": [],
+                "suggested_compromise": "",
+                "recommended_action": "TERMINATE",
+                "reasoning": f"Validation error: {str(e)}",
+                "revised_terms": {}
+            }
+        except Exception as e:
+            print(f"Mediation failed - unexpected error: {e}")
+            return {
+                "points_of_agreement": [],
+                "differences": [],
+                "suggested_compromise": "",
+                "recommended_action": "TERMINATE",
+                "reasoning": f"Unexpected error: {str(e)}",
                 "revised_terms": {}
             }

@@ -132,6 +132,10 @@ Return JSON:
 
         Returns:
             Model's response as dict or None
+
+        Raises:
+            ValueError: If API response format is invalid
+            json.JSONDecodeError: If response cannot be parsed as JSON
         """
         model_config = self.models.get(model_name)
         if not model_config:
@@ -144,25 +148,58 @@ Return JSON:
                 messages=[{"role": "user", "content": prompt}]
             )
 
+            # Safe access to API response with clear error messages
+            if not message.content:
+                raise ValueError(f"Empty response from model '{model_name}': no content returned")
+            if not hasattr(message.content[0], 'text'):
+                raise ValueError(f"Invalid response format from model '{model_name}': missing 'text' attribute")
+
             response_text = message.content[0].text
 
-            # Extract JSON
-            if "```json" in response_text:
-                json_start = response_text.find("```json") + 7
-                json_end = response_text.find("```", json_start)
-                response_text = response_text[json_start:json_end].strip()
-            elif "```" in response_text:
-                json_start = response_text.find("```") + 3
-                json_end = response_text.find("```", json_start)
-                response_text = response_text[json_start:json_end].strip()
+            # Extract JSON from response
+            response_text = self._extract_json_from_response(response_text)
 
-            return json.loads(response_text)
+            try:
+                return json.loads(response_text)
+            except json.JSONDecodeError as e:
+                raise json.JSONDecodeError(
+                    f"Failed to parse JSON from model '{model_name}' response: {e.msg}",
+                    e.doc,
+                    e.pos
+                )
 
         # Add other model handlers here
         # elif model_name == "gpt5": ...
         # elif model_name == "llama4": ...
 
         return None
+
+    def _extract_json_from_response(self, response_text: str) -> str:
+        """
+        Extract JSON from a response that may contain markdown code blocks.
+
+        Args:
+            response_text: Raw response text
+
+        Returns:
+            Extracted JSON string
+
+        Raises:
+            ValueError: If JSON extraction fails
+        """
+        if "```json" in response_text:
+            json_start = response_text.find("```json") + 7
+            json_end = response_text.find("```", json_start)
+            if json_end == -1:
+                raise ValueError("Malformed response: unclosed JSON code block")
+            return response_text[json_start:json_end].strip()
+        elif "```" in response_text:
+            json_start = response_text.find("```") + 3
+            json_end = response_text.find("```", json_start)
+            if json_end == -1:
+                raise ValueError("Malformed response: unclosed code block")
+            return response_text[json_start:json_end].strip()
+        return response_text.strip()
 
     def _calculate_consensus(
         self,
@@ -369,7 +406,7 @@ class HallucimationDetector:
             for r in responses
         )
 
-        disagreement = len(unique_responses) > 1
+        disagreement = len(unique_decisions) > 1
 
         return {
             "hallucination_risk": "high" if disagreement else "low",
