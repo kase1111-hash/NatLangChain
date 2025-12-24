@@ -44,6 +44,40 @@ try:
 except ImportError:
     NCIP_007_AVAILABLE = False
 
+# Import NCIP-012 Cognitive Load & Human Ratification
+try:
+    from cognitive_load import (
+        CognitiveLoadManager,
+        RatificationContext,
+        ActionType,
+        InformationLevel,
+        UIViolationType,
+        SemanticUnit,
+        CognitiveBudget,
+        RatificationState,
+        PoUConfirmation,
+    )
+    NCIP_012_AVAILABLE = True
+except ImportError:
+    NCIP_012_AVAILABLE = False
+
+# Import NCIP-014 Protocol Amendments & Constitutional Change
+try:
+    from protocol_amendments import (
+        AmendmentManager,
+        AmendmentClass,
+        AmendmentStatus,
+        RatificationStage,
+        ConstitutionalArtifact,
+        Amendment,
+        EmergencyAmendment,
+        PoUStatement,
+        SemanticCompatibilityResult,
+    )
+    NCIP_014_AVAILABLE = True
+except ImportError:
+    NCIP_014_AVAILABLE = False
+
 
 class ProofOfUnderstanding:
     """
@@ -1219,4 +1253,1104 @@ class HybridValidator:
             "enabled": True,
             "config": get_ncip_007_config(),
             "registered_validators": len(get_trust_manager().profiles)
+        }
+
+    # =========================================================================
+    # NCIP-012: Human Ratification UX & Cognitive Load Limits
+    # =========================================================================
+
+    def get_cognitive_load_manager(self) -> Optional[Any]:
+        """
+        Get the cognitive load manager for NCIP-012 operations.
+
+        Returns:
+            CognitiveLoadManager instance or None if unavailable
+        """
+        if not NCIP_012_AVAILABLE:
+            return None
+
+        if not hasattr(self, '_cognitive_load_manager'):
+            self._cognitive_load_manager = CognitiveLoadManager()
+        return self._cognitive_load_manager
+
+    def create_ratification(
+        self,
+        ratification_id: str,
+        user_id: str,
+        context: str = "simple"
+    ) -> Dict[str, Any]:
+        """
+        Create a new ratification state per NCIP-012.
+
+        This tracks cognitive load budget, information hierarchy,
+        PoU confirmation, and UI validation for the ratification.
+
+        Args:
+            ratification_id: Unique identifier for this ratification
+            user_id: The user who will ratify
+            context: Context type (simple, financial, licensing, dispute, emergency)
+
+        Returns:
+            Ratification state summary
+        """
+        if not NCIP_012_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-012 cognitive load module not available",
+                "ncip_012_enabled": False
+            }
+
+        manager = self.get_cognitive_load_manager()
+
+        context_map = {
+            "simple": RatificationContext.SIMPLE,
+            "financial": RatificationContext.FINANCIAL,
+            "licensing": RatificationContext.LICENSING,
+            "dispute": RatificationContext.DISPUTE,
+            "emergency": RatificationContext.EMERGENCY
+        }
+        ctx = context_map.get(context.lower(), RatificationContext.SIMPLE)
+
+        state = manager.create_ratification(ratification_id, user_id, ctx)
+
+        return {
+            "status": "created",
+            "ratification_id": ratification_id,
+            "user_id": user_id,
+            "context": context,
+            "cognitive_budget": {
+                "max_units": state.cognitive_budget.max_units,
+                "remaining": state.cognitive_budget.remaining
+            },
+            "ncip_012_enabled": True
+        }
+
+    def check_cognitive_load_budget(
+        self,
+        ratification_id: str,
+        semantic_units: Optional[List[Dict[str, Any]]] = None
+    ) -> Dict[str, Any]:
+        """
+        Check if cognitive load budget is within limits per NCIP-012.
+
+        Args:
+            ratification_id: The ratification to check
+            semantic_units: List of semantic units to add (optional)
+
+        Returns:
+            Budget compliance result
+        """
+        if not NCIP_012_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-012 cognitive load module not available"
+            }
+
+        manager = self.get_cognitive_load_manager()
+        state = manager.get_ratification(ratification_id)
+
+        if not state:
+            return {
+                "status": "error",
+                "message": f"Ratification {ratification_id} not found"
+            }
+
+        # Add any new semantic units
+        if semantic_units:
+            for unit_data in semantic_units:
+                unit = SemanticUnit(
+                    id=unit_data.get("id", ""),
+                    description=unit_data.get("description", ""),
+                    complexity_weight=unit_data.get("complexity_weight", 1.0),
+                    category=unit_data.get("category", "general")
+                )
+                manager.add_semantic_unit(state.cognitive_budget, unit)
+
+        compliant, msg = manager.check_budget_compliance(state.cognitive_budget)
+
+        result = {
+            "status": "compliant" if compliant else "exceeded",
+            "message": msg,
+            "max_units": state.cognitive_budget.max_units,
+            "current_units": len(state.cognitive_budget.current_units),
+            "remaining": state.cognitive_budget.remaining,
+            "utilization": state.cognitive_budget.utilization
+        }
+
+        if state.cognitive_budget.is_exceeded:
+            segments = manager.request_segmentation(state.cognitive_budget)
+            result["segmentation_required"] = True
+            result["suggested_segments"] = len(segments)
+
+        return result
+
+    def check_rate_limits(
+        self,
+        user_id: str,
+        action_type: str = "ratification"
+    ) -> Dict[str, Any]:
+        """
+        Check rate limits for a user per NCIP-012.
+
+        Rate limits:
+        - Ratifications: ≤5 per hour
+        - Dispute escalations: ≤2 per day
+        - License grants: ≤3 per day
+
+        Args:
+            user_id: The user to check
+            action_type: Type of action (ratification, dispute_escalation, license_grant)
+
+        Returns:
+            Rate limit status
+        """
+        if not NCIP_012_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-012 cognitive load module not available"
+            }
+
+        manager = self.get_cognitive_load_manager()
+
+        action_map = {
+            "ratification": ActionType.RATIFICATION,
+            "dispute_escalation": ActionType.DISPUTE_ESCALATION,
+            "license_grant": ActionType.LICENSE_GRANT
+        }
+        action = action_map.get(action_type.lower(), ActionType.RATIFICATION)
+
+        allowed, msg = manager.check_rate_limit(user_id, action)
+        remaining = manager.get_remaining_actions(user_id)
+
+        return {
+            "status": "allowed" if allowed else "rate_limited",
+            "message": msg,
+            "action_type": action_type,
+            "remaining_actions": {
+                "ratifications_this_hour": remaining.get(ActionType.RATIFICATION, 0),
+                "disputes_today": remaining.get(ActionType.DISPUTE_ESCALATION, 0),
+                "license_grants_today": remaining.get(ActionType.LICENSE_GRANT, 0)
+            }
+        }
+
+    def check_cooling_period(
+        self,
+        user_id: str,
+        action_type: str = "agreement"
+    ) -> Dict[str, Any]:
+        """
+        Check if a cooling period is active for a user per NCIP-012.
+
+        Default cooling periods:
+        - Agreement finalization: 12 hours
+        - Settlement: 24 hours
+        - License delegation: 24 hours
+        - Dispute escalation: 6 hours
+
+        Args:
+            user_id: The user to check
+            action_type: Type of action
+
+        Returns:
+            Cooling period status
+        """
+        if not NCIP_012_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-012 cognitive load module not available"
+            }
+
+        manager = self.get_cognitive_load_manager()
+
+        action_map = {
+            "agreement": ActionType.AGREEMENT,
+            "settlement": ActionType.SETTLEMENT,
+            "license_grant": ActionType.LICENSE_GRANT,
+            "dispute_escalation": ActionType.DISPUTE_ESCALATION
+        }
+        action = action_map.get(action_type.lower(), ActionType.AGREEMENT)
+
+        blocked, cooling = manager.check_cooling_period(user_id, action)
+
+        result = {
+            "status": "blocked" if blocked else "allowed",
+            "action_type": action_type
+        }
+
+        if blocked and cooling:
+            result["cooling_period"] = {
+                "started_at": cooling.started_at.isoformat(),
+                "ends_at": cooling.ends_at.isoformat(),
+                "remaining_seconds": cooling.remaining_time.total_seconds()
+            }
+
+        return result
+
+    def validate_information_hierarchy(
+        self,
+        ratification_id: str,
+        levels_presented: List[str]
+    ) -> Dict[str, Any]:
+        """
+        Validate information hierarchy compliance per NCIP-012.
+
+        Required levels in order:
+        1. Intent Summary
+        2. Consequences
+        3. Irreversibility Flags
+        4. Risks & Unknowns
+        5. Alternatives
+        6. Canonical Term References
+        7. Full Text (optional)
+
+        Args:
+            ratification_id: The ratification to validate
+            levels_presented: List of level names presented
+
+        Returns:
+            Hierarchy validation result
+        """
+        if not NCIP_012_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-012 cognitive load module not available"
+            }
+
+        manager = self.get_cognitive_load_manager()
+        state = manager.get_ratification(ratification_id)
+
+        if not state:
+            return {
+                "status": "error",
+                "message": f"Ratification {ratification_id} not found"
+            }
+
+        level_map = {
+            "intent_summary": InformationLevel.INTENT_SUMMARY,
+            "consequences": InformationLevel.CONSEQUENCES,
+            "irreversibility_flags": InformationLevel.IRREVERSIBILITY_FLAGS,
+            "risks_unknowns": InformationLevel.RISKS_UNKNOWNS,
+            "alternatives": InformationLevel.ALTERNATIVES,
+            "canonical_references": InformationLevel.CANONICAL_REFERENCES,
+            "full_text": InformationLevel.FULL_TEXT
+        }
+
+        errors = []
+        for level_name in levels_presented:
+            level = level_map.get(level_name.lower())
+            if level:
+                success, msg = manager.present_information_level(
+                    state.information, level
+                )
+                if not success:
+                    errors.append(msg)
+
+        complete, missing = manager.validate_hierarchy_complete(state.information)
+
+        return {
+            "status": "complete" if complete else "incomplete",
+            "errors": errors,
+            "missing_levels": [l.name.lower() for l in missing],
+            "presentation_order": [l.name.lower() for l in state.information.presentation_order]
+        }
+
+    def validate_pou_gate(
+        self,
+        ratification_id: str,
+        paraphrase_viewed: bool = False,
+        user_confirmed: bool = False,
+        user_correction: Optional[str] = None,
+        correction_drift: Optional[float] = None
+    ) -> Dict[str, Any]:
+        """
+        Validate Proof of Understanding gate per NCIP-012.
+
+        Before ratification, the user MUST:
+        - View a PoU paraphrase
+        - Confirm or correct it
+
+        If correction drift exceeds 0.20:
+        - Ratification blocked
+        - Semantic clarification required
+
+        Args:
+            ratification_id: The ratification to validate
+            paraphrase_viewed: Whether user viewed the paraphrase
+            user_confirmed: Whether user confirmed
+            user_correction: User's correction text (if any)
+            correction_drift: Drift score of correction
+
+        Returns:
+            PoU gate validation result
+        """
+        if not NCIP_012_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-012 cognitive load module not available"
+            }
+
+        manager = self.get_cognitive_load_manager()
+        state = manager.get_ratification(ratification_id)
+
+        if not state:
+            return {
+                "status": "error",
+                "message": f"Ratification {ratification_id} not found"
+            }
+
+        if paraphrase_viewed:
+            manager.view_pou_paraphrase(state.pou_confirmation)
+
+        if user_confirmed:
+            success, msg = manager.confirm_pou(
+                state.pou_confirmation,
+                user_correction,
+                correction_drift
+            )
+
+            return {
+                "status": "valid" if success else "invalid",
+                "message": msg,
+                "requires_clarification": state.pou_confirmation.requires_clarification,
+                "max_allowed_drift": state.pou_confirmation.max_allowed_drift,
+                "correction_drift": correction_drift
+            }
+
+        return {
+            "status": "pending",
+            "paraphrase_viewed": state.pou_confirmation.paraphrase_viewed,
+            "user_confirmed": state.pou_confirmation.user_confirmed
+        }
+
+    def validate_ui_compliance(
+        self,
+        ratification_id: str,
+        ui_elements: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """
+        Validate UI compliance with NCIP-012 safeguards.
+
+        Mandatory UI constraints:
+        - No dark patterns
+        - No default "accept"
+        - No countdown pressure (unless emergency-flagged)
+        - No bundling of unrelated decisions
+
+        Args:
+            ratification_id: The ratification to validate
+            ui_elements: List of UI element descriptions
+
+        Returns:
+            UI compliance result
+        """
+        if not NCIP_012_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-012 cognitive load module not available"
+            }
+
+        manager = self.get_cognitive_load_manager()
+        state = manager.get_ratification(ratification_id)
+
+        if not state:
+            return {
+                "status": "error",
+                "message": f"Ratification {ratification_id} not found"
+            }
+
+        all_violations = []
+        for element in ui_elements:
+            element_type = element.get("type", "unknown")
+            properties = element.get("properties", {})
+
+            compliant, violations = manager.validate_ui_element(
+                state.ui_validation,
+                element_type,
+                properties
+            )
+            all_violations.extend(violations)
+
+        return {
+            "status": "compliant" if state.ui_validation.is_compliant else "non_compliant",
+            "violations": [v.value for v in state.ui_validation.violations],
+            "violation_details": all_violations,
+            "violation_count": state.ui_validation.violation_count
+        }
+
+    def attempt_ratification(
+        self,
+        ratification_id: str,
+        action_type: str = "ratification"
+    ) -> Dict[str, Any]:
+        """
+        Attempt to complete a ratification per NCIP-012.
+
+        Checks all requirements:
+        - Cognitive load budget not exceeded
+        - Information hierarchy complete
+        - PoU confirmation valid
+        - UI compliant
+        - Rate limits not exceeded
+        - Cooling period not active
+
+        Args:
+            ratification_id: The ratification to complete
+            action_type: Type of action for rate limiting
+
+        Returns:
+            Ratification attempt result
+        """
+        if not NCIP_012_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-012 cognitive load module not available"
+            }
+
+        manager = self.get_cognitive_load_manager()
+
+        action_map = {
+            "ratification": ActionType.RATIFICATION,
+            "dispute_escalation": ActionType.DISPUTE_ESCALATION,
+            "license_grant": ActionType.LICENSE_GRANT,
+            "agreement": ActionType.AGREEMENT,
+            "settlement": ActionType.SETTLEMENT
+        }
+        action = action_map.get(action_type.lower(), ActionType.RATIFICATION)
+
+        success, blockers = manager.attempt_ratification(ratification_id, action)
+
+        state = manager.get_ratification(ratification_id)
+
+        result = {
+            "status": "ratified" if success else "blocked",
+            "blockers": blockers
+        }
+
+        if success and state:
+            result["ratified_at"] = state.ratified_at.isoformat() if state.ratified_at else None
+            result["semantic_lock_active"] = state.semantic_lock_active
+
+        return result
+
+    def validator_measure_cognitive_load(
+        self,
+        content: str,
+        context: str = "simple"
+    ) -> Dict[str, Any]:
+        """
+        Validator function to measure cognitive load per NCIP-012.
+
+        Measures semantic units in content and checks against limits.
+
+        Args:
+            content: The content to measure
+            context: Context type for budget limits
+
+        Returns:
+            Cognitive load measurement
+        """
+        if not NCIP_012_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-012 cognitive load module not available"
+            }
+
+        manager = self.get_cognitive_load_manager()
+
+        context_map = {
+            "simple": RatificationContext.SIMPLE,
+            "financial": RatificationContext.FINANCIAL,
+            "licensing": RatificationContext.LICENSING,
+            "dispute": RatificationContext.DISPUTE,
+            "emergency": RatificationContext.EMERGENCY
+        }
+        ctx = context_map.get(context.lower(), RatificationContext.SIMPLE)
+
+        count, units = manager.validator_measure_semantic_units(content, ctx)
+        budget = manager.create_cognitive_budget(ctx)
+
+        for unit in units:
+            budget.current_units.append(unit)
+
+        return {
+            "status": "measured",
+            "semantic_unit_count": count,
+            "max_units": budget.max_units,
+            "is_exceeded": budget.is_exceeded,
+            "utilization": budget.utilization,
+            "units": [
+                {
+                    "id": u.id,
+                    "description": u.description,
+                    "complexity_weight": u.complexity_weight
+                }
+                for u in units
+            ]
+        }
+
+    def validator_detect_ux_violations(
+        self,
+        ui_snapshot: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Validator function to detect UX violations per NCIP-012.
+
+        Detects:
+        - Default accept buttons
+        - Countdown pressure (non-emergency)
+        - Bundled unrelated decisions
+        - Dark patterns
+        - Missing lock visibility
+        - Skipped hierarchy levels
+
+        Args:
+            ui_snapshot: UI state snapshot
+
+        Returns:
+            UX violation detection result
+        """
+        if not NCIP_012_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-012 cognitive load module not available"
+            }
+
+        manager = self.get_cognitive_load_manager()
+        violations = manager.validator_detect_ux_violations(ui_snapshot)
+
+        return {
+            "status": "compliant" if not violations else "violations_detected",
+            "violations": [v.value for v in violations],
+            "violation_count": len(violations),
+            "is_slashable": len(violations) > 2  # Per NCIP-010
+        }
+
+    def is_ncip_012_enabled(self) -> bool:
+        """Check if NCIP-012 cognitive load management is available."""
+        return NCIP_012_AVAILABLE
+
+    def get_ncip_012_status(self) -> Dict[str, Any]:
+        """Get NCIP-012 implementation status and configuration."""
+        if not NCIP_012_AVAILABLE:
+            return {
+                "enabled": False,
+                "message": "NCIP-012 module not available"
+            }
+
+        manager = self.get_cognitive_load_manager()
+
+        return {
+            "enabled": True,
+            "cognitive_load_limits": {
+                "simple": 7,
+                "financial": 9,
+                "licensing": 9,
+                "dispute": 5,
+                "emergency": 3
+            },
+            "rate_limits": {
+                "ratifications_per_hour": 5,
+                "disputes_per_day": 2,
+                "license_grants_per_day": 3
+            },
+            "cooling_periods": {
+                "agreement": "12h",
+                "settlement": "24h",
+                "licensing": "24h",
+                "dispute": "6h"
+            },
+            "pou_max_drift": 0.20,
+            "active_ratifications": len(manager.ratification_states)
+        }
+
+    # =========================================================================
+    # NCIP-014: Protocol Amendments & Constitutional Change
+    # =========================================================================
+
+    def get_amendment_manager(self) -> Optional[Any]:
+        """
+        Get the amendment manager for NCIP-014 operations.
+
+        Returns:
+            AmendmentManager instance or None if unavailable
+        """
+        if not NCIP_014_AVAILABLE:
+            return None
+
+        if not hasattr(self, '_amendment_manager'):
+            self._amendment_manager = AmendmentManager()
+        return self._amendment_manager
+
+    def create_amendment_proposal(
+        self,
+        amendment_class: str,
+        title: str,
+        rationale: str,
+        scope_of_impact: str,
+        affected_artifacts: List[str],
+        proposed_changes: str,
+        migration_guidance: Optional[str] = None,
+        effective_date: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Create a new amendment proposal per NCIP-014.
+
+        Amendment classes:
+        - A: Editorial/Clarificatory - Simple majority (>50%)
+        - B: Procedural - Supermajority (>67%)
+        - C: Semantic - Constitutional quorum (>75%)
+        - D: Structural - Near-unanimous (>90%)
+        - E: Existential - Fork-only (100%)
+
+        Args:
+            amendment_class: Class of amendment (A-E)
+            title: Amendment title
+            rationale: Explanation of why the change is needed
+            scope_of_impact: Description of what is affected
+            affected_artifacts: List of constitutional artifacts affected
+            proposed_changes: Detailed description of changes
+            migration_guidance: Required for class D/E
+            effective_date: When amendment takes effect (ISO format)
+
+        Returns:
+            Amendment creation result
+        """
+        if not NCIP_014_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-014 protocol amendments module not available",
+                "ncip_014_enabled": False
+            }
+
+        manager = self.get_amendment_manager()
+
+        # Map class string to enum
+        class_map = {
+            "A": AmendmentClass.A,
+            "B": AmendmentClass.B,
+            "C": AmendmentClass.C,
+            "D": AmendmentClass.D,
+            "E": AmendmentClass.E
+        }
+        aclass = class_map.get(amendment_class.upper())
+        if not aclass:
+            return {
+                "status": "error",
+                "message": f"Invalid amendment class: {amendment_class}"
+            }
+
+        # Map artifact strings to enums
+        artifact_map = {
+            "genesis_block": ConstitutionalArtifact.GENESIS_BLOCK,
+            "core_doctrines": ConstitutionalArtifact.CORE_DOCTRINES,
+            "mp_01": ConstitutionalArtifact.MP_01,
+            "mp_02": ConstitutionalArtifact.MP_02,
+            "mp_03": ConstitutionalArtifact.MP_03,
+            "mp_04": ConstitutionalArtifact.MP_04,
+            "mp_05": ConstitutionalArtifact.MP_05,
+            "canonical_term_registry": ConstitutionalArtifact.CANONICAL_TERM_REGISTRY,
+        }
+        # Add NCIP artifacts
+        for i in range(1, 16):
+            artifact_map[f"ncip_{i:03d}"] = getattr(ConstitutionalArtifact, f"NCIP_{i:03d}", None)
+            artifact_map[f"ncip_{i}"] = getattr(ConstitutionalArtifact, f"NCIP_{i:03d}", None)
+
+        artifacts = []
+        for art_str in affected_artifacts:
+            artifact = artifact_map.get(art_str.lower())
+            if artifact:
+                artifacts.append(artifact)
+
+        if not artifacts:
+            return {
+                "status": "error",
+                "message": "No valid artifacts specified"
+            }
+
+        # Parse effective date
+        eff_date = None
+        if effective_date:
+            from datetime import datetime
+            try:
+                eff_date = datetime.fromisoformat(effective_date.replace("Z", "+00:00"))
+            except ValueError:
+                return {
+                    "status": "error",
+                    "message": f"Invalid effective_date format: {effective_date}"
+                }
+
+        # Generate amendment ID
+        amendment_id = manager.generate_amendment_id(aclass)
+
+        amendment, errors = manager.create_amendment(
+            amendment_id=amendment_id,
+            amendment_class=aclass,
+            title=title,
+            rationale=rationale,
+            scope_of_impact=scope_of_impact,
+            affected_artifacts=artifacts,
+            proposed_changes=proposed_changes,
+            migration_guidance=migration_guidance,
+            effective_date=eff_date
+        )
+
+        if errors:
+            return {
+                "status": "error",
+                "errors": errors
+            }
+
+        return {
+            "status": "created",
+            "amendment_id": amendment_id,
+            "class": amendment_class,
+            "title": title,
+            "threshold": f"{manager.THRESHOLDS[aclass]:.0%}",
+            "fork_required": amendment.fork_required,
+            "ncip_014_enabled": True
+        }
+
+    def propose_amendment(self, amendment_id: str) -> Dict[str, Any]:
+        """
+        Move an amendment to proposed status and start cooling period.
+        Per NCIP-014 Section 7.1, minimum cooling period is 14 days.
+
+        Args:
+            amendment_id: The amendment to propose
+
+        Returns:
+            Proposal result
+        """
+        if not NCIP_014_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-014 module not available"
+            }
+
+        manager = self.get_amendment_manager()
+        success, msg = manager.propose_amendment(amendment_id)
+
+        amendment = manager.get_amendment(amendment_id)
+
+        result = {
+            "status": "proposed" if success else "error",
+            "message": msg
+        }
+
+        if success and amendment:
+            result["cooling_ends_at"] = amendment.cooling_ends_at.isoformat()
+            result["current_stage"] = amendment.current_stage.name
+
+        return result
+
+    def cast_amendment_vote(
+        self,
+        amendment_id: str,
+        voter_id: str,
+        vote: str,
+        what_changes: str,
+        what_unchanged: str,
+        who_affected: str,
+        rationale: str,
+        validator_trust_score: Optional[float] = None,
+        mediator_reputation: Optional[float] = None
+    ) -> Dict[str, Any]:
+        """
+        Cast a vote on an amendment per NCIP-014.
+
+        Requires a Proof of Understanding statement per Section 6.1:
+        - What changes
+        - What does not change
+        - Who is affected
+        - Why voter agrees or disagrees
+
+        Args:
+            amendment_id: The amendment to vote on
+            voter_id: Voter identifier
+            vote: "approve", "reject", or "abstain"
+            what_changes: PoU - what changes
+            what_unchanged: PoU - what stays the same
+            who_affected: PoU - who is affected
+            rationale: PoU - why voter agrees/disagrees
+            validator_trust_score: Optional trust score weight
+            mediator_reputation: Optional reputation weight
+
+        Returns:
+            Vote result
+        """
+        if not NCIP_014_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-014 module not available"
+            }
+
+        manager = self.get_amendment_manager()
+
+        pou = PoUStatement(
+            voter_id=voter_id,
+            what_changes=what_changes,
+            what_unchanged=what_unchanged,
+            who_affected=who_affected,
+            rationale=rationale
+        )
+
+        success, msg = manager.cast_vote(
+            amendment_id=amendment_id,
+            voter_id=voter_id,
+            vote=vote,
+            pou=pou,
+            validator_trust_score=validator_trust_score,
+            mediator_reputation=mediator_reputation
+        )
+
+        return {
+            "status": "recorded" if success else "error",
+            "message": msg,
+            "vote": vote,
+            "pou_hash": pou.compute_hash() if success else None
+        }
+
+    def get_amendment_tally(self, amendment_id: str) -> Dict[str, Any]:
+        """
+        Get current vote tally for an amendment.
+
+        Args:
+            amendment_id: The amendment to tally
+
+        Returns:
+            Vote tally with threshold comparison
+        """
+        if not NCIP_014_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-014 module not available"
+            }
+
+        manager = self.get_amendment_manager()
+        return manager.tally_votes(amendment_id)
+
+    def finalize_amendment_ratification(self, amendment_id: str) -> Dict[str, Any]:
+        """
+        Finalize ratification of an amendment.
+
+        For Class E amendments, if consensus fails, creates a constitutional fork.
+
+        Args:
+            amendment_id: The amendment to finalize
+
+        Returns:
+            Ratification result
+        """
+        if not NCIP_014_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-014 module not available"
+            }
+
+        manager = self.get_amendment_manager()
+        success, msg = manager.finalize_ratification(amendment_id)
+
+        amendment = manager.get_amendment(amendment_id)
+
+        result = {
+            "status": "ratified" if success else "rejected" if "rejected" in msg.lower() else "forked",
+            "message": msg
+        }
+
+        if amendment:
+            result["amendment_status"] = amendment.status.value
+            if amendment.ratified_at:
+                result["ratified_at"] = amendment.ratified_at.isoformat()
+            if amendment.semantic_lock_at:
+                result["semantic_lock_at"] = amendment.semantic_lock_at.isoformat()
+
+        return result
+
+    def activate_amendment(self, amendment_id: str) -> Dict[str, Any]:
+        """
+        Activate a ratified amendment.
+
+        Per NCIP-014 Section 10, activation only occurs at or after effective_date.
+        Updates constitution version.
+
+        Args:
+            amendment_id: The amendment to activate
+
+        Returns:
+            Activation result
+        """
+        if not NCIP_014_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-014 module not available"
+            }
+
+        manager = self.get_amendment_manager()
+        success, msg = manager.activate_amendment(amendment_id)
+
+        result = {
+            "status": "activated" if success else "error",
+            "message": msg
+        }
+
+        if success:
+            result["constitution_version"] = manager.get_constitution_version()
+
+        return result
+
+    def check_semantic_compatibility(
+        self,
+        amendment_id: str,
+        drift_scores: Optional[Dict[str, float]] = None
+    ) -> Dict[str, Any]:
+        """
+        Check semantic compatibility of an amendment per NCIP-014 Section 9.
+
+        Amendments with ≥D3 drift without migration path are invalid.
+
+        Args:
+            amendment_id: The amendment to check
+            drift_scores: Drift scores by affected NCIP
+
+        Returns:
+            Compatibility result
+        """
+        if not NCIP_014_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-014 module not available"
+            }
+
+        manager = self.get_amendment_manager()
+        result = manager.check_semantic_compatibility(amendment_id, drift_scores)
+
+        return {
+            "status": "compatible" if result.is_compatible else "incompatible",
+            "max_drift": result.max_drift,
+            "requires_migration": result.requires_migration,
+            "affected_ncips": result.affected_ncips,
+            "violations": result.violations
+        }
+
+    def create_emergency_amendment(
+        self,
+        reason: str,
+        proposed_changes: str,
+        max_duration_days: int = 7
+    ) -> Dict[str, Any]:
+        """
+        Create an emergency amendment per NCIP-014 Section 12.
+
+        Emergency amendments:
+        - Limited to procedural safety
+        - Time-bounded (auto-expire if not ratified)
+        - MUST NOT alter semantics
+
+        Valid reasons: validator_halt, exploit_mitigation, network_safety_pause
+
+        Args:
+            reason: Emergency reason
+            proposed_changes: What changes are proposed
+            max_duration_days: Maximum duration before expiry
+
+        Returns:
+            Emergency amendment creation result
+        """
+        if not NCIP_014_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-014 module not available"
+            }
+
+        manager = self.get_amendment_manager()
+
+        from datetime import datetime
+        amendment_id = f"NCIP-014-EMERGENCY-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
+
+        emergency, errors = manager.create_emergency_amendment(
+            amendment_id=amendment_id,
+            reason=reason,
+            proposed_changes=proposed_changes,
+            max_duration_days=max_duration_days
+        )
+
+        if errors:
+            return {
+                "status": "error",
+                "errors": errors
+            }
+
+        return {
+            "status": "created",
+            "amendment_id": emergency.amendment_id,
+            "reason": reason,
+            "expires_at": emergency.expires_at.isoformat(),
+            "requires_ratification": True
+        }
+
+    def get_constitution_version(self) -> Dict[str, Any]:
+        """
+        Get current constitution version per NCIP-014 Section 10.
+
+        Returns:
+            Constitution version info
+        """
+        if not NCIP_014_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-014 module not available"
+            }
+
+        manager = self.get_amendment_manager()
+
+        return {
+            "status": "ok",
+            "version": manager.get_constitution_version(),
+            "history_count": len(manager.constitution_history)
+        }
+
+    def get_amendment_status_summary(self) -> Dict[str, Any]:
+        """
+        Get summary of amendment system status.
+
+        Returns:
+            Status summary including counts by status and class
+        """
+        if not NCIP_014_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-014 module not available"
+            }
+
+        manager = self.get_amendment_manager()
+        return manager.get_status_summary()
+
+    def is_ncip_014_enabled(self) -> bool:
+        """Check if NCIP-014 protocol amendments is available."""
+        return NCIP_014_AVAILABLE
+
+    def get_ncip_014_status(self) -> Dict[str, Any]:
+        """Get NCIP-014 implementation status and configuration."""
+        if not NCIP_014_AVAILABLE:
+            return {
+                "enabled": False,
+                "message": "NCIP-014 module not available"
+            }
+
+        manager = self.get_amendment_manager()
+
+        return {
+            "enabled": True,
+            "constitution_version": manager.get_constitution_version(),
+            "amendment_classes": {
+                "A": {"name": "Editorial", "threshold": "50%"},
+                "B": {"name": "Procedural", "threshold": "67%"},
+                "C": {"name": "Semantic", "threshold": "75%"},
+                "D": {"name": "Structural", "threshold": "90%"},
+                "E": {"name": "Existential", "threshold": "100% (fork-only)"}
+            },
+            "min_cooling_period_days": 14,
+            "total_amendments": len(manager.amendments),
+            "active_emergencies": len([e for e in manager.emergency_amendments.values() if e.is_active]),
+            "forks": len(manager.get_forks())
         }

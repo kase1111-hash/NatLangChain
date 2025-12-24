@@ -379,11 +379,11 @@ The following discrepancies between NCIP-000+ governance and current implementat
 - **Gap:** No weight coupling mechanism
 - **Resolution:** 🟡 PENDING — both NCIP-011 and spec require further definition
 
-#### 6. Human Ratification UX Limits
+#### 6. Human Ratification UX Limits ✅ RESOLVED
 - **NCIP-012 requires:** Cognitive Load Limits for human decision-making
-- **Current MP-01 implements:** Simple ratification (accept/reject)
-- **Gap:** No cognitive load measurement or protection
-- **Resolution:** 🟡 PENDING — both NCIP-012 and spec require further definition
+- **Status:** ✅ IMPLEMENTED in `src/cognitive_load.py`
+- **Features:** Cognitive Load Budget (CLB), rate limits, cooling periods, information hierarchy, PoU gate, UI safeguards
+- **Resolution:** ✅ NCIP-012 IS AUTHORITATIVE — full cognitive load management implemented
 
 #### 7. Emergency Override Protocol
 - **NCIP-013 requires:** Emergency Overrides, Force Majeure & Semantic Fallbacks
@@ -393,11 +393,11 @@ The following discrepancies between NCIP-000+ governance and current implementat
 
 #### Pre-Launch Requirement
 
-#### 8. Constitutional Amendment Process
+#### 8. Constitutional Amendment Process ✅ RESOLVED
 - **NCIP-014 requires:** Formal Protocol Amendments & Constitutional Change procedures
-- **Current implementation:** Informal (document updates via GitHub)
-- **Gap:** No formal amendment ratification process
-- **Resolution:** 📋 NCIP-014 AUTHORITATIVE PRE-LAUNCH — informal updates acceptable during development; formal process required before production
+- **Status:** ✅ IMPLEMENTED in `src/protocol_amendments.py`
+- **Features:** Amendment classes A-E, 6-stage ratification process, PoU voting, semantic compatibility, emergency amendments, constitution versioning
+- **Resolution:** ✅ NCIP-014 IS AUTHORITATIVE — full protocol amendment system implemented
 
 ### Comprehensive NCIP Implementation Gaps
 
@@ -416,9 +416,9 @@ The following table summarizes all NCIP requirements and their implementation st
 | NCIP-009 | Regulatory Interface Modules | ❌ Not Implemented | No RIMs, no compliance proof generation |
 | NCIP-010 | Mediator Reputation & Slashing | ✅ Implemented | `src/mediator_reputation.py`, integrated with `src/dispute.py` |
 | NCIP-011 | Validator-Mediator Weight Coupling | ❌ Not Implemented | No influence gate, no semantic consistency scoring |
-| NCIP-012 | Human Ratification UX Limits | ❌ Not Implemented | No Cognitive Load Budget, no rate limits, no UI safeguards |
+| NCIP-012 | Human Ratification UX Limits | ✅ Implemented | `src/cognitive_load.py`, integrated with `src/validator.py` |
 | NCIP-013 | Emergency Overrides & Force Majeure | 🚧 Partial (15%) | Basic circuit breakers; no formal emergency declarations, no semantic fallbacks |
-| NCIP-014 | Protocol Amendments | ❌ Not Implemented | No formal amendment classes, no ratification process |
+| NCIP-014 | Protocol Amendments | ✅ Implemented | `src/protocol_amendments.py`, full amendment lifecycle, ratification process |
 | NCIP-015 | Sunset Clauses & Archival Finality | ❌ Not Implemented | No sunset triggers, no state machine, no archival finality |
 
 ### Detailed NCIP Implementation Requirements
@@ -573,15 +573,25 @@ The following table summarizes all NCIP requirements and their implementation st
 - [ ] Delayed weight updates (anti-gaming)
 
 #### NCIP-012: Human Ratification UX Limits
-**Priority:** HIGH 🔴
-**Files Needed:** `src/ratification_limits.py`, frontend updates
+**Status:** ✅ IMPLEMENTED
+**Files:** `src/cognitive_load.py`, `tests/test_cognitive_load.py`
 
-**Missing Features:**
-- [ ] Cognitive Load Budget (CLB): simple=7, financial=9, licensing=9, dispute=5, emergency=3 semantic units
-- [ ] Information hierarchy: Intent Summary → Consequences → Irreversibility → Risks → Alternatives → Terms → Full Text
-- [ ] Rate limits: ≤5 ratifications/hour, ≤2 disputes/day, ≤3 licenses/day
-- [ ] Cooling periods: 12h agreement, 24h settlement/licensing, 6h dispute
-- [ ] UI safeguards: no dark patterns, no default accept, no countdown pressure
+**Implemented Features:**
+- [x] Cognitive Load Budget (CLB) with context-specific limits: simple=7, financial=9, licensing=9, dispute=5, emergency=3 semantic units
+- [x] Budget exceeded detection with automatic segmentation request
+- [x] Information hierarchy with 7 mandatory levels: Intent Summary → Consequences → Irreversibility Flags → Risks & Unknowns → Alternatives → Canonical Term References → Full Text (optional)
+- [x] Presentation order enforcement (skipping levels prohibited)
+- [x] Rate limits: ≤5 ratifications/hour, ≤2 disputes/day, ≤3 licenses/day
+- [x] Automatic counter reset after time windows
+- [x] Cooling periods: 12h agreement, 24h settlement/licensing, 6h dispute
+- [x] Cooling period waiver with validator confidence threshold (≥0.85)
+- [x] PoU Gate: paraphrase must be viewed, user must confirm, correction drift max 0.20
+- [x] UI safeguards validation: no dark patterns, no default accept, no countdown pressure (unless emergency), no bundled unrelated decisions
+- [x] Dark pattern detection (confirm-shaming, hidden costs, trick questions, forced continuity, misdirection, roach motel)
+- [x] Lock visibility requirement post-ratification
+- [x] Validator integration: `validator_measure_cognitive_load()`, `validator_detect_ux_violations()`
+- [x] HybridValidator integration: `create_ratification()`, `check_cognitive_load_budget()`, `check_rate_limits()`, `check_cooling_period()`, `validate_information_hierarchy()`, `validate_pou_gate()`, `validate_ui_compliance()`, `attempt_ratification()`
+- [x] Comprehensive test suite (40+ tests)
 
 #### NCIP-013: Emergency Overrides & Force Majeure
 **Priority:** MEDIUM 🟡
@@ -595,16 +605,25 @@ The following table summarizes all NCIP requirements and their implementation st
 - [ ] Timeout and reversion rules (review_after, max_duration)
 
 #### NCIP-014: Protocol Amendments
-**Priority:** HIGH 🔴 (Pre-Launch)
-**Files Needed:** `src/governance.py`
+**Status:** ✅ IMPLEMENTED
+**Files:** `src/protocol_amendments.py`, `tests/test_protocol_amendments.py`
 
-**Missing Features:**
-- [ ] Amendment classes: A (Editorial), B (Procedural), C (Semantic), D (Structural), E (Existential/Fork-only)
-- [ ] Amendment proposal format with affected artifacts
-- [ ] Mandatory PoU for voting participants
-- [ ] Ratification process: proposal → cooling (14d) → deliberation → ratification → lock → activation
-- [ ] Semantic compatibility checks (D3+ drift without migration path = invalid)
-- [ ] Constitution versioning in entry metadata
+**Implemented Features:**
+- [x] Amendment classes: A (Editorial >50%), B (Procedural >67%), C (Semantic >75%), D (Structural >90%), E (Existential/Fork-only 100%)
+- [x] AmendmentManager class with full amendment lifecycle management
+- [x] Amendment proposal format with affected artifacts tracking
+- [x] Mandatory PoU for voting participants (what changes, what doesn't, who affected, why agree/disagree)
+- [x] 6-stage ratification process: PROPOSAL_POSTING → COOLING_PERIOD → DELIBERATION_WINDOW → HUMAN_RATIFICATION → SEMANTIC_LOCK → FUTURE_ACTIVATION
+- [x] Context-specific cooling periods: A=7d, B=14d, C=21d, D=30d, E=90d
+- [x] Deliberation windows by class: A=7d, B=14d, C=30d, D=60d, E=180d
+- [x] Semantic compatibility checks with drift measurement
+- [x] D3+ drift requires migration guidance (rejects proposals without migration path)
+- [x] Emergency amendments with auto-expiry protection (max 30 days)
+- [x] Constitution versioning: major.minor.patch format, version bound at entry creation
+- [x] Non-retroactivity enforcement (past meaning is inviolable)
+- [x] Prohibited action enforcement (silent upgrades, retroactive changes, meaning rewriting, fork suppression)
+- [x] HybridValidator integration with 12 methods for amendment management
+- [x] Comprehensive test suite
 
 #### NCIP-015: Sunset Clauses & Archival
 **Priority:** MEDIUM 🟡
@@ -1861,7 +1880,7 @@ NatLangChain has achieved **solid implementation** of its core vision:
 
 ---
 
-**Document Version:** 3.2
+**Document Version:** 3.3
 **Last Updated:** December 24, 2025
 **Maintained By:** kase1111-hash
 **License:** CC BY-SA 4.0
