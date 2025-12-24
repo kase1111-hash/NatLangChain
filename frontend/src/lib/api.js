@@ -58,7 +58,7 @@ export async function getLatestBlock() {
 }
 
 export async function validateChain() {
-  return fetchAPI('/chain/validate');
+  return fetchAPI('/validate/chain');
 }
 
 // ============================================================
@@ -73,11 +73,11 @@ export async function submitEntry(content, author, intent, metadata = {}) {
 }
 
 export async function getPendingEntries() {
-  return fetchAPI('/entries/pending');
+  return fetchAPI('/pending');
 }
 
 export async function validateEntry(content, intent, author) {
-  return fetchAPI('/validate', {
+  return fetchAPI('/entry/validate', {
     method: 'POST',
     body: JSON.stringify({ content, intent, author }),
   });
@@ -99,10 +99,8 @@ export async function mineBlock(minerId = 'web-miner') {
 // ============================================================
 
 export async function searchEntries(query, limit = 10) {
-  return fetchAPI('/search', {
-    method: 'POST',
-    body: JSON.stringify({ query, limit }),
-  });
+  const params = new URLSearchParams({ q: query, limit: limit.toString() });
+  return fetchAPI(`/entries/search?${params}`);
 }
 
 export async function semanticSearch(query, limit = 10) {
@@ -131,7 +129,7 @@ export async function findContractMatches(pendingEntries, minerId) {
 }
 
 export async function getOpenContracts() {
-  return fetchAPI('/contracts/open');
+  return fetchAPI('/contract/list');
 }
 
 // ============================================================
@@ -139,11 +137,11 @@ export async function getOpenContracts() {
 // ============================================================
 
 export async function getDisputes() {
-  return fetchAPI('/disputes');
+  return fetchAPI('/dispute/list');
 }
 
 export async function createDispute(disputeType, relatedEntries, description, filedBy) {
-  return fetchAPI('/dispute', {
+  return fetchAPI('/dispute/file', {
     method: 'POST',
     body: JSON.stringify({
       dispute_type: disputeType,
