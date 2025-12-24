@@ -61,6 +61,23 @@ try:
 except ImportError:
     NCIP_012_AVAILABLE = False
 
+# Import NCIP-014 Protocol Amendments & Constitutional Change
+try:
+    from protocol_amendments import (
+        AmendmentManager,
+        AmendmentClass,
+        AmendmentStatus,
+        RatificationStage,
+        ConstitutionalArtifact,
+        Amendment,
+        EmergencyAmendment,
+        PoUStatement,
+        SemanticCompatibilityResult,
+    )
+    NCIP_014_AVAILABLE = True
+except ImportError:
+    NCIP_014_AVAILABLE = False
+
 
 class ProofOfUnderstanding:
     """
@@ -1844,4 +1861,496 @@ class HybridValidator:
             },
             "pou_max_drift": 0.20,
             "active_ratifications": len(manager.ratification_states)
+        }
+
+    # =========================================================================
+    # NCIP-014: Protocol Amendments & Constitutional Change
+    # =========================================================================
+
+    def get_amendment_manager(self) -> Optional[Any]:
+        """
+        Get the amendment manager for NCIP-014 operations.
+
+        Returns:
+            AmendmentManager instance or None if unavailable
+        """
+        if not NCIP_014_AVAILABLE:
+            return None
+
+        if not hasattr(self, '_amendment_manager'):
+            self._amendment_manager = AmendmentManager()
+        return self._amendment_manager
+
+    def create_amendment_proposal(
+        self,
+        amendment_class: str,
+        title: str,
+        rationale: str,
+        scope_of_impact: str,
+        affected_artifacts: List[str],
+        proposed_changes: str,
+        migration_guidance: Optional[str] = None,
+        effective_date: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Create a new amendment proposal per NCIP-014.
+
+        Amendment classes:
+        - A: Editorial/Clarificatory - Simple majority (>50%)
+        - B: Procedural - Supermajority (>67%)
+        - C: Semantic - Constitutional quorum (>75%)
+        - D: Structural - Near-unanimous (>90%)
+        - E: Existential - Fork-only (100%)
+
+        Args:
+            amendment_class: Class of amendment (A-E)
+            title: Amendment title
+            rationale: Explanation of why the change is needed
+            scope_of_impact: Description of what is affected
+            affected_artifacts: List of constitutional artifacts affected
+            proposed_changes: Detailed description of changes
+            migration_guidance: Required for class D/E
+            effective_date: When amendment takes effect (ISO format)
+
+        Returns:
+            Amendment creation result
+        """
+        if not NCIP_014_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-014 protocol amendments module not available",
+                "ncip_014_enabled": False
+            }
+
+        manager = self.get_amendment_manager()
+
+        # Map class string to enum
+        class_map = {
+            "A": AmendmentClass.A,
+            "B": AmendmentClass.B,
+            "C": AmendmentClass.C,
+            "D": AmendmentClass.D,
+            "E": AmendmentClass.E
+        }
+        aclass = class_map.get(amendment_class.upper())
+        if not aclass:
+            return {
+                "status": "error",
+                "message": f"Invalid amendment class: {amendment_class}"
+            }
+
+        # Map artifact strings to enums
+        artifact_map = {
+            "genesis_block": ConstitutionalArtifact.GENESIS_BLOCK,
+            "core_doctrines": ConstitutionalArtifact.CORE_DOCTRINES,
+            "mp_01": ConstitutionalArtifact.MP_01,
+            "mp_02": ConstitutionalArtifact.MP_02,
+            "mp_03": ConstitutionalArtifact.MP_03,
+            "mp_04": ConstitutionalArtifact.MP_04,
+            "mp_05": ConstitutionalArtifact.MP_05,
+            "canonical_term_registry": ConstitutionalArtifact.CANONICAL_TERM_REGISTRY,
+        }
+        # Add NCIP artifacts
+        for i in range(1, 16):
+            artifact_map[f"ncip_{i:03d}"] = getattr(ConstitutionalArtifact, f"NCIP_{i:03d}", None)
+            artifact_map[f"ncip_{i}"] = getattr(ConstitutionalArtifact, f"NCIP_{i:03d}", None)
+
+        artifacts = []
+        for art_str in affected_artifacts:
+            artifact = artifact_map.get(art_str.lower())
+            if artifact:
+                artifacts.append(artifact)
+
+        if not artifacts:
+            return {
+                "status": "error",
+                "message": "No valid artifacts specified"
+            }
+
+        # Parse effective date
+        eff_date = None
+        if effective_date:
+            from datetime import datetime
+            try:
+                eff_date = datetime.fromisoformat(effective_date.replace("Z", "+00:00"))
+            except ValueError:
+                return {
+                    "status": "error",
+                    "message": f"Invalid effective_date format: {effective_date}"
+                }
+
+        # Generate amendment ID
+        amendment_id = manager.generate_amendment_id(aclass)
+
+        amendment, errors = manager.create_amendment(
+            amendment_id=amendment_id,
+            amendment_class=aclass,
+            title=title,
+            rationale=rationale,
+            scope_of_impact=scope_of_impact,
+            affected_artifacts=artifacts,
+            proposed_changes=proposed_changes,
+            migration_guidance=migration_guidance,
+            effective_date=eff_date
+        )
+
+        if errors:
+            return {
+                "status": "error",
+                "errors": errors
+            }
+
+        return {
+            "status": "created",
+            "amendment_id": amendment_id,
+            "class": amendment_class,
+            "title": title,
+            "threshold": f"{manager.THRESHOLDS[aclass]:.0%}",
+            "fork_required": amendment.fork_required,
+            "ncip_014_enabled": True
+        }
+
+    def propose_amendment(self, amendment_id: str) -> Dict[str, Any]:
+        """
+        Move an amendment to proposed status and start cooling period.
+        Per NCIP-014 Section 7.1, minimum cooling period is 14 days.
+
+        Args:
+            amendment_id: The amendment to propose
+
+        Returns:
+            Proposal result
+        """
+        if not NCIP_014_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-014 module not available"
+            }
+
+        manager = self.get_amendment_manager()
+        success, msg = manager.propose_amendment(amendment_id)
+
+        amendment = manager.get_amendment(amendment_id)
+
+        result = {
+            "status": "proposed" if success else "error",
+            "message": msg
+        }
+
+        if success and amendment:
+            result["cooling_ends_at"] = amendment.cooling_ends_at.isoformat()
+            result["current_stage"] = amendment.current_stage.name
+
+        return result
+
+    def cast_amendment_vote(
+        self,
+        amendment_id: str,
+        voter_id: str,
+        vote: str,
+        what_changes: str,
+        what_unchanged: str,
+        who_affected: str,
+        rationale: str,
+        validator_trust_score: Optional[float] = None,
+        mediator_reputation: Optional[float] = None
+    ) -> Dict[str, Any]:
+        """
+        Cast a vote on an amendment per NCIP-014.
+
+        Requires a Proof of Understanding statement per Section 6.1:
+        - What changes
+        - What does not change
+        - Who is affected
+        - Why voter agrees or disagrees
+
+        Args:
+            amendment_id: The amendment to vote on
+            voter_id: Voter identifier
+            vote: "approve", "reject", or "abstain"
+            what_changes: PoU - what changes
+            what_unchanged: PoU - what stays the same
+            who_affected: PoU - who is affected
+            rationale: PoU - why voter agrees/disagrees
+            validator_trust_score: Optional trust score weight
+            mediator_reputation: Optional reputation weight
+
+        Returns:
+            Vote result
+        """
+        if not NCIP_014_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-014 module not available"
+            }
+
+        manager = self.get_amendment_manager()
+
+        pou = PoUStatement(
+            voter_id=voter_id,
+            what_changes=what_changes,
+            what_unchanged=what_unchanged,
+            who_affected=who_affected,
+            rationale=rationale
+        )
+
+        success, msg = manager.cast_vote(
+            amendment_id=amendment_id,
+            voter_id=voter_id,
+            vote=vote,
+            pou=pou,
+            validator_trust_score=validator_trust_score,
+            mediator_reputation=mediator_reputation
+        )
+
+        return {
+            "status": "recorded" if success else "error",
+            "message": msg,
+            "vote": vote,
+            "pou_hash": pou.compute_hash() if success else None
+        }
+
+    def get_amendment_tally(self, amendment_id: str) -> Dict[str, Any]:
+        """
+        Get current vote tally for an amendment.
+
+        Args:
+            amendment_id: The amendment to tally
+
+        Returns:
+            Vote tally with threshold comparison
+        """
+        if not NCIP_014_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-014 module not available"
+            }
+
+        manager = self.get_amendment_manager()
+        return manager.tally_votes(amendment_id)
+
+    def finalize_amendment_ratification(self, amendment_id: str) -> Dict[str, Any]:
+        """
+        Finalize ratification of an amendment.
+
+        For Class E amendments, if consensus fails, creates a constitutional fork.
+
+        Args:
+            amendment_id: The amendment to finalize
+
+        Returns:
+            Ratification result
+        """
+        if not NCIP_014_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-014 module not available"
+            }
+
+        manager = self.get_amendment_manager()
+        success, msg = manager.finalize_ratification(amendment_id)
+
+        amendment = manager.get_amendment(amendment_id)
+
+        result = {
+            "status": "ratified" if success else "rejected" if "rejected" in msg.lower() else "forked",
+            "message": msg
+        }
+
+        if amendment:
+            result["amendment_status"] = amendment.status.value
+            if amendment.ratified_at:
+                result["ratified_at"] = amendment.ratified_at.isoformat()
+            if amendment.semantic_lock_at:
+                result["semantic_lock_at"] = amendment.semantic_lock_at.isoformat()
+
+        return result
+
+    def activate_amendment(self, amendment_id: str) -> Dict[str, Any]:
+        """
+        Activate a ratified amendment.
+
+        Per NCIP-014 Section 10, activation only occurs at or after effective_date.
+        Updates constitution version.
+
+        Args:
+            amendment_id: The amendment to activate
+
+        Returns:
+            Activation result
+        """
+        if not NCIP_014_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-014 module not available"
+            }
+
+        manager = self.get_amendment_manager()
+        success, msg = manager.activate_amendment(amendment_id)
+
+        result = {
+            "status": "activated" if success else "error",
+            "message": msg
+        }
+
+        if success:
+            result["constitution_version"] = manager.get_constitution_version()
+
+        return result
+
+    def check_semantic_compatibility(
+        self,
+        amendment_id: str,
+        drift_scores: Optional[Dict[str, float]] = None
+    ) -> Dict[str, Any]:
+        """
+        Check semantic compatibility of an amendment per NCIP-014 Section 9.
+
+        Amendments with ≥D3 drift without migration path are invalid.
+
+        Args:
+            amendment_id: The amendment to check
+            drift_scores: Drift scores by affected NCIP
+
+        Returns:
+            Compatibility result
+        """
+        if not NCIP_014_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-014 module not available"
+            }
+
+        manager = self.get_amendment_manager()
+        result = manager.check_semantic_compatibility(amendment_id, drift_scores)
+
+        return {
+            "status": "compatible" if result.is_compatible else "incompatible",
+            "max_drift": result.max_drift,
+            "requires_migration": result.requires_migration,
+            "affected_ncips": result.affected_ncips,
+            "violations": result.violations
+        }
+
+    def create_emergency_amendment(
+        self,
+        reason: str,
+        proposed_changes: str,
+        max_duration_days: int = 7
+    ) -> Dict[str, Any]:
+        """
+        Create an emergency amendment per NCIP-014 Section 12.
+
+        Emergency amendments:
+        - Limited to procedural safety
+        - Time-bounded (auto-expire if not ratified)
+        - MUST NOT alter semantics
+
+        Valid reasons: validator_halt, exploit_mitigation, network_safety_pause
+
+        Args:
+            reason: Emergency reason
+            proposed_changes: What changes are proposed
+            max_duration_days: Maximum duration before expiry
+
+        Returns:
+            Emergency amendment creation result
+        """
+        if not NCIP_014_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-014 module not available"
+            }
+
+        manager = self.get_amendment_manager()
+
+        from datetime import datetime
+        amendment_id = f"NCIP-014-EMERGENCY-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
+
+        emergency, errors = manager.create_emergency_amendment(
+            amendment_id=amendment_id,
+            reason=reason,
+            proposed_changes=proposed_changes,
+            max_duration_days=max_duration_days
+        )
+
+        if errors:
+            return {
+                "status": "error",
+                "errors": errors
+            }
+
+        return {
+            "status": "created",
+            "amendment_id": emergency.amendment_id,
+            "reason": reason,
+            "expires_at": emergency.expires_at.isoformat(),
+            "requires_ratification": True
+        }
+
+    def get_constitution_version(self) -> Dict[str, Any]:
+        """
+        Get current constitution version per NCIP-014 Section 10.
+
+        Returns:
+            Constitution version info
+        """
+        if not NCIP_014_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-014 module not available"
+            }
+
+        manager = self.get_amendment_manager()
+
+        return {
+            "status": "ok",
+            "version": manager.get_constitution_version(),
+            "history_count": len(manager.constitution_history)
+        }
+
+    def get_amendment_status_summary(self) -> Dict[str, Any]:
+        """
+        Get summary of amendment system status.
+
+        Returns:
+            Status summary including counts by status and class
+        """
+        if not NCIP_014_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-014 module not available"
+            }
+
+        manager = self.get_amendment_manager()
+        return manager.get_status_summary()
+
+    def is_ncip_014_enabled(self) -> bool:
+        """Check if NCIP-014 protocol amendments is available."""
+        return NCIP_014_AVAILABLE
+
+    def get_ncip_014_status(self) -> Dict[str, Any]:
+        """Get NCIP-014 implementation status and configuration."""
+        if not NCIP_014_AVAILABLE:
+            return {
+                "enabled": False,
+                "message": "NCIP-014 module not available"
+            }
+
+        manager = self.get_amendment_manager()
+
+        return {
+            "enabled": True,
+            "constitution_version": manager.get_constitution_version(),
+            "amendment_classes": {
+                "A": {"name": "Editorial", "threshold": "50%"},
+                "B": {"name": "Procedural", "threshold": "67%"},
+                "C": {"name": "Semantic", "threshold": "75%"},
+                "D": {"name": "Structural", "threshold": "90%"},
+                "E": {"name": "Existential", "threshold": "100% (fork-only)"}
+            },
+            "min_cooling_period_days": 14,
+            "total_amendments": len(manager.amendments),
+            "active_emergencies": len([e for e in manager.emergency_amendments.values() if e.is_active]),
+            "forks": len(manager.get_forks())
         }

@@ -393,11 +393,11 @@ The following discrepancies between NCIP-000+ governance and current implementat
 
 #### Pre-Launch Requirement
 
-#### 8. Constitutional Amendment Process
+#### 8. Constitutional Amendment Process ✅ RESOLVED
 - **NCIP-014 requires:** Formal Protocol Amendments & Constitutional Change procedures
-- **Current implementation:** Informal (document updates via GitHub)
-- **Gap:** No formal amendment ratification process
-- **Resolution:** 📋 NCIP-014 AUTHORITATIVE PRE-LAUNCH — informal updates acceptable during development; formal process required before production
+- **Status:** ✅ IMPLEMENTED in `src/protocol_amendments.py`
+- **Features:** Amendment classes A-E, 6-stage ratification process, PoU voting, semantic compatibility, emergency amendments, constitution versioning
+- **Resolution:** ✅ NCIP-014 IS AUTHORITATIVE — full protocol amendment system implemented
 
 ### Comprehensive NCIP Implementation Gaps
 
@@ -418,7 +418,7 @@ The following table summarizes all NCIP requirements and their implementation st
 | NCIP-011 | Validator-Mediator Weight Coupling | ❌ Not Implemented | No influence gate, no semantic consistency scoring |
 | NCIP-012 | Human Ratification UX Limits | ✅ Implemented | `src/cognitive_load.py`, integrated with `src/validator.py` |
 | NCIP-013 | Emergency Overrides & Force Majeure | 🚧 Partial (15%) | Basic circuit breakers; no formal emergency declarations, no semantic fallbacks |
-| NCIP-014 | Protocol Amendments | ❌ Not Implemented | No formal amendment classes, no ratification process |
+| NCIP-014 | Protocol Amendments | ✅ Implemented | `src/protocol_amendments.py`, full amendment lifecycle, ratification process |
 | NCIP-015 | Sunset Clauses & Archival Finality | ❌ Not Implemented | No sunset triggers, no state machine, no archival finality |
 
 ### Detailed NCIP Implementation Requirements
@@ -605,16 +605,25 @@ The following table summarizes all NCIP requirements and their implementation st
 - [ ] Timeout and reversion rules (review_after, max_duration)
 
 #### NCIP-014: Protocol Amendments
-**Priority:** HIGH 🔴 (Pre-Launch)
-**Files Needed:** `src/governance.py`
+**Status:** ✅ IMPLEMENTED
+**Files:** `src/protocol_amendments.py`, `tests/test_protocol_amendments.py`
 
-**Missing Features:**
-- [ ] Amendment classes: A (Editorial), B (Procedural), C (Semantic), D (Structural), E (Existential/Fork-only)
-- [ ] Amendment proposal format with affected artifacts
-- [ ] Mandatory PoU for voting participants
-- [ ] Ratification process: proposal → cooling (14d) → deliberation → ratification → lock → activation
-- [ ] Semantic compatibility checks (D3+ drift without migration path = invalid)
-- [ ] Constitution versioning in entry metadata
+**Implemented Features:**
+- [x] Amendment classes: A (Editorial >50%), B (Procedural >67%), C (Semantic >75%), D (Structural >90%), E (Existential/Fork-only 100%)
+- [x] AmendmentManager class with full amendment lifecycle management
+- [x] Amendment proposal format with affected artifacts tracking
+- [x] Mandatory PoU for voting participants (what changes, what doesn't, who affected, why agree/disagree)
+- [x] 6-stage ratification process: PROPOSAL_POSTING → COOLING_PERIOD → DELIBERATION_WINDOW → HUMAN_RATIFICATION → SEMANTIC_LOCK → FUTURE_ACTIVATION
+- [x] Context-specific cooling periods: A=7d, B=14d, C=21d, D=30d, E=90d
+- [x] Deliberation windows by class: A=7d, B=14d, C=30d, D=60d, E=180d
+- [x] Semantic compatibility checks with drift measurement
+- [x] D3+ drift requires migration guidance (rejects proposals without migration path)
+- [x] Emergency amendments with auto-expiry protection (max 30 days)
+- [x] Constitution versioning: major.minor.patch format, version bound at entry creation
+- [x] Non-retroactivity enforcement (past meaning is inviolable)
+- [x] Prohibited action enforcement (silent upgrades, retroactive changes, meaning rewriting, fork suppression)
+- [x] HybridValidator integration with 12 methods for amendment management
+- [x] Comprehensive test suite
 
 #### NCIP-015: Sunset Clauses & Archival
 **Priority:** MEDIUM 🟡
@@ -1871,7 +1880,7 @@ NatLangChain has achieved **solid implementation** of its core vision:
 
 ---
 
-**Document Version:** 3.2
+**Document Version:** 3.3
 **Last Updated:** December 24, 2025
 **Maintained By:** kase1111-hash
 **License:** CC BY-SA 4.0
