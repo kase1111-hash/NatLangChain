@@ -379,11 +379,11 @@ The following discrepancies between NCIP-000+ governance and current implementat
 - **Gap:** No weight coupling mechanism
 - **Resolution:** 🟡 PENDING — both NCIP-011 and spec require further definition
 
-#### 6. Human Ratification UX Limits
+#### 6. Human Ratification UX Limits ✅ RESOLVED
 - **NCIP-012 requires:** Cognitive Load Limits for human decision-making
-- **Current MP-01 implements:** Simple ratification (accept/reject)
-- **Gap:** No cognitive load measurement or protection
-- **Resolution:** 🟡 PENDING — both NCIP-012 and spec require further definition
+- **Status:** ✅ IMPLEMENTED in `src/cognitive_load.py`
+- **Features:** Cognitive Load Budget (CLB), rate limits, cooling periods, information hierarchy, PoU gate, UI safeguards
+- **Resolution:** ✅ NCIP-012 IS AUTHORITATIVE — full cognitive load management implemented
 
 #### 7. Emergency Override Protocol
 - **NCIP-013 requires:** Emergency Overrides, Force Majeure & Semantic Fallbacks
@@ -416,7 +416,7 @@ The following table summarizes all NCIP requirements and their implementation st
 | NCIP-009 | Regulatory Interface Modules | ❌ Not Implemented | No RIMs, no compliance proof generation |
 | NCIP-010 | Mediator Reputation & Slashing | ✅ Implemented | `src/mediator_reputation.py`, integrated with `src/dispute.py` |
 | NCIP-011 | Validator-Mediator Weight Coupling | ❌ Not Implemented | No influence gate, no semantic consistency scoring |
-| NCIP-012 | Human Ratification UX Limits | ❌ Not Implemented | No Cognitive Load Budget, no rate limits, no UI safeguards |
+| NCIP-012 | Human Ratification UX Limits | ✅ Implemented | `src/cognitive_load.py`, integrated with `src/validator.py` |
 | NCIP-013 | Emergency Overrides & Force Majeure | 🚧 Partial (15%) | Basic circuit breakers; no formal emergency declarations, no semantic fallbacks |
 | NCIP-014 | Protocol Amendments | ❌ Not Implemented | No formal amendment classes, no ratification process |
 | NCIP-015 | Sunset Clauses & Archival Finality | ❌ Not Implemented | No sunset triggers, no state machine, no archival finality |
@@ -573,15 +573,25 @@ The following table summarizes all NCIP requirements and their implementation st
 - [ ] Delayed weight updates (anti-gaming)
 
 #### NCIP-012: Human Ratification UX Limits
-**Priority:** HIGH 🔴
-**Files Needed:** `src/ratification_limits.py`, frontend updates
+**Status:** ✅ IMPLEMENTED
+**Files:** `src/cognitive_load.py`, `tests/test_cognitive_load.py`
 
-**Missing Features:**
-- [ ] Cognitive Load Budget (CLB): simple=7, financial=9, licensing=9, dispute=5, emergency=3 semantic units
-- [ ] Information hierarchy: Intent Summary → Consequences → Irreversibility → Risks → Alternatives → Terms → Full Text
-- [ ] Rate limits: ≤5 ratifications/hour, ≤2 disputes/day, ≤3 licenses/day
-- [ ] Cooling periods: 12h agreement, 24h settlement/licensing, 6h dispute
-- [ ] UI safeguards: no dark patterns, no default accept, no countdown pressure
+**Implemented Features:**
+- [x] Cognitive Load Budget (CLB) with context-specific limits: simple=7, financial=9, licensing=9, dispute=5, emergency=3 semantic units
+- [x] Budget exceeded detection with automatic segmentation request
+- [x] Information hierarchy with 7 mandatory levels: Intent Summary → Consequences → Irreversibility Flags → Risks & Unknowns → Alternatives → Canonical Term References → Full Text (optional)
+- [x] Presentation order enforcement (skipping levels prohibited)
+- [x] Rate limits: ≤5 ratifications/hour, ≤2 disputes/day, ≤3 licenses/day
+- [x] Automatic counter reset after time windows
+- [x] Cooling periods: 12h agreement, 24h settlement/licensing, 6h dispute
+- [x] Cooling period waiver with validator confidence threshold (≥0.85)
+- [x] PoU Gate: paraphrase must be viewed, user must confirm, correction drift max 0.20
+- [x] UI safeguards validation: no dark patterns, no default accept, no countdown pressure (unless emergency), no bundled unrelated decisions
+- [x] Dark pattern detection (confirm-shaming, hidden costs, trick questions, forced continuity, misdirection, roach motel)
+- [x] Lock visibility requirement post-ratification
+- [x] Validator integration: `validator_measure_cognitive_load()`, `validator_detect_ux_violations()`
+- [x] HybridValidator integration: `create_ratification()`, `check_cognitive_load_budget()`, `check_rate_limits()`, `check_cooling_period()`, `validate_information_hierarchy()`, `validate_pou_gate()`, `validate_ui_compliance()`, `attempt_ratification()`
+- [x] Comprehensive test suite (40+ tests)
 
 #### NCIP-013: Emergency Overrides & Force Majeure
 **Priority:** MEDIUM 🟡

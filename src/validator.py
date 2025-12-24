@@ -44,6 +44,23 @@ try:
 except ImportError:
     NCIP_007_AVAILABLE = False
 
+# Import NCIP-012 Cognitive Load & Human Ratification
+try:
+    from cognitive_load import (
+        CognitiveLoadManager,
+        RatificationContext,
+        ActionType,
+        InformationLevel,
+        UIViolationType,
+        SemanticUnit,
+        CognitiveBudget,
+        RatificationState,
+        PoUConfirmation,
+    )
+    NCIP_012_AVAILABLE = True
+except ImportError:
+    NCIP_012_AVAILABLE = False
+
 
 class ProofOfUnderstanding:
     """
@@ -1219,4 +1236,612 @@ class HybridValidator:
             "enabled": True,
             "config": get_ncip_007_config(),
             "registered_validators": len(get_trust_manager().profiles)
+        }
+
+    # =========================================================================
+    # NCIP-012: Human Ratification UX & Cognitive Load Limits
+    # =========================================================================
+
+    def get_cognitive_load_manager(self) -> Optional[Any]:
+        """
+        Get the cognitive load manager for NCIP-012 operations.
+
+        Returns:
+            CognitiveLoadManager instance or None if unavailable
+        """
+        if not NCIP_012_AVAILABLE:
+            return None
+
+        if not hasattr(self, '_cognitive_load_manager'):
+            self._cognitive_load_manager = CognitiveLoadManager()
+        return self._cognitive_load_manager
+
+    def create_ratification(
+        self,
+        ratification_id: str,
+        user_id: str,
+        context: str = "simple"
+    ) -> Dict[str, Any]:
+        """
+        Create a new ratification state per NCIP-012.
+
+        This tracks cognitive load budget, information hierarchy,
+        PoU confirmation, and UI validation for the ratification.
+
+        Args:
+            ratification_id: Unique identifier for this ratification
+            user_id: The user who will ratify
+            context: Context type (simple, financial, licensing, dispute, emergency)
+
+        Returns:
+            Ratification state summary
+        """
+        if not NCIP_012_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-012 cognitive load module not available",
+                "ncip_012_enabled": False
+            }
+
+        manager = self.get_cognitive_load_manager()
+
+        context_map = {
+            "simple": RatificationContext.SIMPLE,
+            "financial": RatificationContext.FINANCIAL,
+            "licensing": RatificationContext.LICENSING,
+            "dispute": RatificationContext.DISPUTE,
+            "emergency": RatificationContext.EMERGENCY
+        }
+        ctx = context_map.get(context.lower(), RatificationContext.SIMPLE)
+
+        state = manager.create_ratification(ratification_id, user_id, ctx)
+
+        return {
+            "status": "created",
+            "ratification_id": ratification_id,
+            "user_id": user_id,
+            "context": context,
+            "cognitive_budget": {
+                "max_units": state.cognitive_budget.max_units,
+                "remaining": state.cognitive_budget.remaining
+            },
+            "ncip_012_enabled": True
+        }
+
+    def check_cognitive_load_budget(
+        self,
+        ratification_id: str,
+        semantic_units: Optional[List[Dict[str, Any]]] = None
+    ) -> Dict[str, Any]:
+        """
+        Check if cognitive load budget is within limits per NCIP-012.
+
+        Args:
+            ratification_id: The ratification to check
+            semantic_units: List of semantic units to add (optional)
+
+        Returns:
+            Budget compliance result
+        """
+        if not NCIP_012_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-012 cognitive load module not available"
+            }
+
+        manager = self.get_cognitive_load_manager()
+        state = manager.get_ratification(ratification_id)
+
+        if not state:
+            return {
+                "status": "error",
+                "message": f"Ratification {ratification_id} not found"
+            }
+
+        # Add any new semantic units
+        if semantic_units:
+            for unit_data in semantic_units:
+                unit = SemanticUnit(
+                    id=unit_data.get("id", ""),
+                    description=unit_data.get("description", ""),
+                    complexity_weight=unit_data.get("complexity_weight", 1.0),
+                    category=unit_data.get("category", "general")
+                )
+                manager.add_semantic_unit(state.cognitive_budget, unit)
+
+        compliant, msg = manager.check_budget_compliance(state.cognitive_budget)
+
+        result = {
+            "status": "compliant" if compliant else "exceeded",
+            "message": msg,
+            "max_units": state.cognitive_budget.max_units,
+            "current_units": len(state.cognitive_budget.current_units),
+            "remaining": state.cognitive_budget.remaining,
+            "utilization": state.cognitive_budget.utilization
+        }
+
+        if state.cognitive_budget.is_exceeded:
+            segments = manager.request_segmentation(state.cognitive_budget)
+            result["segmentation_required"] = True
+            result["suggested_segments"] = len(segments)
+
+        return result
+
+    def check_rate_limits(
+        self,
+        user_id: str,
+        action_type: str = "ratification"
+    ) -> Dict[str, Any]:
+        """
+        Check rate limits for a user per NCIP-012.
+
+        Rate limits:
+        - Ratifications: ≤5 per hour
+        - Dispute escalations: ≤2 per day
+        - License grants: ≤3 per day
+
+        Args:
+            user_id: The user to check
+            action_type: Type of action (ratification, dispute_escalation, license_grant)
+
+        Returns:
+            Rate limit status
+        """
+        if not NCIP_012_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-012 cognitive load module not available"
+            }
+
+        manager = self.get_cognitive_load_manager()
+
+        action_map = {
+            "ratification": ActionType.RATIFICATION,
+            "dispute_escalation": ActionType.DISPUTE_ESCALATION,
+            "license_grant": ActionType.LICENSE_GRANT
+        }
+        action = action_map.get(action_type.lower(), ActionType.RATIFICATION)
+
+        allowed, msg = manager.check_rate_limit(user_id, action)
+        remaining = manager.get_remaining_actions(user_id)
+
+        return {
+            "status": "allowed" if allowed else "rate_limited",
+            "message": msg,
+            "action_type": action_type,
+            "remaining_actions": {
+                "ratifications_this_hour": remaining.get(ActionType.RATIFICATION, 0),
+                "disputes_today": remaining.get(ActionType.DISPUTE_ESCALATION, 0),
+                "license_grants_today": remaining.get(ActionType.LICENSE_GRANT, 0)
+            }
+        }
+
+    def check_cooling_period(
+        self,
+        user_id: str,
+        action_type: str = "agreement"
+    ) -> Dict[str, Any]:
+        """
+        Check if a cooling period is active for a user per NCIP-012.
+
+        Default cooling periods:
+        - Agreement finalization: 12 hours
+        - Settlement: 24 hours
+        - License delegation: 24 hours
+        - Dispute escalation: 6 hours
+
+        Args:
+            user_id: The user to check
+            action_type: Type of action
+
+        Returns:
+            Cooling period status
+        """
+        if not NCIP_012_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-012 cognitive load module not available"
+            }
+
+        manager = self.get_cognitive_load_manager()
+
+        action_map = {
+            "agreement": ActionType.AGREEMENT,
+            "settlement": ActionType.SETTLEMENT,
+            "license_grant": ActionType.LICENSE_GRANT,
+            "dispute_escalation": ActionType.DISPUTE_ESCALATION
+        }
+        action = action_map.get(action_type.lower(), ActionType.AGREEMENT)
+
+        blocked, cooling = manager.check_cooling_period(user_id, action)
+
+        result = {
+            "status": "blocked" if blocked else "allowed",
+            "action_type": action_type
+        }
+
+        if blocked and cooling:
+            result["cooling_period"] = {
+                "started_at": cooling.started_at.isoformat(),
+                "ends_at": cooling.ends_at.isoformat(),
+                "remaining_seconds": cooling.remaining_time.total_seconds()
+            }
+
+        return result
+
+    def validate_information_hierarchy(
+        self,
+        ratification_id: str,
+        levels_presented: List[str]
+    ) -> Dict[str, Any]:
+        """
+        Validate information hierarchy compliance per NCIP-012.
+
+        Required levels in order:
+        1. Intent Summary
+        2. Consequences
+        3. Irreversibility Flags
+        4. Risks & Unknowns
+        5. Alternatives
+        6. Canonical Term References
+        7. Full Text (optional)
+
+        Args:
+            ratification_id: The ratification to validate
+            levels_presented: List of level names presented
+
+        Returns:
+            Hierarchy validation result
+        """
+        if not NCIP_012_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-012 cognitive load module not available"
+            }
+
+        manager = self.get_cognitive_load_manager()
+        state = manager.get_ratification(ratification_id)
+
+        if not state:
+            return {
+                "status": "error",
+                "message": f"Ratification {ratification_id} not found"
+            }
+
+        level_map = {
+            "intent_summary": InformationLevel.INTENT_SUMMARY,
+            "consequences": InformationLevel.CONSEQUENCES,
+            "irreversibility_flags": InformationLevel.IRREVERSIBILITY_FLAGS,
+            "risks_unknowns": InformationLevel.RISKS_UNKNOWNS,
+            "alternatives": InformationLevel.ALTERNATIVES,
+            "canonical_references": InformationLevel.CANONICAL_REFERENCES,
+            "full_text": InformationLevel.FULL_TEXT
+        }
+
+        errors = []
+        for level_name in levels_presented:
+            level = level_map.get(level_name.lower())
+            if level:
+                success, msg = manager.present_information_level(
+                    state.information, level
+                )
+                if not success:
+                    errors.append(msg)
+
+        complete, missing = manager.validate_hierarchy_complete(state.information)
+
+        return {
+            "status": "complete" if complete else "incomplete",
+            "errors": errors,
+            "missing_levels": [l.name.lower() for l in missing],
+            "presentation_order": [l.name.lower() for l in state.information.presentation_order]
+        }
+
+    def validate_pou_gate(
+        self,
+        ratification_id: str,
+        paraphrase_viewed: bool = False,
+        user_confirmed: bool = False,
+        user_correction: Optional[str] = None,
+        correction_drift: Optional[float] = None
+    ) -> Dict[str, Any]:
+        """
+        Validate Proof of Understanding gate per NCIP-012.
+
+        Before ratification, the user MUST:
+        - View a PoU paraphrase
+        - Confirm or correct it
+
+        If correction drift exceeds 0.20:
+        - Ratification blocked
+        - Semantic clarification required
+
+        Args:
+            ratification_id: The ratification to validate
+            paraphrase_viewed: Whether user viewed the paraphrase
+            user_confirmed: Whether user confirmed
+            user_correction: User's correction text (if any)
+            correction_drift: Drift score of correction
+
+        Returns:
+            PoU gate validation result
+        """
+        if not NCIP_012_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-012 cognitive load module not available"
+            }
+
+        manager = self.get_cognitive_load_manager()
+        state = manager.get_ratification(ratification_id)
+
+        if not state:
+            return {
+                "status": "error",
+                "message": f"Ratification {ratification_id} not found"
+            }
+
+        if paraphrase_viewed:
+            manager.view_pou_paraphrase(state.pou_confirmation)
+
+        if user_confirmed:
+            success, msg = manager.confirm_pou(
+                state.pou_confirmation,
+                user_correction,
+                correction_drift
+            )
+
+            return {
+                "status": "valid" if success else "invalid",
+                "message": msg,
+                "requires_clarification": state.pou_confirmation.requires_clarification,
+                "max_allowed_drift": state.pou_confirmation.max_allowed_drift,
+                "correction_drift": correction_drift
+            }
+
+        return {
+            "status": "pending",
+            "paraphrase_viewed": state.pou_confirmation.paraphrase_viewed,
+            "user_confirmed": state.pou_confirmation.user_confirmed
+        }
+
+    def validate_ui_compliance(
+        self,
+        ratification_id: str,
+        ui_elements: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """
+        Validate UI compliance with NCIP-012 safeguards.
+
+        Mandatory UI constraints:
+        - No dark patterns
+        - No default "accept"
+        - No countdown pressure (unless emergency-flagged)
+        - No bundling of unrelated decisions
+
+        Args:
+            ratification_id: The ratification to validate
+            ui_elements: List of UI element descriptions
+
+        Returns:
+            UI compliance result
+        """
+        if not NCIP_012_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-012 cognitive load module not available"
+            }
+
+        manager = self.get_cognitive_load_manager()
+        state = manager.get_ratification(ratification_id)
+
+        if not state:
+            return {
+                "status": "error",
+                "message": f"Ratification {ratification_id} not found"
+            }
+
+        all_violations = []
+        for element in ui_elements:
+            element_type = element.get("type", "unknown")
+            properties = element.get("properties", {})
+
+            compliant, violations = manager.validate_ui_element(
+                state.ui_validation,
+                element_type,
+                properties
+            )
+            all_violations.extend(violations)
+
+        return {
+            "status": "compliant" if state.ui_validation.is_compliant else "non_compliant",
+            "violations": [v.value for v in state.ui_validation.violations],
+            "violation_details": all_violations,
+            "violation_count": state.ui_validation.violation_count
+        }
+
+    def attempt_ratification(
+        self,
+        ratification_id: str,
+        action_type: str = "ratification"
+    ) -> Dict[str, Any]:
+        """
+        Attempt to complete a ratification per NCIP-012.
+
+        Checks all requirements:
+        - Cognitive load budget not exceeded
+        - Information hierarchy complete
+        - PoU confirmation valid
+        - UI compliant
+        - Rate limits not exceeded
+        - Cooling period not active
+
+        Args:
+            ratification_id: The ratification to complete
+            action_type: Type of action for rate limiting
+
+        Returns:
+            Ratification attempt result
+        """
+        if not NCIP_012_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-012 cognitive load module not available"
+            }
+
+        manager = self.get_cognitive_load_manager()
+
+        action_map = {
+            "ratification": ActionType.RATIFICATION,
+            "dispute_escalation": ActionType.DISPUTE_ESCALATION,
+            "license_grant": ActionType.LICENSE_GRANT,
+            "agreement": ActionType.AGREEMENT,
+            "settlement": ActionType.SETTLEMENT
+        }
+        action = action_map.get(action_type.lower(), ActionType.RATIFICATION)
+
+        success, blockers = manager.attempt_ratification(ratification_id, action)
+
+        state = manager.get_ratification(ratification_id)
+
+        result = {
+            "status": "ratified" if success else "blocked",
+            "blockers": blockers
+        }
+
+        if success and state:
+            result["ratified_at"] = state.ratified_at.isoformat() if state.ratified_at else None
+            result["semantic_lock_active"] = state.semantic_lock_active
+
+        return result
+
+    def validator_measure_cognitive_load(
+        self,
+        content: str,
+        context: str = "simple"
+    ) -> Dict[str, Any]:
+        """
+        Validator function to measure cognitive load per NCIP-012.
+
+        Measures semantic units in content and checks against limits.
+
+        Args:
+            content: The content to measure
+            context: Context type for budget limits
+
+        Returns:
+            Cognitive load measurement
+        """
+        if not NCIP_012_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-012 cognitive load module not available"
+            }
+
+        manager = self.get_cognitive_load_manager()
+
+        context_map = {
+            "simple": RatificationContext.SIMPLE,
+            "financial": RatificationContext.FINANCIAL,
+            "licensing": RatificationContext.LICENSING,
+            "dispute": RatificationContext.DISPUTE,
+            "emergency": RatificationContext.EMERGENCY
+        }
+        ctx = context_map.get(context.lower(), RatificationContext.SIMPLE)
+
+        count, units = manager.validator_measure_semantic_units(content, ctx)
+        budget = manager.create_cognitive_budget(ctx)
+
+        for unit in units:
+            budget.current_units.append(unit)
+
+        return {
+            "status": "measured",
+            "semantic_unit_count": count,
+            "max_units": budget.max_units,
+            "is_exceeded": budget.is_exceeded,
+            "utilization": budget.utilization,
+            "units": [
+                {
+                    "id": u.id,
+                    "description": u.description,
+                    "complexity_weight": u.complexity_weight
+                }
+                for u in units
+            ]
+        }
+
+    def validator_detect_ux_violations(
+        self,
+        ui_snapshot: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Validator function to detect UX violations per NCIP-012.
+
+        Detects:
+        - Default accept buttons
+        - Countdown pressure (non-emergency)
+        - Bundled unrelated decisions
+        - Dark patterns
+        - Missing lock visibility
+        - Skipped hierarchy levels
+
+        Args:
+            ui_snapshot: UI state snapshot
+
+        Returns:
+            UX violation detection result
+        """
+        if not NCIP_012_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-012 cognitive load module not available"
+            }
+
+        manager = self.get_cognitive_load_manager()
+        violations = manager.validator_detect_ux_violations(ui_snapshot)
+
+        return {
+            "status": "compliant" if not violations else "violations_detected",
+            "violations": [v.value for v in violations],
+            "violation_count": len(violations),
+            "is_slashable": len(violations) > 2  # Per NCIP-010
+        }
+
+    def is_ncip_012_enabled(self) -> bool:
+        """Check if NCIP-012 cognitive load management is available."""
+        return NCIP_012_AVAILABLE
+
+    def get_ncip_012_status(self) -> Dict[str, Any]:
+        """Get NCIP-012 implementation status and configuration."""
+        if not NCIP_012_AVAILABLE:
+            return {
+                "enabled": False,
+                "message": "NCIP-012 module not available"
+            }
+
+        manager = self.get_cognitive_load_manager()
+
+        return {
+            "enabled": True,
+            "cognitive_load_limits": {
+                "simple": 7,
+                "financial": 9,
+                "licensing": 9,
+                "dispute": 5,
+                "emergency": 3
+            },
+            "rate_limits": {
+                "ratifications_per_hour": 5,
+                "disputes_per_day": 2,
+                "license_grants_per_day": 3
+            },
+            "cooling_periods": {
+                "agreement": "12h",
+                "settlement": "24h",
+                "licensing": "24h",
+                "dispute": "6h"
+            },
+            "pou_max_drift": 0.20,
+            "active_ratifications": len(manager.ratification_states)
         }
