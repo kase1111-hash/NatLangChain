@@ -405,7 +405,7 @@ The following table summarizes all NCIP requirements and their implementation st
 
 | NCIP | Title | Implementation Status | Key Gaps |
 |------|-------|----------------------|----------|
-| NCIP-001 | Canonical Term Registry | ❌ Not Implemented | No YAML registry file, no validator term enforcement |
+| NCIP-001 | Canonical Term Registry | ✅ Implemented | `config/canonical_terms.yaml`, `src/term_registry.py`, validator integration |
 | NCIP-002 | Semantic Drift Thresholds | 🚧 Partial (40%) | Basic drift detection exists; formal D0-D4 thresholds and mandatory responses not enforced |
 | NCIP-003 | Multilingual Semantic Alignment | ❌ Not Implemented | English only; no CSAL declaration, no cross-language drift |
 | NCIP-004 | Proof of Understanding | 🚧 Partial (60%) | PoU generation exists; formal scoring (Coverage, Fidelity, Consistency, Completeness) not implemented |
@@ -424,15 +424,17 @@ The following table summarizes all NCIP requirements and their implementation st
 ### Detailed NCIP Implementation Requirements
 
 #### NCIP-001: Canonical Term Registry
-**Priority:** HIGH 🔴
-**Files Needed:** `src/term_registry.py`, `config/canonical_terms.yaml`
+**Status:** ✅ IMPLEMENTED
+**Files:** `src/term_registry.py`, `config/canonical_terms.yaml`, `tests/test_term_registry.py`
 
-**Missing Features:**
-- [ ] YAML registry file with canonical terms (Intent, Entry, Agreement, Ratification, etc.)
-- [ ] Term class enforcement (core, protocol-bound, extension)
-- [ ] Validator integration to flag unknown/deprecated terms
-- [ ] Synonym mapping (non-authoritative)
-- [ ] Registry versioning and amendment tracking
+**Implemented Features:**
+- [x] YAML registry file with 33 canonical terms (17 core, 8 protocol-bound, 8 extension)
+- [x] Term class enforcement (core, protocol-bound, extension)
+- [x] Validator integration to flag deprecated terms as issues
+- [x] Synonym mapping with recommendations to use canonical form
+- [x] Registry versioning (v1.0)
+- [x] `HybridValidator.validate_terms()` method for NCIP-001 compliance
+- [x] Comprehensive test suite
 
 #### NCIP-002: Semantic Drift Thresholds
 **Priority:** HIGH 🔴
