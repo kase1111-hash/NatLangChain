@@ -399,6 +399,196 @@ The following discrepancies between NCIP-000+ governance and current implementat
 - **Gap:** No formal amendment ratification process
 - **Resolution:** 📋 NCIP-014 AUTHORITATIVE PRE-LAUNCH — informal updates acceptable during development; formal process required before production
 
+### Comprehensive NCIP Implementation Gaps
+
+The following table summarizes all NCIP requirements and their implementation status:
+
+| NCIP | Title | Implementation Status | Key Gaps |
+|------|-------|----------------------|----------|
+| NCIP-001 | Canonical Term Registry | ❌ Not Implemented | No YAML registry file, no validator term enforcement |
+| NCIP-002 | Semantic Drift Thresholds | 🚧 Partial (40%) | Basic drift detection exists; formal D0-D4 thresholds and mandatory responses not enforced |
+| NCIP-003 | Multilingual Semantic Alignment | ❌ Not Implemented | English only; no CSAL declaration, no cross-language drift |
+| NCIP-004 | Proof of Understanding | 🚧 Partial (60%) | PoU generation exists; formal scoring (Coverage, Fidelity, Consistency, Completeness) not implemented |
+| NCIP-005 | Dispute Escalation & Semantic Locking | 🚧 Partial (30%) | Evidence freezing exists; semantic locking, cooling periods (24h/72h) not implemented |
+| NCIP-006 | Jurisdictional Interpretation | ❌ Not Implemented | No jurisdiction declaration, no Legal Translation Artifacts |
+| NCIP-007 | Validator Trust Scoring | ❌ Not Implemented | No Trust Profile, no scoped scores, no decay/recovery |
+| NCIP-008 | Semantic Appeals & Precedent | ❌ Not Implemented | No appeal system, no Semantic Case Records |
+| NCIP-009 | Regulatory Interface Modules | ❌ Not Implemented | No RIMs, no compliance proof generation |
+| NCIP-010 | Mediator Reputation & Slashing | 🚧 Partial (20%) | Basic solver reputation in Escalation Fork; no full mediator bonding/slashing |
+| NCIP-011 | Validator-Mediator Weight Coupling | ❌ Not Implemented | No influence gate, no semantic consistency scoring |
+| NCIP-012 | Human Ratification UX Limits | ❌ Not Implemented | No Cognitive Load Budget, no rate limits, no UI safeguards |
+| NCIP-013 | Emergency Overrides & Force Majeure | 🚧 Partial (15%) | Basic circuit breakers; no formal emergency declarations, no semantic fallbacks |
+| NCIP-014 | Protocol Amendments | ❌ Not Implemented | No formal amendment classes, no ratification process |
+| NCIP-015 | Sunset Clauses & Archival Finality | ❌ Not Implemented | No sunset triggers, no state machine, no archival finality |
+
+### Detailed NCIP Implementation Requirements
+
+#### NCIP-001: Canonical Term Registry
+**Priority:** HIGH 🔴
+**Files Needed:** `src/term_registry.py`, `config/canonical_terms.yaml`
+
+**Missing Features:**
+- [ ] YAML registry file with canonical terms (Intent, Entry, Agreement, Ratification, etc.)
+- [ ] Term class enforcement (core, protocol-bound, extension)
+- [ ] Validator integration to flag unknown/deprecated terms
+- [ ] Synonym mapping (non-authoritative)
+- [ ] Registry versioning and amendment tracking
+
+#### NCIP-002: Semantic Drift Thresholds
+**Priority:** HIGH 🔴
+**Files to Update:** `src/semantic_diff.py`, `src/validator.py`
+
+**Missing Features:**
+- [ ] Formal drift levels: D0 (0.00-0.10), D1 (0.10-0.25), D2 (0.25-0.45), D3 (0.45-0.70), D4 (0.70-1.00)
+- [ ] Mandatory validator responses per level (warn, pause, require ratification, reject)
+- [ ] Drift aggregation rules (max score governs)
+- [ ] Temporal Fixity enforcement (T₀ context evaluation)
+- [ ] Logging requirements for D2+ events
+
+#### NCIP-003: Multilingual Semantic Alignment
+**Priority:** MEDIUM 🟡
+**Files Needed:** `src/multilingual.py`
+
+**Missing Features:**
+- [ ] Canonical Semantic Anchor Language (CSAL) declaration per contract
+- [ ] Language roles: anchor, aligned, informational
+- [ ] Cross-language drift measurement
+- [ ] Translation validation (no added/removed obligations)
+- [ ] Validator language pair reporting
+
+#### NCIP-004: Proof of Understanding Scoring
+**Priority:** HIGH 🔴
+**Files to Update:** `src/validator.py`
+
+**Missing Features:**
+- [ ] PoU scoring dimensions: Coverage, Fidelity, Consistency, Completeness
+- [ ] Score thresholds: ≥0.90 Verified, 0.75-0.89 Marginal, 0.50-0.74 Insufficient, <0.50 Failed
+- [ ] Binding effect: verified PoU fixes meaning, waives misunderstanding claims
+- [ ] Semantic fingerprint generation and storage
+
+#### NCIP-005: Semantic Locking & Cooling Periods
+**Priority:** HIGH 🔴
+**Files to Update:** `src/dispute.py`
+
+**Missing Features:**
+- [ ] Semantic Lock mechanism (freeze registry version, prose wording, anchor semantics, PoUs, NCIPs)
+- [ ] Lock Time (Tₗ) tracking
+- [ ] Cooling periods: 24h for D3 disputes, 72h for D4 disputes
+- [ ] Allowed actions during cooling (clarification, settlement, mediator assignment)
+- [ ] Prohibited actions (escalation, enforcement, semantic changes)
+
+#### NCIP-006: Jurisdictional Bridging
+**Priority:** MEDIUM 🟡
+**Files Needed:** `src/jurisdiction.py`
+
+**Missing Features:**
+- [ ] Jurisdiction declaration requirement (ISO 3166-1 codes)
+- [ ] Jurisdiction roles: enforcement, interpretive, procedural
+- [ ] Legal Translation Artifacts (LTAs) with non-authoritative status
+- [ ] Validator rejection of LTAs introducing new obligations
+
+#### NCIP-007: Validator Trust Scoring
+**Priority:** HIGH 🔴
+**Files Needed:** `src/validator_trust.py`
+
+**Missing Features:**
+- [ ] Trust Profile structure with overall and scoped scores
+- [ ] Scopes: semantic_parsing, drift_detection, proof_of_understanding, dispute_analysis
+- [ ] Positive signals: consensus match, PoU ratification, correct drift flags
+- [ ] Negative signals: overruled by lock, false positives, unauthorized interpretations
+- [ ] Weighting function: `effective_weight = base_weight × trust_score × scope_modifier`
+- [ ] Trust decay formula: `score_t = score_0 × e^(−λΔt)`
+- [ ] Maximum weight cap and minimum diversity threshold
+
+#### NCIP-008: Semantic Appeals & Precedent
+**Priority:** MEDIUM 🟡
+**Files Needed:** `src/appeals.py`, `src/precedent.py`
+
+**Missing Features:**
+- [ ] Appeal lifecycle: declared → scoped lock → review → resolution
+- [ ] Appealable items: validator rejection, drift classification, PoU mismatch, mediator interpretation
+- [ ] Appeal review panel (N≥3 validators, distinct implementations)
+- [ ] Semantic Case Records (SCR) with required fields
+- [ ] Precedent weight decay: <3 months High, 3-12 months Medium, >12 months Low
+
+#### NCIP-009: Regulatory Interface Modules
+**Priority:** LOW 🟢
+**Files Needed:** `src/compliance.py`
+
+**Missing Features:**
+- [ ] Regulatory Interface Module (RIM) framework
+- [ ] Compliance proof types: immutability, retention, consent, access control, privacy
+- [ ] Proof package structure with minimal disclosure
+- [ ] ZK proof integration for privacy-preserving compliance
+
+#### NCIP-010: Mediator Reputation & Slashing
+**Priority:** HIGH 🔴
+**Files Needed:** `src/mediator_reputation.py`
+
+**Missing Features:**
+- [ ] Mediator registration with stake bond
+- [ ] Reputation dimensions: Acceptance Rate, Semantic Accuracy, Appeal Survival, Dispute Avoidance, Coercion Signal, Latency Discipline
+- [ ] Composite Trust Score (CTS) calculation
+- [ ] Slashing conditions: semantic manipulation, repeated invalid proposals, coercive framing
+- [ ] Cooldowns and market throttling
+- [ ] Treasury integration for slashed funds
+
+#### NCIP-011: Validator-Mediator Weight Coupling
+**Priority:** MEDIUM 🟡
+**Files Needed:** `src/weight_coupling.py`
+
+**Missing Features:**
+- [ ] Role separation enforcement (Protocol Violation PV-V3)
+- [ ] Influence gate: `∑(Validator VW × semantic_consistency_score) ≥ GateThreshold`
+- [ ] Semantic consistency scoring for mediator proposals
+- [ ] Dispute-time behavior: mediator influence reduced, validator authority elevated
+- [ ] Delayed weight updates (anti-gaming)
+
+#### NCIP-012: Human Ratification UX Limits
+**Priority:** HIGH 🔴
+**Files Needed:** `src/ratification_limits.py`, frontend updates
+
+**Missing Features:**
+- [ ] Cognitive Load Budget (CLB): simple=7, financial=9, licensing=9, dispute=5, emergency=3 semantic units
+- [ ] Information hierarchy: Intent Summary → Consequences → Irreversibility → Risks → Alternatives → Terms → Full Text
+- [ ] Rate limits: ≤5 ratifications/hour, ≤2 disputes/day, ≤3 licenses/day
+- [ ] Cooling periods: 12h agreement, 24h settlement/licensing, 6h dispute
+- [ ] UI safeguards: no dark patterns, no default accept, no countdown pressure
+
+#### NCIP-013: Emergency Overrides & Force Majeure
+**Priority:** MEDIUM 🟡
+**Files to Update:** `src/semantic_oracles.py`
+
+**Missing Features:**
+- [ ] Emergency declaration entry type with required fields
+- [ ] Force majeure classes: natural_disaster, government_action, armed_conflict, infrastructure_failure, medical_incapacity, systemic_protocol_failure
+- [ ] Semantic fallback definitions (declared at contract creation)
+- [ ] Emergency disputes with semantic lock
+- [ ] Timeout and reversion rules (review_after, max_duration)
+
+#### NCIP-014: Protocol Amendments
+**Priority:** HIGH 🔴 (Pre-Launch)
+**Files Needed:** `src/governance.py`
+
+**Missing Features:**
+- [ ] Amendment classes: A (Editorial), B (Procedural), C (Semantic), D (Structural), E (Existential/Fork-only)
+- [ ] Amendment proposal format with affected artifacts
+- [ ] Mandatory PoU for voting participants
+- [ ] Ratification process: proposal → cooling (14d) → deliberation → ratification → lock → activation
+- [ ] Semantic compatibility checks (D3+ drift without migration path = invalid)
+- [ ] Constitution versioning in entry metadata
+
+#### NCIP-015: Sunset Clauses & Archival
+**Priority:** MEDIUM 🟡
+**Files Needed:** `src/sunset.py`, `src/archival.py`
+
+**Missing Features:**
+- [ ] Sunset trigger types: time_based, event_based, condition_fulfilled, exhaustion, revocation, constitutional
+- [ ] State machine: DRAFT → RATIFIED → ACTIVE → SUNSET_PENDING → SUNSET → ARCHIVED
+- [ ] Archival finality: semantics frozen, drift detection disabled, no reinterpretation
+- [ ] Temporal context binding (registry version, language, jurisdiction, PoUs, validator snapshot)
+- [ ] Default sunset policies: contracts=20yr, licenses=10yr, delegations=2yr, standing_intents=1yr
+
 ---
 
 ## Anti-Harassment Design
@@ -1643,7 +1833,7 @@ NatLangChain has achieved **solid implementation** of its core vision:
 
 ---
 
-**Document Version:** 3.1
-**Last Updated:** December 23, 2025
+**Document Version:** 3.2
+**Last Updated:** December 24, 2025
 **Maintained By:** kase1111-hash
 **License:** CC BY-SA 4.0
