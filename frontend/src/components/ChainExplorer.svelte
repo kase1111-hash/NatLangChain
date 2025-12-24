@@ -1,8 +1,6 @@
 <script>
   import { onMount } from 'svelte';
   import { getChainInfo, getBlock } from '../lib/api.js';
-  import Tooltip from './Tooltip.svelte';
-  import { ncipDefinitions } from '../lib/ncip-definitions.js';
 
   let blocks = [];
   let selectedBlock = null;
@@ -18,9 +16,11 @@
     error = null;
     try {
       const info = await getChainInfo();
-      blocks = info.chain || [];
+      // Ensure blocks is always an array
+      blocks = Array.isArray(info.chain) ? info.chain : [];
     } catch (e) {
-      error = e.message;
+      error = e.message || 'Failed to load chain';
+      blocks = [];
     } finally {
       loading = false;
     }
@@ -36,12 +36,17 @@
   }
 
   function formatHash(hash) {
-    if (!hash) return '';
+    if (!hash) return 'N/A';
     return hash.slice(0, 8) + '...' + hash.slice(-8);
   }
 
   function formatTimestamp(ts) {
-    return new Date(ts).toLocaleString();
+    if (!ts) return 'N/A';
+    try {
+      return new Date(ts).toLocaleString();
+    } catch {
+      return ts;
+    }
   }
 </script>
 
@@ -83,28 +88,20 @@
 
           <div class="detail-section">
             <div class="detail-row">
-              <Tooltip text={ncipDefinitions.blockHash.text} ncipRef={ncipDefinitions.blockHash.ncipRef} position="right">
-                <span class="detail-label">Hash:</span>
-              </Tooltip>
-              <span class="detail-value mono">{selectedBlock.hash}</span>
+              <span class="detail-label">Hash:</span>
+              <span class="detail-value mono">{selectedBlock.hash || 'N/A'}</span>
             </div>
             <div class="detail-row">
-              <Tooltip text={ncipDefinitions.previousHash.text} ncipRef={ncipDefinitions.previousHash.ncipRef} position="right">
-                <span class="detail-label">Previous Hash:</span>
-              </Tooltip>
-              <span class="detail-value mono">{selectedBlock.previous_hash}</span>
+              <span class="detail-label">Previous Hash:</span>
+              <span class="detail-value mono">{selectedBlock.previous_hash || 'N/A'}</span>
             </div>
             <div class="detail-row">
-              <Tooltip text={ncipDefinitions.temporalFixity.text} ncipRef={ncipDefinitions.temporalFixity.ncipRef} position="right">
-                <span class="detail-label">Timestamp:</span>
-              </Tooltip>
+              <span class="detail-label">Timestamp:</span>
               <span class="detail-value">{formatTimestamp(selectedBlock.timestamp)}</span>
             </div>
             <div class="detail-row">
-              <Tooltip text={ncipDefinitions.nonce.text} ncipRef={ncipDefinitions.nonce.ncipRef} position="right">
-                <span class="detail-label">Nonce:</span>
-              </Tooltip>
-              <span class="detail-value">{selectedBlock.nonce}</span>
+              <span class="detail-label">Nonce:</span>
+              <span class="detail-value">{selectedBlock.nonce ?? 'N/A'}</span>
             </div>
           </div>
 
