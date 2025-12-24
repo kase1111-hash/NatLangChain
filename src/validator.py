@@ -156,6 +156,25 @@ try:
 except ImportError:
     NCIP_011_AVAILABLE = False
 
+# Import NCIP-013 Emergency Overrides, Force Majeure & Semantic Fallbacks
+try:
+    from emergency_overrides import (
+        EmergencyManager,
+        EmergencyDeclaration,
+        EmergencyStatus,
+        EmergencyScope,
+        ForceMajeureClass,
+        ExecutionEffect,
+        ProhibitedEffect,
+        SemanticFallback,
+        OracleEvidence,
+        OracleType,
+        EmergencyDispute,
+    )
+    NCIP_013_AVAILABLE = True
+except ImportError:
+    NCIP_013_AVAILABLE = False
+
 
 class ProofOfUnderstanding:
     """
