@@ -3,6 +3,7 @@ NatLangChain - Linguistic Validation
 Implements Proof of Understanding using LLM-powered semantic validation
 
 Integrates NCIP-004: PoU scoring dimensions (Coverage, Fidelity, Consistency, Completeness)
+Integrates NCIP-007: Validator Trust Scoring & Reliability Weighting
 """
 
 import os
@@ -23,6 +24,25 @@ try:
     NCIP_004_AVAILABLE = True
 except ImportError:
     NCIP_004_AVAILABLE = False
+
+# Import NCIP-007 Validator Trust Scoring
+try:
+    from validator_trust import (
+        TrustManager,
+        TrustProfile,
+        ValidatorType,
+        TrustScope,
+        PositiveSignal,
+        NegativeSignal,
+        WeightedSignal,
+        get_trust_manager,
+        get_ncip_007_config,
+        BASE_WEIGHTS,
+        MAX_EFFECTIVE_WEIGHT
+    )
+    NCIP_007_AVAILABLE = True
+except ImportError:
+    NCIP_007_AVAILABLE = False
 
 
 class ProofOfUnderstanding:
@@ -833,3 +853,370 @@ class HybridValidator:
 
         status = classify_pou_score(score)
         return status.value
+
+    # =========================================================================
+    # NCIP-007: Validator Trust Scoring & Reliability Weighting
+    # =========================================================================
+
+    def register_as_trusted_validator(
+        self,
+        validator_id: str,
+        validator_type: str = "hybrid",
+        model_version: Optional[str] = None,
+        declared_capabilities: Optional[List[str]] = None
+    ) -> Dict[str, Any]:
+        """
+        Register this validator with the trust scoring system per NCIP-007.
+
+        Args:
+            validator_id: Unique identifier for this validator
+            validator_type: Type of validator (llm, hybrid, symbolic, human)
+            model_version: Model version (for LLM/hybrid validators)
+            declared_capabilities: List of scope names this validator claims
+
+        Returns:
+            Registration result with trust profile summary
+        """
+        if not NCIP_007_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-007 trust scoring module not available",
+                "ncip_007_enabled": False
+            }
+
+        try:
+            manager = get_trust_manager()
+
+            # Convert type string to enum
+            type_map = {
+                "llm": ValidatorType.LLM,
+                "hybrid": ValidatorType.HYBRID,
+                "symbolic": ValidatorType.SYMBOLIC,
+                "human": ValidatorType.HUMAN
+            }
+            vtype = type_map.get(validator_type.lower(), ValidatorType.HYBRID)
+
+            # Convert capability strings to enums
+            scope_map = {
+                "semantic_parsing": TrustScope.SEMANTIC_PARSING,
+                "drift_detection": TrustScope.DRIFT_DETECTION,
+                "proof_of_understanding": TrustScope.PROOF_OF_UNDERSTANDING,
+                "dispute_analysis": TrustScope.DISPUTE_ANALYSIS,
+                "legal_translation_review": TrustScope.LEGAL_TRANSLATION_REVIEW
+            }
+            capabilities = []
+            for cap in (declared_capabilities or []):
+                if cap.lower() in scope_map:
+                    capabilities.append(scope_map[cap.lower()])
+
+            profile = manager.register_validator(
+                validator_id=validator_id,
+                validator_type=vtype,
+                model_version=model_version,
+                declared_capabilities=capabilities
+            )
+
+            return {
+                "status": "registered",
+                "validator_id": validator_id,
+                "trust_profile": profile.to_dict(),
+                "base_weight": BASE_WEIGHTS.get(vtype.value, 1.0),
+                "ncip_007_enabled": True
+            }
+
+        except ValueError as e:
+            return {
+                "status": "error",
+                "message": str(e),
+                "ncip_007_enabled": True
+            }
+        except Exception as e:
+            return {
+                "status": "error",
+                "message": f"Registration failed: {str(e)}",
+                "ncip_007_enabled": True
+            }
+
+    def get_trust_profile(self, validator_id: str) -> Dict[str, Any]:
+        """
+        Get the trust profile for a validator per NCIP-007.
+
+        Args:
+            validator_id: The validator to query
+
+        Returns:
+            Trust profile summary
+        """
+        if not NCIP_007_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-007 trust scoring module not available"
+            }
+
+        manager = get_trust_manager()
+        return manager.get_trust_summary(validator_id)
+
+    def record_validation_outcome(
+        self,
+        validator_id: str,
+        outcome: str,
+        scope: str = "semantic_parsing",
+        context: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """
+        Record a validation outcome to update trust scores per NCIP-007.
+
+        Positive outcomes:
+        - consensus_match: Validator matched consensus
+        - pou_ratified: PoU was ratified by humans
+        - correct_drift_flag: Correctly flagged semantic drift
+        - dispute_performance: Performed well in dispute
+        - consistency: Remained consistent across re-validations
+
+        Negative outcomes:
+        - overruled_by_lock: Overruled by Semantic Lock
+        - false_positive_drift: False positive drift detection
+        - unauthorized_interpretation: Introduced unauthorized interpretation
+        - consensus_disagreement: Disagreed with consensus disproportionately
+
+        Args:
+            validator_id: The validator receiving the outcome
+            outcome: The outcome type (see above)
+            scope: The scope this applies to
+            context: Additional context metadata
+
+        Returns:
+            Outcome recording result
+        """
+        if not NCIP_007_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-007 trust scoring module not available"
+            }
+
+        manager = get_trust_manager()
+
+        # Map scope string to enum
+        scope_map = {
+            "semantic_parsing": TrustScope.SEMANTIC_PARSING,
+            "drift_detection": TrustScope.DRIFT_DETECTION,
+            "proof_of_understanding": TrustScope.PROOF_OF_UNDERSTANDING,
+            "dispute_analysis": TrustScope.DISPUTE_ANALYSIS,
+            "legal_translation_review": TrustScope.LEGAL_TRANSLATION_REVIEW
+        }
+        trust_scope = scope_map.get(scope.lower(), TrustScope.SEMANTIC_PARSING)
+
+        # Map outcome to signal
+        positive_map = {
+            "consensus_match": PositiveSignal.CONSENSUS_MATCH,
+            "pou_ratified": PositiveSignal.POU_RATIFIED,
+            "correct_drift_flag": PositiveSignal.CORRECT_DRIFT_FLAG,
+            "dispute_performance": PositiveSignal.DISPUTE_PERFORMANCE,
+            "consistency": PositiveSignal.CONSISTENCY
+        }
+        negative_map = {
+            "overruled_by_lock": NegativeSignal.OVERRULED_BY_LOCK,
+            "false_positive_drift": NegativeSignal.FALSE_POSITIVE_DRIFT,
+            "unauthorized_interpretation": NegativeSignal.UNAUTHORIZED_INTERPRETATION,
+            "consensus_disagreement": NegativeSignal.CONSENSUS_DISAGREEMENT,
+            "harassment_pattern": NegativeSignal.HARASSMENT_PATTERN
+        }
+
+        outcome_lower = outcome.lower()
+        event = None
+
+        if outcome_lower in positive_map:
+            event = manager.record_positive_signal(
+                validator_id=validator_id,
+                signal=positive_map[outcome_lower],
+                scope=trust_scope,
+                metadata=context or {}
+            )
+        elif outcome_lower in negative_map:
+            event = manager.record_negative_signal(
+                validator_id=validator_id,
+                signal=negative_map[outcome_lower],
+                scope=trust_scope,
+                metadata=context or {}
+            )
+        else:
+            return {
+                "status": "error",
+                "message": f"Unknown outcome type: {outcome}"
+            }
+
+        if event is None:
+            return {
+                "status": "rejected",
+                "message": "Signal rejected (validator not found or frozen)"
+            }
+
+        return {
+            "status": "recorded",
+            "event_id": event.event_id,
+            "validator_id": validator_id,
+            "outcome": outcome,
+            "scope": scope,
+            "new_score": manager.get_profile(validator_id).overall_score
+        }
+
+    def calculate_validator_weight(
+        self,
+        validator_id: str,
+        scope: str = "semantic_parsing",
+        scope_modifier: float = 1.0
+    ) -> Dict[str, Any]:
+        """
+        Calculate the effective weight for a validator per NCIP-007.
+
+        Formula: effective_weight = base_weight * trust_score * scope_modifier
+        Weight is capped at MAX_EFFECTIVE_WEIGHT (anti-centralization).
+
+        Args:
+            validator_id: The validator to calculate weight for
+            scope: The scope for this weight calculation
+            scope_modifier: Task relevance modifier
+
+        Returns:
+            Weight calculation result
+        """
+        if not NCIP_007_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-007 trust scoring module not available"
+            }
+
+        manager = get_trust_manager()
+
+        scope_map = {
+            "semantic_parsing": TrustScope.SEMANTIC_PARSING,
+            "drift_detection": TrustScope.DRIFT_DETECTION,
+            "proof_of_understanding": TrustScope.PROOF_OF_UNDERSTANDING,
+            "dispute_analysis": TrustScope.DISPUTE_ANALYSIS,
+            "legal_translation_review": TrustScope.LEGAL_TRANSLATION_REVIEW
+        }
+        trust_scope = scope_map.get(scope.lower(), TrustScope.SEMANTIC_PARSING)
+
+        profile = manager.get_profile(validator_id)
+        identity = manager.get_identity(validator_id)
+
+        if not profile or not identity:
+            return {
+                "status": "error",
+                "message": f"Validator {validator_id} not found"
+            }
+
+        effective_weight = manager.calculate_effective_weight(
+            validator_id, trust_scope, scope_modifier
+        )
+
+        return {
+            "status": "calculated",
+            "validator_id": validator_id,
+            "validator_type": identity.validator_type.value,
+            "base_weight": BASE_WEIGHTS.get(identity.validator_type.value, 1.0),
+            "trust_score": profile.get_scoped_score(trust_scope),
+            "scope_modifier": scope_modifier,
+            "effective_weight": effective_weight,
+            "max_weight": MAX_EFFECTIVE_WEIGHT,
+            "is_capped": effective_weight == MAX_EFFECTIVE_WEIGHT
+        }
+
+    def weighted_multi_validator_consensus(
+        self,
+        content: str,
+        intent: str,
+        author: str,
+        validator_ids: Optional[List[str]] = None,
+        num_validators: int = 3
+    ) -> Dict[str, Any]:
+        """
+        Achieve weighted consensus through multiple validator nodes per NCIP-007.
+
+        This extends multi_validator_consensus with trust-weighted signals.
+        Low-trust validators cannot dominate; high-trust validators cannot finalize alone.
+
+        Args:
+            content: Entry content
+            intent: Stated intent
+            author: Entry author
+            validator_ids: Specific validators to use (optional)
+            num_validators: Number of validators if not specified
+
+        Returns:
+            Weighted consensus result
+        """
+        if not NCIP_007_AVAILABLE:
+            # Fall back to unweighted consensus
+            return self.llm_validator.multi_validator_consensus(
+                content, intent, author, num_validators
+            )
+
+        manager = get_trust_manager()
+
+        # Get validation results
+        base_result = self.llm_validator.multi_validator_consensus(
+            content, intent, author, num_validators
+        )
+
+        if base_result.get("consensus") == "FAILED":
+            return base_result
+
+        # Create weighted signals if validators are registered
+        weighted_signals = []
+        for i, validation in enumerate(base_result.get("validations", [])):
+            vid = validator_ids[i] if validator_ids and i < len(validator_ids) else f"validator_{i}"
+
+            signal = manager.get_weighted_signal(
+                vid,
+                signal_value=validation,
+                scope=TrustScope.SEMANTIC_PARSING
+            )
+            if signal:
+                weighted_signals.append(signal)
+
+        # Calculate weighted distribution
+        if weighted_signals:
+            total_weight = sum(s.effective_weight for s in weighted_signals)
+            weighted_distribution = {}
+
+            for signal in weighted_signals:
+                decision = signal.signal_value.get("decision", "UNKNOWN")
+                if decision not in weighted_distribution:
+                    weighted_distribution[decision] = 0.0
+                weighted_distribution[decision] += signal.effective_weight
+
+            # Normalize
+            if total_weight > 0:
+                for k in weighted_distribution:
+                    weighted_distribution[k] /= total_weight
+
+            base_result["weighted_distribution"] = weighted_distribution
+            base_result["weighted_signals"] = [
+                {
+                    "validator_id": s.validator_id,
+                    "effective_weight": s.effective_weight,
+                    "decision": s.signal_value.get("decision")
+                }
+                for s in weighted_signals
+            ]
+
+        return base_result
+
+    def is_ncip_007_enabled(self) -> bool:
+        """Check if NCIP-007 trust scoring is available."""
+        return NCIP_007_AVAILABLE
+
+    def get_ncip_007_status(self) -> Dict[str, Any]:
+        """Get NCIP-007 implementation status and configuration."""
+        if not NCIP_007_AVAILABLE:
+            return {
+                "enabled": False,
+                "message": "NCIP-007 module not available"
+            }
+
+        return {
+            "enabled": True,
+            "config": get_ncip_007_config(),
+            "registered_validators": len(get_trust_manager().profiles)
+        }

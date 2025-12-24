@@ -353,11 +353,11 @@ The following discrepancies between NCIP-000+ governance and current implementat
 - **Gap:** No general cooling period mechanism for standard disputes
 - **Resolution:** ✅ NCIP-005 IS AUTHORITATIVE — implement cooling periods in MP-03
 
-#### 3. Validator Trust Scoring Not Implemented
+#### 3. Validator Trust Scoring ✅ RESOLVED
 - **NCIP-007 requires:** Validator Trust Scoring & Reliability Weighting
-- **Current spec shows:** "Reputation Systems 🚧 10%" with only basic miner tracking
-- **Gap:** Full validator trust scoring per NCIP-007 not implemented
-- **Resolution:** ✅ NCIP-007 IS AUTHORITATIVE — implement full validator trust scoring
+- **Status:** ✅ IMPLEMENTED in `src/validator_trust.py`
+- **Features:** Trust profiles, scoped scores, decay/recovery, weighting function, anti-centralization safeguards
+- **Resolution:** ✅ NCIP-007 IS AUTHORITATIVE — full validator trust scoring implemented
 
 #### 9. Multilingual Alignment
 - **NCIP-003 requires:** Cross-language meaning preservation with drift detection
@@ -411,7 +411,7 @@ The following table summarizes all NCIP requirements and their implementation st
 | NCIP-004 | Proof of Understanding | ✅ Implemented | `src/pou_scoring.py`, integrated with `src/validator.py` |
 | NCIP-005 | Dispute Escalation & Semantic Locking | ✅ Implemented | `src/semantic_locking.py`, integrated with `src/dispute.py` |
 | NCIP-006 | Jurisdictional Interpretation | ❌ Not Implemented | No jurisdiction declaration, no Legal Translation Artifacts |
-| NCIP-007 | Validator Trust Scoring | ❌ Not Implemented | No Trust Profile, no scoped scores, no decay/recovery |
+| NCIP-007 | Validator Trust Scoring | ✅ Implemented | `src/validator_trust.py`, integrated with `src/validator.py` |
 | NCIP-008 | Semantic Appeals & Precedent | ❌ Not Implemented | No appeal system, no Semantic Case Records |
 | NCIP-009 | Regulatory Interface Modules | ❌ Not Implemented | No RIMs, no compliance proof generation |
 | NCIP-010 | Mediator Reputation & Slashing | 🚧 Partial (20%) | Basic solver reputation in Escalation Fork; no full mediator bonding/slashing |
@@ -506,17 +506,22 @@ The following table summarizes all NCIP requirements and their implementation st
 - [ ] Validator rejection of LTAs introducing new obligations
 
 #### NCIP-007: Validator Trust Scoring
-**Priority:** HIGH 🔴
-**Files Needed:** `src/validator_trust.py`
+**Status:** ✅ IMPLEMENTED
+**Files:** `src/validator_trust.py`, `tests/test_validator_trust.py`
 
-**Missing Features:**
-- [ ] Trust Profile structure with overall and scoped scores
-- [ ] Scopes: semantic_parsing, drift_detection, proof_of_understanding, dispute_analysis
-- [ ] Positive signals: consensus match, PoU ratification, correct drift flags
-- [ ] Negative signals: overruled by lock, false positives, unauthorized interpretations
-- [ ] Weighting function: `effective_weight = base_weight × trust_score × scope_modifier`
-- [ ] Trust decay formula: `score_t = score_0 × e^(−λΔt)`
-- [ ] Maximum weight cap and minimum diversity threshold
+**Implemented Features:**
+- [x] Trust Profile structure with overall and scoped scores
+- [x] Scopes: semantic_parsing, drift_detection, proof_of_understanding, dispute_analysis, legal_translation_review
+- [x] Positive signals: consensus_match, pou_ratified, correct_drift_flag, dispute_performance, consistency
+- [x] Negative signals: overruled_by_lock, false_positive_drift, unauthorized_interpretation, consensus_disagreement, harassment_pattern
+- [x] Weighting function: `effective_weight = base_weight × trust_score × scope_modifier`
+- [x] Base weights by validator type: LLM=1.0, hybrid=1.1, symbolic=0.9, human=1.2
+- [x] Trust decay formula: `score_t = score_0 × e^(−λΔt)` with λ=0.002 after 30 days inactivity
+- [x] Maximum weight cap (0.35) and minimum diversity threshold (3 validators)
+- [x] Trust freeze during disputes (retroactive updates prohibited)
+- [x] Harassment accelerated decay (2× magnitude)
+- [x] HybridValidator integration with `register_as_trusted_validator()`, `record_validation_outcome()`, `calculate_validator_weight()`, `weighted_multi_validator_consensus()`
+- [x] Comprehensive test suite (18 tests)
 
 #### NCIP-008: Semantic Appeals & Precedent
 **Priority:** MEDIUM 🟡
