@@ -206,19 +206,21 @@ If a term is not present, omit it. Return {{}} if no clear terms found."""
                 messages=[{"role": "user", "content": prompt}]
             )
 
+            # Safe access to API response
+            if not message.content:
+                raise ValueError("Empty response from API: no content returned during term extraction")
+            if not hasattr(message.content[0], 'text'):
+                raise ValueError("Invalid API response format: missing 'text' attribute in term extraction")
+
             response_text = message.content[0].text
 
-            # Extract JSON
-            if "```json" in response_text:
-                json_start = response_text.find("```json") + 7
-                json_end = response_text.find("```", json_start)
-                response_text = response_text[json_start:json_end].strip()
-            elif "```" in response_text:
-                json_start = response_text.find("```") + 3
-                json_end = response_text.find("```", json_start)
-                response_text = response_text[json_start:json_end].strip()
+            # Extract JSON with validation
+            response_text = self._extract_json_from_response(response_text)
 
-            terms = json.loads(response_text)
+            try:
+                terms = json.loads(response_text)
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Failed to parse term extraction JSON: {e.msg} at position {e.pos}")
 
             # Flatten other_terms
             if "other_terms" in terms:
@@ -227,9 +229,46 @@ If a term is not present, omit it. Return {{}} if no clear terms found."""
 
             return terms if terms else None
 
-        except Exception as e:
-            print(f"LLM term extraction failed: {e}")
+        except json.JSONDecodeError as e:
+            print(f"LLM term extraction failed - JSON parsing error: {e}")
             return None
+        except ValueError as e:
+            print(f"LLM term extraction failed - validation error: {e}")
+            return None
+        except Exception as e:
+            print(f"LLM term extraction failed - unexpected error: {e}")
+            return None
+
+    def _extract_json_from_response(self, response_text: str) -> str:
+        """
+        Extract JSON from a response that may contain markdown code blocks.
+
+        Args:
+            response_text: Raw response text
+
+        Returns:
+            Extracted JSON string
+
+        Raises:
+            ValueError: If JSON extraction fails
+        """
+        if not response_text or not response_text.strip():
+            raise ValueError("Empty response text received")
+
+        if "```json" in response_text:
+            json_start = response_text.find("```json") + 7
+            json_end = response_text.find("```", json_start)
+            if json_end == -1:
+                raise ValueError("Malformed response: unclosed JSON code block")
+            return response_text[json_start:json_end].strip()
+        elif "```" in response_text:
+            json_start = response_text.find("```") + 3
+            json_end = response_text.find("```", json_start)
+            if json_end == -1:
+                raise ValueError("Malformed response: unclosed code block")
+            return response_text[json_start:json_end].strip()
+
+        return response_text.strip()
 
     def validate_contract_clarity(self, content: str) -> Tuple[bool, str]:
         """
@@ -280,19 +319,21 @@ Return JSON:
                 messages=[{"role": "user", "content": prompt}]
             )
 
+            # Safe access to API response
+            if not message.content:
+                raise ValueError("Empty response from API: no content returned during clarity validation")
+            if not hasattr(message.content[0], 'text'):
+                raise ValueError("Invalid API response format: missing 'text' attribute in clarity validation")
+
             response_text = message.content[0].text
 
-            # Extract JSON
-            if "```json" in response_text:
-                json_start = response_text.find("```json") + 7
-                json_end = response_text.find("```", json_start)
-                response_text = response_text[json_start:json_end].strip()
-            elif "```" in response_text:
-                json_start = response_text.find("```") + 3
-                json_end = response_text.find("```", json_start)
-                response_text = response_text[json_start:json_end].strip()
+            # Extract JSON with validation
+            response_text = self._extract_json_from_response(response_text)
 
-            result = json.loads(response_text)
+            try:
+                result = json.loads(response_text)
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Failed to parse clarity validation JSON: {e.msg} at position {e.pos}")
 
             if result.get("recommendation") == "REJECT":
                 issues = result.get("ambiguities", []) + result.get("missing_critical", [])
@@ -303,9 +344,15 @@ Return JSON:
 
             return True, "Contract is clear and enforceable"
 
-        except Exception as e:
-            print(f"Contract validation failed: {e}")
+        except json.JSONDecodeError as e:
+            print(f"Contract validation failed - JSON parsing error: {e}")
+            return False, f"JSON parsing error during validation: {str(e)}"
+        except ValueError as e:
+            print(f"Contract validation failed - validation error: {e}")
             return False, f"Validation error: {str(e)}"
+        except Exception as e:
+            print(f"Contract validation failed - unexpected error: {e}")
+            return False, f"Unexpected validation error: {str(e)}"
 
     def format_contract(
         self,

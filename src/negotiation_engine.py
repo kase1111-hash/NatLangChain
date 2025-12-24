@@ -201,6 +201,12 @@ Return JSON:
                     messages=[{"role": "user", "content": prompt}]
                 )
 
+                # Safe access to API response
+                if not message.content:
+                    raise ValueError("Empty response from API: no content returned")
+                if not hasattr(message.content[0], 'text'):
+                    raise ValueError("Invalid API response format: missing 'text' attribute")
+
                 response_text = message.content[0].text
                 result = self._parse_json(response_text)
 
@@ -272,6 +278,12 @@ Return JSON:
                     max_tokens=512,
                     messages=[{"role": "user", "content": prompt}]
                 )
+
+                # Safe access to API response
+                if not message.content:
+                    raise ValueError("Empty response from API: no content returned during alignment computation")
+                if not hasattr(message.content[0], 'text'):
+                    raise ValueError("Invalid API response format: missing 'text' attribute in alignment computation")
 
                 response_text = message.content[0].text
                 result = self._parse_json(response_text)
@@ -345,17 +357,43 @@ Return JSON:
         return strategies
 
     def _parse_json(self, text: str) -> Dict[str, Any]:
-        """Parse JSON from LLM response."""
+        """
+        Parse JSON from LLM response.
+
+        Args:
+            text: Raw LLM response text
+
+        Returns:
+            Parsed JSON as dictionary
+
+        Raises:
+            ValueError: If JSON extraction or parsing fails
+        """
+        if not text or not text.strip():
+            raise ValueError("Cannot parse JSON: empty response text")
+
+        original_text = text
+
         if "```json" in text:
             json_start = text.find("```json") + 7
             json_end = text.find("```", json_start)
+            if json_end == -1:
+                raise ValueError("Malformed response: unclosed JSON code block in alignment response")
             text = text[json_start:json_end].strip()
         elif "```" in text:
             json_start = text.find("```") + 3
             json_end = text.find("```", json_start)
+            if json_end == -1:
+                raise ValueError("Malformed response: unclosed code block in alignment response")
             text = text[json_start:json_end].strip()
 
-        return json.loads(text)
+        if not text:
+            raise ValueError(f"No JSON content found after extraction from response: {original_text[:100]}...")
+
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Failed to parse JSON in alignment layer: {e.msg} at position {e.pos}. Content: {text[:100]}...")
 
 
 # ============================================================
@@ -444,6 +482,12 @@ Return JSON:
                     messages=[{"role": "user", "content": prompt}]
                 )
 
+                # Safe access to API response
+                if not message.content:
+                    raise ValueError("Empty response from API: no content returned during clause generation")
+                if not hasattr(message.content[0], 'text'):
+                    raise ValueError("Invalid API response format: missing 'text' attribute in clause generation")
+
                 response_text = message.content[0].text
                 result = self._parse_json(response_text)
 
@@ -510,6 +554,12 @@ Generate a professional contract document that:
                     messages=[{"role": "user", "content": prompt}]
                 )
 
+                # Safe access to API response
+                if not message.content:
+                    raise ValueError("Empty response from API: no content returned during contract generation")
+                if not hasattr(message.content[0], 'text'):
+                    raise ValueError("Invalid API response format: missing 'text' attribute in contract generation")
+
                 return message.content[0].text.strip()
 
             except Exception as e:
@@ -562,17 +612,43 @@ Generate a professional contract document that:
         return "\n".join(lines)
 
     def _parse_json(self, text: str) -> Dict[str, Any]:
-        """Parse JSON from LLM response."""
+        """
+        Parse JSON from LLM response.
+
+        Args:
+            text: Raw LLM response text
+
+        Returns:
+            Parsed JSON as dictionary
+
+        Raises:
+            ValueError: If JSON extraction or parsing fails
+        """
+        if not text or not text.strip():
+            raise ValueError("Cannot parse JSON: empty response text in clause generator")
+
+        original_text = text
+
         if "```json" in text:
             json_start = text.find("```json") + 7
             json_end = text.find("```", json_start)
+            if json_end == -1:
+                raise ValueError("Malformed response: unclosed JSON code block in clause generator")
             text = text[json_start:json_end].strip()
         elif "```" in text:
             json_start = text.find("```") + 3
             json_end = text.find("```", json_start)
+            if json_end == -1:
+                raise ValueError("Malformed response: unclosed code block in clause generator")
             text = text[json_start:json_end].strip()
 
-        return json.loads(text)
+        if not text:
+            raise ValueError(f"No JSON content found in clause generator response: {original_text[:100]}...")
+
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Failed to parse JSON in clause generator: {e.msg} at position {e.pos}. Content: {text[:100]}...")
 
 
 # ============================================================
@@ -662,6 +738,12 @@ Return JSON:
                     max_tokens=512,
                     messages=[{"role": "user", "content": prompt}]
                 )
+
+                # Safe access to API response
+                if not message.content:
+                    raise ValueError("Empty response from API: no content returned during counter-offer drafting")
+                if not hasattr(message.content[0], 'text'):
+                    raise ValueError("Invalid API response format: missing 'text' attribute in counter-offer drafting")
 
                 response_text = message.content[0].text
                 result = self._parse_json(response_text)
@@ -811,6 +893,12 @@ Return JSON:
                     messages=[{"role": "user", "content": prompt}]
                 )
 
+                # Safe access to API response
+                if not message.content:
+                    raise ValueError("Empty response from API: no content returned during final offer generation")
+                if not hasattr(message.content[0], 'text'):
+                    raise ValueError("Invalid API response format: missing 'text' attribute in final offer generation")
+
                 response_text = message.content[0].text
                 result = self._parse_json(response_text)
 
@@ -839,17 +927,43 @@ Return JSON:
         )
 
     def _parse_json(self, text: str) -> Dict[str, Any]:
-        """Parse JSON from LLM response."""
+        """
+        Parse JSON from LLM response.
+
+        Args:
+            text: Raw LLM response text
+
+        Returns:
+            Parsed JSON as dictionary
+
+        Raises:
+            ValueError: If JSON extraction or parsing fails
+        """
+        if not text or not text.strip():
+            raise ValueError("Cannot parse JSON: empty response text in counter-offer drafter")
+
+        original_text = text
+
         if "```json" in text:
             json_start = text.find("```json") + 7
             json_end = text.find("```", json_start)
+            if json_end == -1:
+                raise ValueError("Malformed response: unclosed JSON code block in counter-offer")
             text = text[json_start:json_end].strip()
         elif "```" in text:
             json_start = text.find("```") + 3
             json_end = text.find("```", json_start)
+            if json_end == -1:
+                raise ValueError("Malformed response: unclosed code block in counter-offer")
             text = text[json_start:json_end].strip()
 
-        return json.loads(text)
+        if not text:
+            raise ValueError(f"No JSON content found in counter-offer response: {original_text[:100]}...")
+
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Failed to parse JSON in counter-offer drafter: {e.msg} at position {e.pos}. Content: {text[:100]}...")
 
 
 # ============================================================

@@ -102,19 +102,21 @@ Return JSON:
                 messages=[{"role": "user", "content": prompt}]
             )
 
+            # Safe access to API response
+            if not message.content:
+                raise ValueError("Empty response from API: no content returned during event verification")
+            if not hasattr(message.content[0], 'text'):
+                raise ValueError("Invalid API response format: missing 'text' attribute in event verification")
+
             response_text = message.content[0].text
 
-            # Extract JSON
-            if "```json" in response_text:
-                json_start = response_text.find("```json") + 7
-                json_end = response_text.find("```", json_start)
-                response_text = response_text[json_start:json_end].strip()
-            elif "```" in response_text:
-                json_start = response_text.find("```") + 3
-                json_end = response_text.find("```", json_start)
-                response_text = response_text[json_start:json_end].strip()
+            # Extract JSON with validation
+            response_text = self._extract_json_from_response(response_text)
 
-            result = json.loads(response_text)
+            try:
+                result = json.loads(response_text)
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Failed to parse event verification JSON: {e.msg} at position {e.pos}")
 
             return {
                 "status": "success",
@@ -125,16 +127,67 @@ Return JSON:
                 "result": result
             }
 
-        except Exception as e:
+        except json.JSONDecodeError as e:
             return {
                 "status": "error",
-                "error": str(e),
+                "error": f"JSON parsing error: {str(e)}",
                 "oracle_type": "semantic",
                 "result": {
                     "triggers_condition": None,
                     "recommended_action": "ERROR"
                 }
             }
+        except ValueError as e:
+            return {
+                "status": "error",
+                "error": f"Validation error: {str(e)}",
+                "oracle_type": "semantic",
+                "result": {
+                    "triggers_condition": None,
+                    "recommended_action": "ERROR"
+                }
+            }
+        except Exception as e:
+            return {
+                "status": "error",
+                "error": f"Unexpected error: {str(e)}",
+                "oracle_type": "semantic",
+                "result": {
+                    "triggers_condition": None,
+                    "recommended_action": "ERROR"
+                }
+            }
+
+    def _extract_json_from_response(self, response_text: str) -> str:
+        """
+        Extract JSON from a response that may contain markdown code blocks.
+
+        Args:
+            response_text: Raw response text
+
+        Returns:
+            Extracted JSON string
+
+        Raises:
+            ValueError: If JSON extraction fails
+        """
+        if not response_text or not response_text.strip():
+            raise ValueError("Empty response text received")
+
+        if "```json" in response_text:
+            json_start = response_text.find("```json") + 7
+            json_end = response_text.find("```", json_start)
+            if json_end == -1:
+                raise ValueError("Malformed response: unclosed JSON code block")
+            return response_text[json_start:json_end].strip()
+        elif "```" in response_text:
+            json_start = response_text.find("```") + 3
+            json_end = response_text.find("```", json_start)
+            if json_end == -1:
+                raise ValueError("Malformed response: unclosed code block")
+            return response_text[json_start:json_end].strip()
+
+        return response_text.strip()
 
     def verify_contingency_clause(
         self,
@@ -193,19 +246,21 @@ Return JSON:
                 messages=[{"role": "user", "content": prompt}]
             )
 
+            # Safe access to API response
+            if not message.content:
+                raise ValueError("Empty response from API: no content returned during contingency verification")
+            if not hasattr(message.content[0], 'text'):
+                raise ValueError("Invalid API response format: missing 'text' attribute in contingency verification")
+
             response_text = message.content[0].text
 
-            # Extract JSON
-            if "```json" in response_text:
-                json_start = response_text.find("```json") + 7
-                json_end = response_text.find("```", json_start)
-                response_text = response_text[json_start:json_end].strip()
-            elif "```" in response_text:
-                json_start = response_text.find("```") + 3
-                json_end = response_text.find("```", json_start)
-                response_text = response_text[json_start:json_end].strip()
+            # Extract JSON with validation
+            response_text = self._extract_json_from_response(response_text)
 
-            result = json.loads(response_text)
+            try:
+                result = json.loads(response_text)
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Failed to parse contingency verification JSON: {e.msg} at position {e.pos}")
 
             return {
                 "status": "success",
@@ -215,10 +270,22 @@ Return JSON:
                 "result": result
             }
 
+        except json.JSONDecodeError as e:
+            return {
+                "status": "error",
+                "error": f"JSON parsing error: {str(e)}",
+                "oracle_type": "contingency"
+            }
+        except ValueError as e:
+            return {
+                "status": "error",
+                "error": f"Validation error: {str(e)}",
+                "oracle_type": "contingency"
+            }
         except Exception as e:
             return {
                 "status": "error",
-                "error": str(e),
+                "error": f"Unexpected error: {str(e)}",
                 "oracle_type": "contingency"
             }
 
@@ -282,19 +349,21 @@ Return JSON:
                 messages=[{"role": "user", "content": prompt}]
             )
 
+            # Safe access to API response
+            if not message.content:
+                raise ValueError("Empty response from API: no content returned during OTC settlement check")
+            if not hasattr(message.content[0], 'text'):
+                raise ValueError("Invalid API response format: missing 'text' attribute in OTC settlement check")
+
             response_text = message.content[0].text
 
-            # Extract JSON
-            if "```json" in response_text:
-                json_start = response_text.find("```json") + 7
-                json_end = response_text.find("```", json_start)
-                response_text = response_text[json_start:json_end].strip()
-            elif "```" in response_text:
-                json_start = response_text.find("```") + 3
-                json_end = response_text.find("```", json_start)
-                response_text = response_text[json_start:json_end].strip()
+            # Extract JSON with validation
+            response_text = self._extract_json_from_response(response_text)
 
-            result = json.loads(response_text)
+            try:
+                result = json.loads(response_text)
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Failed to parse OTC settlement JSON: {e.msg} at position {e.pos}")
 
             return {
                 "status": "success",
@@ -305,10 +374,22 @@ Return JSON:
                 "result": result
             }
 
+        except json.JSONDecodeError as e:
+            return {
+                "status": "error",
+                "error": f"JSON parsing error: {str(e)}",
+                "oracle_type": "otc_settlement"
+            }
+        except ValueError as e:
+            return {
+                "status": "error",
+                "error": f"Validation error: {str(e)}",
+                "oracle_type": "otc_settlement"
+            }
         except Exception as e:
             return {
                 "status": "error",
-                "error": str(e),
+                "error": f"Unexpected error: {str(e)}",
                 "oracle_type": "otc_settlement"
             }
 

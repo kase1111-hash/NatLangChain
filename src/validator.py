@@ -83,34 +83,86 @@ Respond in JSON format:
 
             # Parse the response
             import json
+
+            # Safe access to API response
+            if not message.content:
+                raise ValueError("Empty response from API: no content returned during entry validation")
+            if not hasattr(message.content[0], 'text'):
+                raise ValueError("Invalid API response format: missing 'text' attribute in entry validation")
+
             response_text = message.content[0].text
 
-            # Extract JSON from response (handle markdown code blocks)
-            if "```json" in response_text:
-                json_start = response_text.find("```json") + 7
-                json_end = response_text.find("```", json_start)
-                response_text = response_text[json_start:json_end].strip()
-            elif "```" in response_text:
-                json_start = response_text.find("```") + 3
-                json_end = response_text.find("```", json_start)
-                response_text = response_text[json_start:json_end].strip()
+            # Extract JSON from response with validation
+            response_text = self._extract_json_from_response(response_text)
 
-            result = json.loads(response_text)
+            try:
+                result = json.loads(response_text)
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Failed to parse validation JSON: {e.msg} at position {e.pos}")
 
             return {
                 "status": "success",
                 "validation": result
             }
 
+        except json.JSONDecodeError as e:
+            return {
+                "status": "error",
+                "error": f"JSON parsing error: {str(e)}",
+                "validation": {
+                    "decision": "ERROR",
+                    "reasoning": f"JSON parsing failed: {str(e)}"
+                }
+            }
+        except ValueError as e:
+            return {
+                "status": "error",
+                "error": f"Validation error: {str(e)}",
+                "validation": {
+                    "decision": "ERROR",
+                    "reasoning": f"Response validation failed: {str(e)}"
+                }
+            }
         except Exception as e:
             return {
                 "status": "error",
-                "error": str(e),
+                "error": f"Unexpected error: {str(e)}",
                 "validation": {
                     "decision": "ERROR",
                     "reasoning": f"Validation failed: {str(e)}"
                 }
             }
+
+    def _extract_json_from_response(self, response_text: str) -> str:
+        """
+        Extract JSON from a response that may contain markdown code blocks.
+
+        Args:
+            response_text: Raw response text
+
+        Returns:
+            Extracted JSON string
+
+        Raises:
+            ValueError: If JSON extraction fails
+        """
+        if not response_text or not response_text.strip():
+            raise ValueError("Empty response text received")
+
+        if "```json" in response_text:
+            json_start = response_text.find("```json") + 7
+            json_end = response_text.find("```", json_start)
+            if json_end == -1:
+                raise ValueError("Malformed response: unclosed JSON code block")
+            return response_text[json_start:json_end].strip()
+        elif "```" in response_text:
+            json_start = response_text.find("```") + 3
+            json_end = response_text.find("```", json_start)
+            if json_end == -1:
+                raise ValueError("Malformed response: unclosed code block")
+            return response_text[json_start:json_end].strip()
+
+        return response_text.strip()
 
     # Maximum validators to prevent DoS
     MAX_VALIDATORS = 10
@@ -221,23 +273,38 @@ Assess whether they convey the same meaning. Respond in JSON:
             )
 
             import json
+
+            # Safe access to API response
+            if not message.content:
+                raise ValueError("Empty response from API: no content returned during drift detection")
+            if not hasattr(message.content[0], 'text'):
+                raise ValueError("Invalid API response format: missing 'text' attribute in drift detection")
+
             response_text = message.content[0].text
 
-            # Extract JSON
-            if "```json" in response_text:
-                json_start = response_text.find("```json") + 7
-                json_end = response_text.find("```", json_start)
-                response_text = response_text[json_start:json_end].strip()
-            elif "```" in response_text:
-                json_start = response_text.find("```") + 3
-                json_end = response_text.find("```", json_start)
-                response_text = response_text[json_start:json_end].strip()
+            # Extract JSON with validation
+            response_text = self._extract_json_from_response(response_text)
 
-            return json.loads(response_text)
+            try:
+                return json.loads(response_text)
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Failed to parse drift detection JSON: {e.msg} at position {e.pos}")
 
+        except json.JSONDecodeError as e:
+            return {
+                "error": f"JSON parsing error: {str(e)}",
+                "semantically_equivalent": None,
+                "drift_score": None
+            }
+        except ValueError as e:
+            return {
+                "error": f"Validation error: {str(e)}",
+                "semantically_equivalent": None,
+                "drift_score": None
+            }
         except Exception as e:
             return {
-                "error": str(e),
+                "error": f"Unexpected error: {str(e)}",
                 "semantically_equivalent": None,
                 "drift_score": None
             }
@@ -283,23 +350,38 @@ Generate specific clarification questions that would resolve these ambiguities. 
             )
 
             import json
+
+            # Safe access to API response
+            if not message.content:
+                raise ValueError("Empty response from API: no content returned during clarification protocol")
+            if not hasattr(message.content[0], 'text'):
+                raise ValueError("Invalid API response format: missing 'text' attribute in clarification protocol")
+
             response_text = message.content[0].text
 
-            # Extract JSON
-            if "```json" in response_text:
-                json_start = response_text.find("```json") + 7
-                json_end = response_text.find("```", json_start)
-                response_text = response_text[json_start:json_end].strip()
-            elif "```" in response_text:
-                json_start = response_text.find("```") + 3
-                json_end = response_text.find("```", json_start)
-                response_text = response_text[json_start:json_end].strip()
+            # Extract JSON with validation
+            response_text = self._extract_json_from_response(response_text)
 
-            return json.loads(response_text)
+            try:
+                return json.loads(response_text)
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Failed to parse clarification JSON: {e.msg} at position {e.pos}")
 
+        except json.JSONDecodeError as e:
+            return {
+                "error": f"JSON parsing error: {str(e)}",
+                "clarification_questions": [],
+                "suggested_rewording": None
+            }
+        except ValueError as e:
+            return {
+                "error": f"Validation error: {str(e)}",
+                "clarification_questions": [],
+                "suggested_rewording": None
+            }
         except Exception as e:
             return {
-                "error": str(e),
+                "error": f"Unexpected error: {str(e)}",
                 "clarification_questions": [],
                 "suggested_rewording": None
             }

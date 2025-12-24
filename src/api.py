@@ -253,7 +253,15 @@ def init_validators():
 
 
 def load_chain():
-    """Load blockchain from file if it exists."""
+    """
+    Load blockchain from file if it exists.
+
+    Handles specific error cases:
+    - FileNotFoundError: File doesn't exist (normal for fresh start)
+    - PermissionError: File exists but cannot be read
+    - json.JSONDecodeError: File is corrupted or malformed
+    - KeyError/TypeError: File data is missing required fields
+    """
     global blockchain
     if os.path.exists(CHAIN_DATA_FILE):
         try:
@@ -261,18 +269,58 @@ def load_chain():
                 data = json.load(f)
                 blockchain = NatLangChain.from_dict(data)
                 print(f"Loaded blockchain with {len(blockchain.chain)} blocks")
+        except FileNotFoundError:
+            print(f"Chain data file not found: {CHAIN_DATA_FILE}")
+            print("Starting with fresh blockchain")
+        except PermissionError as e:
+            print(f"Permission denied reading chain data file: {e}")
+            print("Starting with fresh blockchain (WARNING: existing data may be lost)")
+        except json.JSONDecodeError as e:
+            print(f"Chain data file is corrupted or malformed: {e.msg} at line {e.lineno}, column {e.colno}")
+            print("Starting with fresh blockchain (WARNING: corrupted data file preserved)")
+            # Preserve corrupted file for recovery
+            corrupted_path = f"{CHAIN_DATA_FILE}.corrupted.{int(time.time())}"
+            try:
+                os.rename(CHAIN_DATA_FILE, corrupted_path)
+                print(f"Corrupted file renamed to: {corrupted_path}")
+            except OSError as rename_err:
+                print(f"Failed to rename corrupted file: {rename_err}")
+        except (KeyError, TypeError) as e:
+            print(f"Chain data file has invalid structure: {e}")
+            print("Starting with fresh blockchain (WARNING: existing data may be incompatible)")
         except Exception as e:
-            print(f"Error loading chain data: {e}")
+            print(f"Unexpected error loading chain data: {type(e).__name__}: {e}")
             print("Starting with fresh blockchain")
 
 
 def save_chain():
-    """Save blockchain to file."""
+    """
+    Save blockchain to file.
+
+    Handles specific error cases:
+    - PermissionError: Cannot write to file/directory
+    - OSError: Disk full or other I/O errors
+    - TypeError: Data cannot be serialized to JSON
+    """
     try:
-        with open(CHAIN_DATA_FILE, 'w') as f:
+        # Write to temporary file first for atomic operation
+        temp_file = f"{CHAIN_DATA_FILE}.tmp"
+        with open(temp_file, 'w') as f:
             json.dump(blockchain.to_dict(), f, indent=2)
+        # Atomic rename for data integrity
+        os.replace(temp_file, CHAIN_DATA_FILE)
+    except PermissionError as e:
+        print(f"Permission denied writing chain data: {e}")
+        print("WARNING: Blockchain state may not be persisted!")
+    except OSError as e:
+        print(f"OS error saving chain data (disk full?): {e}")
+        print("WARNING: Blockchain state may not be persisted!")
+    except TypeError as e:
+        print(f"Failed to serialize chain data to JSON: {e}")
+        print("WARNING: Blockchain state contains non-serializable data!")
     except Exception as e:
-        print(f"Error saving chain data: {e}")
+        print(f"Unexpected error saving chain data: {type(e).__name__}: {e}")
+        print("WARNING: Blockchain state may not be persisted!")
 
 
 # Initialize on startup
