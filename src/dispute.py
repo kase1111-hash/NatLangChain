@@ -4,6 +4,7 @@ Handles dispute declaration, evidence freezing, escalation, and resolution
 Per the Refusal Doctrine: disputes are signals, not failures
 
 Integrates NCIP-005: Semantic Locking & Cooling Periods
+Integrates NCIP-010: Mediator Reputation, Bonding & Slashing
 """
 
 import json
@@ -36,6 +37,25 @@ try:
     NCIP_005_AVAILABLE = True
 except ImportError:
     NCIP_005_AVAILABLE = False
+
+# Import NCIP-010 mediator reputation
+try:
+    from mediator_reputation import (
+        MediatorReputationManager,
+        MediatorProfile,
+        MediatorStatus,
+        SlashingOffense,
+        CooldownReason,
+        ProposalStatus,
+        get_reputation_manager,
+        get_ncip_010_config,
+        MINIMUM_BOND,
+        DEFAULT_BOND,
+        CTS_WEIGHTS
+    )
+    NCIP_010_AVAILABLE = True
+except ImportError:
+    NCIP_010_AVAILABLE = False
 
 
 class DisputeManager:
@@ -965,3 +985,323 @@ Return JSON:
 
         lock = self._lock_manager.get_lock_by_contract(contract_id)
         return lock is not None and lock.is_active and lock.execution_halted
+
+    # =========================================================================
+    # NCIP-010: Mediator Reputation, Bonding & Slashing
+    # =========================================================================
+
+    def register_mediator(
+        self,
+        mediator_id: str,
+        stake_amount: float = DEFAULT_BOND,
+        supported_domains: Optional[List[str]] = None,
+        models_used: Optional[List[str]] = None
+    ) -> Dict[str, Any]:
+        """
+        Register a mediator with required bond per NCIP-010.
+
+        Per NCIP-010 Section 3.1:
+        - All mediator nodes MUST register a persistent mediator ID
+        - Post a reputation bond (stake)
+        - Declare supported domains (optional)
+
+        Args:
+            mediator_id: Unique identifier for the mediator
+            stake_amount: Bond amount in NLC tokens (default 50,000)
+            supported_domains: Optional list of supported domains
+            models_used: Optional list of AI models used
+
+        Returns:
+            Registration result
+        """
+        if not NCIP_010_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-010 mediator reputation not available",
+                "ncip_010_enabled": False
+            }
+
+        try:
+            manager = get_reputation_manager()
+            profile = manager.register_mediator(
+                mediator_id=mediator_id,
+                stake_amount=stake_amount,
+                supported_domains=supported_domains,
+                models_used=models_used
+            )
+
+            return {
+                "status": "registered",
+                "mediator_id": mediator_id,
+                "bond_amount": profile.bond.amount,
+                "composite_trust_score": profile.composite_trust_score,
+                "ncip_010_enabled": True
+            }
+
+        except ValueError as e:
+            return {
+                "status": "error",
+                "message": str(e),
+                "ncip_010_enabled": True
+            }
+
+    def get_mediator_reputation(self, mediator_id: str) -> Dict[str, Any]:
+        """
+        Get a mediator's reputation summary per NCIP-010.
+
+        Args:
+            mediator_id: The mediator to query
+
+        Returns:
+            Reputation summary including CTS and all dimension scores
+        """
+        if not NCIP_010_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-010 mediator reputation not available"
+            }
+
+        manager = get_reputation_manager()
+        return manager.get_mediator_summary(mediator_id)
+
+    def record_mediation_outcome(
+        self,
+        mediator_id: str,
+        accepted: bool,
+        semantic_drift_score: Optional[float] = None,
+        latency_seconds: Optional[float] = None,
+        coercion_detected: bool = False
+    ) -> Dict[str, Any]:
+        """
+        Record a mediation proposal outcome per NCIP-010.
+
+        Updates the mediator's reputation scores:
+        - Acceptance Rate (AR)
+        - Semantic Accuracy (SA)
+        - Latency Discipline (LD)
+        - Coercion Signal (CS)
+
+        Args:
+            mediator_id: The mediator who made the proposal
+            accepted: Whether the proposal was accepted by both parties
+            semantic_drift_score: Validator-measured drift (0=perfect, 1=bad)
+            latency_seconds: Response time in seconds
+            coercion_detected: Whether coercion tactics were detected
+
+        Returns:
+            Updated reputation summary
+        """
+        if not NCIP_010_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-010 mediator reputation not available"
+            }
+
+        manager = get_reputation_manager()
+        return manager.record_proposal_outcome(
+            mediator_id=mediator_id,
+            accepted=accepted,
+            semantic_drift_score=semantic_drift_score,
+            latency_seconds=latency_seconds,
+            coercion_detected=coercion_detected
+        )
+
+    def slash_mediator(
+        self,
+        mediator_id: str,
+        offense: str,
+        severity: float = 0.5,
+        evidence: Optional[Dict[str, Any]] = None,
+        affected_party_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Slash a mediator's bond for an offense per NCIP-010 Section 6.
+
+        Slashing is automatic, deterministic, and non-discretionary.
+
+        Offense types:
+        - semantic_manipulation: Drift ≥ D4 (10-30% bond)
+        - repeated_invalid_proposals: 3× rejected (5-15%)
+        - coercive_framing: Validator flag + evidence (15%)
+        - appeal_reversal: Successful NCIP-008 appeal (5-20%)
+        - collusion_signals: Statistical correlation (progressive)
+
+        Args:
+            mediator_id: The mediator to slash
+            offense: Type of offense
+            severity: Severity factor 0-1 (affects penalty percentage)
+            evidence: Evidence of the offense
+            affected_party_id: If there's a victim to compensate
+
+        Returns:
+            Slashing result
+        """
+        if not NCIP_010_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-010 mediator reputation not available"
+            }
+
+        # Map offense string to enum
+        offense_map = {
+            "semantic_manipulation": SlashingOffense.SEMANTIC_MANIPULATION,
+            "repeated_invalid_proposals": SlashingOffense.REPEATED_INVALID_PROPOSALS,
+            "coercive_framing": SlashingOffense.COERCIVE_FRAMING,
+            "appeal_reversal": SlashingOffense.APPEAL_REVERSAL,
+            "collusion_signals": SlashingOffense.COLLUSION_SIGNALS
+        }
+
+        slash_offense = offense_map.get(offense.lower())
+        if not slash_offense:
+            return {
+                "status": "error",
+                "message": f"Unknown offense: {offense}. Valid: {list(offense_map.keys())}"
+            }
+
+        manager = get_reputation_manager()
+        event = manager.slash(
+            mediator_id=mediator_id,
+            offense=slash_offense,
+            severity=severity,
+            evidence=evidence,
+            affected_party_id=affected_party_id
+        )
+
+        if event is None:
+            return {
+                "status": "error",
+                "message": f"Mediator {mediator_id} not found"
+            }
+
+        return {
+            "status": "slashed",
+            "event_id": event.event_id,
+            "mediator_id": mediator_id,
+            "offense": offense,
+            "amount_slashed": event.amount_slashed,
+            "percentage": event.percentage,
+            "treasury_portion": event.treasury_portion,
+            "affected_party_portion": event.affected_party_portion
+        }
+
+    def rank_mediator_proposals(
+        self,
+        mediator_ids: List[str],
+        include_cts: bool = True
+    ) -> List[Dict[str, Any]]:
+        """
+        Rank mediator proposals by Composite Trust Score per NCIP-010 Section 8.
+
+        Per NCIP-010:
+        - Multiple mediators may propose simultaneously
+        - Parties see proposals ranked by CTS
+        - Includes diversity weighting and diminishing returns on volume
+
+        Args:
+            mediator_ids: List of mediators with proposals
+            include_cts: Whether to include CTS in results
+
+        Returns:
+            Ranked list of mediators with scores
+        """
+        if not NCIP_010_AVAILABLE:
+            return []
+
+        manager = get_reputation_manager()
+        return manager.get_proposal_ranking(mediator_ids, include_cts)
+
+    def sample_mediators_by_trust(
+        self,
+        mediator_ids: List[str],
+        sample_size: int = 3
+    ) -> List[str]:
+        """
+        Sample mediators proportional to trust for validator attention.
+
+        Per NCIP-010 Section 8.1: Validators sample proposals proportional to trust.
+
+        Args:
+            mediator_ids: List of mediator IDs to sample from
+            sample_size: Number of mediators to sample
+
+        Returns:
+            List of sampled mediator IDs
+        """
+        if not NCIP_010_AVAILABLE:
+            return mediator_ids[:sample_size]
+
+        manager = get_reputation_manager()
+        return manager.sample_proposals_by_trust(mediator_ids, sample_size)
+
+    def get_treasury_balance(self) -> Dict[str, Any]:
+        """
+        Get the treasury balance from mediator slashing.
+
+        Per NCIP-010 Section 9: Slashed funds contribute to
+        defensive dispute subsidies, escalation bounty pools,
+        and harassment-mitigation reserves.
+
+        Returns:
+            Treasury balance information
+        """
+        if not NCIP_010_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-010 mediator reputation not available"
+            }
+
+        manager = get_reputation_manager()
+        return {
+            "status": "ok",
+            "balance": manager.get_treasury_balance(),
+            "token": "NLC"
+        }
+
+    def allocate_defensive_subsidy(
+        self,
+        amount: float,
+        purpose: str
+    ) -> Dict[str, Any]:
+        """
+        Allocate treasury funds for defensive purposes per NCIP-010 Section 9.
+
+        Purposes:
+        - defensive_dispute: Subsidize defensive dispute costs
+        - escalation_bounty: Fund escalation bounty pools
+        - harassment_mitigation: Harassment-mitigation reserves
+
+        Args:
+            amount: Amount to allocate
+            purpose: Purpose of allocation
+
+        Returns:
+            Allocation result
+        """
+        if not NCIP_010_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-010 mediator reputation not available"
+            }
+
+        manager = get_reputation_manager()
+        return manager.allocate_defensive_subsidy(amount, purpose)
+
+    def is_ncip_010_enabled(self) -> bool:
+        """Check if NCIP-010 mediator reputation is available."""
+        return NCIP_010_AVAILABLE
+
+    def get_ncip_010_status(self) -> Dict[str, Any]:
+        """Get NCIP-010 implementation status and configuration."""
+        if not NCIP_010_AVAILABLE:
+            return {
+                "enabled": False,
+                "message": "NCIP-010 module not available"
+            }
+
+        manager = get_reputation_manager()
+        return {
+            "enabled": True,
+            "config": get_ncip_010_config(),
+            "registered_mediators": len(manager.mediators),
+            "treasury_balance": manager.get_treasury_balance()
+        }

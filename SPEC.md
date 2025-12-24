@@ -367,11 +367,11 @@ The following discrepancies between NCIP-000+ governance and current implementat
 
 #### Pending Definition (Both Documents)
 
-#### 4. Mediator Reputation vs Escalation Fork
+#### 4. Mediator Reputation ✅ RESOLVED
 - **NCIP-010 requires:** Mediator Reputation, Slashing & Market Dynamics
-- **Current implementation:** Escalation Fork with solver reputation (+10/-2 scoring)
-- **Question:** Does Escalation Fork solver reputation satisfy NCIP-010, or is separate mediator reputation required?
-- **Resolution:** 🟡 PENDING — both NCIP-010 and spec require further definition
+- **Status:** ✅ IMPLEMENTED in `src/mediator_reputation.py`
+- **Features:** CTS scoring (6 dimensions), bonding, slashing (5 offense types), cooldowns, treasury, market dynamics
+- **Resolution:** ✅ NCIP-010 IS AUTHORITATIVE — full mediator reputation implemented
 
 #### 5. Validator-Mediator Weight Coupling Missing
 - **NCIP-011 requires:** Joint trust dynamics between validators and mediators
@@ -414,7 +414,7 @@ The following table summarizes all NCIP requirements and their implementation st
 | NCIP-007 | Validator Trust Scoring | ✅ Implemented | `src/validator_trust.py`, integrated with `src/validator.py` |
 | NCIP-008 | Semantic Appeals & Precedent | ❌ Not Implemented | No appeal system, no Semantic Case Records |
 | NCIP-009 | Regulatory Interface Modules | ❌ Not Implemented | No RIMs, no compliance proof generation |
-| NCIP-010 | Mediator Reputation & Slashing | 🚧 Partial (20%) | Basic solver reputation in Escalation Fork; no full mediator bonding/slashing |
+| NCIP-010 | Mediator Reputation & Slashing | ✅ Implemented | `src/mediator_reputation.py`, integrated with `src/dispute.py` |
 | NCIP-011 | Validator-Mediator Weight Coupling | ❌ Not Implemented | No influence gate, no semantic consistency scoring |
 | NCIP-012 | Human Ratification UX Limits | ❌ Not Implemented | No Cognitive Load Budget, no rate limits, no UI safeguards |
 | NCIP-013 | Emergency Overrides & Force Majeure | 🚧 Partial (15%) | Basic circuit breakers; no formal emergency declarations, no semantic fallbacks |
@@ -545,16 +545,21 @@ The following table summarizes all NCIP requirements and their implementation st
 - [ ] ZK proof integration for privacy-preserving compliance
 
 #### NCIP-010: Mediator Reputation & Slashing
-**Priority:** HIGH 🔴
-**Files Needed:** `src/mediator_reputation.py`
+**Status:** ✅ IMPLEMENTED
+**Files:** `src/mediator_reputation.py`, `tests/test_mediator_reputation.py`
 
-**Missing Features:**
-- [ ] Mediator registration with stake bond
-- [ ] Reputation dimensions: Acceptance Rate, Semantic Accuracy, Appeal Survival, Dispute Avoidance, Coercion Signal, Latency Discipline
-- [ ] Composite Trust Score (CTS) calculation
-- [ ] Slashing conditions: semantic manipulation, repeated invalid proposals, coercive framing
-- [ ] Cooldowns and market throttling
-- [ ] Treasury integration for slashed funds
+**Implemented Features:**
+- [x] Mediator registration with stake bond (minimum 10,000 NLC, default 50,000 NLC)
+- [x] Reputation dimensions: Acceptance Rate, Semantic Accuracy, Appeal Survival, Dispute Avoidance, Coercion Signal, Latency Discipline
+- [x] Composite Trust Score (CTS) calculation with configurable weights
+- [x] Slashing conditions: semantic_manipulation (10-30%), repeated_invalid_proposals (5-15%), coercive_framing (15%), appeal_reversal (5-20%), collusion_signals (progressive)
+- [x] Cooldowns and market throttling (offense-specific durations)
+- [x] Treasury integration for slashed funds (50% treasury, 50% affected party)
+- [x] Proposal ranking by CTS with diversity weighting
+- [x] Trust-weighted sampling for validator attention
+- [x] Harassment accelerated decay (coercion signal tracking)
+- [x] DisputeManager integration with `register_mediator()`, `slash_mediator()`, `rank_mediator_proposals()`, `get_treasury_balance()`
+- [x] Comprehensive test suite (15 tests)
 
 #### NCIP-011: Validator-Mediator Weight Coupling
 **Priority:** MEDIUM 🟡
