@@ -1,11 +1,28 @@
 """
 NatLangChain - Linguistic Validation
 Implements Proof of Understanding using LLM-powered semantic validation
+
+Integrates NCIP-004: PoU scoring dimensions (Coverage, Fidelity, Consistency, Completeness)
 """
 
 import os
 from typing import Dict, List, Tuple, Any, Optional
 from anthropic import Anthropic
+
+# Import NCIP-004 PoU scoring
+try:
+    from pou_scoring import (
+        PoUScorer,
+        PoUStatus,
+        PoUScoreResult,
+        PoUValidationResult,
+        score_pou,
+        classify_pou_score,
+        get_pou_config
+    )
+    NCIP_004_AVAILABLE = True
+except ImportError:
+    NCIP_004_AVAILABLE = False
 
 
 class ProofOfUnderstanding:
@@ -393,16 +410,108 @@ class HybridValidator:
 
     Per the spec: "Hybrid Tiers: Symbolic checks for basic validity;
     full LLM validation for complex/contested entries"
+
+    Integrates NCIP-001 term registry for canonical term enforcement.
     """
 
-    def __init__(self, llm_validator: ProofOfUnderstanding):
+    def __init__(self, llm_validator: ProofOfUnderstanding, enable_term_validation: bool = True):
         """
         Initialize hybrid validator.
 
         Args:
             llm_validator: The LLM-powered validator
+            enable_term_validation: Whether to enable NCIP-001 term validation
         """
         self.llm_validator = llm_validator
+        self.enable_term_validation = enable_term_validation
+        self._term_registry = None
+
+    @property
+    def term_registry(self):
+        """Lazy-load the term registry."""
+        if self._term_registry is None and self.enable_term_validation:
+            try:
+                from term_registry import get_registry
+                self._term_registry = get_registry()
+            except ImportError:
+                # Term registry not available
+                self._term_registry = None
+            except Exception:
+                # Registry load failed
+                self._term_registry = None
+        return self._term_registry
+
+    def validate_terms(
+        self,
+        content: str,
+        intent: str
+    ) -> Dict[str, Any]:
+        """
+        Validate terms against NCIP-001 Canonical Term Registry.
+
+        Per NCIP-001:
+        - Validators MAY reject unknown canonical terms
+        - Validators MAY warn on deprecated or overloaded usage
+        - Validators MAY flag semantic collisions
+
+        Args:
+            content: Entry content
+            intent: Entry intent
+
+        Returns:
+            Term validation result with warnings and issues
+        """
+        result = {
+            "enabled": self.enable_term_validation,
+            "valid": True,
+            "issues": [],
+            "warnings": [],
+            "terms_found": {
+                "core": [],
+                "protocol_bound": [],
+                "extension": []
+            },
+            "synonym_recommendations": []
+        }
+
+        if not self.enable_term_validation or self.term_registry is None:
+            result["enabled"] = False
+            return result
+
+        try:
+            # Validate text against term registry
+            validation = self.term_registry.validate_text(content + " " + intent)
+
+            # Report found terms by category
+            result["terms_found"]["core"] = validation.core_terms_found
+            result["terms_found"]["protocol_bound"] = validation.protocol_terms_found
+            result["terms_found"]["extension"] = validation.extension_terms_found
+
+            # Deprecated terms are issues (per NCIP-001 Section 7.1)
+            for deprecated in validation.deprecated_terms:
+                result["issues"].append(
+                    f"Deprecated term used: '{deprecated}'. "
+                    "This term is no longer valid per NCIP-001."
+                )
+
+            # Synonym usage generates warnings with recommendations
+            for used, canonical in validation.synonym_usage:
+                result["warnings"].append(
+                    f"Synonym '{used}' used instead of canonical term '{canonical}'"
+                )
+                result["synonym_recommendations"].append({
+                    "used": used,
+                    "canonical": canonical
+                })
+
+            # Set validity based on issues (not warnings)
+            result["valid"] = len(result["issues"]) == 0
+
+        except Exception as e:
+            # Term validation failure should not block validation
+            result["warnings"].append(f"Term validation encountered error: {str(e)}")
+
+        return result
 
     def symbolic_validation(
         self,
@@ -418,6 +527,7 @@ class HybridValidator:
         - Content meets minimum length
         - No obvious malicious patterns
         - Basic structural validity
+        - NCIP-001 term validation (if enabled)
 
         Args:
             content: Entry content
@@ -428,6 +538,7 @@ class HybridValidator:
             Symbolic validation result
         """
         issues = []
+        warnings = []
 
         # Basic checks
         if not content or len(content.strip()) == 0:
@@ -455,9 +566,18 @@ class HybridValidator:
             if pattern.lower() in content.lower():
                 issues.append(f"Suspicious pattern detected: {pattern}")
 
+        # NCIP-001 term validation
+        term_validation = self.validate_terms(content, intent)
+
+        # Add term validation issues
+        issues.extend(term_validation.get("issues", []))
+        warnings.extend(term_validation.get("warnings", []))
+
         return {
             "valid": len(issues) == 0,
-            "issues": issues
+            "issues": issues,
+            "warnings": warnings,
+            "term_validation": term_validation
         }
 
     def validate(
@@ -471,6 +591,8 @@ class HybridValidator:
         """
         Perform hybrid validation.
 
+        Includes NCIP-001 term validation as part of symbolic checks.
+
         Args:
             content: Entry content
             intent: Entry intent
@@ -479,20 +601,31 @@ class HybridValidator:
             multi_validator: Whether to use multi-validator consensus
 
         Returns:
-            Complete validation result
+            Complete validation result including:
+            - symbolic_validation: Basic checks including term validation
+            - llm_validation: LLM-powered semantic validation (if enabled)
+            - term_validation: NCIP-001 term registry validation details
+            - overall_decision: Final validation decision
         """
-        # Always do symbolic validation first
+        # Always do symbolic validation first (includes term validation)
         symbolic_result = self.symbolic_validation(content, intent, author)
 
         result = {
             "symbolic_validation": symbolic_result,
+            "term_validation": symbolic_result.get("term_validation"),
             "llm_validation": None
         }
+
+        # Include term validation warnings in result
+        if symbolic_result.get("warnings"):
+            result["warnings"] = symbolic_result["warnings"]
 
         # If symbolic validation fails, don't proceed to LLM
         if not symbolic_result["valid"]:
             result["overall_decision"] = "INVALID"
             result["reason"] = "Failed symbolic validation"
+            if symbolic_result.get("issues"):
+                result["issues"] = symbolic_result["issues"]
             return result
 
         # LLM validation if enabled
@@ -516,3 +649,187 @@ class HybridValidator:
             result["overall_decision"] = "VALID"
 
         return result
+
+    # =========================================================================
+    # NCIP-004: Proof of Understanding Scoring
+    # =========================================================================
+
+    def validate_pou(
+        self,
+        pou_data: Dict[str, Any],
+        contract_content: str,
+        contract_clauses: Optional[List[str]] = None
+    ) -> Dict[str, Any]:
+        """
+        Validate a Proof of Understanding submission per NCIP-004.
+
+        Scores the PoU on four dimensions:
+        - Coverage: All material clauses addressed
+        - Fidelity: Meaning matches canonical intent
+        - Consistency: No contradictions
+        - Completeness: Obligations + consequences acknowledged
+
+        Returns status based on minimum dimension score:
+        - ≥0.90: Verified (accept, bind interpretation)
+        - 0.75-0.89: Marginal (warn, allow resubmission)
+        - 0.50-0.74: Insufficient (reject, require retry)
+        - <0.50: Failed (reject, escalate)
+
+        Args:
+            pou_data: PoU submission in NCIP-004 schema format
+            contract_content: The original contract content
+            contract_clauses: Optional list of material clauses
+
+        Returns:
+            Dict with scores, status, actions, and fingerprint
+        """
+        if not NCIP_004_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-004 PoU scoring module not available",
+                "ncip_004_enabled": False
+            }
+
+        try:
+            scorer = PoUScorer(validator_id="hybrid_validator")
+            return scorer.get_validator_response(
+                pou_data,
+                contract_content,
+                contract_clauses
+            )
+        except Exception as e:
+            return {
+                "status": "error",
+                "message": f"PoU validation failed: {str(e)}",
+                "ncip_004_enabled": True
+            }
+
+    def validate_pou_with_llm(
+        self,
+        pou_data: Dict[str, Any],
+        contract_content: str,
+        contract_clauses: Optional[List[str]] = None
+    ) -> Dict[str, Any]:
+        """
+        Validate PoU with both NCIP-004 scoring and LLM semantic analysis.
+
+        This combines:
+        1. NCIP-004 dimension scoring (Coverage, Fidelity, Consistency, Completeness)
+        2. LLM-powered semantic drift detection
+        3. LLM paraphrase analysis
+
+        Args:
+            pou_data: PoU submission in NCIP-004 schema format
+            contract_content: The original contract content
+            contract_clauses: Optional list of material clauses
+
+        Returns:
+            Combined validation result
+        """
+        result = {
+            "ncip_004_validation": None,
+            "llm_validation": None,
+            "combined_status": None
+        }
+
+        # Get NCIP-004 scores
+        ncip_result = self.validate_pou(pou_data, contract_content, contract_clauses)
+        result["ncip_004_validation"] = ncip_result
+
+        # Extract summary for LLM validation
+        summary = pou_data.get("sections", {}).get("summary", {}).get("text", "")
+
+        if summary and self.llm_validator:
+            # Check for semantic drift between PoU summary and contract
+            drift_result = self.llm_validator.detect_semantic_drift(
+                contract_content,
+                summary
+            )
+            result["llm_validation"] = {
+                "drift_analysis": drift_result
+            }
+
+            # Combine results
+            ncip_status = ncip_result.get("status", "error")
+            drift_score = drift_result.get("drift_score")
+
+            if ncip_status == "verified" and drift_score is not None and drift_score < 0.25:
+                result["combined_status"] = "verified"
+            elif ncip_status in ["verified", "marginal"] and drift_score is not None and drift_score < 0.45:
+                result["combined_status"] = "marginal"
+            elif ncip_status == "insufficient":
+                result["combined_status"] = "insufficient"
+            else:
+                result["combined_status"] = "failed"
+        else:
+            result["combined_status"] = ncip_result.get("status", "error")
+
+        return result
+
+    def is_pou_required(
+        self,
+        drift_level: Optional[str] = None,
+        has_multilingual: bool = False,
+        has_economic_obligations: bool = False,
+        requires_human_ratification: bool = False,
+        has_mediator_escalation: bool = False
+    ) -> bool:
+        """
+        Determine if PoU is required per NCIP-004 Section 3.
+
+        PoU is mandatory when any of the following apply:
+        - Drift level ≥ D2 (NCIP-002)
+        - Multilingual alignment is used (NCIP-003)
+        - Economic or legal obligations exist
+        - Human ratification is required
+        - Mediator escalation has occurred
+
+        Args:
+            drift_level: Current drift level (D0-D4)
+            has_multilingual: Whether multilingual alignment is used
+            has_economic_obligations: Whether economic/legal obligations exist
+            requires_human_ratification: Whether human ratification is required
+            has_mediator_escalation: Whether mediator escalation has occurred
+
+        Returns:
+            True if PoU is required
+        """
+        # Check drift level
+        if drift_level in ["D2", "D3", "D4"]:
+            return True
+
+        # Check other conditions
+        if has_multilingual:
+            return True
+        if has_economic_obligations:
+            return True
+        if requires_human_ratification:
+            return True
+        if has_mediator_escalation:
+            return True
+
+        return False
+
+    def get_pou_status_from_score(self, score: float) -> str:
+        """
+        Get PoU status string from a score.
+
+        Args:
+            score: Score in range [0.0, 1.0]
+
+        Returns:
+            Status string: "verified", "marginal", "insufficient", or "failed"
+        """
+        if not NCIP_004_AVAILABLE:
+            # Fallback classification
+            if score >= 0.90:
+                return "verified"
+            elif score >= 0.75:
+                return "marginal"
+            elif score >= 0.50:
+                return "insufficient"
+            else:
+                return "failed"
+
+        status = classify_pou_score(score)
+        return status.value

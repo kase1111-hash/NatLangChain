@@ -1,0 +1,388 @@
+# NatLangChain Canonical Term Registry
+# Authority: NCIP-001
+# This file is normative. Changes require NCIP process.
+
+registry_version: "1.0"
+last_updated: "2025-12-24"
+authority:
+  specification: "NatLangChain Technical Specification v3.2"
+  governance: "NCIP-000"
+
+# Term Classes:
+#   core - immutable, consensus-critical
+#   protocol-bound - governed by a Mediator Protocol (MP)
+#   extension - optional or experimental
+
+terms:
+  # ============================================
+  # CORE TERMS (Immutable, Consensus-Critical)
+  # ============================================
+
+  - term: Intent
+    class: core
+    definition: >
+      A human-authored expression of desired outcome or commitment,
+      recorded as prose and treated as the primary semantic input
+      to the NatLangChain protocol.
+    introduced_in: "Technical Specification v3.0"
+    governance:
+      mutable: false
+      rule: "Clarification only; no redefinition"
+    synonyms:
+      - intention
+      - user intent
+    notes: >
+      Intent is not executable by itself; execution is always derived.
+
+  - term: Entry
+    class: core
+    definition: >
+      A discrete, timestamped record containing prose, metadata,
+      and signatures within the NatLangChain system.
+    introduced_in: "Technical Specification v3.0"
+    governance:
+      mutable: false
+    synonyms:
+      - record
+    notes: >
+      Entries form the canonical audit trail.
+
+  - term: Agreement
+    class: core
+    definition: >
+      A mutually ratified Intent or set of Intents establishing
+      shared understanding and obligations between parties.
+    introduced_in: "Technical Specification v3.0"
+    governance:
+      mutable: false
+    synonyms:
+      - contract
+    notes: >
+      Agreement does not imply automation or smart contract execution.
+
+  - term: Ratification
+    class: core
+    definition: >
+      An explicit act of consent confirming understanding and acceptance
+      of an Intent or Agreement.
+    introduced_in: "Technical Specification v3.0"
+    governance:
+      mutable: false
+    synonyms:
+      - approval
+      - acceptance
+
+  - term: Proof of Understanding
+    class: core
+    definition: >
+      Evidence that a party has demonstrably comprehended the meaning
+      and implications of an Intent or Agreement.
+    introduced_in: "Technical Specification v3.0"
+    governance:
+      mutable: false
+    synonyms:
+      - PoU
+    notes: >
+      Proof of Understanding is semantic, not cryptographic alone.
+
+  - term: Semantic Drift
+    class: core
+    definition: >
+      The divergence between original intended meaning and subsequent
+      interpretation, usage, or derived execution.
+    introduced_in: "Technical Specification v3.0"
+    governance:
+      mutable: false
+    synonyms:
+      - meaning drift
+      - drift
+
+  - term: Temporal Fixity
+    class: core
+    definition: >
+      The binding of meaning to a specific point in time, ensuring
+      interpretations are evaluated against contemporaneous context.
+    introduced_in: "Technical Specification v3.0"
+    governance:
+      mutable: false
+    synonyms:
+      - T0
+      - time-zero
+
+  - term: Mediator
+    class: core
+    definition: >
+      A human or authorized entity responsible for interpretation,
+      dispute resolution, or enforcement within defined bounds.
+    introduced_in: "Technical Specification v3.0"
+    governance:
+      mutable: false
+    synonyms:
+      - arbiter
+
+  - term: Validator
+    class: core
+    definition: >
+      A node or agent that assesses semantic validity, drift,
+      and Proof of Understanding quality for entries.
+    introduced_in: "Technical Specification v3.0"
+    governance:
+      mutable: false
+    notes: >
+      Validators measure meaning but cannot dictate outcomes.
+
+  - term: Block
+    class: core
+    definition: >
+      A cryptographically linked container of validated entries
+      forming the immutable chain structure.
+    introduced_in: "Technical Specification v3.0"
+    governance:
+      mutable: false
+
+  - term: Chain
+    class: core
+    definition: >
+      The ordered sequence of blocks containing all validated
+      entries and their semantic metadata.
+    introduced_in: "Technical Specification v3.0"
+    governance:
+      mutable: false
+    synonyms:
+      - blockchain
+      - ledger
+
+  - term: Author
+    class: core
+    definition: >
+      The human originator of an Intent or Entry who bears
+      responsibility for its content and meaning.
+    introduced_in: "Technical Specification v3.0"
+    governance:
+      mutable: false
+    synonyms:
+      - originator
+      - creator
+
+  - term: Paraphrase
+    class: core
+    definition: >
+      A restatement of content in different words that demonstrates
+      comprehension while preserving semantic meaning.
+    introduced_in: "Technical Specification v3.0"
+    governance:
+      mutable: false
+    notes: >
+      Used in Proof of Understanding to verify comprehension.
+
+  - term: Consensus
+    class: core
+    definition: >
+      Agreement among validators on the semantic validity and
+      interpretation of an entry.
+    introduced_in: "Technical Specification v3.0"
+    governance:
+      mutable: false
+
+  - term: Semantic Lock
+    class: core
+    definition: >
+      A binding freeze of interpretive meaning at a specific time,
+      against which all dispute evaluation occurs.
+    introduced_in: "NCIP-005"
+    governance:
+      mutable: false
+    notes: >
+      Prevents meaning drift during active disputes.
+
+  - term: Cooling Period
+    class: core
+    definition: >
+      A mandatory delay interval preventing immediate escalation,
+      allowing clarification or settlement without adversarial processes.
+    introduced_in: "NCIP-005"
+    governance:
+      mutable: false
+
+  # ============================================
+  # PROTOCOL-BOUND TERMS (Governed by MPs)
+  # ============================================
+
+  - term: Dispute
+    class: protocol-bound
+    governed_by: "MP-03"
+    definition: >
+      A formally raised challenge asserting misinterpretation,
+      non-compliance, or unresolved ambiguity in an Agreement.
+    introduced_in: "MP-03"
+    governance:
+      mutable: restricted
+      requires_ncip: true
+    synonyms:
+      - challenge
+
+  - term: Settlement
+    class: protocol-bound
+    governed_by: "MP-05"
+    definition: >
+      The resolution of an Agreement or Dispute resulting in
+      final obligations, compensation, or closure.
+    introduced_in: "MP-05"
+    governance:
+      mutable: restricted
+    synonyms:
+      - resolution
+
+  - term: Negotiation
+    class: protocol-bound
+    governed_by: "MP-01"
+    definition: >
+      The process of reaching mutual understanding and agreement
+      between parties through iterative proposal and counter-proposal.
+    introduced_in: "MP-01"
+    governance:
+      mutable: restricted
+
+  - term: Licensing
+    class: protocol-bound
+    governed_by: "MP-04"
+    definition: >
+      The granting of specific rights or permissions from one party
+      to another under defined terms and conditions.
+    introduced_in: "MP-04"
+    governance:
+      mutable: restricted
+
+  - term: Delegation
+    class: protocol-bound
+    governed_by: "MP-04"
+    definition: >
+      The authorized transfer of decision-making authority from
+      one party to another within specified bounds.
+    introduced_in: "MP-04"
+    governance:
+      mutable: restricted
+
+  - term: Escalation
+    class: protocol-bound
+    governed_by: "MP-03"
+    definition: >
+      The formal elevation of an unresolved dispute to a higher
+      level of mediation or arbitration.
+    introduced_in: "MP-03"
+    governance:
+      mutable: restricted
+
+  - term: Capitalization
+    class: protocol-bound
+    governed_by: "MP-05"
+    definition: >
+      The economic valuation and tokenization of agreements
+      for settlement or transfer purposes.
+    introduced_in: "MP-05"
+    governance:
+      mutable: restricted
+
+  - term: Effort Receipt
+    class: protocol-bound
+    governed_by: "MP-02"
+    definition: >
+      A verifiable record of work performed or resources expended
+      in fulfillment of an agreement obligation.
+    introduced_in: "MP-02"
+    governance:
+      mutable: restricted
+
+  # ============================================
+  # EXTENSION TERMS (Optional/Experimental)
+  # ============================================
+
+  - term: Extension Term
+    class: extension
+    definition: >
+      A non-core term introduced by a module or experimental feature,
+      explicitly scoped and non-consensus-critical.
+    introduced_in: "NCIP-001"
+    governance:
+      mutable: true
+    notes: >
+      Extension terms must never collide with core terms.
+
+  - term: Dialectic Consensus
+    class: extension
+    definition: >
+      A validation method using Skeptic/Facilitator debate roles
+      to achieve understanding through structured argumentation.
+    introduced_in: "Technical Specification v3.0"
+    governance:
+      mutable: true
+    notes: >
+      Experimental consensus mechanism for complex entries.
+
+  - term: Multi-Model Consensus
+    class: extension
+    definition: >
+      Validation achieved through agreement among multiple
+      distinct LLM implementations or model versions.
+    introduced_in: "Technical Specification v3.0"
+    governance:
+      mutable: true
+
+  - term: Semantic Oracle
+    class: extension
+    definition: >
+      An external data source that provides verifiable real-world
+      information for contract condition evaluation.
+    introduced_in: "Technical Specification v3.0"
+    governance:
+      mutable: true
+    synonyms:
+      - oracle
+
+  - term: Contract Matcher
+    class: extension
+    definition: >
+      A service that identifies compatible offers and seeks
+      for potential agreement formation.
+    introduced_in: "Technical Specification v3.0"
+    governance:
+      mutable: true
+
+  - term: Hybrid Validation
+    class: extension
+    definition: >
+      A two-tier approach combining symbolic rule checks with
+      LLM-powered semantic validation.
+    introduced_in: "Technical Specification v3.0"
+    governance:
+      mutable: true
+
+  - term: Finite Intent Executor
+    class: extension
+    definition: >
+      A system for executing time-delayed or posthumous intents
+      under strictly bounded conditions.
+    introduced_in: "Technical Specification v3.0"
+    governance:
+      mutable: true
+    synonyms:
+      - FIE
+
+  - term: Escalation Fork
+    class: extension
+    definition: >
+      A dispute resolution mechanism that splits unresolved conflicts
+      into competing resolution paths with solver competition.
+    introduced_in: "Technical Specification v3.0"
+    governance:
+      mutable: true
+
+# Deprecated terms (must remain resolvable)
+deprecated_terms: []
+
+# Registry metadata
+metadata:
+  total_core_terms: 17
+  total_protocol_bound_terms: 8
+  total_extension_terms: 8
+  requires_ncip_for_changes: true
