@@ -119,6 +119,26 @@ try:
 except ImportError:
     NCIP_006_AVAILABLE = False
 
+# Import NCIP-008 Semantic Appeals, Precedent & Case Law Encoding
+try:
+    from appeals import (
+        AppealsManager,
+        Appeal,
+        AppealableItem,
+        NonAppealableItem,
+        AppealStatus,
+        AppealOutcome,
+        DriftLevel as AppealsDriftLevel,
+        PrecedentWeight,
+        SemanticCaseRecord,
+        ReviewPanel,
+        ReviewPanelMember,
+        PrecedentEntry,
+    )
+    NCIP_008_AVAILABLE = True
+except ImportError:
+    NCIP_008_AVAILABLE = False
+
 
 class ProofOfUnderstanding:
     """
@@ -3257,4 +3277,553 @@ class HybridValidator:
             "total_court_rulings": summary["total_court_rulings"],
             "total_conflicts": summary["total_conflicts"],
             "principle": "Law constrains enforcement, not meaning"
+        }
+
+    # -------------------------------------------------------------------------
+    # NCIP-008: Semantic Appeals, Precedent & Case Law Encoding Integration
+    # -------------------------------------------------------------------------
+
+    _appeals_manager: Optional["AppealsManager"] = None
+
+    def get_appeals_manager(self) -> Optional["AppealsManager"]:
+        """Get or create the appeals manager instance."""
+        if not NCIP_008_AVAILABLE:
+            return None
+        if self._appeals_manager is None:
+            self._appeals_manager = AppealsManager()
+        return self._appeals_manager
+
+    def is_item_appealable(self, item_type: str) -> Dict[str, Any]:
+        """
+        Check if an item type is appealable.
+
+        Per NCIP-008 Section 3.1:
+        - Appealable: validator_rejection, drift_classification, pou_mismatch, mediator_interpretation
+        - Not appealable: term_registry_mapping, settlement_outcome
+        """
+        if not NCIP_008_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-008 module not available"
+            }
+
+        manager = self.get_appeals_manager()
+        is_appealable, msg = manager.is_appealable(item_type)
+
+        return {
+            "item_type": item_type,
+            "appealable": is_appealable,
+            "message": msg
+        }
+
+    def create_semantic_appeal(
+        self,
+        appellant_id: str,
+        appeal_type: str,
+        original_entry_id: str,
+        validator_decision_id: str,
+        drift_classification: str,
+        disputed_terms: List[str],
+        appeal_rationale: str,
+        original_prose: Optional[str] = None,
+        pou_ids: Optional[List[str]] = None
+    ) -> Dict[str, Any]:
+        """
+        Create a semantic appeal per NCIP-008 Section 3.
+
+        Appeals MUST:
+        - Reference original entry, validator decision, drift classification
+        - NOT introduce new intent
+        - Pay non-refundable burn fee
+        """
+        if not NCIP_008_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-008 module not available"
+            }
+
+        manager = self.get_appeals_manager()
+
+        try:
+            appeal_type_enum = AppealableItem(appeal_type)
+        except ValueError:
+            return {
+                "status": "error",
+                "message": f"Invalid appeal type: {appeal_type}"
+            }
+
+        try:
+            drift_enum = AppealsDriftLevel(drift_classification)
+        except ValueError:
+            return {
+                "status": "error",
+                "message": f"Invalid drift classification: {drift_classification}"
+            }
+
+        appeal, warnings = manager.create_appeal(
+            appellant_id=appellant_id,
+            appeal_type=appeal_type_enum,
+            original_entry_id=original_entry_id,
+            validator_decision_id=validator_decision_id,
+            drift_classification=drift_enum,
+            disputed_terms=disputed_terms,
+            appeal_rationale=appeal_rationale,
+            original_prose=original_prose,
+            pou_ids=pou_ids
+        )
+
+        if appeal is None:
+            return {
+                "status": "error",
+                "errors": warnings
+            }
+
+        return {
+            "status": "created",
+            "appeal_id": appeal.appeal_id,
+            "status_state": appeal.status.value,
+            "disputed_terms": appeal.disputed_terms,
+            "burn_fee_paid": appeal.burn_fee_paid,
+            "review_deadline": appeal.review_deadline.isoformat() if appeal.review_deadline else None,
+            "warnings": warnings
+        }
+
+    def apply_appeal_semantic_lock(
+        self,
+        appeal_id: str,
+        lock_id: str
+    ) -> Dict[str, Any]:
+        """
+        Apply scoped semantic lock for an appeal.
+
+        Per NCIP-008 Section 9:
+        - Lock applies only to disputed terms
+        - Lock does not block unrelated amendments
+        """
+        if not NCIP_008_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-008 module not available"
+            }
+
+        manager = self.get_appeals_manager()
+        appeal = manager.get_appeal(appeal_id)
+
+        if not appeal:
+            return {
+                "status": "error",
+                "message": f"Appeal {appeal_id} not found"
+            }
+
+        result = manager.apply_scoped_lock(appeal, lock_id)
+        return result
+
+    def create_appeal_review_panel(
+        self,
+        appeal_id: str,
+        original_validator_ids: List[str]
+    ) -> Dict[str, Any]:
+        """Create a review panel for an appeal."""
+        if not NCIP_008_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-008 module not available"
+            }
+
+        manager = self.get_appeals_manager()
+        appeal = manager.get_appeal(appeal_id)
+
+        if not appeal:
+            return {
+                "status": "error",
+                "message": f"Appeal {appeal_id} not found"
+            }
+
+        panel = manager.create_review_panel(appeal, original_validator_ids)
+
+        return {
+            "status": "created",
+            "appeal_id": appeal_id,
+            "original_validators_excluded": list(panel.original_validator_ids)
+        }
+
+    def add_panel_member(
+        self,
+        appeal_id: str,
+        validator_id: str,
+        implementation_type: str,
+        trust_score: float = 0.5
+    ) -> Dict[str, Any]:
+        """
+        Add a member to the appeal review panel.
+
+        Per NCIP-008 Section 4.1:
+        - N >= 3 validators required
+        - Distinct implementations (model diversity)
+        - No overlap with original validators
+        """
+        if not NCIP_008_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-008 module not available"
+            }
+
+        manager = self.get_appeals_manager()
+        appeal = manager.get_appeal(appeal_id)
+
+        if not appeal or not appeal.review_panel:
+            return {
+                "status": "error",
+                "message": f"Appeal {appeal_id} or panel not found"
+            }
+
+        member = ReviewPanelMember(
+            validator_id=validator_id,
+            implementation_type=implementation_type,
+            trust_score=trust_score
+        )
+
+        success, msg = appeal.review_panel.add_member(member)
+
+        return {
+            "status": "added" if success else "error",
+            "message": msg,
+            "panel_size": len(appeal.review_panel.members),
+            "panel_valid": appeal.review_panel.is_valid
+        }
+
+    def begin_appeal_review(self, appeal_id: str) -> Dict[str, Any]:
+        """Begin the review process for an appeal."""
+        if not NCIP_008_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-008 module not available"
+            }
+
+        manager = self.get_appeals_manager()
+        appeal = manager.get_appeal(appeal_id)
+
+        if not appeal:
+            return {
+                "status": "error",
+                "message": f"Appeal {appeal_id} not found"
+            }
+
+        success, msg = manager.begin_review(appeal)
+
+        return {
+            "status": "started" if success else "error",
+            "message": msg,
+            "appeal_status": appeal.status.value
+        }
+
+    def record_appeal_vote(
+        self,
+        appeal_id: str,
+        validator_id: str,
+        vote: str,
+        revised_classification: Optional[str] = None,
+        rationale: str = ""
+    ) -> Dict[str, Any]:
+        """Record a vote from a panel member."""
+        if not NCIP_008_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-008 module not available"
+            }
+
+        manager = self.get_appeals_manager()
+        appeal = manager.get_appeal(appeal_id)
+
+        if not appeal:
+            return {
+                "status": "error",
+                "message": f"Appeal {appeal_id} not found"
+            }
+
+        try:
+            vote_enum = AppealOutcome(vote)
+        except ValueError:
+            return {
+                "status": "error",
+                "message": f"Invalid vote: {vote}"
+            }
+
+        revised_enum = None
+        if revised_classification:
+            try:
+                revised_enum = AppealsDriftLevel(revised_classification)
+            except ValueError:
+                return {
+                    "status": "error",
+                    "message": f"Invalid classification: {revised_classification}"
+                }
+
+        success, msg = manager.record_vote(
+            appeal, validator_id, vote_enum, revised_enum, rationale
+        )
+
+        return {
+            "status": "recorded" if success else "error",
+            "message": msg,
+            "appeal_status": appeal.status.value
+        }
+
+    def resolve_semantic_appeal(
+        self,
+        appeal_id: str,
+        outcome: str,
+        revised_classification: Optional[str],
+        rationale_summary: str,
+        human_ratifier_id: str,
+        prior_cases: Optional[List[str]] = None
+    ) -> Dict[str, Any]:
+        """
+        Resolve an appeal and generate Semantic Case Record.
+
+        Per NCIP-008 Section 4.1: Human ratification required for outcome finalization.
+        """
+        if not NCIP_008_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-008 module not available"
+            }
+
+        manager = self.get_appeals_manager()
+        appeal = manager.get_appeal(appeal_id)
+
+        if not appeal:
+            return {
+                "status": "error",
+                "message": f"Appeal {appeal_id} not found"
+            }
+
+        try:
+            outcome_enum = AppealOutcome(outcome)
+        except ValueError:
+            return {
+                "status": "error",
+                "message": f"Invalid outcome: {outcome}"
+            }
+
+        revised_enum = None
+        if revised_classification:
+            try:
+                revised_enum = AppealsDriftLevel(revised_classification)
+            except ValueError:
+                return {
+                    "status": "error",
+                    "message": f"Invalid classification: {revised_classification}"
+                }
+
+        scr, errors = manager.resolve_appeal(
+            appeal, outcome_enum, revised_enum,
+            rationale_summary, human_ratifier_id, prior_cases
+        )
+
+        if errors:
+            return {
+                "status": "error",
+                "errors": errors
+            }
+
+        return {
+            "status": "resolved",
+            "appeal_id": appeal_id,
+            "scr_id": scr.case_id,
+            "outcome": outcome,
+            "upheld": scr.upheld,
+            "revised_classification": revised_classification,
+            "human_ratification": scr.human_ratification
+        }
+
+    def query_precedents(
+        self,
+        canonical_term_id: Optional[str] = None,
+        drift_class: Optional[str] = None,
+        jurisdiction_context: Optional[str] = None,
+        include_zero_weight: bool = False
+    ) -> Dict[str, Any]:
+        """
+        Query precedents per NCIP-008 Section 11.
+
+        Precedent is advisory signal, not binding.
+        """
+        if not NCIP_008_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-008 module not available"
+            }
+
+        manager = self.get_appeals_manager()
+
+        drift_enum = None
+        if drift_class:
+            try:
+                drift_enum = AppealsDriftLevel(drift_class)
+            except ValueError:
+                pass
+
+        results = manager.query_precedents(
+            canonical_term_id=canonical_term_id,
+            drift_class=drift_enum,
+            jurisdiction_context=jurisdiction_context,
+            include_zero_weight=include_zero_weight
+        )
+
+        return {
+            "status": "success",
+            "count": len(results),
+            "precedents": [
+                {
+                    "case_id": p.scr.case_id,
+                    "originating_entry": p.scr.originating_entry,
+                    "disputed_terms": p.scr.disputed_terms,
+                    "outcome": p.scr.outcome.value,
+                    "upheld": p.scr.upheld,
+                    "weight": p.weight.value,
+                    "age_months": round(p.age_months, 1)
+                }
+                for p in results[:10]  # Limit to 10
+            ],
+            "advisory_only": True,
+            "binding": False
+        }
+
+    def get_precedent_signal(
+        self,
+        term_id: str,
+        drift_class: str
+    ) -> Dict[str, Any]:
+        """
+        Get advisory precedent signal for a term.
+
+        Per NCIP-008 Section 6.1: Precedent is advisory, not binding.
+        """
+        if not NCIP_008_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-008 module not available"
+            }
+
+        manager = self.get_appeals_manager()
+
+        try:
+            drift_enum = AppealsDriftLevel(drift_class)
+        except ValueError:
+            return {
+                "status": "error",
+                "message": f"Invalid drift class: {drift_class}"
+            }
+
+        return manager.get_precedent_signal(term_id, drift_enum)
+
+    def check_precedent_divergence(
+        self,
+        term_id: str,
+        proposed_classification: str
+    ) -> Dict[str, Any]:
+        """
+        Check if proposed classification diverges from strong precedent.
+
+        Per NCIP-008 Section 7: Validators MUST emit warnings
+        when diverging from strong precedent.
+        """
+        if not NCIP_008_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-008 module not available"
+            }
+
+        manager = self.get_appeals_manager()
+
+        try:
+            classification_enum = AppealsDriftLevel(proposed_classification)
+        except ValueError:
+            return {
+                "status": "error",
+                "message": f"Invalid classification: {proposed_classification}"
+            }
+
+        warning = manager.check_precedent_divergence(term_id, classification_enum)
+
+        return {
+            "term_id": term_id,
+            "proposed_classification": proposed_classification,
+            "divergence_detected": warning is not None,
+            "warning": warning,
+            "principle": "Explicit prose takes priority over precedent"
+        }
+
+    def get_semantic_case_record(self, case_id: str) -> Dict[str, Any]:
+        """Get a Semantic Case Record by ID."""
+        if not NCIP_008_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-008 module not available"
+            }
+
+        manager = self.get_appeals_manager()
+        scr = manager.get_scr(case_id)
+
+        if not scr:
+            return {
+                "status": "error",
+                "message": f"SCR {case_id} not found"
+            }
+
+        return {
+            "status": "found",
+            "scr": scr.to_yaml_dict()
+        }
+
+    def generate_scr_index(self) -> Dict[str, Any]:
+        """Generate machine-readable SCR index per NCIP-008 Section 11."""
+        if not NCIP_008_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "message": "NCIP-008 module not available"
+            }
+
+        manager = self.get_appeals_manager()
+        return manager.generate_scr_index()
+
+    def is_ncip_008_enabled(self) -> bool:
+        """Check if NCIP-008 semantic appeals is available."""
+        return NCIP_008_AVAILABLE
+
+    def get_ncip_008_status(self) -> Dict[str, Any]:
+        """Get NCIP-008 implementation status and configuration."""
+        if not NCIP_008_AVAILABLE:
+            return {
+                "enabled": False,
+                "message": "NCIP-008 module not available"
+            }
+
+        manager = self.get_appeals_manager()
+        summary = manager.get_status_summary()
+
+        return {
+            "enabled": True,
+            "total_appeals": summary["total_appeals"],
+            "total_scrs": summary["total_scrs"],
+            "precedent_index_size": summary["precedent_index_size"],
+            "active_cooldowns": summary["active_cooldowns"],
+            "appealable_items": [
+                "validator_rejection",
+                "drift_classification",
+                "pou_mismatch",
+                "mediator_interpretation"
+            ],
+            "non_appealable_items": [
+                "term_registry_mapping",
+                "settlement_outcome"
+            ],
+            "precedent_weight_decay": {
+                "high": "< 3 months",
+                "medium": "3-12 months",
+                "low": "> 12 months",
+                "zero": "superseded registry"
+            },
+            "principle": summary["principle"]
         }
