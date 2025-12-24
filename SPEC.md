@@ -419,7 +419,7 @@ The following table summarizes all NCIP requirements and their implementation st
 | NCIP-012 | Human Ratification UX Limits | ✅ Implemented | `src/cognitive_load.py`, integrated with `src/validator.py` |
 | NCIP-013 | Emergency Overrides & Force Majeure | ✅ Implemented | `src/emergency_overrides.py`, 6 force majeure classes, semantic fallbacks, oracle evidence, dispute handling |
 | NCIP-014 | Protocol Amendments | ✅ Implemented | `src/protocol_amendments.py`, full amendment lifecycle, ratification process |
-| NCIP-015 | Sunset Clauses & Archival Finality | ❌ Not Implemented | No sunset triggers, no state machine, no archival finality |
+| NCIP-015 | Sunset Clauses & Archival Finality | ✅ Implemented | `src/sunset_clauses.py`, 6 trigger types, state machine, archival finality, temporal context binding |
 
 ### Detailed NCIP Implementation Requirements
 
@@ -679,16 +679,25 @@ The following table summarizes all NCIP requirements and their implementation st
 - [x] HybridValidator integration with 12 methods for amendment management
 - [x] Comprehensive test suite
 
-#### NCIP-015: Sunset Clauses & Archival
-**Priority:** MEDIUM 🟡
-**Files Needed:** `src/sunset.py`, `src/archival.py`
+#### NCIP-015: Sunset Clauses & Archival Finality
+**Status:** ✅ IMPLEMENTED
+**Files:** `src/sunset_clauses.py`, `tests/test_sunset_clauses.py`
 
-**Missing Features:**
-- [ ] Sunset trigger types: time_based, event_based, condition_fulfilled, exhaustion, revocation, constitutional
-- [ ] State machine: DRAFT → RATIFIED → ACTIVE → SUNSET_PENDING → SUNSET → ARCHIVED
-- [ ] Archival finality: semantics frozen, drift detection disabled, no reinterpretation
-- [ ] Temporal context binding (registry version, language, jurisdiction, PoUs, validator snapshot)
-- [ ] Default sunset policies: contracts=20yr, licenses=10yr, delegations=2yr, standing_intents=1yr
+**Implemented Features:**
+- [x] SunsetManager class with full lifecycle management
+- [x] Sunset trigger types: time_based, event_based, condition_fulfilled, exhaustion, revocation, constitutional
+- [x] State machine: DRAFT → RATIFIED → ACTIVE → SUNSET_PENDING → SUNSET → ARCHIVED (no backward transitions)
+- [x] Archival finality: semantics frozen forever, drift detection disabled, no reinterpretation permitted
+- [x] Temporal context binding (registry version, language, jurisdiction, PoUs, validator snapshot)
+- [x] Default sunset policies: contracts=20yr, licenses=10yr, delegations=2yr, standing_intents=1yr, settlements=immediate
+- [x] Historical semantics preservation (meaning at T₀ retained regardless of later changes)
+- [x] Validator behavior: enforce triggers exactly, disable drift post-archive, reject reactivation without restatement
+- [x] Mediator constraints: can cite as context, cannot propose actions on expired authority, must restate to reactivate
+- [x] Emergency integration: sunset timers pause during emergency, semantics unchanged
+- [x] Archive integrity verification with hash
+- [x] Machine-readable sunset & archive schema
+- [x] HybridValidator integration with NCIP-015 imports
+- [x] Comprehensive test suite (51 tests)
 
 ---
 

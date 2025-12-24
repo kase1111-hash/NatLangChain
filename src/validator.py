@@ -175,6 +175,24 @@ try:
 except ImportError:
     NCIP_013_AVAILABLE = False
 
+# Import NCIP-015 Sunset Clauses, Archival Finality & Historical Semantics
+try:
+    from sunset_clauses import (
+        SunsetManager,
+        SunsetClause,
+        SunsetTriggerType,
+        EntryState,
+        EntryType,
+        ManagedEntry,
+        ArchivedEntry,
+        TemporalContext,
+        VALID_TRANSITIONS,
+        DEFAULT_SUNSET_YEARS,
+    )
+    NCIP_015_AVAILABLE = True
+except ImportError:
+    NCIP_015_AVAILABLE = False
+
 
 class ProofOfUnderstanding:
     """
