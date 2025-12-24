@@ -435,6 +435,13 @@ def add_entry():
                 multi_validator=(validation_mode == "multi" or data.get("multi_validator", False))
             )
             validation_result["validation_mode"] = validation_mode
+        else:
+            # No validators available - accept without LLM validation
+            validation_result = {
+                "validation_mode": "none",
+                "overall_decision": "ACCEPTED",
+                "note": "No LLM validator configured - entry accepted without semantic validation"
+            }
 
         # Update entry with validation results
         decision = validation_result.get("overall_decision", "PENDING")
