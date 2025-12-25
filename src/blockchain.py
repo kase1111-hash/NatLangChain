@@ -469,6 +469,107 @@ class MockValidator:
         "minimum order",
     ]
 
+    # High-impact action verbs categorized by semantic meaning
+    # If content contains an action from one category, intent should match that category
+    ACTION_CATEGORIES = {
+        "restriction": {
+            "banned", "ban", "banning", "blocked", "block", "blocking",
+            "suspended", "suspend", "suspending", "terminated", "terminate",
+            "revoked", "revoke", "revoking", "denied", "deny", "denying",
+            "prohibited", "prohibit", "forbid", "forbidden", "expelled",
+            "removed", "remove", "removing", "deleted", "delete", "deleting",
+        },
+        "modification": {
+            "updated", "update", "updating", "edited", "edit", "editing",
+            "changed", "change", "changing", "modified", "modify", "modifying",
+            "revised", "revise", "revising", "amended", "amend", "amending",
+        },
+        "creation": {
+            "created", "create", "creating", "added", "add", "adding",
+            "registered", "register", "registering", "established", "establish",
+            "initiated", "initiate", "initiating", "opened", "open", "opening",
+        },
+        "financial": {
+            "paid", "pay", "paying", "transferred", "transfer", "transferring",
+            "deposited", "deposit", "depositing", "withdrew", "withdraw",
+            "refunded", "refund", "refunding", "charged", "charge", "charging",
+        },
+        "agreement": {
+            "agreed", "agree", "agreeing", "accepted", "accept", "accepting",
+            "approved", "approve", "approving", "confirmed", "confirm",
+            "signed", "sign", "signing", "consented", "consent", "consenting",
+        },
+    }
+
+    # Intent keywords that map to action categories
+    INTENT_CATEGORY_KEYWORDS = {
+        "restriction": {"ban", "block", "suspend", "terminate", "revoke", "deny", "prohibit", "remove", "delete", "moderation"},
+        "modification": {"update", "edit", "change", "modify", "revise", "amend", "profile"},
+        "creation": {"create", "add", "register", "establish", "initiate", "open", "new"},
+        "financial": {"pay", "transfer", "deposit", "withdraw", "refund", "charge", "payment", "transaction"},
+        "agreement": {"agree", "accept", "approve", "confirm", "sign", "consent", "contract"},
+    }
+
+    def _detect_action_mismatch(self, content: str, intent: str) -> Optional[Dict[str, Any]]:
+        """
+        Detect if high-impact actions in content don't match the stated intent.
+
+        This catches cases like:
+        - Intent: "User profile update" + Content: "User is banned" -> MISMATCH
+        - Intent: "Payment record" + Content: "User is banned" -> MISMATCH
+
+        Returns:
+            None if no mismatch, or dict with mismatch details
+        """
+        content_lower = content.lower()
+        intent_lower = intent.lower()
+
+        # Find action categories present in content
+        content_categories = set()
+        content_actions = []
+        for category, actions in self.ACTION_CATEGORIES.items():
+            for action in actions:
+                if action in content_lower.split():
+                    content_categories.add(category)
+                    content_actions.append((action, category))
+
+        if not content_categories:
+            return None  # No high-impact actions detected
+
+        # Find action categories implied by intent
+        intent_categories = set()
+        for category, keywords in self.INTENT_CATEGORY_KEYWORDS.items():
+            for keyword in keywords:
+                if keyword in intent_lower:
+                    intent_categories.add(category)
+
+        # If content has high-impact actions but intent doesn't match any category
+        # that's suspicious but not necessarily wrong
+        if not intent_categories:
+            # Intent is generic - check if content action is drastic
+            drastic_categories = {"restriction", "financial"}
+            if content_categories & drastic_categories:
+                return {
+                    "mismatch": True,
+                    "content_actions": content_actions,
+                    "content_categories": list(content_categories),
+                    "intent_categories": [],
+                    "reason": f"Content contains drastic action(s) {content_actions} but intent '{intent}' doesn't indicate this"
+                }
+            return None
+
+        # Check if content actions align with intent categories
+        if not (content_categories & intent_categories):
+            return {
+                "mismatch": True,
+                "content_actions": content_actions,
+                "content_categories": list(content_categories),
+                "intent_categories": list(intent_categories),
+                "reason": f"Content action category {list(content_categories)} doesn't match intent category {list(intent_categories)}"
+            }
+
+        return None
+
     def validate_entry(
         self,
         content: str,
@@ -481,6 +582,7 @@ class MockValidator:
         Detects:
         - Ambiguous language
         - Intent-content mismatch (basic keyword check)
+        - Action category mismatch (semantic action alignment)
         - Adversarial patterns
 
         Returns:
@@ -505,6 +607,22 @@ class MockValidator:
                     "adversarial_indicators": adversarial_found,
                     "decision": VALIDATION_INVALID,
                     "reasoning": f"Detected adversarial patterns: {adversarial_found}"
+                }
+            }
+
+        # Check for action category mismatch (semantic layer)
+        action_mismatch = self._detect_action_mismatch(content, intent)
+        if action_mismatch:
+            return {
+                "status": "success",
+                "validation": {
+                    "paraphrase": f"[MOCK] Entry action doesn't match stated intent",
+                    "intent_match": False,
+                    "ambiguities": [],
+                    "adversarial_indicators": [],
+                    "action_mismatch": action_mismatch,
+                    "decision": VALIDATION_INVALID,
+                    "reasoning": action_mismatch["reason"]
                 }
             }
 
