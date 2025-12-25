@@ -8,6 +8,7 @@ import json
 import secrets
 import time
 from typing import Dict, Any, Optional
+from dataclasses import dataclass, field
 from functools import wraps
 from flask import Flask, request, jsonify, g
 from dotenv import load_dotenv
@@ -281,6 +282,68 @@ def request_entity_too_large(error):
 
 # Initialize blockchain and validator
 blockchain = NatLangChain()
+
+
+@dataclass
+class ManagerRegistry:
+    """
+    Centralized registry for all optional managers and validators.
+
+    This provides a clean interface for accessing optional features
+    and makes it easy to check feature availability.
+    """
+    # LLM-based validators
+    llm_validator: Any = None
+    hybrid_validator: Any = None
+    drift_detector: Any = None
+    dialectic_validator: Any = None
+    multi_model_consensus: Any = None
+
+    # Search and semantic features
+    search_engine: Any = None
+    temporal_fixity: Any = None
+    semantic_oracle: Any = None
+    circuit_breaker: Any = None
+
+    # Contract management
+    contract_parser: Any = None
+    contract_matcher: Any = None
+
+    # Dispute and governance
+    dispute_manager: Any = None
+    escalation_fork_manager: Any = None
+
+    # Economic features
+    observance_burn_manager: Any = None
+    anti_harassment_manager: Any = None
+    treasury: Any = None
+
+    # Authentication and privacy
+    fido2_manager: Any = None
+    zk_privacy_manager: Any = None
+
+    # Advanced features
+    negotiation_engine: Any = None
+    market_pricing: Any = None
+    mobile_deployment: Any = None
+
+    def is_llm_enabled(self) -> bool:
+        """Check if LLM-based features are available."""
+        return self.llm_validator is not None
+
+    def is_dispute_enabled(self) -> bool:
+        """Check if dispute management is available."""
+        return self.dispute_manager is not None
+
+    def is_economic_enabled(self) -> bool:
+        """Check if economic features (burn, treasury) are available."""
+        return self.treasury is not None
+
+
+# Global manager registry instance
+managers = ManagerRegistry()
+
+# Backwards compatibility aliases (to avoid breaking existing code)
 llm_validator = None
 hybrid_validator = None
 drift_detector = None
@@ -308,13 +371,26 @@ CHAIN_DATA_FILE = os.getenv("CHAIN_DATA_FILE", "chain_data.json")
 
 
 def init_validators():
-    """Initialize validators and advanced features if API key is available."""
-    global llm_validator, hybrid_validator, drift_detector, search_engine, dialectic_validator, contract_parser, contract_matcher, temporal_fixity, semantic_oracle, circuit_breaker, multi_model_consensus, dispute_manager, escalation_fork_manager, observance_burn_manager, anti_harassment_manager, treasury, fido2_manager, zk_privacy_manager, negotiation_engine, market_pricing, mobile_deployment
+    """
+    Initialize validators and advanced features if API key is available.
+
+    Updates both the global ManagerRegistry and individual global variables
+    for backwards compatibility.
+    """
+    global managers
+    global llm_validator, hybrid_validator, drift_detector, search_engine
+    global dialectic_validator, contract_parser, contract_matcher, temporal_fixity
+    global semantic_oracle, circuit_breaker, multi_model_consensus, dispute_manager
+    global escalation_fork_manager, observance_burn_manager, anti_harassment_manager
+    global treasury, fido2_manager, zk_privacy_manager, negotiation_engine
+    global market_pricing, mobile_deployment
+
     api_key = os.getenv("ANTHROPIC_API_KEY")
 
     # Initialize temporal fixity (doesn't require API key)
     try:
         temporal_fixity = TemporalFixity()
+        managers.temporal_fixity = temporal_fixity
         print("Temporal fixity (T0 preservation) initialized")
     except Exception as e:
         print(f"Warning: Could not initialize temporal fixity: {e}")
@@ -322,6 +398,7 @@ def init_validators():
     # Initialize semantic search (doesn't require API key)
     try:
         search_engine = SemanticSearchEngine()
+        managers.search_engine = search_engine
         print("Semantic search engine initialized")
     except Exception as e:
         print(f"Warning: Could not initialize semantic search: {e}")
@@ -329,26 +406,63 @@ def init_validators():
     # Initialize LLM-based features if API key available
     if api_key and api_key != "your_api_key_here":
         try:
+            # LLM-based validators
             llm_validator = ProofOfUnderstanding(api_key)
             hybrid_validator = HybridValidator(llm_validator)
             drift_detector = SemanticDriftDetector(api_key)
             dialectic_validator = DialecticConsensus(api_key)
+            multi_model_consensus = MultiModelConsensus(api_key)
+
+            # Contract management
             contract_parser = ContractParser(api_key)
             contract_matcher = ContractMatcher(api_key)
+
+            # Semantic features
             semantic_oracle = SemanticOracle(api_key)
             circuit_breaker = SemanticCircuitBreaker(semantic_oracle) if semantic_oracle else None
-            multi_model_consensus = MultiModelConsensus(api_key)
+
+            # Dispute and governance
             dispute_manager = DisputeManager(api_key)
             escalation_fork_manager = EscalationForkManager()
+
+            # Economic features
             observance_burn_manager = ObservanceBurnManager()
             anti_harassment_manager = AntiHarassmentManager(burn_manager=observance_burn_manager)
             treasury = NatLangChainTreasury(anti_harassment_manager=anti_harassment_manager)
+
+            # Authentication and privacy
             fido2_manager = FIDO2AuthManager()
             zk_privacy_manager = ZKPrivacyManager()
+
+            # Advanced features
             negotiation_engine = AutomatedNegotiationEngine(api_key)
             market_pricing = MarketAwarePricingManager(api_key)
             mobile_deployment = MobileDeploymentManager()
-            print("LLM-based features initialized (contracts, oracles, disputes, forks, burns, anti-harassment, treasury, FIDO2, ZK privacy, negotiation, market pricing, mobile deployment, multi-model consensus)")
+
+            # Update the centralized registry
+            managers.llm_validator = llm_validator
+            managers.hybrid_validator = hybrid_validator
+            managers.drift_detector = drift_detector
+            managers.dialectic_validator = dialectic_validator
+            managers.multi_model_consensus = multi_model_consensus
+            managers.contract_parser = contract_parser
+            managers.contract_matcher = contract_matcher
+            managers.semantic_oracle = semantic_oracle
+            managers.circuit_breaker = circuit_breaker
+            managers.dispute_manager = dispute_manager
+            managers.escalation_fork_manager = escalation_fork_manager
+            managers.observance_burn_manager = observance_burn_manager
+            managers.anti_harassment_manager = anti_harassment_manager
+            managers.treasury = treasury
+            managers.fido2_manager = fido2_manager
+            managers.zk_privacy_manager = zk_privacy_manager
+            managers.negotiation_engine = negotiation_engine
+            managers.market_pricing = market_pricing
+            managers.mobile_deployment = mobile_deployment
+
+            print("LLM-based features initialized (contracts, oracles, disputes, forks, "
+                  "burns, anti-harassment, treasury, FIDO2, ZK privacy, negotiation, "
+                  "market pricing, mobile deployment, multi-model consensus)")
         except Exception as e:
             print(f"Warning: Could not initialize LLM features: {e}")
             print("API will operate without LLM validation")
@@ -715,15 +829,45 @@ def get_latest_block():
     Get the latest (most recent) block in the chain.
 
     Returns:
-        Latest block data
+        Latest block data including block index, hash, timestamp, and entries.
+
+    Notes:
+        A properly initialized chain should always have at least the genesis block.
+        An empty chain indicates initialization failure.
     """
-    if len(blockchain.chain) == 0:
+    # Check if blockchain or chain is not properly initialized
+    if blockchain is None or not hasattr(blockchain, 'chain'):
         return jsonify({
-            "error": "Chain is empty"
+            "error": "Blockchain not initialized",
+            "message": "The blockchain instance is not properly configured",
+            "hint": "Restart the server or check initialization logs"
+        }), 503
+
+    # Check for empty chain (should have at least genesis block)
+    if not blockchain.chain or len(blockchain.chain) == 0:
+        return jsonify({
+            "error": "Chain is empty",
+            "message": "No blocks found in the chain. A genesis block should exist.",
+            "hint": "The chain may not have been properly initialized. Try mining a block first.",
+            "expected_minimum": 1
         }), 404
 
     block = blockchain.chain[-1]
-    return jsonify(block.to_dict())
+
+    # Safely convert block to dict
+    try:
+        block_data = block.to_dict()
+        block_data["_meta"] = {
+            "is_genesis": block.index == 0,
+            "chain_length": len(blockchain.chain)
+        }
+        return jsonify(block_data)
+    except Exception as e:
+        return jsonify({
+            "error": "Failed to serialize block",
+            "message": str(e),
+            "block_index": getattr(block, 'index', 'unknown')
+        }), 500
 
 
 @app.route('/entries/author/<author>', methods=['GET'])
