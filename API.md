@@ -854,6 +854,366 @@ CHAIN_DATA_FILE=chain_data.json
 
 ---
 
+## Complete API Reference
+
+This section provides a comprehensive reference for all 167 API endpoints organized by category.
+
+### Table of Contents
+
+1. [Core Blockchain](#core-blockchain-endpoints)
+2. [Semantic Search](#semantic-search-endpoints)
+3. [Drift Detection](#drift-detection-endpoints)
+4. [Dialectic Validation](#dialectic-validation-endpoints)
+5. [Semantic Oracle](#semantic-oracle-endpoints)
+6. [Live Contracts](#live-contract-endpoints)
+7. [Dispute Resolution](#dispute-resolution-endpoints)
+8. [Escalation Forks](#escalation-fork-endpoints)
+9. [Observance Burn](#observance-burn-endpoints)
+10. [Anti-Harassment](#anti-harassment-endpoints)
+11. [Treasury](#treasury-endpoints)
+12. [FIDO2 Authentication](#fido2-authentication-endpoints)
+13. [ZK Privacy](#zk-privacy-endpoints)
+14. [Negotiation Engine](#negotiation-engine-endpoints)
+15. [Market Pricing](#market-pricing-endpoints)
+16. [Mobile Deployment](#mobile-deployment-endpoints)
+
+---
+
+### Core Blockchain Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/health` | Health check and service status |
+| GET | `/chain` | Get entire blockchain |
+| GET | `/chain/narrative` | Get blockchain as human-readable narrative |
+| POST | `/entry` | Submit new entry to blockchain |
+| POST | `/entry/validate` | Validate entry without submitting (dry run) |
+| POST | `/mine` | Mine pending entries into new block |
+| GET | `/block/<index>` | Get block by index |
+| GET | `/block/latest` | Get most recent block |
+| GET | `/entries/author/<author>` | Get all entries by author |
+| GET | `/entries/search?intent=<keyword>` | Search entries by intent keyword |
+| GET | `/validate/chain` | Validate blockchain integrity |
+| GET | `/pending` | Get pending entries awaiting mining |
+| GET | `/stats` | Get blockchain statistics |
+| GET | `/entry/frozen/<block_index>/<entry_index>` | Get frozen entry state at T0 |
+
+---
+
+### Semantic Search Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/search/semantic` | Semantic search across entries by meaning |
+| POST | `/search/similar` | Find entries similar to given content |
+
+---
+
+### Drift Detection Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/drift/check` | Check semantic drift between intent and execution |
+| POST | `/drift/entry/<block_index>/<entry_index>` | Check drift for specific entry |
+
+---
+
+### Dialectic Validation Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/validate/dialectic` | Validate entry via Skeptic/Facilitator debate |
+
+---
+
+### Semantic Oracle Endpoints
+
+Semantic oracles verify external events against contract intent using LLM reasoning.
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/oracle/verify` | Verify if external event triggers contract condition |
+
+**Request Body:**
+```json
+{
+  "contract_condition": "if geopolitical instability in Middle East",
+  "contract_intent": "hedge against oil price volatility",
+  "event_description": "Major conflict erupts in region",
+  "event_data": {}
+}
+```
+
+---
+
+### Live Contract Endpoints
+
+Self-seeking live contracts with AI-mediated matching.
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/contract/parse` | Parse natural language contract |
+| POST | `/contract/match` | Find matching contracts for pending entries |
+| POST | `/contract/post` | Post new contract (offer or seek) |
+| GET | `/contract/list` | List all contracts with optional filters |
+| POST | `/contract/respond` | Respond to contract (accept/counter/reject) |
+
+**Contract Types:** `offer`, `seek`, `proposal`, `response`, `closure`
+
+**Contract Statuses:** `open`, `matched`, `negotiating`, `closed`, `cancelled`
+
+---
+
+### Dispute Resolution Endpoints
+
+Full dispute resolution protocol with evidence, escalation, and resolution.
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/dispute/file` | File a new dispute |
+| GET | `/dispute/list` | List all disputes |
+| GET | `/dispute/<dispute_id>` | Get dispute details |
+| POST | `/dispute/<dispute_id>/evidence` | Submit evidence to dispute |
+| POST | `/dispute/<dispute_id>/escalate` | Escalate dispute to higher authority |
+| POST | `/dispute/<dispute_id>/resolve` | Resolve a dispute |
+| GET | `/dispute/<dispute_id>/package` | Get complete dispute package |
+| GET | `/dispute/<dispute_id>/analyze` | Analyze dispute with AI |
+
+---
+
+### Escalation Fork Endpoints
+
+Protocol amendment and fork escalation system.
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/fork/trigger` | Trigger an escalation fork |
+| GET | `/fork/<fork_id>` | Get fork details |
+| POST | `/fork/<fork_id>/submit-proposal` | Submit proposal to fork |
+| GET | `/fork/<fork_id>/proposals` | List fork proposals |
+| POST | `/fork/<fork_id>/ratify` | Ratify a fork proposal |
+| POST | `/fork/<fork_id>/veto` | Veto a fork proposal |
+| GET | `/fork/<fork_id>/distribution` | Get fork voting distribution |
+| GET | `/fork/<fork_id>/audit` | Get fork audit trail |
+| GET | `/fork/active` | List active forks |
+
+---
+
+### Observance Burn Endpoints
+
+Token burn protocol for stake, penalties, and observance.
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/burn/observance` | Burn tokens for observance |
+| POST | `/burn/voluntary` | Voluntary token burn |
+| GET | `/burn/history` | Get burn history |
+| GET | `/burn/stats` | Get burn statistics |
+| GET | `/burn/<tx_hash>` | Get burn transaction by hash |
+| GET | `/burn/address/<address>` | Get burns for address |
+| GET | `/burn/ledger` | Get full burn ledger |
+| GET | `/burn/calculate-escalation` | Calculate escalation burn amount |
+
+---
+
+### Anti-Harassment Endpoints
+
+Stake-based anti-harassment system with escrow and resolution.
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/harassment/breach-dispute` | File harassment breach dispute |
+| POST | `/harassment/match-stake` | Match harassment stake |
+| POST | `/harassment/decline-stake` | Decline stake matching |
+| POST | `/harassment/voluntary-request` | Request voluntary resolution |
+| POST | `/harassment/respond-request` | Respond to resolution request |
+| POST | `/harassment/counter-proposal` | Submit counter-proposal |
+| GET | `/harassment/counter-status/<dispute_ref>/<party>` | Get counter status |
+| GET | `/harassment/score/<address>` | Get harassment score |
+| GET | `/harassment/escrow/<escrow_id>` | Get escrow details |
+| POST | `/harassment/resolve` | Resolve harassment dispute |
+| POST | `/harassment/check-timeouts` | Check for timeouts |
+| GET | `/harassment/stats` | Get harassment statistics |
+| GET | `/harassment/audit` | Get harassment audit trail |
+
+---
+
+### Treasury Endpoints
+
+Subsidy and treasury management system.
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/treasury/balance` | Get treasury balance |
+| POST | `/treasury/deposit` | Deposit to treasury |
+| POST | `/treasury/deposit/timeout-burn` | Deposit timeout burn |
+| POST | `/treasury/deposit/counter-fee` | Deposit counter-offer fee |
+| GET | `/treasury/inflows` | Get treasury inflows |
+| POST | `/treasury/subsidy/request` | Request subsidy |
+| POST | `/treasury/subsidy/disburse` | Disburse subsidy |
+| GET | `/treasury/subsidy/<request_id>` | Get subsidy request |
+| POST | `/treasury/subsidy/simulate` | Simulate subsidy |
+| GET | `/treasury/participant/<address>` | Get participant info |
+| GET | `/treasury/dispute/<dispute_id>/subsidized` | Check if dispute subsidized |
+| GET | `/treasury/stats` | Get treasury statistics |
+| GET | `/treasury/audit` | Get treasury audit trail |
+| POST | `/treasury/cleanup` | Clean up expired entries |
+
+---
+
+### FIDO2 Authentication Endpoints
+
+WebAuthn/FIDO2 hardware key authentication and delegation.
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/fido2/register/begin` | Begin FIDO2 registration |
+| POST | `/fido2/register/complete` | Complete FIDO2 registration |
+| POST | `/fido2/authenticate/begin` | Begin authentication |
+| POST | `/fido2/authenticate/verify` | Verify authentication |
+| POST | `/fido2/sign/proposal` | Sign proposal with FIDO2 |
+| POST | `/fido2/sign/contract` | Sign contract with FIDO2 |
+| POST | `/fido2/delegation/begin` | Begin delegation |
+| POST | `/fido2/delegation/complete` | Complete delegation |
+| GET | `/fido2/delegation/<delegation_id>` | Get delegation details |
+| POST | `/fido2/delegation/<delegation_id>/revoke` | Revoke delegation |
+| GET | `/fido2/delegation/user/<user_id>` | Get user delegations |
+| POST | `/fido2/delegation/verify` | Verify delegation |
+| GET | `/fido2/credentials/<user_id>` | Get user credentials |
+| DELETE | `/fido2/credentials/<user_id>/<credential_id>` | Delete credential |
+| GET | `/fido2/signatures/<user_id>` | Get user signatures |
+| GET | `/fido2/stats` | Get FIDO2 statistics |
+| GET | `/fido2/audit` | Get FIDO2 audit trail |
+
+---
+
+### ZK Privacy Endpoints
+
+Zero-knowledge proof infrastructure for privacy-preserving operations.
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/zk/identity/commitment` | Create identity commitment |
+| POST | `/zk/identity/proof` | Generate identity proof |
+| POST | `/zk/identity/verify` | Verify identity proof |
+| GET | `/zk/identity/proof/<proof_id>` | Get proof details |
+| POST | `/zk/viewing-key/create` | Create viewing key |
+| POST | `/zk/viewing-key/share` | Share viewing key |
+| POST | `/zk/viewing-key/reconstruct` | Reconstruct viewing key |
+| GET | `/zk/viewing-key/<key_id>` | Get viewing key |
+| POST | `/zk/batch/submit` | Submit ZK batch |
+| POST | `/zk/batch/advance` | Advance batch processing |
+| GET | `/zk/batch/<batch_id>` | Get batch details |
+| POST | `/zk/dummy/generate` | Generate dummy proofs |
+| GET | `/zk/dummy/stats` | Get dummy proof stats |
+| POST | `/zk/compliance/request` | Request compliance check |
+| POST | `/zk/compliance/vote` | Vote on compliance request |
+| GET | `/zk/compliance/<request_id>` | Get compliance request |
+| POST | `/zk/compliance/threshold-sign` | Threshold sign compliance |
+| GET | `/zk/compliance/council` | Get compliance council |
+| GET | `/zk/stats` | Get ZK statistics |
+| GET | `/zk/audit` | Get ZK audit trail |
+
+---
+
+### Negotiation Engine Endpoints
+
+Multi-party contract negotiation with clause management.
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/negotiation/session` | Create negotiation session |
+| POST | `/negotiation/session/<session_id>/join` | Join session |
+| GET | `/negotiation/session/<session_id>` | Get session details |
+| POST | `/negotiation/session/<session_id>/advance` | Advance session phase |
+| POST | `/negotiation/session/<session_id>/clause` | Add clause to session |
+| POST | `/negotiation/session/<session_id>/clause/<clause_id>/respond` | Respond to clause |
+| GET | `/negotiation/session/<session_id>/clauses` | Get session clauses |
+| POST | `/negotiation/session/<session_id>/offer` | Make offer |
+| POST | `/negotiation/session/<session_id>/offer/<offer_id>/respond` | Respond to offer |
+| GET | `/negotiation/session/<session_id>/offers` | Get session offers |
+| POST | `/negotiation/session/<session_id>/auto-counter` | Generate auto counter-offer |
+| GET | `/negotiation/session/<session_id>/strategies` | Get negotiation strategies |
+| POST | `/negotiation/session/<session_id>/finalize` | Finalize negotiation |
+| GET | `/negotiation/stats` | Get negotiation statistics |
+| GET | `/negotiation/audit` | Get negotiation audit trail |
+| GET | `/negotiation/clause-types` | Get available clause types |
+
+---
+
+### Market Pricing Endpoints
+
+Fair market pricing with AI analysis and benchmarks.
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/market/price/<asset>` | Get asset price |
+| POST | `/market/prices` | Get multiple asset prices |
+| GET | `/market/analyze/<asset>` | Analyze asset pricing |
+| POST | `/market/summary` | Get market summary |
+| POST | `/market/suggest-price` | Get AI price suggestion |
+| POST | `/market/adjust-price` | Adjust price with factors |
+| POST | `/market/counteroffer` | Generate counteroffer |
+| GET | `/market/history/<asset>` | Get price history |
+| GET | `/market/benchmark/<asset>` | Get price benchmark |
+| POST | `/market/similar-prices` | Find similar prices |
+| POST | `/market/asset` | Register new asset |
+| GET | `/market/assets` | List all assets |
+| GET | `/market/strategies` | Get pricing strategies |
+| GET | `/market/conditions` | Get market conditions |
+| GET | `/market/stats` | Get market statistics |
+| GET | `/market/audit` | Get market audit trail |
+
+---
+
+### Mobile Deployment Endpoints
+
+Mobile device support with edge inference and offline sync.
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/mobile/device/register` | Register mobile device |
+| GET | `/mobile/device/<device_id>` | Get device info |
+| GET | `/mobile/device/<device_id>/features` | Get device features |
+| POST | `/mobile/edge/model/load` | Load edge ML model |
+| POST | `/mobile/edge/inference` | Run edge inference |
+| GET | `/mobile/edge/models` | List edge models |
+| GET | `/mobile/edge/resources` | Get edge resources |
+| POST | `/mobile/wallet/connect` | Connect mobile wallet |
+| GET | `/mobile/wallet/<connection_id>` | Get wallet connection |
+| POST | `/mobile/wallet/<connection_id>/disconnect` | Disconnect wallet |
+| POST | `/mobile/wallet/<connection_id>/sign` | Sign with wallet |
+| GET | `/mobile/wallet/list` | List wallet connections |
+| POST | `/mobile/offline/state/save` | Save offline state |
+| GET | `/mobile/offline/state/<device_id>` | Get offline state |
+| POST | `/mobile/offline/queue/add` | Add to offline queue |
+| POST | `/mobile/offline/sync` | Sync offline changes |
+| GET | `/mobile/offline/queue/<device_id>` | Get offline queue |
+| GET | `/mobile/offline/conflicts/<device_id>` | Get sync conflicts |
+| POST | `/mobile/offline/conflict/resolve` | Resolve conflict |
+| GET | `/mobile/stats` | Get mobile statistics |
+| GET | `/mobile/audit` | Get mobile audit trail |
+
+---
+
+## Feature Requirements
+
+Many advanced endpoints require specific configuration:
+
+| Feature | Requirement |
+|---------|-------------|
+| LLM Validation | `ANTHROPIC_API_KEY` |
+| Semantic Search | None (works offline) |
+| Drift Detection | `ANTHROPIC_API_KEY` |
+| Dialectic Validation | `ANTHROPIC_API_KEY` |
+| Semantic Oracle | `ANTHROPIC_API_KEY` |
+| Contract Parsing | `ANTHROPIC_API_KEY` |
+| Contract Matching | `ANTHROPIC_API_KEY` |
+
+Endpoints return `503 Service Unavailable` with descriptive error when requirements not met.
+
+---
+
 ## Support
 
 For issues and feature requests, see the main README.md and project documentation.
