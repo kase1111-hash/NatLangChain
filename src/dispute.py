@@ -1007,7 +1007,7 @@ Return JSON:
 
         Args:
             mediator_id: Unique identifier for the mediator
-            stake_amount: Bond amount in NLC tokens (default 50,000)
+            stake_amount: Bond amount in configured staking currency (default 50,000)
             supported_domains: Optional list of supported domains
             models_used: Optional list of AI models used
 
@@ -1251,10 +1251,16 @@ Return JSON:
             }
 
         manager = get_reputation_manager()
+        # Import staking currency from mediator_reputation if available
+        try:
+            from .mediator_reputation import DEFAULT_STAKING_CURRENCY
+            token = DEFAULT_STAKING_CURRENCY
+        except ImportError:
+            token = "USDC"  # Default fallback
         return {
             "status": "ok",
             "balance": manager.get_treasury_balance(),
-            "token": "NLC"
+            "token": token  # Currency-agnostic: uses configured staking currency
         }
 
     def allocate_defensive_subsidy(

@@ -1,10 +1,13 @@
 The Art of the Intent: A User Guide
+
+> **Currency Note:** NatLangChain is currency-agnostic. All monetary amounts in this guide use generic units that represent the configured staking currency for your deployment (e.g., USDC, ETH, DAI).
+
 On NatLangChain, your words are your workers. If you write vaguely, the Mediators will ignore you. If you write clearly, the system will fight for you. Follow these four pillars to ensure your intent is mediated with high confidence.
 
 1. The "Signal-to-Noise" Rule
 Mediators are programmed to reject "slop" (marketing speak, buzzwords, or filler). They seek Concrete Declarations.
 Bad: "I’m a highly motivated individual looking to disrupt the space with innovative solutions." (Result: Marked as Opaque. No Alignment.)
-Good: "I have designed a 10-piece visual identity kit for sustainable fashion brands. I want to trade this kit for 300 NLC or a specialized audit of my smart contract." (Result: High-Confidence Match.)
+Good: "I have designed a 10-piece visual identity kit for sustainable fashion brands. I want to trade this kit for 300 units or a specialized audit of my smart contract." (Result: High-Confidence Match.)
 2. The Anatomy of an Intent
 Every successful post should contain three specific components, even if they are woven into a story:
 Component
@@ -15,7 +18,7 @@ What do you have or what do you require?
 "I have a trained LoRA model for architectural renders."
 The Threshold
 What is the minimum you will accept?
-"I will not accept less than 50 NLC per commercial use."
+"I will not accept less than 50 units per commercial use."
 The "Alignment North"
 What kind of world are you trying to build?
 "I prefer my work to be used in urban planning projects."
@@ -38,6 +41,6 @@ If the answer is "yes": Post it. The Mediators will do the rest.
 Sample Template: The "Professional Branch" Post
 [Context: Design/Branding]
 Intent: I have produced a set of five high-fidelity UI templates for medical record apps. They are optimized for accessibility (WCAG 2.1 AAA).
-The Ask: I am looking for 1,000 NLC for a full buyout, OR a revenue-share alignment with a startup in the telehealth space.
+The Ask: I am looking for 1,000 units for a full buyout, OR a revenue-share alignment with a startup in the telehealth space.
 Constraint: I require a 'Closed Receipt'—meaning I want my name in the project's 'Credits' file forever.
 Status: Seeking Alignment.

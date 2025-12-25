@@ -2,7 +2,9 @@
 
 ## Overview
 
-The Observance Burn is a ceremonial token destruction mechanism that serves both economic and signaling purposes within the NatLangChain ecosystem. Rather than treating burns as mere technical operations, the protocol elevates them to meaningful acts that consecrate system boundaries and demonstrate commitment.
+The Observance Burn is a ceremonial value destruction mechanism that serves both economic and signaling purposes within the NatLangChain ecosystem. Rather than treating burns as mere technical operations, the protocol elevates them to meaningful acts that consecrate system boundaries and demonstrate commitment.
+
+> **Currency-Agnostic Design:** NatLangChain does not have its own native cryptocurrency. Burns operate on whatever staking currency is configured for the deployment (e.g., ETH, USDC, DAI). All amounts in this document are denominated in the configured staking currency.
 
 > **Core Philosophy:**
 > "Models propose the possible.
@@ -11,8 +13,8 @@ The Observance Burn is a ceremonial token destruction mechanism that serves both
 
 ## Purpose
 
-1. **Economic Deflation**: Permanently removes tokens from circulation
-2. **Redistribution**: Proportionally benefits remaining holders
+1. **Economic Deflation**: Permanently removes value from circulation
+2. **Redistribution**: Proportionally benefits remaining stakeholders
 3. **Signaling**: Provides credible, costly proof of commitment
 4. **Anti-Abuse**: Discourages system gaming through meaningful cost
 5. **Ceremony**: Elevates protocol actions to meaningful observances
@@ -288,30 +290,32 @@ Display burns prominently in public ledger explorers:
 │  🔥 OBSERVANCE LEDGER                                           │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
-│  Total Supply Reduction: 15,847.32 NLC                          │
+│  Total Supply Reduction: 15,847.32 [CURRENCY]                   │
 │  Total Burns: 1,247                                              │
-│  Last 24h: 23.5 NLC burned                                       │
+│  Last 24h: 23.5 [CURRENCY] burned                                │
 │                                                                  │
 ├─────────────────────────────────────────────────────────────────┤
 │  RECENT OBSERVANCES                                              │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
-│  🔥 5.0 NLC sacrificed — Escalation Commitment                  │
+│  🔥 5.0 [CURRENCY] sacrificed — Escalation Commitment           │
 │     "Burned to fairly escalate and preserve ledger integrity"   │
 │     0xAlice... • Block 1,234,567 • 2 hours ago                  │
-│     → Redistributed to all holders                               │
+│     → Redistributed to all stakeholders                          │
 │                                                                  │
-│  🔥 0.1 NLC sacrificed — Voluntary Signal                       │
+│  🔥 0.1 [CURRENCY] sacrificed — Voluntary Signal                │
 │     "For the long-term health of NatLangChain"                  │
 │     0xBeliever... • Block 1,234,560 • 5 hours ago               │
-│     → Redistributed to all holders                               │
+│     → Redistributed to all stakeholders                          │
 │                                                                  │
-│  🔥 2.0 NLC sacrificed — Rate Limit Excess                      │
+│  🔥 2.0 [CURRENCY] sacrificed — Rate Limit Excess               │
 │     (no epitaph)                                                 │
 │     0xPowerUser... • Block 1,234,555 • 8 hours ago              │
-│     → Redistributed to all holders                               │
+│     → Redistributed to all stakeholders                          │
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
+
+Note: [CURRENCY] represents the configured staking currency (e.g., ETH, USDC, DAI).
 ```
 
 ### UI Elements
@@ -320,7 +324,7 @@ Display burns prominently in public ledger explorers:
 |---------|-------------|
 | Icon | Subtle, dignified flame or urn glyph |
 | Title | "Observance Burn" |
-| Subtitle | `{amount} tokens sacrificed — {reasonLabel}` |
+| Subtitle | `{amount} {currency} sacrificed — {reasonLabel}` |
 | Body | `{epitaph}` (if present) |
 | Footer | "Redistributed proportionally to all remaining holders" |
 
@@ -332,7 +336,7 @@ Display burns prominently in public ledger explorers:
 │                                                                  │
 │  🔥 You are about to perform an Observance Burn                 │
 │                                                                  │
-│  Amount: 5.0 NLC                                                 │
+│  Amount: 5.0 [CURRENCY]                                          │
 │  Reason: Escalation Commitment                                   │
 │  Linked Intent: MEDIATION-789                                    │
 │                                                                  │
@@ -343,7 +347,7 @@ Display burns prominently in public ledger explorers:
 │  └─────────────────────────────────────────────────────────────┘ │
 │                                                                  │
 │  This amount will be permanently removed from circulation        │
-│  and redistributed proportionally to all remaining holders.      │
+│  and redistributed proportionally to all remaining stakeholders. │
 │                                                                  │
 │  [ Cancel ]                              [ Proceed with Burn ]   │
 │                                                                  │

@@ -7,6 +7,11 @@ aligned, and non-coercive. No mediator has authority, can finalize agreements,
 or can override parties or validators.
 
 Reputation affects only: proposal visibility, validator weighting, market selection.
+
+Currency-Agnostic Design:
+NatLangChain does not have its own native cryptocurrency. Bonds and stakes
+are denominated in whatever currency is configured for the deployment
+(e.g., ETH, USDC, DAI). The default token symbol is configurable.
 """
 
 from dataclasses import dataclass, field
@@ -52,11 +57,14 @@ COOLDOWN_DURATIONS = {
 # Maximum active proposals during cooldown
 COOLDOWN_MAX_PROPOSALS = 1
 
-# Minimum bond required to submit proposals
-MINIMUM_BOND = 10_000  # NLC tokens
+# Minimum bond required to submit proposals (in configured staking currency)
+MINIMUM_BOND = 10_000  # Units in configured currency (e.g., USDC, ETH equivalent)
 
-# Default bond amount
-DEFAULT_BOND = 50_000  # NLC tokens
+# Default bond amount (in configured staking currency)
+DEFAULT_BOND = 50_000  # Units in configured currency
+
+# Default staking currency symbol (configurable per deployment)
+DEFAULT_STAKING_CURRENCY = "USDC"  # Can be ETH, USDC, DAI, etc.
 
 
 # =============================================================================
@@ -127,9 +135,9 @@ class ReputationScores:
 
 @dataclass
 class Bond:
-    """Mediator stake bond."""
+    """Mediator stake bond in configured staking currency."""
     amount: float
-    token: str = "NLC"
+    token: str = DEFAULT_STAKING_CURRENCY  # Configurable per deployment
     locked: bool = True
     locked_at: datetime = field(default_factory=datetime.utcnow)
     unlock_requested_at: Optional[datetime] = None
@@ -330,7 +338,7 @@ class MediatorReputationManager:
 
         Args:
             mediator_id: Unique identifier for the mediator
-            stake_amount: Bond amount in NLC tokens
+            stake_amount: Bond amount in configured staking currency
             supported_domains: Optional list of supported domains
             models_used: Optional list of AI models used
 
@@ -345,7 +353,7 @@ class MediatorReputationManager:
 
         if stake_amount < MINIMUM_BOND:
             raise ValueError(
-                f"Bond amount {stake_amount} below minimum {MINIMUM_BOND} NLC"
+                f"Bond amount {stake_amount} below minimum {MINIMUM_BOND}"
             )
 
         bond = Bond(amount=stake_amount)

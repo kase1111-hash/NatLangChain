@@ -72,11 +72,13 @@ def mock_chain():
     interface = MockChainInterface(mediator_id="test_mediator_001")
 
     # Add test intents that can be aligned
+    # Note: Currency amounts in test data use generic "units" - actual deployments
+    # configure their staking currency (ETH, USDC, DAI, etc.)
     alice_intent = ChainIntent(
         hash="0xalice123",
         author="user_alice",
         prose="I am offering a high-performance Rust library for fluid dynamics simulation. "
-              "400 hours of work. Looking for 500 NLC or equivalent compute time.",
+              "400 hours of work. Looking for 500 units or equivalent compute time.",
         desires=["compensation", "open-source collaboration"],
         constraints=["attribution required", "legitimate research only"],
         offered_fee=5.0,
@@ -89,7 +91,7 @@ def mock_chain():
         hash="0xbob456",
         author="user_bob",
         prose="We need a high-resolution ocean current simulation for climate research. "
-              "Budget of 800 NLC. Must be fast, auditable, and documented.",
+              "Budget of 800 units. Must be fast, auditable, and documented.",
         desires=["performance", "documentation", "auditability"],
         constraints=["60 day deadline", "testing data required"],
         offered_fee=8.0,
@@ -102,7 +104,7 @@ def mock_chain():
         hash="0xcharlie789",
         author="user_charlie",
         prose="Seeking data visualization expert for interactive climate charts. "
-              "Budget 300 NLC. Need D3.js or similar.",
+              "Budget 300 units. Need D3.js or similar.",
         desires=["interactive visualization", "responsive design"],
         constraints=["mobile compatible", "accessibility required"],
         offered_fee=3.0,
@@ -921,13 +923,13 @@ class TestNegotiationEngineIntegration:
         assert success
         assert join_data["alignment_score"] > 0
 
-        # Step 4: Add clauses
+        # Step 4: Add clauses (currency-agnostic: uses configured staking currency)
         success, clause_data = negotiation_engine.add_clause(
             session_id=session_id,
             clause_type=ClauseType.PAYMENT,
             parameters={
-                "amount": "650 NLC",
-                "method": "NLC transfer",
+                "amount": "650",  # In configured staking currency
+                "method": "crypto transfer",
                 "timeline": "upon completion",
                 "trigger": "acceptance of deliverables"
             },
