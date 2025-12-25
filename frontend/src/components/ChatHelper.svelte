@@ -310,16 +310,38 @@
 
     <div class="chat-messages" bind:this={chatContainer}>
       {#if !ollamaStatus.available}
-        <div class="status-message warning" in:fade>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-            <line x1="12" y1="9" x2="12" y2="13" />
-            <line x1="12" y1="17" x2="12.01" y2="17" />
-          </svg>
-          <div>
-            <strong>Ollama not connected</strong>
-            <p>Start Ollama to enable the AI helper. Run <code>ollama serve</code> in a terminal.</p>
+        <div class="ollama-offline" in:fade>
+          <div class="offline-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 8v4M12 16h.01" />
+            </svg>
           </div>
+          <h4>Ollama Not Running</h4>
+          <p class="offline-desc">The AI helper needs Ollama to work. It's a free, local LLM server.</p>
+
+          <div class="offline-steps">
+            <div class="step">
+              <span class="step-num">1</span>
+              <span>Install Ollama from <strong>ollama.com</strong></span>
+            </div>
+            <div class="step">
+              <span class="step-num">2</span>
+              <span>Run <code>ollama pull mistral</code></span>
+            </div>
+            <div class="step">
+              <span class="step-num">3</span>
+              <span>Start with <code>ollama serve</code></span>
+            </div>
+          </div>
+
+          <button class="retry-btn" on:click={checkStatus}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M23 4v6h-6M1 20v-6h6" />
+              <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
+            </svg>
+            Check Again
+          </button>
         </div>
       {:else if messages.length === 0 && showStarterQuestions}
         <div class="welcome-message" in:fade>
@@ -597,41 +619,109 @@
     max-height: 400px;
   }
 
-  .status-message {
+  .ollama-offline {
+    text-align: center;
+    padding: 24px 16px;
+  }
+
+  .offline-icon {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 16px;
     display: flex;
-    gap: 12px;
-    padding: 16px;
-    background: rgba(239, 68, 68, 0.1);
-    border: 1px solid rgba(239, 68, 68, 0.2);
-    border-radius: 12px;
+    align-items: center;
+    justify-content: center;
+    background: rgba(251, 191, 36, 0.15);
+    border-radius: 50%;
+    border: 1px solid rgba(251, 191, 36, 0.3);
   }
 
-  .status-message svg {
-    width: 20px;
-    height: 20px;
-    color: #f87171;
-    flex-shrink: 0;
-    margin-top: 2px;
+  .offline-icon svg {
+    width: 28px;
+    height: 28px;
+    color: #fbbf24;
   }
 
-  .status-message strong {
-    display: block;
-    color: #f87171;
-    margin-bottom: 4px;
+  .ollama-offline h4 {
+    color: #fbbf24;
+    font-size: 1.1rem;
+    margin-bottom: 8px;
   }
 
-  .status-message p {
-    font-size: 0.875rem;
+  .offline-desc {
     color: #a1a1aa;
-    margin: 0;
+    font-size: 0.875rem;
+    margin-bottom: 20px;
   }
 
-  .status-message code {
-    background: rgba(0, 0, 0, 0.3);
+  .offline-steps {
+    text-align: left;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 16px;
+  }
+
+  .step {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    font-size: 0.85rem;
+    color: #d4d4d8;
+  }
+
+  .step:not(:last-child) {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .step-num {
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(102, 126, 234, 0.2);
+    border-radius: 50%;
+    font-size: 0.75rem;
+    color: #667eea;
+    flex-shrink: 0;
+  }
+
+  .step code {
+    background: rgba(0, 0, 0, 0.4);
     padding: 2px 6px;
     border-radius: 4px;
     font-size: 0.8rem;
-    color: #e4e4e7;
+    color: #a5b4fc;
+  }
+
+  .step strong {
+    color: #a5b4fc;
+  }
+
+  .retry-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%);
+    border: 1px solid rgba(102, 126, 234, 0.3);
+    border-radius: 8px;
+    color: #a5b4fc;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .retry-btn:hover {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.3) 0%, rgba(118, 75, 162, 0.3) 100%);
+    border-color: rgba(102, 126, 234, 0.5);
+  }
+
+  .retry-btn svg {
+    width: 16px;
+    height: 16px;
   }
 
   .welcome-message {
