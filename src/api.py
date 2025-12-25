@@ -709,6 +709,23 @@ def get_block(index: int):
     return jsonify(block.to_dict())
 
 
+@app.route('/block/latest', methods=['GET'])
+def get_latest_block():
+    """
+    Get the latest (most recent) block in the chain.
+
+    Returns:
+        Latest block data
+    """
+    if len(blockchain.chain) == 0:
+        return jsonify({
+            "error": "Chain is empty"
+        }), 404
+
+    block = blockchain.chain[-1]
+    return jsonify(block.to_dict())
+
+
 @app.route('/entries/author/<author>', methods=['GET'])
 def get_entries_by_author(author: str):
     """
@@ -1096,7 +1113,156 @@ def validate_dialectic():
     return jsonify(result)
 
 
+# ========== Semantic Oracle Endpoints ==========
+
+@app.route('/oracle/verify', methods=['POST'])
+def verify_oracle_event():
+    """
+    Verify if an external event triggers a contract condition using semantic analysis.
+
+    Request body:
+    {
+        "contract_condition": "Original contract condition (prose)",
+        "contract_intent": "Intent behind the condition",
+        "event_description": "Description of the external event",
+        "event_data": {} (optional structured data about the event)
+    }
+
+    Returns:
+        Oracle verification result with trigger decision and reasoning
+    """
+    if not semantic_oracle:
+        return jsonify({
+            "error": "Semantic oracle not available",
+            "reason": "ANTHROPIC_API_KEY not configured"
+        }), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    contract_condition = data.get("contract_condition")
+    contract_intent = data.get("contract_intent")
+    event_description = data.get("event_description")
+    event_data = data.get("event_data", {})
+
+    if not all([contract_condition, contract_intent, event_description]):
+        return jsonify({
+            "error": "Missing required fields",
+            "required": ["contract_condition", "contract_intent", "event_description"]
+        }), 400
+
+    try:
+        result = semantic_oracle.verify_event_trigger(
+            contract_condition=contract_condition,
+            contract_intent=contract_intent,
+            event_description=event_description,
+            event_data=event_data
+        )
+        return jsonify({
+            "status": "success",
+            "verification": result
+        })
+    except Exception as e:
+        return jsonify({
+            "error": "Oracle verification failed",
+            "details": str(e)
+        }), 500
+
+
 # ========== Live Contract Endpoints ==========
+
+@app.route('/contract/parse', methods=['POST'])
+def parse_contract_endpoint():
+    """
+    Parse natural language contract content and extract structured terms.
+
+    Request body:
+    {
+        "content": "Natural language contract text"
+    }
+
+    Returns:
+        Parsed contract with extracted terms, type, and structure
+    """
+    if not contract_parser:
+        return jsonify({
+            "error": "Contract features not available",
+            "reason": "ANTHROPIC_API_KEY not configured"
+        }), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    content = data.get("content")
+
+    if not content:
+        return jsonify({
+            "error": "Missing required field",
+            "required": ["content"]
+        }), 400
+
+    try:
+        parsed = contract_parser.parse_contract(content)
+        return jsonify({
+            "status": "success",
+            "parsed": parsed
+        })
+    except Exception as e:
+        return jsonify({
+            "error": "Failed to parse contract",
+            "details": str(e)
+        }), 500
+
+
+@app.route('/contract/match', methods=['POST'])
+def match_contracts():
+    """
+    Find matching contracts for pending entries.
+
+    Request body:
+    {
+        "pending_entries": [...],  (optional - uses blockchain pending if not provided)
+        "miner_id": "miner identifier"
+    }
+
+    Returns:
+        List of matched contract proposals
+    """
+    if not contract_matcher:
+        return jsonify({
+            "error": "Contract features not available",
+            "reason": "ANTHROPIC_API_KEY not configured"
+        }), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    miner_id = data.get("miner_id", "anonymous-miner")
+    pending_entries = data.get("pending_entries")
+
+    # Use blockchain pending entries if not provided
+    if pending_entries is None:
+        pending_entries = blockchain.pending_entries
+
+    try:
+        matches = contract_matcher.find_matches(blockchain, pending_entries, miner_id)
+        return jsonify({
+            "status": "success",
+            "matches": [m.to_dict() if hasattr(m, 'to_dict') else m for m in matches],
+            "count": len(matches)
+        })
+    except Exception as e:
+        return jsonify({
+            "error": "Failed to find matches",
+            "details": str(e)
+        }), 500
+
 
 @app.route('/contract/post', methods=['POST'])
 def post_contract():
