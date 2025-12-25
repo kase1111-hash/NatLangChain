@@ -1,7 +1,8 @@
 <script>
-  import { onMount, createEventDispatcher } from 'svelte';
+  import { onMount, onDestroy, createEventDispatcher } from 'svelte';
   import { fly, fade, slide } from 'svelte/transition';
   import { getChatStatus, sendChatMessage, getChatQuestions, clearChatHistory } from '../lib/api.js';
+  import { ncipDefinitions } from '../lib/ncip-definitions.js';
 
   const dispatch = createEventDispatcher();
 
@@ -17,11 +18,119 @@
   let starterQuestions = [];
   let showStarterQuestions = true;
   let chatContainer;
+  let inputFocused = false;
+  let currentTipIndex = 0;
+  let tipInterval;
+
+  // NCIP Tips - helpful guidance from the documentation
+  const ncipTips = [
+    {
+      tip: "An Intent is your expression of desired outcome - write it in your own words, not legalese.",
+      ncipRef: "NCIP-001",
+      category: "intent"
+    },
+    {
+      tip: "Be specific about what, who, when, and how much. Vague terms lead to disputes.",
+      ncipRef: "NCIP-004",
+      category: "clarity"
+    },
+    {
+      tip: "Proof of Understanding means you can explain the contract in your own words, not just copy it.",
+      ncipRef: "NCIP-004",
+      category: "understanding"
+    },
+    {
+      tip: "Include clear success criteria - how will both parties know the agreement was fulfilled?",
+      ncipRef: "NCIP-001",
+      category: "success"
+    },
+    {
+      tip: "State what happens if things go wrong. Good contracts plan for failure gracefully.",
+      ncipRef: "NCIP-005",
+      category: "failure"
+    },
+    {
+      tip: "Avoid ambiguous phrases like 'reasonable time' or 'best effort' - be concrete.",
+      ncipRef: "NCIP-002",
+      category: "ambiguity"
+    },
+    {
+      tip: "Both parties must explicitly ratify an Agreement - silence is not consent.",
+      ncipRef: "NCIP-001",
+      category: "ratification"
+    },
+    {
+      tip: "Semantic drift happens when meaning changes over time. Lock important terms at signing.",
+      ncipRef: "NCIP-002",
+      category: "drift"
+    },
+    {
+      tip: "A contract's meaning is bound to its creation time (Temporal Fixity) - context matters.",
+      ncipRef: "NCIP-001",
+      category: "temporal"
+    },
+    {
+      tip: "List all Key Obligations clearly - what must each party actually do?",
+      ncipRef: "NCIP-004",
+      category: "obligations"
+    },
+    {
+      tip: "Disputes have a 24-72 hour cooling period for clarification before escalation.",
+      ncipRef: "NCIP-005",
+      category: "disputes"
+    },
+    {
+      tip: "When in doubt, ask yourself: would a neutral third party understand this the same way?",
+      ncipRef: "NCIP-004",
+      category: "clarity"
+    }
+  ];
+
+  // View-specific tips
+  const viewTips = {
+    submit: [0, 1, 2, 3, 5, 9],  // Intent, clarity, understanding tips
+    contracts: [3, 4, 6, 7, 10], // Success, failure, ratification tips
+    dashboard: [8, 7],           // Temporal, drift tips
+    explorer: [8, 7],            // Temporal, drift tips
+    search: [5, 11]              // Ambiguity, clarity tips
+  };
+
+  $: relevantTipIndices = viewTips[currentView] || [0, 1, 2, 3];
+  $: currentTip = ncipTips[relevantTipIndices[currentTipIndex % relevantTipIndices.length]];
+
+  // Rotate tips every 6 seconds
+  function startTipRotation() {
+    stopTipRotation();
+    tipInterval = setInterval(() => {
+      currentTipIndex = (currentTipIndex + 1) % relevantTipIndices.length;
+    }, 6000);
+  }
+
+  function stopTipRotation() {
+    if (tipInterval) {
+      clearInterval(tipInterval);
+      tipInterval = null;
+    }
+  }
+
+  function handleInputFocus() {
+    inputFocused = true;
+    stopTipRotation();
+  }
+
+  function handleInputBlur() {
+    // Keep tips hidden once focused, until chat is cleared
+  }
 
   // Check Ollama status and load starter questions on mount
   onMount(async () => {
     await checkStatus();
     await loadStarterQuestions();
+    startTipRotation();
+  });
+
+  onDestroy(() => {
+    stopTipRotation();
   });
 
   async function checkStatus() {
@@ -107,6 +216,9 @@
       await clearChatHistory();
       messages = [];
       showStarterQuestions = true;
+      inputFocused = false;
+      currentTipIndex = 0;
+      startTipRotation();
       await loadStarterQuestions();
     } catch (e) {
       console.error('Failed to clear chat:', e);
@@ -201,8 +313,32 @@
           <h4>Hi! I'm here to help.</h4>
           <p>{contextHint}</p>
 
-          {#if starterQuestions.length > 0}
-            <div class="starter-questions">
+          <!-- NCIP Tips - shown until user focuses on input -->
+          {#if !inputFocused && currentTip}
+            <div class="ncip-tip" in:fade={{ duration: 300 }} out:fade={{ duration: 200 }}>
+              <div class="tip-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M12 16v-4M12 8h.01" />
+                </svg>
+              </div>
+              <div class="tip-content">
+                <p class="tip-text">{currentTip.tip}</p>
+                <span class="tip-ref">{currentTip.ncipRef}</span>
+              </div>
+            </div>
+            <div class="tip-dots">
+              {#each relevantTipIndices as _, i}
+                <span
+                  class="tip-dot"
+                  class:active={i === currentTipIndex % relevantTipIndices.length}
+                ></span>
+              {/each}
+            </div>
+          {/if}
+
+          {#if inputFocused && starterQuestions.length > 0}
+            <div class="starter-questions" in:fade>
               <span class="questions-label">Try asking:</span>
               {#each starterQuestions as question}
                 <button
@@ -264,6 +400,8 @@
       <textarea
         bind:value={inputMessage}
         on:keydown={handleKeydown}
+        on:focus={handleInputFocus}
+        on:blur={handleInputBlur}
         placeholder="Ask me anything about contracts..."
         rows="1"
         disabled={!ollamaStatus.available || isLoading}
@@ -666,6 +804,76 @@
     color: white;
   }
 
+  /* NCIP Tips styling */
+  .ncip-tip {
+    display: flex;
+    gap: 12px;
+    padding: 14px 16px;
+    margin: 16px 0 8px;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+    border: 1px solid rgba(102, 126, 234, 0.2);
+    border-radius: 12px;
+    text-align: left;
+  }
+
+  .tip-icon {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .tip-icon svg {
+    width: 20px;
+    height: 20px;
+    color: #a78bfa;
+  }
+
+  .tip-content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .tip-text {
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: #d4d4d8;
+    margin: 0 0 6px;
+  }
+
+  .tip-ref {
+    display: inline-block;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: #a78bfa;
+    background: rgba(167, 139, 250, 0.15);
+    padding: 2px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.02em;
+  }
+
+  .tip-dots {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+
+  .tip-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    transition: all 0.3s ease;
+  }
+
+  .tip-dot.active {
+    background: #a78bfa;
+    transform: scale(1.2);
+  }
+
   /* Mobile responsiveness */
   @media (max-width: 480px) {
     .chat-panel {
@@ -680,6 +888,14 @@
       bottom: 16px;
       width: 48px;
       height: 48px;
+    }
+
+    .ncip-tip {
+      padding: 12px;
+    }
+
+    .tip-text {
+      font-size: 0.75rem;
     }
   }
 </style>
