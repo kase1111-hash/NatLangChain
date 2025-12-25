@@ -149,6 +149,9 @@
 
   onDestroy(() => {
     stopTipRotation();
+    if (copyWarningTimeout) {
+      clearTimeout(copyWarningTimeout);
+    }
   });
 
   async function checkStatus() {
