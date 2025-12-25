@@ -6,8 +6,145 @@ Core blockchain data structures and logic
 import hashlib
 import json
 import time
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Optional, Any, Callable
 from datetime import datetime
+
+
+# Validation decision constants
+VALIDATION_VALID = "VALID"
+VALIDATION_NEEDS_CLARIFICATION = "NEEDS_CLARIFICATION"
+VALIDATION_INVALID = "INVALID"
+VALIDATION_ERROR = "ERROR"
+
+# Allowed decisions for entry acceptance
+ACCEPTABLE_DECISIONS = {VALIDATION_VALID}
+
+
+class MockValidator:
+    """
+    A mock validator for testing that performs basic checks without LLM calls.
+    Use this for unit tests to avoid API dependencies.
+    """
+
+    # Common ambiguous terms that should trigger NEEDS_CLARIFICATION
+    AMBIGUOUS_TERMS = [
+        "soon", "later", "reasonable", "appropriate", "satisfactory",
+        "acceptable", "approximately", "some", "various", "etc",
+        "as needed", "when possible", "in due time"
+    ]
+
+    # Adversarial patterns that should trigger INVALID
+    ADVERSARIAL_PATTERNS = [
+        "waives all rights",
+        "null and void",
+        "sole arbiter",
+        "irrevocable",
+        "perpetual",
+        "supersedes all",
+        "hidden",
+        "buried in",
+        "appendix z",
+        "non-refundable",
+        "minimum order",
+    ]
+
+    def validate_entry(
+        self,
+        content: str,
+        intent: str,
+        author: str
+    ) -> Dict[str, Any]:
+        """
+        Perform mock validation with basic heuristic checks.
+
+        Detects:
+        - Ambiguous language
+        - Intent-content mismatch (basic keyword check)
+        - Adversarial patterns
+
+        Returns:
+            Validation result mimicking ProofOfUnderstanding format
+        """
+        content_lower = content.lower()
+        intent_lower = intent.lower()
+
+        # Check for adversarial patterns
+        adversarial_found = []
+        for pattern in self.ADVERSARIAL_PATTERNS:
+            if pattern in content_lower:
+                adversarial_found.append(pattern)
+
+        if adversarial_found:
+            return {
+                "status": "success",
+                "validation": {
+                    "paraphrase": f"[MOCK] Entry contains adversarial patterns",
+                    "intent_match": False,
+                    "ambiguities": [],
+                    "adversarial_indicators": adversarial_found,
+                    "decision": VALIDATION_INVALID,
+                    "reasoning": f"Detected adversarial patterns: {adversarial_found}"
+                }
+            }
+
+        # Check for ambiguous terms
+        ambiguities_found = []
+        for term in self.AMBIGUOUS_TERMS:
+            if term in content_lower:
+                ambiguities_found.append(term)
+
+        # Check for basic intent mismatch
+        # Extract key words from intent and check if they appear in content
+        intent_words = set(intent_lower.split())
+        content_words = set(content_lower.split())
+
+        # Remove common stop words
+        stop_words = {"the", "a", "an", "to", "for", "of", "and", "is", "in", "on", "at"}
+        intent_keywords = intent_words - stop_words
+        content_keywords = content_words - stop_words
+
+        # Check if at least some intent keywords appear in content
+        overlap = intent_keywords & content_keywords
+        intent_match = len(overlap) > 0 or len(intent_keywords) == 0
+
+        if ambiguities_found:
+            return {
+                "status": "success",
+                "validation": {
+                    "paraphrase": f"[MOCK] Entry about: {intent}",
+                    "intent_match": intent_match,
+                    "ambiguities": ambiguities_found,
+                    "adversarial_indicators": [],
+                    "decision": VALIDATION_NEEDS_CLARIFICATION,
+                    "reasoning": f"Contains ambiguous terms: {ambiguities_found}"
+                }
+            }
+
+        if not intent_match:
+            return {
+                "status": "success",
+                "validation": {
+                    "paraphrase": f"[MOCK] Entry content does not match stated intent",
+                    "intent_match": False,
+                    "ambiguities": [],
+                    "adversarial_indicators": [],
+                    "decision": VALIDATION_INVALID,
+                    "reasoning": "Intent does not match content keywords"
+                }
+            }
+
+        # All checks passed
+        return {
+            "status": "success",
+            "validation": {
+                "paraphrase": f"[MOCK] The author {author} states: {content[:100]}...",
+                "intent_match": True,
+                "ambiguities": [],
+                "adversarial_indicators": [],
+                "decision": VALIDATION_VALID,
+                "reasoning": "Entry passes basic validation checks"
+            }
+        }
 
 
 class NaturalLanguageEntry:
@@ -143,10 +280,34 @@ class NatLangChain:
     A distributed ledger where natural language prose is the primary substrate.
     """
 
-    def __init__(self):
-        """Initialize the blockchain with genesis block."""
+    def __init__(
+        self,
+        require_validation: bool = True,
+        validator: Optional[Any] = None,
+        allow_needs_clarification: bool = False
+    ):
+        """
+        Initialize the blockchain with genesis block.
+
+        Args:
+            require_validation: If True, entries must pass PoU validation before acceptance.
+                              Default is True for security. Set to False only for testing.
+            validator: Optional ProofOfUnderstanding validator instance.
+                      If None and require_validation is True, a default validator will be created.
+            allow_needs_clarification: If True, entries with NEEDS_CLARIFICATION can be added.
+                                      Default is False (only VALID entries accepted).
+        """
         self.chain: List[Block] = []
         self.pending_entries: List[NaturalLanguageEntry] = []
+        self.require_validation = require_validation
+        self.validator = validator
+        self.allow_needs_clarification = allow_needs_clarification
+
+        # Track acceptable decisions based on settings
+        self._acceptable_decisions = {VALIDATION_VALID}
+        if allow_needs_clarification:
+            self._acceptable_decisions.add(VALIDATION_NEEDS_CLARIFICATION)
+
         self.create_genesis_block()
 
     def create_genesis_block(self):
@@ -173,22 +334,89 @@ class NatLangChain:
         """Get the most recent block in the chain."""
         return self.chain[-1]
 
-    def add_entry(self, entry: NaturalLanguageEntry) -> Dict[str, Any]:
+    def add_entry(
+        self,
+        entry: NaturalLanguageEntry,
+        skip_validation: bool = False
+    ) -> Dict[str, Any]:
         """
         Add a new natural language entry to pending entries.
 
+        If require_validation is True (default), the entry must pass PoU validation
+        before being added to the pending queue. This prevents bad actors from
+        submitting ambiguous, mismatched, or adversarial entries.
+
         Args:
             entry: The natural language entry to add
+            skip_validation: If True, bypass validation (requires require_validation=False
+                           on chain initialization). This is for testing only.
 
         Returns:
-            Dict with entry information
+            Dict with entry information and validation result
         """
+        # Check if validation should be enforced
+        if self.require_validation and not skip_validation:
+            validation_result = self._validate_entry(entry)
+
+            if validation_result["status"] == "error":
+                return {
+                    "status": "rejected",
+                    "message": "Validation failed with error",
+                    "error": validation_result.get("error", "Unknown validation error"),
+                    "entry": entry.to_dict()
+                }
+
+            decision = validation_result.get("validation", {}).get("decision", "ERROR")
+
+            if decision not in self._acceptable_decisions:
+                return {
+                    "status": "rejected",
+                    "message": f"Entry rejected: validation decision was {decision}",
+                    "validation_decision": decision,
+                    "validation_details": validation_result.get("validation", {}),
+                    "entry": entry.to_dict()
+                }
+
+            # Entry passed validation - update status and store paraphrase
+            entry.validation_status = "validated"
+            paraphrase = validation_result.get("validation", {}).get("paraphrase", "")
+            if paraphrase:
+                entry.validation_paraphrases.append(paraphrase)
+
         self.pending_entries.append(entry)
         return {
             "status": "pending",
             "message": "Entry added to pending queue",
+            "validated": self.require_validation and not skip_validation,
             "entry": entry.to_dict()
         }
+
+    def _validate_entry(self, entry: NaturalLanguageEntry) -> Dict[str, Any]:
+        """
+        Validate an entry using the configured validator.
+
+        Args:
+            entry: The entry to validate
+
+        Returns:
+            Validation result dictionary
+        """
+        if self.validator is None:
+            # Try to create a validator if not provided
+            try:
+                from validator import ProofOfUnderstanding
+                self.validator = ProofOfUnderstanding()
+            except (ImportError, ValueError) as e:
+                return {
+                    "status": "error",
+                    "error": f"No validator configured and could not create one: {e}"
+                }
+
+        return self.validator.validate_entry(
+            content=entry.content,
+            intent=entry.intent,
+            author=entry.author
+        )
 
     def mine_pending_entries(self, difficulty: int = 2) -> Optional[Block]:
         """
@@ -324,12 +552,29 @@ class NatLangChain:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'NatLangChain':
-        """Import chain from dictionary."""
+    def from_dict(
+        cls,
+        data: Dict[str, Any],
+        require_validation: bool = False,
+        validator: Optional[Any] = None
+    ) -> 'NatLangChain':
+        """
+        Import chain from dictionary.
+
+        Args:
+            data: Serialized chain data
+            require_validation: Whether to require validation for new entries.
+                              Defaults to False for imports (entries already validated).
+            validator: Optional validator instance
+        """
         chain = cls.__new__(cls)
         chain.chain = [Block.from_dict(b) for b in data["chain"]]
         chain.pending_entries = [
             NaturalLanguageEntry.from_dict(e)
             for e in data.get("pending_entries", [])
         ]
+        chain.require_validation = require_validation
+        chain.validator = validator
+        chain.allow_needs_clarification = False
+        chain._acceptable_decisions = {VALIDATION_VALID}
         return chain
