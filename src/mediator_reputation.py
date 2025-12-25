@@ -338,7 +338,7 @@ class MediatorReputationManager:
 
         Args:
             mediator_id: Unique identifier for the mediator
-            stake_amount: Bond amount in NLC tokens
+            stake_amount: Bond amount in configured staking currency
             supported_domains: Optional list of supported domains
             models_used: Optional list of AI models used
 
@@ -353,7 +353,7 @@ class MediatorReputationManager:
 
         if stake_amount < MINIMUM_BOND:
             raise ValueError(
-                f"Bond amount {stake_amount} below minimum {MINIMUM_BOND} NLC"
+                f"Bond amount {stake_amount} below minimum {MINIMUM_BOND}"
             )
 
         bond = Bond(amount=stake_amount)
