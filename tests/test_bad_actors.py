@@ -25,19 +25,29 @@ class BadActorSimulator:
     Tests the system's resilience against attacks.
     """
 
-    def __init__(self, use_validation: bool = False):
+    def __init__(self, use_validation: bool = False, use_deduplication: bool = False):
         """
         Initialize simulator.
 
         Args:
             use_validation: If True, use MockValidator to test protection.
                           If False, test unprotected chain (shows vulnerabilities).
+            use_deduplication: If True, enable entry deduplication.
+                             If False, disable deduplication for baseline testing.
         """
         self.use_validation = use_validation
+        self.use_deduplication = use_deduplication
         if use_validation:
-            self.chain = NatLangChain(require_validation=True, validator=MockValidator())
+            self.chain = NatLangChain(
+                require_validation=True,
+                validator=MockValidator(),
+                enable_deduplication=use_deduplication
+            )
         else:
-            self.chain = NatLangChain(require_validation=False)
+            self.chain = NatLangChain(
+                require_validation=False,
+                enable_deduplication=use_deduplication
+            )
         self.attack_results: List[Dict[str, Any]] = []
         self.successful_attacks = 0
         self.blocked_attacks = 0
@@ -45,9 +55,16 @@ class BadActorSimulator:
     def reset_chain(self):
         """Reset the blockchain for a fresh test."""
         if self.use_validation:
-            self.chain = NatLangChain(require_validation=True, validator=MockValidator())
+            self.chain = NatLangChain(
+                require_validation=True,
+                validator=MockValidator(),
+                enable_deduplication=self.use_deduplication
+            )
         else:
-            self.chain = NatLangChain(require_validation=False)
+            self.chain = NatLangChain(
+                require_validation=False,
+                enable_deduplication=self.use_deduplication
+            )
 
     def log_attack(self, attack_name: str, success: bool, details: str,
                    severity: str = "HIGH", recommendation: str = ""):
@@ -513,7 +530,7 @@ def test_adversarial_phrasing(use_validation: bool = False):
 # ATTACK TYPE 6: REPLAY ATTACK
 # =============================================================================
 
-def test_replay_attack(use_validation: bool = False):
+def test_replay_attack(use_validation: bool = False, use_deduplication: bool = False):
     """
     Test: Bad actor attempts to replay old valid entries to duplicate actions.
     """
@@ -521,8 +538,8 @@ def test_replay_attack(use_validation: bool = False):
     print("ATTACK 6: REPLAY ATTACK")
     print("="*60)
 
-    # Replay attack tests use unprotected chain to test the replay itself
-    sim = BadActorSimulator(use_validation=False)
+    # Test with deduplication when in protected mode
+    sim = BadActorSimulator(use_validation=False, use_deduplication=use_deduplication)
 
     # Create and mine a legitimate payment entry
     original_entry = NaturalLanguageEntry(
@@ -541,23 +558,30 @@ def test_replay_attack(use_validation: bool = False):
 
     result = sim.chain.add_entry(replayed_entry)
     replay_accepted = result["status"] == "pending"
+    rejected_as_duplicate = result.get("reason") == "duplicate"
 
-    print(f"  Replay attempt accepted: {replay_accepted}")
+    if rejected_as_duplicate:
+        print(f"  Replay attempt BLOCKED: {result.get('message', 'duplicate detected')}")
+    else:
+        print(f"  Replay attempt accepted: {replay_accepted}")
 
     sim.log_attack(
         attack_name="Replay Attack",
         success=replay_accepted,
-        details="Same entry accepted twice - could duplicate payments/actions",
+        details="Same entry accepted twice - could duplicate payments/actions" if replay_accepted else "Replay blocked by deduplication",
         severity="CRITICAL",
-        recommendation="Implement entry deduplication based on content hash + author + timestamp window"
+        recommendation="Implement entry deduplication based on content hash + author + timestamp window" if replay_accepted else "N/A - Deduplication working"
     )
 
     mined = sim.chain.mine_pending_entries(difficulty=1)
     if mined:
         print(f"\n  WARNING: Replayed entry mined into block #{mined.index}")
         print("  FINDING: No replay protection mechanism exists at entry/mining level")
+    elif use_deduplication and rejected_as_duplicate:
+        print(f"\n  PROTECTED: Replay attack blocked by deduplication")
+        print("  FINDING: Entry deduplication prevents replay attacks")
 
-    return sim, [{"replay_accepted": replay_accepted}]
+    return sim, [{"replay_accepted": replay_accepted, "blocked_by_dedup": rejected_as_duplicate}]
 
 
 # =============================================================================
@@ -751,28 +775,32 @@ def test_metadata_injection(use_validation: bool = False):
 # SIMULATION RUNNER
 # =============================================================================
 
-def run_single_simulation(use_validation: bool = False):
+def run_single_simulation(use_validation: bool = False, use_deduplication: bool = False):
     """Run all bad actor simulations for a single mode (protected or unprotected)."""
     all_results = {}
     total_exploitable = 0
     total_blocked = 0
 
     # Run all attack simulations
+    # Note: Replay Attack test has special handling for deduplication
     simulations = [
-        ("Ambiguity Exploitation", test_ambiguity_exploitation),
-        ("Intent Mismatch", test_intent_mismatch),
-        ("Chain Tampering", test_chain_tampering),
-        ("Double-Spending Analog", test_double_spending_analog),
-        ("Adversarial Phrasing", test_adversarial_phrasing),
-        ("Replay Attack", test_replay_attack),
-        ("Sybil Flooding", test_sybil_flooding),
-        ("Timestamp Manipulation", test_timestamp_manipulation),
-        ("Metadata Injection", test_metadata_injection),
+        ("Ambiguity Exploitation", test_ambiguity_exploitation, False),  # (name, func, needs_dedup_param)
+        ("Intent Mismatch", test_intent_mismatch, False),
+        ("Chain Tampering", test_chain_tampering, False),
+        ("Double-Spending Analog", test_double_spending_analog, False),
+        ("Adversarial Phrasing", test_adversarial_phrasing, False),
+        ("Replay Attack", test_replay_attack, True),  # Replay needs dedup param
+        ("Sybil Flooding", test_sybil_flooding, False),
+        ("Timestamp Manipulation", test_timestamp_manipulation, False),
+        ("Metadata Injection", test_metadata_injection, False),
     ]
 
-    for name, test_func in simulations:
+    for name, test_func, needs_dedup in simulations:
         try:
-            sim, results = test_func(use_validation=use_validation)
+            if needs_dedup:
+                sim, results = test_func(use_validation=use_validation, use_deduplication=use_deduplication)
+            else:
+                sim, results = test_func(use_validation=use_validation)
             all_results[name] = {
                 "results": results,
                 "successful_attacks": sim.successful_attacks,
@@ -801,21 +829,29 @@ def run_bad_actor_simulation():
     # PHASE 1: UNPROTECTED MODE (Shows vulnerabilities)
     # ==========================================================================
     print("\n" + "#"*70)
-    print("# PHASE 1: UNPROTECTED MODE (require_validation=False)")
-    print("# This demonstrates vulnerabilities when PoU validation is disabled")
+    print("# PHASE 1: UNPROTECTED MODE")
+    print("# (require_validation=False, enable_deduplication=False)")
+    print("# This demonstrates vulnerabilities when protections are disabled")
     print("#"*70)
 
-    unprotected_results, unprotected_exploitable, unprotected_blocked = run_single_simulation(use_validation=False)
+    unprotected_results, unprotected_exploitable, unprotected_blocked = run_single_simulation(
+        use_validation=False,
+        use_deduplication=False
+    )
 
     # ==========================================================================
     # PHASE 2: PROTECTED MODE (Shows fix in action)
     # ==========================================================================
     print("\n" + "#"*70)
-    print("# PHASE 2: PROTECTED MODE (require_validation=True with MockValidator)")
-    print("# This demonstrates how PoU validation blocks semantic attacks")
+    print("# PHASE 2: PROTECTED MODE")
+    print("# (require_validation=True, enable_deduplication=True)")
+    print("# This demonstrates how PoU validation + deduplication block attacks")
     print("#"*70)
 
-    protected_results, protected_exploitable, protected_blocked = run_single_simulation(use_validation=True)
+    protected_results, protected_exploitable, protected_blocked = run_single_simulation(
+        use_validation=True,
+        use_deduplication=True
+    )
 
     # Generate Summary Report
     print("\n" + "="*70)

@@ -19,6 +19,26 @@ VALIDATION_ERROR = "ERROR"
 # Allowed decisions for entry acceptance
 ACCEPTABLE_DECISIONS = {VALIDATION_VALID}
 
+# Default deduplication window in seconds (1 hour)
+DEFAULT_DEDUP_WINDOW_SECONDS = 3600
+
+
+def compute_entry_fingerprint(content: str, author: str, intent: str) -> str:
+    """
+    Compute a unique fingerprint for an entry based on content, author, and intent.
+    Used for replay attack prevention.
+
+    Args:
+        content: The entry content
+        author: The entry author
+        intent: The entry intent
+
+    Returns:
+        SHA256 hash of the combined data
+    """
+    fingerprint_data = f"{author}:{intent}:{content}"
+    return hashlib.sha256(fingerprint_data.encode()).hexdigest()
+
 
 class MockValidator:
     """
@@ -284,7 +304,9 @@ class NatLangChain:
         self,
         require_validation: bool = True,
         validator: Optional[Any] = None,
-        allow_needs_clarification: bool = False
+        allow_needs_clarification: bool = False,
+        enable_deduplication: bool = True,
+        dedup_window_seconds: int = DEFAULT_DEDUP_WINDOW_SECONDS
     ):
         """
         Initialize the blockchain with genesis block.
@@ -296,17 +318,26 @@ class NatLangChain:
                       If None and require_validation is True, a default validator will be created.
             allow_needs_clarification: If True, entries with NEEDS_CLARIFICATION can be added.
                                       Default is False (only VALID entries accepted).
+            enable_deduplication: If True, prevent duplicate entries within the dedup window.
+                                 Default is True to prevent replay attacks.
+            dedup_window_seconds: Time window for deduplication in seconds.
+                                 Default is 3600 (1 hour). Set to 0 for permanent dedup.
         """
         self.chain: List[Block] = []
         self.pending_entries: List[NaturalLanguageEntry] = []
         self.require_validation = require_validation
         self.validator = validator
         self.allow_needs_clarification = allow_needs_clarification
+        self.enable_deduplication = enable_deduplication
+        self.dedup_window_seconds = dedup_window_seconds
 
         # Track acceptable decisions based on settings
         self._acceptable_decisions = {VALIDATION_VALID}
         if allow_needs_clarification:
             self._acceptable_decisions.add(VALIDATION_NEEDS_CLARIFICATION)
+
+        # Entry fingerprint registry for deduplication: {fingerprint: timestamp}
+        self._entry_fingerprints: Dict[str, float] = {}
 
         self.create_genesis_block()
 
@@ -346,6 +377,9 @@ class NatLangChain:
         before being added to the pending queue. This prevents bad actors from
         submitting ambiguous, mismatched, or adversarial entries.
 
+        If enable_deduplication is True (default), duplicate entries within the
+        dedup window will be rejected. This prevents replay attacks.
+
         Args:
             entry: The natural language entry to add
             skip_validation: If True, bypass validation (requires require_validation=False
@@ -354,6 +388,19 @@ class NatLangChain:
         Returns:
             Dict with entry information and validation result
         """
+        # Check for duplicate entries (replay attack prevention)
+        if self.enable_deduplication:
+            duplicate_check = self._check_duplicate(entry)
+            if duplicate_check["is_duplicate"]:
+                return {
+                    "status": "rejected",
+                    "message": "Entry rejected: duplicate detected (possible replay attack)",
+                    "reason": "duplicate",
+                    "original_timestamp": duplicate_check["original_timestamp"],
+                    "fingerprint": duplicate_check["fingerprint"],
+                    "entry": entry.to_dict()
+                }
+
         # Check if validation should be enforced
         if self.require_validation and not skip_validation:
             validation_result = self._validate_entry(entry)
@@ -383,6 +430,12 @@ class NatLangChain:
             if paraphrase:
                 entry.validation_paraphrases.append(paraphrase)
 
+        # Register entry fingerprint for deduplication
+        if self.enable_deduplication:
+            fingerprint = compute_entry_fingerprint(entry.content, entry.author, entry.intent)
+            self._entry_fingerprints[fingerprint] = time.time()
+            self._cleanup_expired_fingerprints()
+
         self.pending_entries.append(entry)
         return {
             "status": "pending",
@@ -390,6 +443,85 @@ class NatLangChain:
             "validated": self.require_validation and not skip_validation,
             "entry": entry.to_dict()
         }
+
+    def _check_duplicate(self, entry: NaturalLanguageEntry) -> Dict[str, Any]:
+        """
+        Check if an entry is a duplicate of a previously seen entry.
+
+        Args:
+            entry: The entry to check
+
+        Returns:
+            Dict with is_duplicate flag and details
+        """
+        fingerprint = compute_entry_fingerprint(entry.content, entry.author, entry.intent)
+        current_time = time.time()
+
+        if fingerprint in self._entry_fingerprints:
+            original_time = self._entry_fingerprints[fingerprint]
+
+            # Check if within dedup window (0 means permanent dedup)
+            if self.dedup_window_seconds == 0:
+                return {
+                    "is_duplicate": True,
+                    "fingerprint": fingerprint,
+                    "original_timestamp": original_time
+                }
+
+            time_diff = current_time - original_time
+            if time_diff <= self.dedup_window_seconds:
+                return {
+                    "is_duplicate": True,
+                    "fingerprint": fingerprint,
+                    "original_timestamp": original_time,
+                    "time_since_original": time_diff
+                }
+
+        # Also check mined blocks for duplicates
+        for block in self.chain:
+            for existing_entry in block.entries:
+                existing_fp = compute_entry_fingerprint(
+                    existing_entry.content,
+                    existing_entry.author,
+                    existing_entry.intent
+                )
+                if existing_fp == fingerprint:
+                    return {
+                        "is_duplicate": True,
+                        "fingerprint": fingerprint,
+                        "original_timestamp": block.timestamp,
+                        "source": "mined_block",
+                        "block_index": block.index
+                    }
+
+        # Also check pending entries
+        for pending_entry in self.pending_entries:
+            pending_fp = compute_entry_fingerprint(
+                pending_entry.content,
+                pending_entry.author,
+                pending_entry.intent
+            )
+            if pending_fp == fingerprint:
+                return {
+                    "is_duplicate": True,
+                    "fingerprint": fingerprint,
+                    "source": "pending_queue"
+                }
+
+        return {"is_duplicate": False, "fingerprint": fingerprint}
+
+    def _cleanup_expired_fingerprints(self):
+        """Remove expired fingerprints from the registry."""
+        if self.dedup_window_seconds == 0:
+            return  # Permanent dedup, never expire
+
+        current_time = time.time()
+        expired = [
+            fp for fp, ts in self._entry_fingerprints.items()
+            if current_time - ts > self.dedup_window_seconds
+        ]
+        for fp in expired:
+            del self._entry_fingerprints[fp]
 
     def _validate_entry(self, entry: NaturalLanguageEntry) -> Dict[str, Any]:
         """
@@ -556,7 +688,9 @@ class NatLangChain:
         cls,
         data: Dict[str, Any],
         require_validation: bool = False,
-        validator: Optional[Any] = None
+        validator: Optional[Any] = None,
+        enable_deduplication: bool = True,
+        dedup_window_seconds: int = DEFAULT_DEDUP_WINDOW_SECONDS
     ) -> 'NatLangChain':
         """
         Import chain from dictionary.
@@ -566,6 +700,8 @@ class NatLangChain:
             require_validation: Whether to require validation for new entries.
                               Defaults to False for imports (entries already validated).
             validator: Optional validator instance
+            enable_deduplication: Whether to enable deduplication for new entries.
+            dedup_window_seconds: Time window for deduplication.
         """
         chain = cls.__new__(cls)
         chain.chain = [Block.from_dict(b) for b in data["chain"]]
@@ -577,4 +713,7 @@ class NatLangChain:
         chain.validator = validator
         chain.allow_needs_clarification = False
         chain._acceptable_decisions = {VALIDATION_VALID}
+        chain.enable_deduplication = enable_deduplication
+        chain.dedup_window_seconds = dedup_window_seconds
+        chain._entry_fingerprints = {}
         return chain
