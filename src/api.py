@@ -12,26 +12,128 @@ from functools import wraps
 from flask import Flask, request, jsonify, g
 from dotenv import load_dotenv
 
+# Core imports (always required)
 from blockchain import NatLangChain, NaturalLanguageEntry, Block
-from validator import ProofOfUnderstanding, HybridValidator
-from semantic_diff import SemanticDriftDetector
-from semantic_search import SemanticSearchEngine
-from dialectic_consensus import DialecticConsensus
-from contract_parser import ContractParser
-from contract_matcher import ContractMatcher
-from temporal_fixity import TemporalFixity
-from dispute import DisputeManager
-from semantic_oracles import SemanticOracle, SemanticCircuitBreaker
-from multi_model_consensus import MultiModelConsensus
-from escalation_fork import EscalationForkManager, ForkStatus, TriggerReason
-from observance_burn import ObservanceBurnManager, BurnReason
-from anti_harassment import AntiHarassmentManager, InitiationPath, DisputeResolution
-from treasury import NatLangChainTreasury, InflowType, SubsidyStatus
-from fido2_auth import FIDO2AuthManager, SignatureType, UserVerification
-from zk_privacy import ZKPrivacyManager, ProofStatus, VoteStatus
-from negotiation_engine import AutomatedNegotiationEngine, NegotiationPhase, OfferType, ClauseType
-from market_pricing import MarketAwarePricingManager, PricingStrategy, AssetClass, MarketCondition
-from mobile_deployment import MobileDeploymentManager, DeviceType, WalletType, ConnectionState
+
+# Optional imports - these require heavy dependencies (PyTorch, Anthropic, etc.)
+# The API will work without them, just with reduced functionality
+
+try:
+    from validator import ProofOfUnderstanding, HybridValidator
+except ImportError:
+    ProofOfUnderstanding = None
+    HybridValidator = None
+
+try:
+    from semantic_diff import SemanticDriftDetector
+except ImportError:
+    SemanticDriftDetector = None
+
+try:
+    from semantic_search import SemanticSearchEngine
+except ImportError:
+    SemanticSearchEngine = None
+
+try:
+    from dialectic_consensus import DialecticConsensus
+except ImportError:
+    DialecticConsensus = None
+
+try:
+    from contract_parser import ContractParser
+except ImportError:
+    ContractParser = None
+
+try:
+    from contract_matcher import ContractMatcher
+except ImportError:
+    ContractMatcher = None
+
+try:
+    from temporal_fixity import TemporalFixity
+except ImportError:
+    TemporalFixity = None
+
+try:
+    from dispute import DisputeManager
+except ImportError:
+    DisputeManager = None
+
+try:
+    from semantic_oracles import SemanticOracle, SemanticCircuitBreaker
+except ImportError:
+    SemanticOracle = None
+    SemanticCircuitBreaker = None
+
+try:
+    from multi_model_consensus import MultiModelConsensus
+except ImportError:
+    MultiModelConsensus = None
+
+try:
+    from escalation_fork import EscalationForkManager, ForkStatus, TriggerReason
+except ImportError:
+    EscalationForkManager = None
+    ForkStatus = None
+    TriggerReason = None
+
+try:
+    from observance_burn import ObservanceBurnManager, BurnReason
+except ImportError:
+    ObservanceBurnManager = None
+    BurnReason = None
+
+try:
+    from anti_harassment import AntiHarassmentManager, InitiationPath, DisputeResolution
+except ImportError:
+    AntiHarassmentManager = None
+    InitiationPath = None
+    DisputeResolution = None
+
+try:
+    from treasury import NatLangChainTreasury, InflowType, SubsidyStatus
+except ImportError:
+    NatLangChainTreasury = None
+    InflowType = None
+    SubsidyStatus = None
+
+try:
+    from fido2_auth import FIDO2AuthManager, SignatureType, UserVerification
+except ImportError:
+    FIDO2AuthManager = None
+    SignatureType = None
+    UserVerification = None
+
+try:
+    from zk_privacy import ZKPrivacyManager, ProofStatus, VoteStatus
+except ImportError:
+    ZKPrivacyManager = None
+    ProofStatus = None
+    VoteStatus = None
+
+try:
+    from negotiation_engine import AutomatedNegotiationEngine, NegotiationPhase, OfferType, ClauseType
+except ImportError:
+    AutomatedNegotiationEngine = None
+    NegotiationPhase = None
+    OfferType = None
+    ClauseType = None
+
+try:
+    from market_pricing import MarketAwarePricingManager, PricingStrategy, AssetClass, MarketCondition
+except ImportError:
+    MarketAwarePricingManager = None
+    PricingStrategy = None
+    AssetClass = None
+    MarketCondition = None
+
+try:
+    from mobile_deployment import MobileDeploymentManager, DeviceType, WalletType, ConnectionState
+except ImportError:
+    MobileDeploymentManager = None
+    DeviceType = None
+    WalletType = None
+    ConnectionState = None
 
 
 # Load environment variables

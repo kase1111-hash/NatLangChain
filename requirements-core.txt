@@ -1,0 +1,8 @@
+# Core dependencies for NatLangChain (minimal install)
+# This creates a lightweight backend without ML features
+
+flask==3.0.0
+python-dotenv==1.0.0
+werkzeug>=3.0.0
+
+# Optional: Install full requirements.txt for semantic search and LLM features

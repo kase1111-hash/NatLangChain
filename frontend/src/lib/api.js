@@ -99,7 +99,7 @@ export async function mineBlock(minerId = 'web-miner') {
 // ============================================================
 
 export async function searchEntries(query, limit = 10) {
-  const params = new URLSearchParams({ q: query, limit: limit.toString() });
+  const params = new URLSearchParams({ intent: query, limit: limit.toString() });
   return fetchAPI(`/entries/search?${params}`);
 }
 

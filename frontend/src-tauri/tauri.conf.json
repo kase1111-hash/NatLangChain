@@ -14,7 +14,14 @@
     "allowlist": {
       "all": false,
       "shell": {
-        "open": true
+        "open": true,
+        "sidecar": true,
+        "scope": [
+          {
+            "name": "binaries/natlangchain-backend",
+            "sidecar": true
+          }
+        ]
       },
       "http": {
         "all": true,
@@ -22,6 +29,9 @@
         "scope": ["http://*", "https://*"]
       },
       "window": {
+        "all": true
+      },
+      "process": {
         "all": true
       }
     },
@@ -37,7 +47,9 @@
         "icons/icon.ico"
       ],
       "resources": [],
-      "externalBin": [],
+      "externalBin": [
+        "binaries/natlangchain-backend"
+      ],
       "copyright": "Copyright 2025 NatLangChain",
       "category": "Productivity",
       "shortDescription": "Natural Language Blockchain Explorer",
