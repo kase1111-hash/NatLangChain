@@ -21,6 +21,8 @@
   let inputFocused = false;
   let currentTipIndex = 0;
   let tipInterval;
+  let showCopyWarning = false;
+  let copyWarningTimeout;
 
   // NCIP Tips - helpful guidance from the documentation
   const ncipTips = [
@@ -120,6 +122,22 @@
 
   function handleInputBlur() {
     // Keep tips hidden once focused, until chat is cleared
+  }
+
+  function handleCopyAttempt(e) {
+    // Prevent copying assistant messages
+    e.preventDefault();
+    showCopyWarning = true;
+
+    // Clear any existing timeout
+    if (copyWarningTimeout) {
+      clearTimeout(copyWarningTimeout);
+    }
+
+    // Hide warning after 4 seconds
+    copyWarningTimeout = setTimeout(() => {
+      showCopyWarning = false;
+    }, 4000);
   }
 
   // Check Ollama status and load starter questions on mount
@@ -371,9 +389,20 @@
               </svg>
             </div>
           {/if}
-          <div class="message-content">
+          <div
+            class="message-content"
+            class:no-copy={message.role === 'assistant'}
+            on:copy|preventDefault={handleCopyAttempt}
+          >
             {message.content}
           </div>
+          {#if message.role === 'assistant' && !message.isError}
+            <div class="no-copy-badge" title="Write your own contract - copying defeats Proof of Understanding">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18.36 6.64a9 9 0 11-12.73 0M12 2v10" />
+              </svg>
+            </div>
+          {/if}
         </div>
       {/each}
 
@@ -395,6 +424,20 @@
         </div>
       {/if}
     </div>
+
+    <!-- Copy warning message -->
+    {#if showCopyWarning}
+      <div class="copy-warning" in:fly={{ y: 10, duration: 200 }} out:fade={{ duration: 150 }}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10" />
+          <path d="M12 8v4M12 16h.01" />
+        </svg>
+        <div>
+          <strong>Write your own contract</strong>
+          <p>Per NCIP-004, you must demonstrate Proof of Understanding. Copying defeats this requirement.</p>
+        </div>
+      </div>
+    {/if}
 
     <div class="chat-input">
       <textarea
@@ -706,6 +749,39 @@
     border-bottom-left-radius: 4px;
   }
 
+  /* Copy protection for assistant messages */
+  .message-content.no-copy {
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    cursor: default;
+  }
+
+  .no-copy-badge {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 16px;
+    height: 16px;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .message.assistant {
+    position: relative;
+  }
+
+  .message.assistant:hover .no-copy-badge {
+    opacity: 0.4;
+  }
+
+  .no-copy-badge svg {
+    width: 12px;
+    height: 12px;
+    color: #71717a;
+  }
+
   .message.error .message-content {
     background: rgba(239, 68, 68, 0.1);
     border-color: rgba(239, 68, 68, 0.2);
@@ -737,6 +813,45 @@
   @keyframes typing {
     0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
     30% { transform: translateY(-4px); opacity: 1; }
+  }
+
+  /* Copy warning message */
+  .copy-warning {
+    display: flex;
+    gap: 10px;
+    padding: 12px 16px;
+    margin: 0 16px 8px;
+    background: rgba(251, 191, 36, 0.1);
+    border: 1px solid rgba(251, 191, 36, 0.3);
+    border-radius: 10px;
+    animation: pulse-warning 2s ease-in-out;
+  }
+
+  @keyframes pulse-warning {
+    0%, 100% { border-color: rgba(251, 191, 36, 0.3); }
+    50% { border-color: rgba(251, 191, 36, 0.6); }
+  }
+
+  .copy-warning svg {
+    width: 20px;
+    height: 20px;
+    color: #fbbf24;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .copy-warning strong {
+    display: block;
+    color: #fbbf24;
+    font-size: 0.8125rem;
+    margin-bottom: 2px;
+  }
+
+  .copy-warning p {
+    font-size: 0.75rem;
+    color: #a1a1aa;
+    margin: 0;
+    line-height: 1.4;
   }
 
   .chat-input {
