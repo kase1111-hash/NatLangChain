@@ -22,6 +22,134 @@ ACCEPTABLE_DECISIONS = {VALIDATION_VALID}
 # Default deduplication window in seconds (1 hour)
 DEFAULT_DEDUP_WINDOW_SECONDS = 3600
 
+# Rate limiting defaults
+DEFAULT_RATE_LIMIT_WINDOW_SECONDS = 60  # 1 minute window
+DEFAULT_MAX_ENTRIES_PER_AUTHOR = 10  # Max entries per author per window
+DEFAULT_MAX_GLOBAL_ENTRIES = 100  # Max total entries per window
+
+
+class RateLimiter:
+    """
+    Rate limiter to prevent Sybil/flooding attacks.
+    Tracks entry submissions per author and globally.
+    """
+
+    def __init__(
+        self,
+        window_seconds: int = DEFAULT_RATE_LIMIT_WINDOW_SECONDS,
+        max_per_author: int = DEFAULT_MAX_ENTRIES_PER_AUTHOR,
+        max_global: int = DEFAULT_MAX_GLOBAL_ENTRIES
+    ):
+        """
+        Initialize rate limiter.
+
+        Args:
+            window_seconds: Time window for rate limiting (default 60s)
+            max_per_author: Max entries per author within window (default 10)
+            max_global: Max total entries within window (default 100)
+        """
+        self.window_seconds = window_seconds
+        self.max_per_author = max_per_author
+        self.max_global = max_global
+
+        # Track submissions: {author: [timestamps]}
+        self._author_submissions: Dict[str, List[float]] = {}
+        # Track global submissions: [timestamps]
+        self._global_submissions: List[float] = []
+
+    def check_rate_limit(self, author: str) -> Dict[str, Any]:
+        """
+        Check if an author can submit a new entry.
+
+        Args:
+            author: The author attempting to submit
+
+        Returns:
+            Dict with allowed flag and details
+        """
+        current_time = time.time()
+        self._cleanup_old_entries(current_time)
+
+        # Check global limit
+        if len(self._global_submissions) >= self.max_global:
+            return {
+                "allowed": False,
+                "reason": "global_limit",
+                "message": f"Global rate limit exceeded ({self.max_global} entries per {self.window_seconds}s)",
+                "current_count": len(self._global_submissions),
+                "limit": self.max_global,
+                "retry_after": self._get_retry_after(self._global_submissions, current_time)
+            }
+
+        # Check per-author limit
+        author_subs = self._author_submissions.get(author, [])
+        if len(author_subs) >= self.max_per_author:
+            return {
+                "allowed": False,
+                "reason": "author_limit",
+                "message": f"Author rate limit exceeded ({self.max_per_author} entries per {self.window_seconds}s)",
+                "author": author,
+                "current_count": len(author_subs),
+                "limit": self.max_per_author,
+                "retry_after": self._get_retry_after(author_subs, current_time)
+            }
+
+        return {"allowed": True}
+
+    def record_submission(self, author: str):
+        """Record a successful submission."""
+        current_time = time.time()
+
+        # Record for author
+        if author not in self._author_submissions:
+            self._author_submissions[author] = []
+        self._author_submissions[author].append(current_time)
+
+        # Record globally
+        self._global_submissions.append(current_time)
+
+    def _cleanup_old_entries(self, current_time: float):
+        """Remove entries outside the rate limit window."""
+        cutoff = current_time - self.window_seconds
+
+        # Clean author submissions
+        for author in list(self._author_submissions.keys()):
+            self._author_submissions[author] = [
+                ts for ts in self._author_submissions[author]
+                if ts > cutoff
+            ]
+            # Remove empty author entries
+            if not self._author_submissions[author]:
+                del self._author_submissions[author]
+
+        # Clean global submissions
+        self._global_submissions = [
+            ts for ts in self._global_submissions
+            if ts > cutoff
+        ]
+
+    def _get_retry_after(self, timestamps: List[float], current_time: float) -> float:
+        """Calculate seconds until oldest entry expires from window."""
+        if not timestamps:
+            return 0
+        oldest = min(timestamps)
+        retry_after = (oldest + self.window_seconds) - current_time
+        return max(0, retry_after)
+
+    def get_stats(self) -> Dict[str, Any]:
+        """Get current rate limiter statistics."""
+        self._cleanup_old_entries(time.time())
+        return {
+            "global_count": len(self._global_submissions),
+            "global_limit": self.max_global,
+            "author_counts": {
+                author: len(subs)
+                for author, subs in self._author_submissions.items()
+            },
+            "author_limit": self.max_per_author,
+            "window_seconds": self.window_seconds
+        }
+
 
 def compute_entry_fingerprint(content: str, author: str, intent: str) -> str:
     """
@@ -306,7 +434,11 @@ class NatLangChain:
         validator: Optional[Any] = None,
         allow_needs_clarification: bool = False,
         enable_deduplication: bool = True,
-        dedup_window_seconds: int = DEFAULT_DEDUP_WINDOW_SECONDS
+        dedup_window_seconds: int = DEFAULT_DEDUP_WINDOW_SECONDS,
+        enable_rate_limiting: bool = True,
+        rate_limit_window: int = DEFAULT_RATE_LIMIT_WINDOW_SECONDS,
+        max_entries_per_author: int = DEFAULT_MAX_ENTRIES_PER_AUTHOR,
+        max_global_entries: int = DEFAULT_MAX_GLOBAL_ENTRIES
     ):
         """
         Initialize the blockchain with genesis block.
@@ -322,6 +454,11 @@ class NatLangChain:
                                  Default is True to prevent replay attacks.
             dedup_window_seconds: Time window for deduplication in seconds.
                                  Default is 3600 (1 hour). Set to 0 for permanent dedup.
+            enable_rate_limiting: If True, enforce rate limits on entry submissions.
+                                 Default is True to prevent Sybil/flooding attacks.
+            rate_limit_window: Time window for rate limiting in seconds (default 60).
+            max_entries_per_author: Max entries per author within window (default 10).
+            max_global_entries: Max total entries within window (default 100).
         """
         self.chain: List[Block] = []
         self.pending_entries: List[NaturalLanguageEntry] = []
@@ -330,6 +467,7 @@ class NatLangChain:
         self.allow_needs_clarification = allow_needs_clarification
         self.enable_deduplication = enable_deduplication
         self.dedup_window_seconds = dedup_window_seconds
+        self.enable_rate_limiting = enable_rate_limiting
 
         # Track acceptable decisions based on settings
         self._acceptable_decisions = {VALIDATION_VALID}
@@ -338,6 +476,13 @@ class NatLangChain:
 
         # Entry fingerprint registry for deduplication: {fingerprint: timestamp}
         self._entry_fingerprints: Dict[str, float] = {}
+
+        # Rate limiter for anti-flooding
+        self._rate_limiter = RateLimiter(
+            window_seconds=rate_limit_window,
+            max_per_author=max_entries_per_author,
+            max_global=max_global_entries
+        ) if enable_rate_limiting else None
 
         self.create_genesis_block()
 
@@ -380,6 +525,9 @@ class NatLangChain:
         If enable_deduplication is True (default), duplicate entries within the
         dedup window will be rejected. This prevents replay attacks.
 
+        If enable_rate_limiting is True (default), rate limits are enforced per
+        author and globally to prevent Sybil/flooding attacks.
+
         Args:
             entry: The natural language entry to add
             skip_validation: If True, bypass validation (requires require_validation=False
@@ -388,6 +536,19 @@ class NatLangChain:
         Returns:
             Dict with entry information and validation result
         """
+        # Check rate limits (anti-flooding protection)
+        if self._rate_limiter is not None:
+            rate_check = self._rate_limiter.check_rate_limit(entry.author)
+            if not rate_check["allowed"]:
+                return {
+                    "status": "rejected",
+                    "message": rate_check["message"],
+                    "reason": "rate_limit",
+                    "rate_limit_type": rate_check["reason"],
+                    "retry_after": rate_check.get("retry_after", 0),
+                    "entry": entry.to_dict()
+                }
+
         # Check for duplicate entries (replay attack prevention)
         if self.enable_deduplication:
             duplicate_check = self._check_duplicate(entry)
@@ -435,6 +596,10 @@ class NatLangChain:
             fingerprint = compute_entry_fingerprint(entry.content, entry.author, entry.intent)
             self._entry_fingerprints[fingerprint] = time.time()
             self._cleanup_expired_fingerprints()
+
+        # Record submission for rate limiting
+        if self._rate_limiter is not None:
+            self._rate_limiter.record_submission(entry.author)
 
         self.pending_entries.append(entry)
         return {
@@ -690,7 +855,11 @@ class NatLangChain:
         require_validation: bool = False,
         validator: Optional[Any] = None,
         enable_deduplication: bool = True,
-        dedup_window_seconds: int = DEFAULT_DEDUP_WINDOW_SECONDS
+        dedup_window_seconds: int = DEFAULT_DEDUP_WINDOW_SECONDS,
+        enable_rate_limiting: bool = True,
+        rate_limit_window: int = DEFAULT_RATE_LIMIT_WINDOW_SECONDS,
+        max_entries_per_author: int = DEFAULT_MAX_ENTRIES_PER_AUTHOR,
+        max_global_entries: int = DEFAULT_MAX_GLOBAL_ENTRIES
     ) -> 'NatLangChain':
         """
         Import chain from dictionary.
@@ -702,6 +871,10 @@ class NatLangChain:
             validator: Optional validator instance
             enable_deduplication: Whether to enable deduplication for new entries.
             dedup_window_seconds: Time window for deduplication.
+            enable_rate_limiting: Whether to enable rate limiting for new entries.
+            rate_limit_window: Time window for rate limiting in seconds.
+            max_entries_per_author: Max entries per author within window.
+            max_global_entries: Max total entries within window.
         """
         chain = cls.__new__(cls)
         chain.chain = [Block.from_dict(b) for b in data["chain"]]
@@ -716,4 +889,10 @@ class NatLangChain:
         chain.enable_deduplication = enable_deduplication
         chain.dedup_window_seconds = dedup_window_seconds
         chain._entry_fingerprints = {}
+        chain.enable_rate_limiting = enable_rate_limiting
+        chain._rate_limiter = RateLimiter(
+            window_seconds=rate_limit_window,
+            max_per_author=max_entries_per_author,
+            max_global=max_global_entries
+        ) if enable_rate_limiting else None
         return chain

@@ -11,8 +11,8 @@ from blockchain import NatLangChain, NaturalLanguageEntry, Block
 
 def test_genesis_block():
     """Test that genesis block is created correctly."""
-    # Use require_validation=False and enable_deduplication=False for unit tests
-    chain = NatLangChain(require_validation=False, enable_deduplication=False)
+    # Use require_validation=False, enable_deduplication=False, and enable_rate_limiting=False for unit tests
+    chain = NatLangChain(require_validation=False, enable_deduplication=False, enable_rate_limiting=False)
     assert len(chain.chain) == 1
     assert chain.chain[0].index == 0
     assert chain.chain[0].previous_hash == "0"
@@ -21,7 +21,7 @@ def test_genesis_block():
 
 def test_add_entry():
     """Test adding a natural language entry."""
-    chain = NatLangChain(require_validation=False, enable_deduplication=False)
+    chain = NatLangChain(require_validation=False, enable_deduplication=False, enable_rate_limiting=False)
 
     entry = NaturalLanguageEntry(
         content="Alice transfers ownership of the vintage 1967 Mustang to Bob for $25,000.",
@@ -38,7 +38,7 @@ def test_add_entry():
 
 def test_mine_block():
     """Test mining a block with pending entries."""
-    chain = NatLangChain(require_validation=False, enable_deduplication=False)
+    chain = NatLangChain(require_validation=False, enable_deduplication=False, enable_rate_limiting=False)
 
     entry1 = NaturalLanguageEntry(
         content="The quarterly review meeting concluded with approval of three new initiatives.",
@@ -68,7 +68,7 @@ def test_mine_block():
 
 def test_chain_validation():
     """Test blockchain integrity validation."""
-    chain = NatLangChain(require_validation=False, enable_deduplication=False)
+    chain = NatLangChain(require_validation=False, enable_deduplication=False, enable_rate_limiting=False)
 
     entry = NaturalLanguageEntry(
         content="Test entry for validation.",
@@ -85,7 +85,7 @@ def test_chain_validation():
 
 def test_get_entries_by_author():
     """Test retrieving entries by author."""
-    chain = NatLangChain(require_validation=False, enable_deduplication=False)
+    chain = NatLangChain(require_validation=False, enable_deduplication=False, enable_rate_limiting=False)
 
     entry1 = NaturalLanguageEntry(
         content="Alice's first entry.",
@@ -121,7 +121,7 @@ def test_get_entries_by_author():
 
 def test_narrative_generation():
     """Test full narrative generation."""
-    chain = NatLangChain(require_validation=False, enable_deduplication=False)
+    chain = NatLangChain(require_validation=False, enable_deduplication=False, enable_rate_limiting=False)
 
     entry = NaturalLanguageEntry(
         content="This is a test entry for narrative generation.",
@@ -142,7 +142,7 @@ def test_narrative_generation():
 
 def test_serialization():
     """Test blockchain serialization and deserialization."""
-    chain = NatLangChain(require_validation=False, enable_deduplication=False)
+    chain = NatLangChain(require_validation=False, enable_deduplication=False, enable_rate_limiting=False)
 
     entry = NaturalLanguageEntry(
         content="Serialization test entry.",

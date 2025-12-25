@@ -25,7 +25,15 @@ class BadActorSimulator:
     Tests the system's resilience against attacks.
     """
 
-    def __init__(self, use_validation: bool = False, use_deduplication: bool = False):
+    def __init__(
+        self,
+        use_validation: bool = False,
+        use_deduplication: bool = False,
+        use_rate_limiting: bool = False,
+        rate_limit_window: int = 60,
+        max_entries_per_author: int = 10,
+        max_global_entries: int = 100
+    ):
         """
         Initialize simulator.
 
@@ -34,37 +42,38 @@ class BadActorSimulator:
                           If False, test unprotected chain (shows vulnerabilities).
             use_deduplication: If True, enable entry deduplication.
                              If False, disable deduplication for baseline testing.
+            use_rate_limiting: If True, enable rate limiting to prevent flooding.
+                             If False, disable rate limiting for baseline testing.
+            rate_limit_window: Time window for rate limiting in seconds.
+            max_entries_per_author: Max entries per author within window.
+            max_global_entries: Max total entries within window.
         """
         self.use_validation = use_validation
         self.use_deduplication = use_deduplication
-        if use_validation:
-            self.chain = NatLangChain(
-                require_validation=True,
-                validator=MockValidator(),
-                enable_deduplication=use_deduplication
-            )
-        else:
-            self.chain = NatLangChain(
-                require_validation=False,
-                enable_deduplication=use_deduplication
-            )
+        self.use_rate_limiting = use_rate_limiting
+        self.rate_limit_window = rate_limit_window
+        self.max_entries_per_author = max_entries_per_author
+        self.max_global_entries = max_global_entries
+        self._init_chain()
         self.attack_results: List[Dict[str, Any]] = []
         self.successful_attacks = 0
         self.blocked_attacks = 0
 
+    def _init_chain(self):
+        """Initialize the blockchain with current settings."""
+        self.chain = NatLangChain(
+            require_validation=self.use_validation,
+            validator=MockValidator() if self.use_validation else None,
+            enable_deduplication=self.use_deduplication,
+            enable_rate_limiting=self.use_rate_limiting,
+            rate_limit_window=self.rate_limit_window,
+            max_entries_per_author=self.max_entries_per_author,
+            max_global_entries=self.max_global_entries
+        )
+
     def reset_chain(self):
         """Reset the blockchain for a fresh test."""
-        if self.use_validation:
-            self.chain = NatLangChain(
-                require_validation=True,
-                validator=MockValidator(),
-                enable_deduplication=self.use_deduplication
-            )
-        else:
-            self.chain = NatLangChain(
-                require_validation=False,
-                enable_deduplication=self.use_deduplication
-            )
+        self._init_chain()
 
     def log_attack(self, attack_name: str, success: bool, details: str,
                    severity: str = "HIGH", recommendation: str = ""):
@@ -588,7 +597,7 @@ def test_replay_attack(use_validation: bool = False, use_deduplication: bool = F
 # ATTACK TYPE 7: SYBIL ATTACK (ENTRY FLOODING)
 # =============================================================================
 
-def test_sybil_flooding(use_validation: bool = False):
+def test_sybil_flooding(use_validation: bool = False, use_rate_limiting: bool = False):
     """
     Test: Bad actor creates many entries to flood the pending queue
     or dilute legitimate entries.
@@ -597,7 +606,15 @@ def test_sybil_flooding(use_validation: bool = False):
     print("ATTACK 7: SYBIL FLOODING ATTACK")
     print("="*60)
 
-    sim = BadActorSimulator(use_validation=use_validation)
+    # For rate limiting test, use tight limits to demonstrate protection
+    # 5 entries per author in 60s, 20 total entries
+    sim = BadActorSimulator(
+        use_validation=use_validation,
+        use_rate_limiting=use_rate_limiting,
+        rate_limit_window=60,
+        max_entries_per_author=5,
+        max_global_entries=20
+    )
 
     # Submit one legitimate entry
     legitimate = NaturalLanguageEntry(
@@ -605,10 +622,13 @@ def test_sybil_flooding(use_validation: bool = False):
         author="safety_officer",
         intent="Safety announcement"
     )
-    sim.chain.add_entry(legitimate)
+    result = sim.chain.add_entry(legitimate)
+    legit_accepted = result["status"] == "pending"
 
     # Attacker floods with spam entries
     sybil_count = 100
+    spam_accepted = 0
+    rate_limited = 0
     flood_start = time.time()
     for i in range(sybil_count):
         spam_entry = NaturalLanguageEntry(
@@ -616,30 +636,58 @@ def test_sybil_flooding(use_validation: bool = False):
             author=f"sybil_node_{i % 10}",  # 10 fake identities
             intent="Spam"
         )
-        sim.chain.add_entry(spam_entry)
+        result = sim.chain.add_entry(spam_entry)
+        if result["status"] == "pending":
+            spam_accepted += 1
+        elif result.get("reason") == "rate_limit":
+            rate_limited += 1
     flood_end = time.time()
 
-    print(f"  Flooded {sybil_count} entries in {flood_end - flood_start:.3f}s")
+    print(f"  Attempted {sybil_count} entries in {flood_end - flood_start:.3f}s")
+    print(f"  Spam entries accepted: {spam_accepted}")
+    print(f"  Entries rate limited: {rate_limited}")
     print(f"  Pending queue size: {len(sim.chain.pending_entries)}")
-    print(f"  Legitimate to spam ratio: 1:{sybil_count}")
 
-    attack_success = len(sim.chain.pending_entries) == sybil_count + 1
+    # Attack succeeds if all spam entries were accepted
+    attack_success = spam_accepted == sybil_count
 
-    sim.log_attack(
-        attack_name="Sybil Flooding",
-        success=attack_success,
-        details=f"Accepted {sybil_count} spam entries, diluting legitimate content",
-        severity="HIGH",
-        recommendation="Implement rate limiting, stake requirements, or reputation-weighted acceptance"
-    )
+    if use_rate_limiting:
+        # With rate limiting, the attack should be blocked
+        blocked_pct = (rate_limited / sybil_count) * 100 if sybil_count > 0 else 0
+        print(f"  Rate limiting blocked: {blocked_pct:.1f}% of spam")
+
+        sim.log_attack(
+            attack_name="Sybil Flooding",
+            success=attack_success,
+            details=f"Rate limiting blocked {rate_limited}/{sybil_count} spam entries ({blocked_pct:.1f}%)",
+            severity="HIGH",
+            recommendation="N/A - Rate limiting is working" if rate_limited > 0 else "Rate limits may be too permissive"
+        )
+    else:
+        sim.log_attack(
+            attack_name="Sybil Flooding",
+            success=attack_success,
+            details=f"Accepted {spam_accepted} spam entries, diluting legitimate content",
+            severity="HIGH",
+            recommendation="Implement rate limiting, stake requirements, or reputation-weighted acceptance"
+        )
 
     # Mine and check the result
     mined = sim.chain.mine_pending_entries(difficulty=1)
     if mined:
-        print(f"\n  WARNING: All {len(mined.entries)} entries (including spam) mined into block #{mined.index}")
-        print("  FINDING: No rate limiting or anti-spam mechanism at entry level")
+        if use_rate_limiting and rate_limited > 0:
+            print(f"\n  PROTECTED: Only {len(mined.entries)} entries mined (rate limiting blocked {rate_limited})")
+            print("  FINDING: Rate limiting successfully prevented flooding attack")
+        else:
+            print(f"\n  WARNING: All {len(mined.entries)} entries (including spam) mined into block #{mined.index}")
+            print("  FINDING: No rate limiting or anti-spam mechanism at entry level")
 
-    return sim, [{"spam_accepted": sybil_count, "attack_success": attack_success}]
+    return sim, [{
+        "spam_attempted": sybil_count,
+        "spam_accepted": spam_accepted,
+        "rate_limited": rate_limited,
+        "attack_success": attack_success
+    }]
 
 
 # =============================================================================
@@ -775,32 +823,37 @@ def test_metadata_injection(use_validation: bool = False):
 # SIMULATION RUNNER
 # =============================================================================
 
-def run_single_simulation(use_validation: bool = False, use_deduplication: bool = False):
+def run_single_simulation(
+    use_validation: bool = False,
+    use_deduplication: bool = False,
+    use_rate_limiting: bool = False
+):
     """Run all bad actor simulations for a single mode (protected or unprotected)."""
     all_results = {}
     total_exploitable = 0
     total_blocked = 0
 
     # Run all attack simulations
-    # Note: Replay Attack test has special handling for deduplication
+    # Note: Special handling for tests that need extra parameters
+    # Format: (name, func, extra_params)
     simulations = [
-        ("Ambiguity Exploitation", test_ambiguity_exploitation, False),  # (name, func, needs_dedup_param)
-        ("Intent Mismatch", test_intent_mismatch, False),
-        ("Chain Tampering", test_chain_tampering, False),
-        ("Double-Spending Analog", test_double_spending_analog, False),
-        ("Adversarial Phrasing", test_adversarial_phrasing, False),
-        ("Replay Attack", test_replay_attack, True),  # Replay needs dedup param
-        ("Sybil Flooding", test_sybil_flooding, False),
-        ("Timestamp Manipulation", test_timestamp_manipulation, False),
-        ("Metadata Injection", test_metadata_injection, False),
+        ("Ambiguity Exploitation", test_ambiguity_exploitation, {}),
+        ("Intent Mismatch", test_intent_mismatch, {}),
+        ("Chain Tampering", test_chain_tampering, {}),
+        ("Double-Spending Analog", test_double_spending_analog, {}),
+        ("Adversarial Phrasing", test_adversarial_phrasing, {}),
+        ("Replay Attack", test_replay_attack, {"use_deduplication": use_deduplication}),
+        ("Sybil Flooding", test_sybil_flooding, {"use_rate_limiting": use_rate_limiting}),
+        ("Timestamp Manipulation", test_timestamp_manipulation, {}),
+        ("Metadata Injection", test_metadata_injection, {}),
     ]
 
-    for name, test_func, needs_dedup in simulations:
+    for name, test_func, extra_params in simulations:
         try:
-            if needs_dedup:
-                sim, results = test_func(use_validation=use_validation, use_deduplication=use_deduplication)
-            else:
-                sim, results = test_func(use_validation=use_validation)
+            # Build kwargs: always include use_validation, plus any extra params
+            kwargs = {"use_validation": use_validation}
+            kwargs.update(extra_params)
+            sim, results = test_func(**kwargs)
             all_results[name] = {
                 "results": results,
                 "successful_attacks": sim.successful_attacks,
@@ -830,13 +883,14 @@ def run_bad_actor_simulation():
     # ==========================================================================
     print("\n" + "#"*70)
     print("# PHASE 1: UNPROTECTED MODE")
-    print("# (require_validation=False, enable_deduplication=False)")
+    print("# (require_validation=False, enable_deduplication=False, enable_rate_limiting=False)")
     print("# This demonstrates vulnerabilities when protections are disabled")
     print("#"*70)
 
     unprotected_results, unprotected_exploitable, unprotected_blocked = run_single_simulation(
         use_validation=False,
-        use_deduplication=False
+        use_deduplication=False,
+        use_rate_limiting=False
     )
 
     # ==========================================================================
@@ -844,13 +898,14 @@ def run_bad_actor_simulation():
     # ==========================================================================
     print("\n" + "#"*70)
     print("# PHASE 2: PROTECTED MODE")
-    print("# (require_validation=True, enable_deduplication=True)")
-    print("# This demonstrates how PoU validation + deduplication block attacks")
+    print("# (require_validation=True, enable_deduplication=True, enable_rate_limiting=True)")
+    print("# This demonstrates how PoU validation + deduplication + rate limiting block attacks")
     print("#"*70)
 
     protected_results, protected_exploitable, protected_blocked = run_single_simulation(
         use_validation=True,
-        use_deduplication=True
+        use_deduplication=True,
+        use_rate_limiting=True
     )
 
     # Generate Summary Report
@@ -939,29 +994,39 @@ def run_bad_actor_simulation():
     print(f"  Status: {'SECURE' if op_vulnerable == 0 else 'NEEDS ADDITIONAL HARDENING'}")
     print(f"  Note: Operational attacks (replay, flooding, timestamps) need separate fixes")
 
+    # Check rate limiting results
+    rate_limited_in_protected = 0
+    if "Sybil Flooding" in protected_results and "results" in protected_results["Sybil Flooding"]:
+        for r in protected_results["Sybil Flooding"]["results"]:
+            rate_limited_in_protected = r.get("rate_limited", 0)
+
     print("\n" + "="*70)
     print("CONCLUSION")
     print("="*70)
     print(f"""
-  The NatLangChain blockchain with mandatory PoU validation shows:
+  The NatLangChain blockchain with full protections enabled shows:
 
-  BEFORE FIX (require_validation=False):
+  BEFORE FIX (all protections disabled):
   - Semantic attacks: {sem_vulnerable}/{len(semantic_findings)} exploitable
   - Bad actors could submit ambiguous, mismatched, or adversarial entries
+  - Replay attacks: possible (no deduplication)
+  - Flooding attacks: possible (no rate limiting)
 
-  AFTER FIX (require_validation=True):
+  AFTER FIX (all protections enabled):
   - Semantic attacks: {protected_sem_total - protected_sem_blocked}/{protected_sem_total} exploitable
   - PoU validation blocks most semantic layer attacks
+  - Replay attacks: BLOCKED by entry deduplication
+  - Flooding attacks: BLOCKED by rate limiting ({rate_limited_in_protected} entries blocked)
 
   REMAINING WORK:
-  - Replay attack prevention (entry deduplication)
-  - Rate limiting / anti-flooding
   - Timestamp validation
   - Metadata sanitization
+  - Double-spending prevention (requires asset tracking layer)
 
-  The fix implemented (require_validation=True by default) significantly
-  improves the security posture by enforcing semantic validation before
-  entries can be added to the pending queue.
+  The security improvements implemented include:
+  1. require_validation=True - Enforces PoU semantic validation
+  2. enable_deduplication=True - Prevents replay attacks
+  3. enable_rate_limiting=True - Prevents Sybil/flooding attacks
 """)
 
     return {
