@@ -7,9 +7,11 @@
   import ContractViewer from './components/ContractViewer.svelte';
   import SearchPanel from './components/SearchPanel.svelte';
   import Dashboard from './components/Dashboard.svelte';
+  import ChatHelper from './components/ChatHelper.svelte';
 
   let currentView = 'dashboard';
   let mounted = false;
+  let chatOpen = false;
 
   onMount(() => {
     mounted = true;
@@ -17,6 +19,10 @@
 
   function handleNavigate(event) {
     currentView = event.detail.view;
+  }
+
+  function toggleChat() {
+    chatOpen = !chatOpen;
   }
 </script>
 
@@ -90,6 +96,13 @@
       </footer>
     {/if}
   </main>
+
+  <!-- AI Chat Helper -->
+  <ChatHelper
+    {currentView}
+    isOpen={chatOpen}
+    on:toggle={toggleChat}
+  />
 </div>
 
 <style>

@@ -175,3 +175,47 @@ export async function verifyEvent(condition, intent, event, eventData = {}) {
 export async function getStats() {
   return fetchAPI('/stats');
 }
+
+// ============================================================
+// Chat Helper Operations (Ollama LLM Assistant)
+// ============================================================
+
+export async function getChatStatus() {
+  return fetchAPI('/chat/status');
+}
+
+export async function sendChatMessage(message, context = {}) {
+  return fetchAPI('/chat/message', {
+    method: 'POST',
+    body: JSON.stringify({ message, context }),
+  });
+}
+
+export async function getChatSuggestions(content, intent, contractType = '') {
+  return fetchAPI('/chat/suggestions', {
+    method: 'POST',
+    body: JSON.stringify({ content, intent, contract_type: contractType }),
+  });
+}
+
+export async function getChatQuestions(contractType = '') {
+  const params = contractType ? `?contract_type=${contractType}` : '';
+  return fetchAPI(`/chat/questions${params}`);
+}
+
+export async function explainConcept(concept) {
+  return fetchAPI('/chat/explain', {
+    method: 'POST',
+    body: JSON.stringify({ concept }),
+  });
+}
+
+export async function getChatHistory() {
+  return fetchAPI('/chat/history');
+}
+
+export async function clearChatHistory() {
+  return fetchAPI('/chat/clear', {
+    method: 'POST',
+  });
+}
