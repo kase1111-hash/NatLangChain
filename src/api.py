@@ -6314,10 +6314,10 @@ def chat_status():
         helper = get_chat_helper()
         status = helper.check_ollama_status()
         return jsonify(status)
-    except Exception as e:
+    except Exception:
         return jsonify({
             "available": False,
-            "error": str(e)
+            "error": "Failed to check chat status"
         })
 
 
@@ -6353,10 +6353,10 @@ def chat_message():
         helper = get_chat_helper()
         result = helper.chat(message, context)
         return jsonify(result)
-    except Exception as e:
+    except Exception:
         return jsonify({
             "success": False,
-            "error": str(e)
+            "error": "An error occurred processing your request"
         }), 500
 
 
@@ -6394,10 +6394,10 @@ def chat_suggestions():
         helper = get_chat_helper()
         result = helper.get_suggestions(content, intent, contract_type)
         return jsonify(result)
-    except Exception as e:
+    except Exception:
         return jsonify({
             "success": False,
-            "error": str(e)
+            "error": "Failed to get suggestions"
         }), 500
 
 
@@ -6427,10 +6427,10 @@ def chat_starter_questions():
         helper = get_chat_helper()
         questions = helper.get_starter_questions(contract_type)
         return jsonify({"questions": questions})
-    except Exception as e:
+    except Exception:
         return jsonify({
             "questions": [],
-            "error": str(e)
+            "error": "Failed to get questions"
         })
 
 
@@ -6463,10 +6463,10 @@ def chat_explain():
         helper = get_chat_helper()
         result = helper.explain_concept(concept)
         return jsonify(result)
-    except Exception as e:
+    except Exception:
         return jsonify({
             "success": False,
-            "error": str(e)
+            "error": "Failed to explain concept"
         }), 500
 
 
@@ -6485,10 +6485,10 @@ def chat_history():
         helper = get_chat_helper()
         history = helper.get_history()
         return jsonify({"history": history})
-    except Exception as e:
+    except Exception:
         return jsonify({
             "history": [],
-            "error": str(e)
+            "error": "Failed to get history"
         })
 
 
@@ -6507,10 +6507,10 @@ def chat_clear():
         helper = get_chat_helper()
         helper.clear_history()
         return jsonify({"success": True, "message": "Conversation cleared"})
-    except Exception as e:
+    except Exception:
         return jsonify({
             "success": False,
-            "error": str(e)
+            "error": "Failed to clear history"
         }), 500
 
 

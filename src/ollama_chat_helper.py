@@ -43,6 +43,11 @@ class OllamaChatHelper:
     # Default model - mistral is good for conversation, llama2 is also available
     DEFAULT_MODEL = "mistral"
 
+    # Security limits
+    MAX_MESSAGE_LENGTH = 4000  # Max characters per message
+    MAX_HISTORY_SIZE = 50      # Max messages kept in memory
+    MAX_CONTEXT_LENGTH = 1000  # Max characters in context fields
+
     # System prompt that guides the helper's behavior
     SYSTEM_PROMPT = """You are a friendly and helpful contract writing assistant for NatLangChain, a natural language blockchain platform. Your role is to GUIDE users in creating clear, well-structured contracts - NOT to write contracts for them.
 
@@ -116,13 +121,26 @@ If the user shares draft content, point out what's good and what needs clarifica
         Args:
             context: Dictionary with context information
         """
+        # Helper to safely get and truncate string values
+        def safe_str(key: str, default: str = "", max_len: int = self.MAX_CONTEXT_LENGTH) -> str:
+            val = context.get(key, default)
+            if not isinstance(val, str):
+                return default
+            return val[:max_len] if len(val) > max_len else val
+
+        # Validate selected_entries is a list of strings (max 10 entries)
+        entries = context.get("selected_entries", [])
+        if not isinstance(entries, list):
+            entries = []
+        entries = [str(e)[:100] for e in entries[:10] if e]
+
         self.context = ConversationContext(
-            current_view=context.get("current_view", "dashboard"),
-            selected_entries=context.get("selected_entries", []),
-            draft_content=context.get("draft_content", ""),
-            draft_intent=context.get("draft_intent", ""),
-            is_contract=context.get("is_contract", False),
-            contract_type=context.get("contract_type", "")
+            current_view=safe_str("current_view", "dashboard", 50),
+            selected_entries=entries,
+            draft_content=safe_str("draft_content"),
+            draft_intent=safe_str("draft_intent"),
+            is_contract=bool(context.get("is_contract", False)),
+            contract_type=safe_str("contract_type", "", 50)
         )
 
     def clear_history(self) -> None:
@@ -216,11 +234,27 @@ If the user shares draft content, point out what's good and what needs clarifica
         Returns:
             Dictionary with 'success', 'response', and optional 'error'
         """
+        # Input validation
+        if not user_message or not isinstance(user_message, str):
+            return {
+                "success": False,
+                "response": None,
+                "error": "Message is required"
+            }
+
+        # Truncate overly long messages
+        if len(user_message) > self.MAX_MESSAGE_LENGTH:
+            user_message = user_message[:self.MAX_MESSAGE_LENGTH]
+
         if context:
             self.set_context(context)
 
         # Add user message to history
         self.conversation_history.append(ChatMessage(role="user", content=user_message))
+
+        # Prune history if too large (keep most recent messages)
+        if len(self.conversation_history) > self.MAX_HISTORY_SIZE:
+            self.conversation_history = self.conversation_history[-self.MAX_HISTORY_SIZE:]
 
         try:
             # Build messages for Ollama
