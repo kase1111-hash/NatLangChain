@@ -37,7 +37,8 @@ class BadActorSimulator:
         max_timestamp_drift: int = 300,
         max_future_drift: int = 60,
         use_metadata_sanitization: bool = False,
-        metadata_sanitize_mode: str = "strip"
+        metadata_sanitize_mode: str = "strip",
+        use_asset_tracking: bool = False
     ):
         """
         Initialize simulator.
@@ -59,6 +60,8 @@ class BadActorSimulator:
             use_metadata_sanitization: If True, sanitize entry metadata.
                                       If False, allow any metadata (shows vulnerability).
             metadata_sanitize_mode: "strip", "reject", or "warn" mode.
+            use_asset_tracking: If True, enable asset tracking to prevent double-spending.
+                              If False, disable asset tracking (shows vulnerability).
         """
         self.use_validation = use_validation
         self.use_deduplication = use_deduplication
@@ -71,6 +74,7 @@ class BadActorSimulator:
         self.max_future_drift = max_future_drift
         self.use_metadata_sanitization = use_metadata_sanitization
         self.metadata_sanitize_mode = metadata_sanitize_mode
+        self.use_asset_tracking = use_asset_tracking
         self._init_chain()
         self.attack_results: List[Dict[str, Any]] = []
         self.successful_attacks = 0
@@ -90,7 +94,8 @@ class BadActorSimulator:
             max_timestamp_drift=self.max_timestamp_drift,
             max_future_drift=self.max_future_drift,
             enable_metadata_sanitization=self.use_metadata_sanitization,
-            metadata_sanitize_mode=self.metadata_sanitize_mode
+            metadata_sanitize_mode=self.metadata_sanitize_mode,
+            enable_asset_tracking=self.use_asset_tracking
         )
 
     def reset_chain(self):
@@ -415,7 +420,7 @@ def test_chain_tampering(use_validation: bool = False):
 # ATTACK TYPE 4: DOUBLE-SPENDING ANALOG
 # =============================================================================
 
-def test_double_spending_analog(use_validation: bool = False):
+def test_double_spending_analog(use_validation: bool = False, use_asset_tracking: bool = False):
     """
     Test: Bad actor attempts to submit contradictory entries.
     In NatLangChain this is like claiming to transfer same asset twice.
@@ -424,7 +429,7 @@ def test_double_spending_analog(use_validation: bool = False):
     print("ATTACK 4: DOUBLE-SPENDING ANALOG")
     print("="*60)
 
-    sim = BadActorSimulator(use_validation=use_validation)
+    sim = BadActorSimulator(use_validation=use_validation, use_asset_tracking=use_asset_tracking)
 
     # Submit contradictory entries
     entry1 = NaturalLanguageEntry(
@@ -444,26 +449,50 @@ def test_double_spending_analog(use_validation: bool = False):
     result1 = sim.chain.add_entry(entry1)
     result2 = sim.chain.add_entry(entry2)
 
-    both_accepted = result1["status"] == "pending" and result2["status"] == "pending"
+    first_accepted = result1["status"] == "pending"
+    second_accepted = result2["status"] == "pending"
+    both_accepted = first_accepted and second_accepted
+    second_blocked_as_double_transfer = result2.get("reason") == "double_transfer"
 
-    print(f"  Entry 1 (to Bob) accepted: {result1['status'] == 'pending'}")
-    print(f"  Entry 2 (to Charlie) accepted: {result2['status'] == 'pending'}")
+    print(f"  Entry 1 (to Bob) accepted: {first_accepted}")
+    print(f"  Entry 2 (to Charlie) accepted: {second_accepted}")
 
-    sim.log_attack(
-        attack_name="Double-Spending Analog",
-        success=both_accepted,
-        details="Both contradictory asset transfers were accepted to pending queue",
-        severity="CRITICAL",
-        recommendation="Implement semantic deduplication and asset tracking layer"
-    )
+    if second_blocked_as_double_transfer:
+        print(f"  Entry 2 blocked: {result2.get('message', 'double-transfer detected')}")
+
+    if use_asset_tracking:
+        sim.log_attack(
+            attack_name="Double-Spending Analog",
+            success=both_accepted,
+            details="Second transfer blocked by asset tracking" if second_blocked_as_double_transfer else "Both transfers accepted (protection failed)",
+            severity="CRITICAL",
+            recommendation="N/A - Asset tracking is working" if second_blocked_as_double_transfer else "Check asset tracking implementation"
+        )
+    else:
+        sim.log_attack(
+            attack_name="Double-Spending Analog",
+            success=both_accepted,
+            details="Both contradictory asset transfers were accepted to pending queue",
+            severity="CRITICAL",
+            recommendation="Enable asset tracking to prevent double-spending attacks"
+        )
 
     mined = sim.chain.mine_pending_entries(difficulty=1)
-    if mined and len(mined.entries) == 2:
-        print(f"\n  WARNING: Both contradictory transfers mined into block #{mined.index}")
-        print("  FINDING: System has no asset double-transfer prevention")
-        print("  NOTE: The system relies on off-chain dispute resolution for this case")
+    if mined:
+        if use_asset_tracking and second_blocked_as_double_transfer:
+            print(f"\n  PROTECTED: Only 1 transfer mined into block #{mined.index}")
+            print("  FINDING: Asset tracking successfully prevented double-transfer attack")
+        elif len(mined.entries) == 2:
+            print(f"\n  WARNING: Both contradictory transfers mined into block #{mined.index}")
+            print("  FINDING: System has no asset double-transfer prevention")
+            print("  NOTE: The system relies on off-chain dispute resolution for this case")
 
-    return sim, [{"both_accepted": both_accepted}]
+    return sim, [{
+        "first_accepted": first_accepted,
+        "second_accepted": second_accepted,
+        "both_accepted": both_accepted,
+        "blocked_by_asset_tracking": second_blocked_as_double_transfer
+    }]
 
 
 # =============================================================================
@@ -919,7 +948,8 @@ def run_single_simulation(
     use_deduplication: bool = False,
     use_rate_limiting: bool = False,
     use_timestamp_validation: bool = False,
-    use_metadata_sanitization: bool = False
+    use_metadata_sanitization: bool = False,
+    use_asset_tracking: bool = False
 ):
     """Run all bad actor simulations for a single mode (protected or unprotected)."""
     all_results = {}
@@ -933,7 +963,7 @@ def run_single_simulation(
         ("Ambiguity Exploitation", test_ambiguity_exploitation, {}),
         ("Intent Mismatch", test_intent_mismatch, {}),
         ("Chain Tampering", test_chain_tampering, {}),
-        ("Double-Spending Analog", test_double_spending_analog, {}),
+        ("Double-Spending Analog", test_double_spending_analog, {"use_asset_tracking": use_asset_tracking}),
         ("Adversarial Phrasing", test_adversarial_phrasing, {}),
         ("Replay Attack", test_replay_attack, {"use_deduplication": use_deduplication}),
         ("Sybil Flooding", test_sybil_flooding, {"use_rate_limiting": use_rate_limiting}),
@@ -985,7 +1015,8 @@ def run_bad_actor_simulation():
         use_deduplication=False,
         use_rate_limiting=False,
         use_timestamp_validation=False,
-        use_metadata_sanitization=False
+        use_metadata_sanitization=False,
+        use_asset_tracking=False
     )
 
     # ==========================================================================
@@ -1002,7 +1033,8 @@ def run_bad_actor_simulation():
         use_deduplication=True,
         use_rate_limiting=True,
         use_timestamp_validation=True,
-        use_metadata_sanitization=True
+        use_metadata_sanitization=True,
+        use_asset_tracking=True
     )
 
     # Generate Summary Report
@@ -1111,6 +1143,14 @@ def run_bad_actor_simulation():
                 metadata_sanitized = True
                 break
 
+    # Check asset tracking results
+    double_spend_blocked = False
+    if "Double-Spending Analog" in protected_results and "results" in protected_results["Double-Spending Analog"]:
+        for r in protected_results["Double-Spending Analog"]["results"]:
+            if r.get("blocked_by_asset_tracking"):
+                double_spend_blocked = True
+                break
+
     print("\n" + "="*70)
     print("CONCLUSION")
     print("="*70)
@@ -1124,6 +1164,7 @@ def run_bad_actor_simulation():
   - Flooding attacks: possible (no rate limiting)
   - Timestamp manipulation: possible (no validation)
   - Metadata injection: possible (no sanitization)
+  - Double-spending: possible (no asset tracking)
 
   AFTER FIX (all protections enabled):
   - Semantic attacks: {protected_sem_total - protected_sem_blocked}/{protected_sem_total} exploitable
@@ -1132,9 +1173,9 @@ def run_bad_actor_simulation():
   - Flooding attacks: BLOCKED by rate limiting ({rate_limited_in_protected} entries blocked)
   - Timestamp manipulation: {'BLOCKED by timestamp validation' if timestamp_blocked else 'NOT BLOCKED'}
   - Metadata injection: {'BLOCKED by metadata sanitization' if metadata_sanitized else 'NOT BLOCKED'}
+  - Double-spending: {'BLOCKED by asset tracking' if double_spend_blocked else 'NOT BLOCKED'}
 
-  REMAINING WORK:
-  - Double-spending prevention (requires asset tracking layer)
+  ALL SECURITY LAYERS IMPLEMENTED:
 
   The security improvements implemented include:
   1. require_validation=True - Enforces PoU semantic validation
@@ -1142,6 +1183,7 @@ def run_bad_actor_simulation():
   3. enable_rate_limiting=True - Prevents Sybil/flooding attacks
   4. enable_timestamp_validation=True - Prevents backdating attacks
   5. enable_metadata_sanitization=True - Prevents metadata injection attacks
+  6. enable_asset_tracking=True - Prevents double-spending attacks
 """)
 
     return {
