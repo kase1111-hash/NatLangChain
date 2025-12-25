@@ -65,6 +65,241 @@ SANITIZE_MODE_WARN = "warn"  # Strip fields but include warning in response
 
 DEFAULT_SANITIZE_MODE = SANITIZE_MODE_STRIP
 
+# Asset tracking constants for double-spending prevention
+# Keywords that indicate asset transfer intent
+TRANSFER_INTENT_KEYWORDS = {
+    "transfer", "transfers", "transferring", "transferred",
+    "sell", "sells", "selling", "sold",
+    "give", "gives", "giving", "gave",
+    "assign", "assigns", "assigning", "assigned",
+    "convey", "conveys", "conveying", "conveyed",
+    "grant", "grants", "granting", "granted",
+}
+
+
+class AssetRegistry:
+    """
+    Registry for tracking asset ownership and preventing double-spending.
+
+    This layer ensures that:
+    1. Assets can only be transferred by their current owner
+    2. Assets cannot be transferred twice in the same pending queue
+    3. Completed transfers update ownership records
+    """
+
+    def __init__(self):
+        """Initialize the asset registry."""
+        # Asset ownership: {asset_id: owner}
+        self._ownership: Dict[str, str] = {}
+        # Pending transfers: {asset_id: {"from": owner, "to": recipient, "fingerprint": fp}}
+        self._pending_transfers: Dict[str, Dict[str, str]] = {}
+        # Transfer history for audit: [{asset_id, from, to, timestamp, fingerprint}]
+        self._transfer_history: List[Dict[str, Any]] = []
+
+    def register_asset(self, asset_id: str, owner: str) -> Dict[str, Any]:
+        """
+        Register a new asset with an owner.
+
+        Args:
+            asset_id: Unique identifier for the asset
+            owner: The owner of the asset
+
+        Returns:
+            Dict with registration result
+        """
+        if asset_id in self._ownership:
+            return {
+                "success": False,
+                "message": f"Asset '{asset_id}' already registered to {self._ownership[asset_id]}"
+            }
+
+        self._ownership[asset_id] = owner
+        return {
+            "success": True,
+            "message": f"Asset '{asset_id}' registered to {owner}",
+            "asset_id": asset_id,
+            "owner": owner
+        }
+
+    def get_owner(self, asset_id: str) -> Optional[str]:
+        """Get the current owner of an asset."""
+        return self._ownership.get(asset_id)
+
+    def is_registered(self, asset_id: str) -> bool:
+        """Check if an asset is registered."""
+        return asset_id in self._ownership
+
+    def reserve_for_transfer(
+        self,
+        asset_id: str,
+        from_owner: str,
+        to_recipient: str,
+        fingerprint: str
+    ) -> Dict[str, Any]:
+        """
+        Reserve an asset for pending transfer.
+
+        This prevents double-transfer by marking the asset as "in transit".
+
+        Args:
+            asset_id: The asset being transferred
+            from_owner: The current owner initiating transfer
+            to_recipient: The intended recipient
+            fingerprint: Entry fingerprint for tracking
+
+        Returns:
+            Dict with reservation result
+        """
+        # Check if asset is already pending transfer
+        if asset_id in self._pending_transfers:
+            existing = self._pending_transfers[asset_id]
+            return {
+                "success": False,
+                "reason": "already_pending",
+                "message": f"Asset '{asset_id}' already has pending transfer to {existing['to']}",
+                "existing_transfer": existing
+            }
+
+        # Check ownership - if asset is registered, only owner can transfer
+        if asset_id in self._ownership:
+            if self._ownership[asset_id] != from_owner:
+                return {
+                    "success": False,
+                    "reason": "not_owner",
+                    "message": f"Author '{from_owner}' is not the owner of asset '{asset_id}' (owner: {self._ownership[asset_id]})"
+                }
+        else:
+            # Asset not registered - auto-register to the author claiming ownership
+            self._ownership[asset_id] = from_owner
+
+        # Reserve the asset
+        self._pending_transfers[asset_id] = {
+            "from": from_owner,
+            "to": to_recipient,
+            "fingerprint": fingerprint,
+            "timestamp": time.time()
+        }
+
+        return {
+            "success": True,
+            "message": f"Asset '{asset_id}' reserved for transfer from {from_owner} to {to_recipient}",
+            "asset_id": asset_id
+        }
+
+    def complete_transfer(self, asset_id: str, fingerprint: str) -> Dict[str, Any]:
+        """
+        Complete a pending transfer after block is mined.
+
+        Args:
+            asset_id: The asset to transfer
+            fingerprint: The entry fingerprint to verify
+
+        Returns:
+            Dict with completion result
+        """
+        if asset_id not in self._pending_transfers:
+            return {
+                "success": False,
+                "message": f"No pending transfer for asset '{asset_id}'"
+            }
+
+        pending = self._pending_transfers[asset_id]
+
+        # Verify fingerprint matches
+        if pending["fingerprint"] != fingerprint:
+            return {
+                "success": False,
+                "message": f"Fingerprint mismatch for asset '{asset_id}'"
+            }
+
+        # Complete the transfer
+        old_owner = pending["from"]
+        new_owner = pending["to"]
+        self._ownership[asset_id] = new_owner
+
+        # Record in history
+        self._transfer_history.append({
+            "asset_id": asset_id,
+            "from": old_owner,
+            "to": new_owner,
+            "timestamp": time.time(),
+            "fingerprint": fingerprint
+        })
+
+        # Remove from pending
+        del self._pending_transfers[asset_id]
+
+        return {
+            "success": True,
+            "message": f"Transfer complete: '{asset_id}' now owned by {new_owner}",
+            "asset_id": asset_id,
+            "old_owner": old_owner,
+            "new_owner": new_owner
+        }
+
+    def cancel_transfer(self, asset_id: str) -> Dict[str, Any]:
+        """
+        Cancel a pending transfer (e.g., entry rejected or expired).
+
+        Args:
+            asset_id: The asset to cancel transfer for
+
+        Returns:
+            Dict with cancellation result
+        """
+        if asset_id not in self._pending_transfers:
+            return {
+                "success": False,
+                "message": f"No pending transfer for asset '{asset_id}'"
+            }
+
+        del self._pending_transfers[asset_id]
+        return {
+            "success": True,
+            "message": f"Transfer cancelled for asset '{asset_id}'"
+        }
+
+    def has_pending_transfer(self, asset_id: str) -> bool:
+        """Check if asset has a pending transfer."""
+        return asset_id in self._pending_transfers
+
+    def get_pending_transfer(self, asset_id: str) -> Optional[Dict[str, str]]:
+        """Get pending transfer details for an asset."""
+        return self._pending_transfers.get(asset_id)
+
+    def get_assets_by_owner(self, owner: str) -> List[str]:
+        """Get all assets owned by a specific owner."""
+        return [
+            asset_id for asset_id, asset_owner in self._ownership.items()
+            if asset_owner == owner
+        ]
+
+    def get_transfer_history(self, asset_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Get transfer history, optionally filtered by asset."""
+        if asset_id is None:
+            return self._transfer_history.copy()
+        return [
+            t for t in self._transfer_history
+            if t["asset_id"] == asset_id
+        ]
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize the registry."""
+        return {
+            "ownership": self._ownership.copy(),
+            "pending_transfers": {k: v.copy() for k, v in self._pending_transfers.items()},
+            "transfer_history": [t.copy() for t in self._transfer_history]
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'AssetRegistry':
+        """Deserialize the registry."""
+        registry = cls()
+        registry._ownership = data.get("ownership", {})
+        registry._pending_transfers = data.get("pending_transfers", {})
+        registry._transfer_history = data.get("transfer_history", [])
+        return registry
+
 
 class RateLimiter:
     """
@@ -482,7 +717,9 @@ class NatLangChain:
         max_future_drift: int = DEFAULT_MAX_FUTURE_DRIFT_SECONDS,
         enable_metadata_sanitization: bool = True,
         metadata_sanitize_mode: str = DEFAULT_SANITIZE_MODE,
-        forbidden_metadata_fields: Optional[set] = None
+        forbidden_metadata_fields: Optional[set] = None,
+        enable_asset_tracking: bool = True,
+        asset_registry: Optional[AssetRegistry] = None
     ):
         """
         Initialize the blockchain with genesis block.
@@ -515,6 +752,10 @@ class NatLangChain:
                                    "warn" - strip fields but include warning
             forbidden_metadata_fields: Optional custom set of forbidden field names.
                                       Defaults to FORBIDDEN_METADATA_FIELDS.
+            enable_asset_tracking: If True, track asset ownership and prevent double-transfers.
+                                  Default is True to prevent double-spending attacks.
+            asset_registry: Optional pre-configured AssetRegistry instance.
+                           If None and enable_asset_tracking is True, a new registry is created.
         """
         self.chain: List[Block] = []
         self.pending_entries: List[NaturalLanguageEntry] = []
@@ -545,6 +786,12 @@ class NatLangChain:
             max_per_author=max_entries_per_author,
             max_global=max_global_entries
         ) if enable_rate_limiting else None
+
+        # Asset registry for double-spending prevention
+        self.enable_asset_tracking = enable_asset_tracking
+        self._asset_registry = asset_registry if asset_registry else (
+            AssetRegistry() if enable_asset_tracking else None
+        )
 
         self.create_genesis_block()
 
@@ -662,6 +909,22 @@ class NatLangChain:
                     "entry": entry.to_dict()
                 }
 
+        # Check for asset double-transfer (double-spending prevention)
+        asset_transfer_info = None
+        if self.enable_asset_tracking:
+            asset_check = self._check_asset_transfer(entry)
+            if not asset_check["allowed"]:
+                return {
+                    "status": "rejected",
+                    "message": asset_check["message"],
+                    "reason": "double_transfer",
+                    "asset_id": asset_check.get("asset_id"),
+                    "existing_transfer": asset_check.get("existing_transfer"),
+                    "entry": entry.to_dict()
+                }
+            if asset_check.get("is_transfer"):
+                asset_transfer_info = asset_check
+
         # Check if validation should be enforced
         if self.require_validation and not skip_validation:
             validation_result = self._validate_entry(entry)
@@ -711,6 +974,13 @@ class NatLangChain:
         # Include metadata warning if fields were stripped
         if metadata_warning:
             response["metadata_warning"] = metadata_warning
+        # Include asset transfer info if this is a transfer
+        if asset_transfer_info:
+            response["asset_transfer"] = {
+                "asset_id": asset_transfer_info["asset_id"],
+                "from": asset_transfer_info["from_owner"],
+                "to": asset_transfer_info["to_recipient"]
+            }
         return response
 
     def _check_duplicate(self, entry: NaturalLanguageEntry) -> Dict[str, Any]:
@@ -916,6 +1186,112 @@ class NatLangChain:
             "rejected": False
         }
 
+    def _detect_asset_transfer(self, entry: NaturalLanguageEntry) -> Dict[str, Any]:
+        """
+        Detect if an entry represents an asset transfer.
+
+        Looks for transfer intent via:
+        1. Explicit asset_id in metadata
+        2. Transfer keywords in intent or content
+        3. Recipient information in metadata
+
+        Args:
+            entry: The entry to analyze
+
+        Returns:
+            Dict with is_transfer flag and extracted details
+        """
+        result = {
+            "is_transfer": False,
+            "asset_id": None,
+            "from_owner": entry.author,
+            "to_recipient": None
+        }
+
+        # Check for explicit asset_id in metadata
+        asset_id = entry.metadata.get("asset_id") if entry.metadata else None
+
+        # Check for recipient in metadata
+        recipient = None
+        if entry.metadata:
+            recipient = entry.metadata.get("recipient") or entry.metadata.get("to")
+
+        # Check for transfer keywords in intent
+        intent_lower = entry.intent.lower()
+        intent_words = set(intent_lower.split())
+        has_transfer_intent = bool(intent_words & TRANSFER_INTENT_KEYWORDS)
+
+        # Check for transfer keywords in content
+        content_lower = entry.content.lower()
+        content_words = set(content_lower.split())
+        has_transfer_content = bool(content_words & TRANSFER_INTENT_KEYWORDS)
+
+        # Determine if this is a transfer
+        if asset_id and (has_transfer_intent or has_transfer_content):
+            result["is_transfer"] = True
+            result["asset_id"] = asset_id
+            result["to_recipient"] = recipient
+        elif asset_id and recipient:
+            # Has asset_id and recipient - likely a transfer even without keywords
+            result["is_transfer"] = True
+            result["asset_id"] = asset_id
+            result["to_recipient"] = recipient
+
+        return result
+
+    def _check_asset_transfer(self, entry: NaturalLanguageEntry) -> Dict[str, Any]:
+        """
+        Check if an asset transfer is allowed (no double-spending).
+
+        Args:
+            entry: The entry to check
+
+        Returns:
+            Dict with allowed flag and details
+        """
+        if not self.enable_asset_tracking or self._asset_registry is None:
+            return {"allowed": True, "is_transfer": False}
+
+        # Detect if this is a transfer
+        transfer_info = self._detect_asset_transfer(entry)
+
+        if not transfer_info["is_transfer"]:
+            return {"allowed": True, "is_transfer": False}
+
+        asset_id = transfer_info["asset_id"]
+        from_owner = transfer_info["from_owner"]
+        to_recipient = transfer_info["to_recipient"] or "unknown"
+
+        # Compute fingerprint for this entry
+        fingerprint = compute_entry_fingerprint(entry.content, entry.author, entry.intent)
+
+        # Try to reserve the asset for transfer
+        reserve_result = self._asset_registry.reserve_for_transfer(
+            asset_id=asset_id,
+            from_owner=from_owner,
+            to_recipient=to_recipient,
+            fingerprint=fingerprint
+        )
+
+        if not reserve_result["success"]:
+            return {
+                "allowed": False,
+                "is_transfer": True,
+                "asset_id": asset_id,
+                "reason": reserve_result.get("reason", "transfer_failed"),
+                "message": reserve_result["message"],
+                "existing_transfer": reserve_result.get("existing_transfer")
+            }
+
+        return {
+            "allowed": True,
+            "is_transfer": True,
+            "asset_id": asset_id,
+            "from_owner": from_owner,
+            "to_recipient": to_recipient,
+            "fingerprint": fingerprint
+        }
+
     def _validate_entry(self, entry: NaturalLanguageEntry) -> Dict[str, Any]:
         """
         Validate an entry using the configured validator.
@@ -970,6 +1346,20 @@ class NatLangChain:
             new_block.hash = new_block.calculate_hash()
 
         self.chain.append(new_block)
+
+        # Complete any pending asset transfers for mined entries
+        if self.enable_asset_tracking and self._asset_registry is not None:
+            for entry in self.pending_entries:
+                transfer_info = self._detect_asset_transfer(entry)
+                if transfer_info["is_transfer"]:
+                    fingerprint = compute_entry_fingerprint(
+                        entry.content, entry.author, entry.intent
+                    )
+                    self._asset_registry.complete_transfer(
+                        asset_id=transfer_info["asset_id"],
+                        fingerprint=fingerprint
+                    )
+
         self.pending_entries = []
 
         return new_block
@@ -1093,7 +1483,9 @@ class NatLangChain:
         max_future_drift: int = DEFAULT_MAX_FUTURE_DRIFT_SECONDS,
         enable_metadata_sanitization: bool = True,
         metadata_sanitize_mode: str = DEFAULT_SANITIZE_MODE,
-        forbidden_metadata_fields: Optional[set] = None
+        forbidden_metadata_fields: Optional[set] = None,
+        enable_asset_tracking: bool = True,
+        asset_registry: Optional[AssetRegistry] = None
     ) -> 'NatLangChain':
         """
         Import chain from dictionary.
@@ -1115,6 +1507,8 @@ class NatLangChain:
             enable_metadata_sanitization: Whether to sanitize entry metadata.
             metadata_sanitize_mode: Mode for handling forbidden fields.
             forbidden_metadata_fields: Custom set of forbidden field names.
+            enable_asset_tracking: Whether to track asset ownership.
+            asset_registry: Optional pre-configured AssetRegistry instance.
         """
         chain = cls.__new__(cls)
         chain.chain = [Block.from_dict(b) for b in data["chain"]]
@@ -1141,4 +1535,8 @@ class NatLangChain:
         chain.enable_metadata_sanitization = enable_metadata_sanitization
         chain.metadata_sanitize_mode = metadata_sanitize_mode
         chain.forbidden_metadata_fields = forbidden_metadata_fields or FORBIDDEN_METADATA_FIELDS
+        chain.enable_asset_tracking = enable_asset_tracking
+        chain._asset_registry = asset_registry if asset_registry else (
+            AssetRegistry() if enable_asset_tracking else None
+        )
         return chain
