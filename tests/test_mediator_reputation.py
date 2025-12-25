@@ -738,13 +738,14 @@ class TestSerialization:
         assert data["semantic_accuracy"] == 0.9
 
     def test_bond_to_dict(self):
-        """Test bond serialization."""
-        bond = Bond(amount=50000, token="NLC")
+        """Test bond serialization with default staking currency."""
+        from src.mediator_reputation import DEFAULT_STAKING_CURRENCY
+        bond = Bond(amount=50000)  # Uses DEFAULT_STAKING_CURRENCY
 
         data = bond.to_dict()
 
         assert data["amount"] == 50000
-        assert data["token"] == "NLC"
+        assert data["token"] == DEFAULT_STAKING_CURRENCY  # Currency-agnostic
         assert data["locked"] is True
 
     def test_cooldown_to_dict(self):

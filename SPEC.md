@@ -592,7 +592,7 @@ The following table summarizes all NCIP requirements and their implementation st
 **Files:** `src/mediator_reputation.py`, `tests/test_mediator_reputation.py`
 
 **Implemented Features:**
-- [x] Mediator registration with stake bond (minimum 10,000 NLC, default 50,000 NLC)
+- [x] Mediator registration with stake bond (minimum 10,000 units, default 50,000 units in configured currency)
 - [x] Reputation dimensions: Acceptance Rate, Semantic Accuracy, Appeal Survival, Dispute Avoidance, Coercion Signal, Latency Discipline
 - [x] Composite Trust Score (CTS) calculation with configurable weights
 - [x] Slashing conditions: semantic_manipulation (10-30%), repeated_invalid_proposals (5-15%), coercive_framing (15%), appeal_reversal (5-20%), collusion_signals (progressive)
@@ -809,12 +809,22 @@ The NatLangChain Treasury is a fully on-chain, algorithmic fund that:
 | Automatic inflows | Burns, counter-fees, escalated stakes | Closed-loop economy |
 | Transparency | All actions emitted as events | On-chain verification |
 
+### Currency-Agnostic Design
+
+NatLangChain does not have its own native cryptocurrency. The treasury and economic layer are designed to operate with established cryptocurrencies (ETH, USDC, or other ERC-20 tokens). All stake amounts, fees, and subsidies are denominated in whichever currency is configured for a given deployment.
+
+**Key principles:**
+- Treasury holds and disburses funds in the configured staking currency
+- All economic parameters (stakes, fees, caps) are currency-agnostic numerical values
+- Deployments can configure their preferred currency (ETH, stablecoins, etc.)
+- Burns and fees are executed in the same currency as stakes
+
 ### Optional Enhancements
 - Dynamic caps: Scale max per participant based on treasury size
 - Tiered subsidies: Low harassment score → full subsidy, higher score → partial
 - Cross-contract integration: ILRM calls treasury to automatically fund defensive stake escrow
 - Time-window enforcement: Reset `participantSubsidyUsed` periodically
-- Multi-token support: Accept multiple staking tokens or native ETH
+- Multi-token support: Accept multiple staking tokens (ETH, USDC, DAI, etc.)
 
 ---
 
@@ -1373,7 +1383,7 @@ POST /contract/post
     "contract_type": "offer",
     "terms": {
         "license_type": "perpetual_commercial",
-        "price": "500 NLC",
+        "price": "500",  # In configured staking currency (e.g., USDC, ETH)
         "facilitation": "1%"
     },
     "metadata": {

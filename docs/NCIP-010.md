@@ -4,6 +4,8 @@ Status: Canonical
 Type: Economic Safety / Market Governance
 Version: 1.0
 Created: December 22, 2025
+
+> **Currency-Agnostic Design:** NatLangChain does not have its own native cryptocurrency. All stake amounts and economic values in this document are denominated in the configured staking currency (e.g., ETH, USDC, DAI) for each deployment.
 Applies To:
 
 Mediator Nodes
@@ -83,7 +85,7 @@ Declare supported domains (optional)
 
 mediator_registration:
   mediator_id: mediator_node_alpha
-  stake_bond: 50_000 NLC
+  stake_bond: 50_000  # In configured staking currency (e.g., USDC, ETH)
   supported_domains:
     - software
     - licensing
@@ -199,7 +201,7 @@ mediator_reputation:
 
   bond:
     amount: 50000
-    token: NLC
+    token: USDC  # Configurable per deployment (ETH, USDC, DAI, etc.)
     locked: true
 
   scores:

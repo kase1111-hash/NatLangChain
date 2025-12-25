@@ -106,7 +106,7 @@ fee >= max(ABSOLUTE_FLOOR, settlement_value * PERCENTAGE_FLOOR)
 ```
 
 Recommended:
-- `ABSOLUTE_FLOOR = 0.01 NLC`
+- `ABSOLUTE_FLOOR = 0.01` (in configured staking currency)
 - `PERCENTAGE_FLOOR = 0.1%` (one-tenth of one percent)
 
 Mediators MAY NOT waive fees to gain market share.

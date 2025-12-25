@@ -12,6 +12,12 @@ Core Properties:
 - Transparent (all actions emitted as events)
 - Anti-Sybil protected (single subsidy per dispute, caps, reputation checks)
 - Closed-loop economy (inflows from protocol fees, outflows to defenders)
+
+Currency-Agnostic Design:
+NatLangChain does not have its own native cryptocurrency. This treasury
+operates with established cryptocurrencies (ETH, USDC, DAI, or other tokens)
+as configured for each deployment. All amounts are denominated in the
+configured staking currency.
 """
 
 import json

@@ -1,10 +1,15 @@
 """
 NatLangChain - Observance Burn Protocol
-Ceremonial token destruction mechanism for economic and signaling purposes.
+Ceremonial destruction mechanism for economic and signaling purposes.
 
 "Models propose the possible.
  Humans ratify the actual.
  Burns consecrate the boundary."
+
+Note: NatLangChain is currency-agnostic. This module operates on whatever
+staking currency is configured for the deployment (e.g., ETH, USDC, DAI).
+The "burn" mechanism permanently removes value from circulation, with the
+economic effect redistributed proportionally to remaining stakeholders.
 """
 
 import json
@@ -25,11 +30,15 @@ class BurnReason(Enum):
 
 class ObservanceBurnManager:
     """
-    Manages the Observance Burn protocol for ceremonial token destruction.
+    Manages the Observance Burn protocol for ceremonial value destruction.
+
+    Note: NatLangChain is currency-agnostic. Burns operate on whatever
+    staking currency is configured (ETH, USDC, DAI, etc.). The "total_supply"
+    tracking is for proportional redistribution calculations only.
 
     Core purposes:
-    - Economic Deflation: Permanently removes tokens from circulation
-    - Redistribution: Proportionally benefits remaining holders
+    - Economic Deflation: Permanently removes value from circulation
+    - Redistribution: Proportionally benefits remaining stakeholders
     - Signaling: Provides credible, costly proof of commitment
     - Anti-Abuse: Discourages system gaming through meaningful cost
     - Ceremony: Elevates protocol actions to meaningful observances
@@ -46,7 +55,9 @@ class ObservanceBurnManager:
         Initialize burn manager.
 
         Args:
-            initial_supply: Initial token supply
+            initial_supply: Initial circulating supply for redistribution calculations.
+                           This represents the total staked/circulating value in the
+                           configured currency (ETH, USDC, etc.), not a native token.
         """
         # Token tracking (in production, this would be on-chain)
         self.total_supply = initial_supply

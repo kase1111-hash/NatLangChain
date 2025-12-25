@@ -4,6 +4,8 @@
 ## Date: December 19, 2025
 ## Status: Draft
 
+> **Currency-Agnostic Design:** NatLangChain does not have its own native cryptocurrency. All stake amounts and fees are denominated in the configured staking currency (e.g., ETH, USDC, DAI) for each deployment.
+
 ---
 
 ## Overview
@@ -87,7 +89,7 @@ POST /mediator/register
     "operator": "charlie",
     "llm_models": ["claude-3-sonnet", "gpt-4"],
     "stake_amount": 1000,
-    "stake_currency": "NLC",
+    "stake_currency": "USDC",  // Configurable: ETH, USDC, DAI, etc.
     "specializations": ["tech", "finance", "legal"],
     "max_concurrent_mediations": 50,
     "webhook_url": "https://mediator.charlie.com/updates"
@@ -336,7 +338,7 @@ reputation_score = (
 ## Stake & Slashing
 
 ### Stake Requirements
-- Minimum stake: 100 NLC (or equivalent)
+- Minimum stake: 100 units (in configured staking currency)
 - Higher stakes unlock higher-value mediations
 - Stake locked during active mediations
 
