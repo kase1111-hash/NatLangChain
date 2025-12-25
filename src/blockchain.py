@@ -27,6 +27,10 @@ DEFAULT_RATE_LIMIT_WINDOW_SECONDS = 60  # 1 minute window
 DEFAULT_MAX_ENTRIES_PER_AUTHOR = 10  # Max entries per author per window
 DEFAULT_MAX_GLOBAL_ENTRIES = 100  # Max total entries per window
 
+# Timestamp validation defaults
+DEFAULT_MAX_TIMESTAMP_DRIFT_SECONDS = 300  # 5 minutes max drift from current time
+DEFAULT_MAX_FUTURE_DRIFT_SECONDS = 60  # 1 minute max future drift (clock skew tolerance)
+
 
 class RateLimiter:
     """
@@ -438,7 +442,10 @@ class NatLangChain:
         enable_rate_limiting: bool = True,
         rate_limit_window: int = DEFAULT_RATE_LIMIT_WINDOW_SECONDS,
         max_entries_per_author: int = DEFAULT_MAX_ENTRIES_PER_AUTHOR,
-        max_global_entries: int = DEFAULT_MAX_GLOBAL_ENTRIES
+        max_global_entries: int = DEFAULT_MAX_GLOBAL_ENTRIES,
+        enable_timestamp_validation: bool = True,
+        max_timestamp_drift: int = DEFAULT_MAX_TIMESTAMP_DRIFT_SECONDS,
+        max_future_drift: int = DEFAULT_MAX_FUTURE_DRIFT_SECONDS
     ):
         """
         Initialize the blockchain with genesis block.
@@ -459,6 +466,10 @@ class NatLangChain:
             rate_limit_window: Time window for rate limiting in seconds (default 60).
             max_entries_per_author: Max entries per author within window (default 10).
             max_global_entries: Max total entries within window (default 100).
+            enable_timestamp_validation: If True, validate entry timestamps against system time.
+                                        Default is True to prevent timestamp manipulation.
+            max_timestamp_drift: Max seconds an entry timestamp can be in the past (default 300).
+            max_future_drift: Max seconds an entry timestamp can be in the future (default 60).
         """
         self.chain: List[Block] = []
         self.pending_entries: List[NaturalLanguageEntry] = []
@@ -468,6 +479,9 @@ class NatLangChain:
         self.enable_deduplication = enable_deduplication
         self.dedup_window_seconds = dedup_window_seconds
         self.enable_rate_limiting = enable_rate_limiting
+        self.enable_timestamp_validation = enable_timestamp_validation
+        self.max_timestamp_drift = max_timestamp_drift
+        self.max_future_drift = max_future_drift
 
         # Track acceptable decisions based on settings
         self._acceptable_decisions = {VALIDATION_VALID}
@@ -528,6 +542,9 @@ class NatLangChain:
         If enable_rate_limiting is True (default), rate limits are enforced per
         author and globally to prevent Sybil/flooding attacks.
 
+        If enable_timestamp_validation is True (default), entry timestamps are
+        validated against current system time to prevent backdating attacks.
+
         Args:
             entry: The natural language entry to add
             skip_validation: If True, bypass validation (requires require_validation=False
@@ -546,6 +563,18 @@ class NatLangChain:
                     "reason": "rate_limit",
                     "rate_limit_type": rate_check["reason"],
                     "retry_after": rate_check.get("retry_after", 0),
+                    "entry": entry.to_dict()
+                }
+
+        # Validate entry timestamp (anti-backdating protection)
+        if self.enable_timestamp_validation:
+            ts_check = self._validate_timestamp(entry)
+            if not ts_check["is_valid"]:
+                return {
+                    "status": "rejected",
+                    "message": ts_check["message"],
+                    "reason": "invalid_timestamp",
+                    "timestamp_issue": ts_check["reason"],
                     "entry": entry.to_dict()
                 }
 
@@ -687,6 +716,64 @@ class NatLangChain:
         ]
         for fp in expired:
             del self._entry_fingerprints[fp]
+
+    def _validate_timestamp(self, entry: NaturalLanguageEntry) -> Dict[str, Any]:
+        """
+        Validate an entry's timestamp against the current system time.
+
+        Prevents timestamp manipulation attacks where bad actors backdate
+        entries to claim they were created earlier than they actually were.
+
+        Args:
+            entry: The entry to validate
+
+        Returns:
+            Dict with is_valid flag and details
+        """
+        current_time = datetime.utcnow()
+
+        # Parse the entry timestamp
+        try:
+            entry_time = datetime.fromisoformat(entry.timestamp)
+        except (ValueError, TypeError) as e:
+            return {
+                "is_valid": False,
+                "reason": "invalid_format",
+                "message": f"Invalid timestamp format: {entry.timestamp}",
+                "error": str(e)
+            }
+
+        # Calculate time difference in seconds
+        time_diff = (current_time - entry_time).total_seconds()
+
+        # Check if timestamp is too far in the past (backdating attempt)
+        if time_diff > self.max_timestamp_drift:
+            return {
+                "is_valid": False,
+                "reason": "too_old",
+                "message": f"Timestamp too old: {entry.timestamp} (max drift: {self.max_timestamp_drift}s)",
+                "entry_time": entry.timestamp,
+                "current_time": current_time.isoformat(),
+                "drift_seconds": time_diff,
+                "max_allowed": self.max_timestamp_drift
+            }
+
+        # Check if timestamp is too far in the future (clock skew or manipulation)
+        if time_diff < -self.max_future_drift:
+            return {
+                "is_valid": False,
+                "reason": "too_future",
+                "message": f"Timestamp too far in future: {entry.timestamp} (max future drift: {self.max_future_drift}s)",
+                "entry_time": entry.timestamp,
+                "current_time": current_time.isoformat(),
+                "drift_seconds": abs(time_diff),
+                "max_allowed": self.max_future_drift
+            }
+
+        return {
+            "is_valid": True,
+            "drift_seconds": time_diff
+        }
 
     def _validate_entry(self, entry: NaturalLanguageEntry) -> Dict[str, Any]:
         """
@@ -859,7 +946,10 @@ class NatLangChain:
         enable_rate_limiting: bool = True,
         rate_limit_window: int = DEFAULT_RATE_LIMIT_WINDOW_SECONDS,
         max_entries_per_author: int = DEFAULT_MAX_ENTRIES_PER_AUTHOR,
-        max_global_entries: int = DEFAULT_MAX_GLOBAL_ENTRIES
+        max_global_entries: int = DEFAULT_MAX_GLOBAL_ENTRIES,
+        enable_timestamp_validation: bool = True,
+        max_timestamp_drift: int = DEFAULT_MAX_TIMESTAMP_DRIFT_SECONDS,
+        max_future_drift: int = DEFAULT_MAX_FUTURE_DRIFT_SECONDS
     ) -> 'NatLangChain':
         """
         Import chain from dictionary.
@@ -875,6 +965,9 @@ class NatLangChain:
             rate_limit_window: Time window for rate limiting in seconds.
             max_entries_per_author: Max entries per author within window.
             max_global_entries: Max total entries within window.
+            enable_timestamp_validation: Whether to validate entry timestamps.
+            max_timestamp_drift: Max seconds an entry can be in the past.
+            max_future_drift: Max seconds an entry can be in the future.
         """
         chain = cls.__new__(cls)
         chain.chain = [Block.from_dict(b) for b in data["chain"]]
@@ -895,4 +988,7 @@ class NatLangChain:
             max_per_author=max_entries_per_author,
             max_global=max_global_entries
         ) if enable_rate_limiting else None
+        chain.enable_timestamp_validation = enable_timestamp_validation
+        chain.max_timestamp_drift = max_timestamp_drift
+        chain.max_future_drift = max_future_drift
         return chain

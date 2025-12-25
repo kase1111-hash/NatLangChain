@@ -32,7 +32,10 @@ class BadActorSimulator:
         use_rate_limiting: bool = False,
         rate_limit_window: int = 60,
         max_entries_per_author: int = 10,
-        max_global_entries: int = 100
+        max_global_entries: int = 100,
+        use_timestamp_validation: bool = False,
+        max_timestamp_drift: int = 300,
+        max_future_drift: int = 60
     ):
         """
         Initialize simulator.
@@ -47,6 +50,10 @@ class BadActorSimulator:
             rate_limit_window: Time window for rate limiting in seconds.
             max_entries_per_author: Max entries per author within window.
             max_global_entries: Max total entries within window.
+            use_timestamp_validation: If True, validate entry timestamps.
+                                     If False, allow any timestamp (shows vulnerability).
+            max_timestamp_drift: Max seconds an entry can be in the past.
+            max_future_drift: Max seconds an entry can be in the future.
         """
         self.use_validation = use_validation
         self.use_deduplication = use_deduplication
@@ -54,6 +61,9 @@ class BadActorSimulator:
         self.rate_limit_window = rate_limit_window
         self.max_entries_per_author = max_entries_per_author
         self.max_global_entries = max_global_entries
+        self.use_timestamp_validation = use_timestamp_validation
+        self.max_timestamp_drift = max_timestamp_drift
+        self.max_future_drift = max_future_drift
         self._init_chain()
         self.attack_results: List[Dict[str, Any]] = []
         self.successful_attacks = 0
@@ -68,7 +78,10 @@ class BadActorSimulator:
             enable_rate_limiting=self.use_rate_limiting,
             rate_limit_window=self.rate_limit_window,
             max_entries_per_author=self.max_entries_per_author,
-            max_global_entries=self.max_global_entries
+            max_global_entries=self.max_global_entries,
+            enable_timestamp_validation=self.use_timestamp_validation,
+            max_timestamp_drift=self.max_timestamp_drift,
+            max_future_drift=self.max_future_drift
         )
 
     def reset_chain(self):
@@ -694,7 +707,7 @@ def test_sybil_flooding(use_validation: bool = False, use_rate_limiting: bool = 
 # ATTACK TYPE 8: TIMESTAMP MANIPULATION
 # =============================================================================
 
-def test_timestamp_manipulation(use_validation: bool = False):
+def test_timestamp_manipulation(use_validation: bool = False, use_timestamp_validation: bool = False):
     """
     Test: Bad actor manipulates timestamps to alter perceived ordering.
     """
@@ -702,7 +715,10 @@ def test_timestamp_manipulation(use_validation: bool = False):
     print("ATTACK 8: TIMESTAMP MANIPULATION")
     print("="*60)
 
-    sim = BadActorSimulator(use_validation=use_validation)
+    sim = BadActorSimulator(
+        use_validation=use_validation,
+        use_timestamp_validation=use_timestamp_validation
+    )
 
     # Create entry then manipulate timestamp
     entry = NaturalLanguageEntry(
@@ -723,14 +739,27 @@ def test_timestamp_manipulation(use_validation: bool = False):
     print(f"  Entry accepted: {result['status'] == 'pending'}")
 
     attack_success = result["status"] == "pending"
+    rejected_for_timestamp = result.get("reason") == "invalid_timestamp"
 
-    sim.log_attack(
-        attack_name="Timestamp Manipulation",
-        success=attack_success,
-        details="Entry with backdated timestamp accepted without validation",
-        severity="MEDIUM",
-        recommendation="Implement server-side timestamp validation or threshold check"
-    )
+    if rejected_for_timestamp:
+        print(f"  Rejection reason: {result.get('timestamp_issue', 'timestamp validation failed')}")
+
+    if use_timestamp_validation:
+        sim.log_attack(
+            attack_name="Timestamp Manipulation",
+            success=attack_success,
+            details="Backdated timestamp blocked by validation" if rejected_for_timestamp else "Timestamp validation may be too permissive",
+            severity="MEDIUM",
+            recommendation="N/A - Timestamp validation is working" if rejected_for_timestamp else "Check timestamp drift thresholds"
+        )
+    else:
+        sim.log_attack(
+            attack_name="Timestamp Manipulation",
+            success=attack_success,
+            details="Entry with backdated timestamp accepted without validation",
+            severity="MEDIUM",
+            recommendation="Implement server-side timestamp validation or threshold check"
+        )
 
     mined = sim.chain.mine_pending_entries(difficulty=1)
     if mined:
@@ -740,8 +769,14 @@ def test_timestamp_manipulation(use_validation: bool = False):
         print(f"\n  Block timestamp: {block_time}")
         print(f"  Entry claims: {entry_claims}")
         print("  FINDING: Entry timestamps are not validated against block/system time")
+    elif use_timestamp_validation and rejected_for_timestamp:
+        print(f"\n  PROTECTED: Backdated entry blocked by timestamp validation")
+        print("  FINDING: Timestamp validation prevents backdating attacks")
 
-    return sim, [{"attack_success": attack_success}]
+    return sim, [{
+        "attack_success": attack_success,
+        "blocked_by_timestamp_validation": rejected_for_timestamp
+    }]
 
 
 # =============================================================================
@@ -826,7 +861,8 @@ def test_metadata_injection(use_validation: bool = False):
 def run_single_simulation(
     use_validation: bool = False,
     use_deduplication: bool = False,
-    use_rate_limiting: bool = False
+    use_rate_limiting: bool = False,
+    use_timestamp_validation: bool = False
 ):
     """Run all bad actor simulations for a single mode (protected or unprotected)."""
     all_results = {}
@@ -844,7 +880,7 @@ def run_single_simulation(
         ("Adversarial Phrasing", test_adversarial_phrasing, {}),
         ("Replay Attack", test_replay_attack, {"use_deduplication": use_deduplication}),
         ("Sybil Flooding", test_sybil_flooding, {"use_rate_limiting": use_rate_limiting}),
-        ("Timestamp Manipulation", test_timestamp_manipulation, {}),
+        ("Timestamp Manipulation", test_timestamp_manipulation, {"use_timestamp_validation": use_timestamp_validation}),
         ("Metadata Injection", test_metadata_injection, {}),
     ]
 
@@ -883,14 +919,15 @@ def run_bad_actor_simulation():
     # ==========================================================================
     print("\n" + "#"*70)
     print("# PHASE 1: UNPROTECTED MODE")
-    print("# (require_validation=False, enable_deduplication=False, enable_rate_limiting=False)")
+    print("# (All protections disabled)")
     print("# This demonstrates vulnerabilities when protections are disabled")
     print("#"*70)
 
     unprotected_results, unprotected_exploitable, unprotected_blocked = run_single_simulation(
         use_validation=False,
         use_deduplication=False,
-        use_rate_limiting=False
+        use_rate_limiting=False,
+        use_timestamp_validation=False
     )
 
     # ==========================================================================
@@ -898,14 +935,15 @@ def run_bad_actor_simulation():
     # ==========================================================================
     print("\n" + "#"*70)
     print("# PHASE 2: PROTECTED MODE")
-    print("# (require_validation=True, enable_deduplication=True, enable_rate_limiting=True)")
-    print("# This demonstrates how PoU validation + deduplication + rate limiting block attacks")
+    print("# (All protections enabled: validation, deduplication, rate limiting, timestamp)")
+    print("# This demonstrates how all protections work together to block attacks")
     print("#"*70)
 
     protected_results, protected_exploitable, protected_blocked = run_single_simulation(
         use_validation=True,
         use_deduplication=True,
-        use_rate_limiting=True
+        use_rate_limiting=True,
+        use_timestamp_validation=True
     )
 
     # Generate Summary Report
@@ -1000,6 +1038,12 @@ def run_bad_actor_simulation():
         for r in protected_results["Sybil Flooding"]["results"]:
             rate_limited_in_protected = r.get("rate_limited", 0)
 
+    # Check timestamp validation results
+    timestamp_blocked = False
+    if "Timestamp Manipulation" in protected_results and "results" in protected_results["Timestamp Manipulation"]:
+        for r in protected_results["Timestamp Manipulation"]["results"]:
+            timestamp_blocked = r.get("blocked_by_timestamp_validation", False)
+
     print("\n" + "="*70)
     print("CONCLUSION")
     print("="*70)
@@ -1011,15 +1055,16 @@ def run_bad_actor_simulation():
   - Bad actors could submit ambiguous, mismatched, or adversarial entries
   - Replay attacks: possible (no deduplication)
   - Flooding attacks: possible (no rate limiting)
+  - Timestamp manipulation: possible (no validation)
 
   AFTER FIX (all protections enabled):
   - Semantic attacks: {protected_sem_total - protected_sem_blocked}/{protected_sem_total} exploitable
   - PoU validation blocks most semantic layer attacks
   - Replay attacks: BLOCKED by entry deduplication
   - Flooding attacks: BLOCKED by rate limiting ({rate_limited_in_protected} entries blocked)
+  - Timestamp manipulation: {'BLOCKED by timestamp validation' if timestamp_blocked else 'NOT BLOCKED'}
 
   REMAINING WORK:
-  - Timestamp validation
   - Metadata sanitization
   - Double-spending prevention (requires asset tracking layer)
 
@@ -1027,6 +1072,7 @@ def run_bad_actor_simulation():
   1. require_validation=True - Enforces PoU semantic validation
   2. enable_deduplication=True - Prevents replay attacks
   3. enable_rate_limiting=True - Prevents Sybil/flooding attacks
+  4. enable_timestamp_validation=True - Prevents backdating attacks
 """)
 
     return {
