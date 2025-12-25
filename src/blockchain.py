@@ -31,6 +31,40 @@ DEFAULT_MAX_GLOBAL_ENTRIES = 100  # Max total entries per window
 DEFAULT_MAX_TIMESTAMP_DRIFT_SECONDS = 300  # 5 minutes max drift from current time
 DEFAULT_MAX_FUTURE_DRIFT_SECONDS = 60  # 1 minute max future drift (clock skew tolerance)
 
+# Metadata sanitization constants
+# These fields are reserved for system use and should not be set by users
+FORBIDDEN_METADATA_FIELDS = {
+    # Validation-related fields (could spoof validation status)
+    "validation_status",
+    "validated",
+    "verified",
+    "verified_by",
+    "validator",
+    "validation_result",
+    "trust_score",
+    "trust_level",
+    # System-reserved fields
+    "__override__",
+    "__bypass__",
+    "__admin__",
+    "__system__",
+    "skip_validation",
+    "bypass_validation",
+    "force_accept",
+    # Internal tracking fields
+    "block_index",
+    "block_hash",
+    "entry_hash",
+    "chain_id",
+}
+
+# Metadata sanitization modes
+SANITIZE_MODE_STRIP = "strip"  # Remove forbidden fields silently
+SANITIZE_MODE_REJECT = "reject"  # Reject entries with forbidden fields
+SANITIZE_MODE_WARN = "warn"  # Strip fields but include warning in response
+
+DEFAULT_SANITIZE_MODE = SANITIZE_MODE_STRIP
+
 
 class RateLimiter:
     """
@@ -445,7 +479,10 @@ class NatLangChain:
         max_global_entries: int = DEFAULT_MAX_GLOBAL_ENTRIES,
         enable_timestamp_validation: bool = True,
         max_timestamp_drift: int = DEFAULT_MAX_TIMESTAMP_DRIFT_SECONDS,
-        max_future_drift: int = DEFAULT_MAX_FUTURE_DRIFT_SECONDS
+        max_future_drift: int = DEFAULT_MAX_FUTURE_DRIFT_SECONDS,
+        enable_metadata_sanitization: bool = True,
+        metadata_sanitize_mode: str = DEFAULT_SANITIZE_MODE,
+        forbidden_metadata_fields: Optional[set] = None
     ):
         """
         Initialize the blockchain with genesis block.
@@ -470,6 +507,14 @@ class NatLangChain:
                                         Default is True to prevent timestamp manipulation.
             max_timestamp_drift: Max seconds an entry timestamp can be in the past (default 300).
             max_future_drift: Max seconds an entry timestamp can be in the future (default 60).
+            enable_metadata_sanitization: If True, sanitize entry metadata to prevent injection.
+                                         Default is True to prevent metadata spoofing attacks.
+            metadata_sanitize_mode: How to handle forbidden metadata fields.
+                                   "strip" - silently remove forbidden fields
+                                   "reject" - reject entries with forbidden fields
+                                   "warn" - strip fields but include warning
+            forbidden_metadata_fields: Optional custom set of forbidden field names.
+                                      Defaults to FORBIDDEN_METADATA_FIELDS.
         """
         self.chain: List[Block] = []
         self.pending_entries: List[NaturalLanguageEntry] = []
@@ -482,6 +527,9 @@ class NatLangChain:
         self.enable_timestamp_validation = enable_timestamp_validation
         self.max_timestamp_drift = max_timestamp_drift
         self.max_future_drift = max_future_drift
+        self.enable_metadata_sanitization = enable_metadata_sanitization
+        self.metadata_sanitize_mode = metadata_sanitize_mode
+        self.forbidden_metadata_fields = forbidden_metadata_fields or FORBIDDEN_METADATA_FIELDS
 
         # Track acceptable decisions based on settings
         self._acceptable_decisions = {VALIDATION_VALID}
@@ -545,6 +593,10 @@ class NatLangChain:
         If enable_timestamp_validation is True (default), entry timestamps are
         validated against current system time to prevent backdating attacks.
 
+        If enable_metadata_sanitization is True (default), entry metadata is
+        sanitized to prevent injection of system-reserved fields like validation
+        status or bypass flags.
+
         Args:
             entry: The natural language entry to add
             skip_validation: If True, bypass validation (requires require_validation=False
@@ -576,6 +628,25 @@ class NatLangChain:
                     "reason": "invalid_timestamp",
                     "timestamp_issue": ts_check["reason"],
                     "entry": entry.to_dict()
+                }
+
+        # Sanitize metadata (anti-injection protection)
+        metadata_warning = None
+        if self.enable_metadata_sanitization:
+            sanitize_result = self._sanitize_metadata(entry)
+            if sanitize_result["rejected"]:
+                return {
+                    "status": "rejected",
+                    "message": sanitize_result["message"],
+                    "reason": "forbidden_metadata",
+                    "forbidden_fields": sanitize_result.get("forbidden_fields", []),
+                    "entry": entry.to_dict()
+                }
+            # Track warning for later inclusion in response
+            if sanitize_result.get("warning"):
+                metadata_warning = {
+                    "stripped_fields": sanitize_result["stripped_fields"],
+                    "message": sanitize_result["message"]
                 }
 
         # Check for duplicate entries (replay attack prevention)
@@ -631,12 +702,16 @@ class NatLangChain:
             self._rate_limiter.record_submission(entry.author)
 
         self.pending_entries.append(entry)
-        return {
+        response = {
             "status": "pending",
             "message": "Entry added to pending queue",
             "validated": self.require_validation and not skip_validation,
             "entry": entry.to_dict()
         }
+        # Include metadata warning if fields were stripped
+        if metadata_warning:
+            response["metadata_warning"] = metadata_warning
+        return response
 
     def _check_duplicate(self, entry: NaturalLanguageEntry) -> Dict[str, Any]:
         """
@@ -773,6 +848,72 @@ class NatLangChain:
         return {
             "is_valid": True,
             "drift_seconds": time_diff
+        }
+
+    def _sanitize_metadata(self, entry: NaturalLanguageEntry) -> Dict[str, Any]:
+        """
+        Sanitize entry metadata to prevent injection attacks.
+
+        Checks for forbidden fields in metadata that could be used to spoof
+        validation status, bypass security checks, or inject malicious data.
+
+        Args:
+            entry: The entry whose metadata to sanitize
+
+        Returns:
+            Dict with sanitization result:
+            - is_clean: True if no forbidden fields found (or stripped)
+            - stripped_fields: List of fields that were removed (if any)
+            - rejected: True if entry should be rejected (reject mode)
+            - message: Human-readable status message
+        """
+        if not entry.metadata:
+            return {"is_clean": True, "stripped_fields": [], "rejected": False}
+
+        # Find forbidden fields in metadata
+        found_forbidden = []
+        for field in entry.metadata.keys():
+            # Check exact match
+            if field in self.forbidden_metadata_fields:
+                found_forbidden.append(field)
+            # Check case-insensitive match for bypass attempts
+            elif field.lower() in {f.lower() for f in self.forbidden_metadata_fields}:
+                found_forbidden.append(field)
+            # Check for suspicious patterns
+            elif field.startswith("__") or field.startswith("_system"):
+                found_forbidden.append(field)
+
+        if not found_forbidden:
+            return {"is_clean": True, "stripped_fields": [], "rejected": False}
+
+        # Handle based on sanitize mode
+        if self.metadata_sanitize_mode == SANITIZE_MODE_REJECT:
+            return {
+                "is_clean": False,
+                "stripped_fields": [],
+                "rejected": True,
+                "forbidden_fields": found_forbidden,
+                "message": f"Entry rejected: forbidden metadata fields found: {found_forbidden}"
+            }
+
+        # Strip mode or Warn mode - remove the forbidden fields
+        for field in found_forbidden:
+            del entry.metadata[field]
+
+        if self.metadata_sanitize_mode == SANITIZE_MODE_WARN:
+            return {
+                "is_clean": True,
+                "stripped_fields": found_forbidden,
+                "rejected": False,
+                "warning": True,
+                "message": f"Warning: removed forbidden metadata fields: {found_forbidden}"
+            }
+
+        # Strip mode - silently removed
+        return {
+            "is_clean": True,
+            "stripped_fields": found_forbidden,
+            "rejected": False
         }
 
     def _validate_entry(self, entry: NaturalLanguageEntry) -> Dict[str, Any]:
@@ -949,7 +1090,10 @@ class NatLangChain:
         max_global_entries: int = DEFAULT_MAX_GLOBAL_ENTRIES,
         enable_timestamp_validation: bool = True,
         max_timestamp_drift: int = DEFAULT_MAX_TIMESTAMP_DRIFT_SECONDS,
-        max_future_drift: int = DEFAULT_MAX_FUTURE_DRIFT_SECONDS
+        max_future_drift: int = DEFAULT_MAX_FUTURE_DRIFT_SECONDS,
+        enable_metadata_sanitization: bool = True,
+        metadata_sanitize_mode: str = DEFAULT_SANITIZE_MODE,
+        forbidden_metadata_fields: Optional[set] = None
     ) -> 'NatLangChain':
         """
         Import chain from dictionary.
@@ -968,6 +1112,9 @@ class NatLangChain:
             enable_timestamp_validation: Whether to validate entry timestamps.
             max_timestamp_drift: Max seconds an entry can be in the past.
             max_future_drift: Max seconds an entry can be in the future.
+            enable_metadata_sanitization: Whether to sanitize entry metadata.
+            metadata_sanitize_mode: Mode for handling forbidden fields.
+            forbidden_metadata_fields: Custom set of forbidden field names.
         """
         chain = cls.__new__(cls)
         chain.chain = [Block.from_dict(b) for b in data["chain"]]
@@ -991,4 +1138,7 @@ class NatLangChain:
         chain.enable_timestamp_validation = enable_timestamp_validation
         chain.max_timestamp_drift = max_timestamp_drift
         chain.max_future_drift = max_future_drift
+        chain.enable_metadata_sanitization = enable_metadata_sanitization
+        chain.metadata_sanitize_mode = metadata_sanitize_mode
+        chain.forbidden_metadata_fields = forbidden_metadata_fields or FORBIDDEN_METADATA_FIELDS
         return chain

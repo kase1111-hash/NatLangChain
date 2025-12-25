@@ -35,7 +35,9 @@ class BadActorSimulator:
         max_global_entries: int = 100,
         use_timestamp_validation: bool = False,
         max_timestamp_drift: int = 300,
-        max_future_drift: int = 60
+        max_future_drift: int = 60,
+        use_metadata_sanitization: bool = False,
+        metadata_sanitize_mode: str = "strip"
     ):
         """
         Initialize simulator.
@@ -54,6 +56,9 @@ class BadActorSimulator:
                                      If False, allow any timestamp (shows vulnerability).
             max_timestamp_drift: Max seconds an entry can be in the past.
             max_future_drift: Max seconds an entry can be in the future.
+            use_metadata_sanitization: If True, sanitize entry metadata.
+                                      If False, allow any metadata (shows vulnerability).
+            metadata_sanitize_mode: "strip", "reject", or "warn" mode.
         """
         self.use_validation = use_validation
         self.use_deduplication = use_deduplication
@@ -64,6 +69,8 @@ class BadActorSimulator:
         self.use_timestamp_validation = use_timestamp_validation
         self.max_timestamp_drift = max_timestamp_drift
         self.max_future_drift = max_future_drift
+        self.use_metadata_sanitization = use_metadata_sanitization
+        self.metadata_sanitize_mode = metadata_sanitize_mode
         self._init_chain()
         self.attack_results: List[Dict[str, Any]] = []
         self.successful_attacks = 0
@@ -81,7 +88,9 @@ class BadActorSimulator:
             max_global_entries=self.max_global_entries,
             enable_timestamp_validation=self.use_timestamp_validation,
             max_timestamp_drift=self.max_timestamp_drift,
-            max_future_drift=self.max_future_drift
+            max_future_drift=self.max_future_drift,
+            enable_metadata_sanitization=self.use_metadata_sanitization,
+            metadata_sanitize_mode=self.metadata_sanitize_mode
         )
 
     def reset_chain(self):
@@ -783,7 +792,7 @@ def test_timestamp_manipulation(use_validation: bool = False, use_timestamp_vali
 # ATTACK TYPE 9: METADATA INJECTION
 # =============================================================================
 
-def test_metadata_injection(use_validation: bool = False):
+def test_metadata_injection(use_validation: bool = False, use_metadata_sanitization: bool = False):
     """
     Test: Bad actor injects malicious or misleading metadata.
     """
@@ -791,7 +800,11 @@ def test_metadata_injection(use_validation: bool = False):
     print("ATTACK 9: METADATA INJECTION")
     print("="*60)
 
-    sim = BadActorSimulator(use_validation=use_validation)
+    sim = BadActorSimulator(
+        use_validation=use_validation,
+        use_metadata_sanitization=use_metadata_sanitization,
+        metadata_sanitize_mode="strip"  # Use strip mode for simulation
+    )
 
     # Entry with malicious metadata
     malicious_metadata_entries = [
@@ -803,7 +816,8 @@ def test_metadata_injection(use_validation: bool = False):
                 "validation_status": "validated",  # Trying to self-validate
                 "verified_by": "official_validator",
                 "trust_score": 100,
-                "__override__": True
+                "__override__": True,
+                "legitimate_field": "this is ok"  # Non-forbidden field
             }
         },
         {
@@ -811,45 +825,87 @@ def test_metadata_injection(use_validation: bool = False):
             "author": "meta_attacker_2",
             "intent": "Payment",
             "metadata": {
-                "amount": 1000000,  # Metadata contradicts content
+                "amount": 1000000,  # Metadata contradicts content (not forbidden, just deceptive)
                 "urgent": True,
-                "skip_validation": True
+                "skip_validation": True,  # Forbidden field
+                "notes": "legitimate notes"  # Non-forbidden field
             }
         }
     ]
 
     results = []
+    forbidden_stripped = 0
+    total_forbidden = 0
+
     for entry_data in malicious_metadata_entries:
+        original_metadata = copy.deepcopy(entry_data["metadata"])
         entry = NaturalLanguageEntry(
             content=entry_data["content"],
             author=entry_data["author"],
             intent=entry_data["intent"],
-            metadata=entry_data["metadata"]
+            metadata=copy.deepcopy(entry_data["metadata"])
         )
 
         result = sim.chain.add_entry(entry)
 
-        # Check if malicious metadata was preserved
-        stored_entry = sim.chain.pending_entries[-1]
-        malicious_preserved = stored_entry.metadata == entry_data["metadata"]
-
-        attack_success = result["status"] == "pending" and malicious_preserved
-
-        sim.log_attack(
-            attack_name="Metadata Injection",
-            success=attack_success,
-            details=f"Malicious metadata preserved: {entry_data['metadata']}",
-            severity="MEDIUM",
-            recommendation="Sanitize metadata and maintain allowed-field whitelist"
+        # Count forbidden fields in original
+        forbidden_in_original = sum(
+            1 for k in original_metadata.keys()
+            if k in ["validation_status", "verified_by", "trust_score", "__override__", "skip_validation"]
         )
+        total_forbidden += forbidden_in_original
+
+        if result["status"] == "pending":
+            # Check if malicious metadata was preserved or stripped
+            stored_entry = sim.chain.pending_entries[-1]
+            malicious_preserved = stored_entry.metadata == original_metadata
+
+            # Count how many forbidden fields were stripped
+            stripped_count = sum(
+                1 for k in original_metadata.keys()
+                if k not in stored_entry.metadata and k in ["validation_status", "verified_by", "trust_score", "__override__", "skip_validation"]
+            )
+            forbidden_stripped += stripped_count
+
+            attack_success = malicious_preserved
+        else:
+            # Entry was rejected (reject mode)
+            malicious_preserved = False
+            attack_success = False
+            forbidden_stripped += forbidden_in_original
+
+        if use_metadata_sanitization:
+            sim.log_attack(
+                attack_name="Metadata Injection",
+                success=attack_success,
+                details=f"Forbidden fields stripped: {not malicious_preserved}" if not malicious_preserved else "Sanitization may be incomplete",
+                severity="MEDIUM",
+                recommendation="N/A - Metadata sanitization is working" if not malicious_preserved else "Check sanitization rules"
+            )
+        else:
+            sim.log_attack(
+                attack_name="Metadata Injection",
+                success=attack_success,
+                details=f"Malicious metadata preserved: {original_metadata}",
+                severity="MEDIUM",
+                recommendation="Sanitize metadata and maintain allowed-field whitelist"
+            )
 
         results.append({
-            "metadata_injected": entry_data["metadata"],
-            "preserved": malicious_preserved
+            "metadata_injected": original_metadata,
+            "preserved": malicious_preserved,
+            "stripped": not malicious_preserved
         })
 
         print(f"  Malicious metadata accepted: {attack_success}")
-        print(f"    Injected: {json.dumps(entry_data['metadata'], indent=4)[:100]}...")
+        if use_metadata_sanitization and not malicious_preserved:
+            print(f"    Forbidden fields stripped (sanitization working)")
+        else:
+            print(f"    Injected: {json.dumps(original_metadata, indent=4)[:100]}...")
+
+    if use_metadata_sanitization:
+        print(f"\n  PROTECTED: {forbidden_stripped}/{total_forbidden} forbidden metadata fields stripped")
+        print("  FINDING: Metadata sanitization removes dangerous fields")
 
     return sim, results
 
@@ -862,7 +918,8 @@ def run_single_simulation(
     use_validation: bool = False,
     use_deduplication: bool = False,
     use_rate_limiting: bool = False,
-    use_timestamp_validation: bool = False
+    use_timestamp_validation: bool = False,
+    use_metadata_sanitization: bool = False
 ):
     """Run all bad actor simulations for a single mode (protected or unprotected)."""
     all_results = {}
@@ -881,7 +938,7 @@ def run_single_simulation(
         ("Replay Attack", test_replay_attack, {"use_deduplication": use_deduplication}),
         ("Sybil Flooding", test_sybil_flooding, {"use_rate_limiting": use_rate_limiting}),
         ("Timestamp Manipulation", test_timestamp_manipulation, {"use_timestamp_validation": use_timestamp_validation}),
-        ("Metadata Injection", test_metadata_injection, {}),
+        ("Metadata Injection", test_metadata_injection, {"use_metadata_sanitization": use_metadata_sanitization}),
     ]
 
     for name, test_func, extra_params in simulations:
@@ -927,7 +984,8 @@ def run_bad_actor_simulation():
         use_validation=False,
         use_deduplication=False,
         use_rate_limiting=False,
-        use_timestamp_validation=False
+        use_timestamp_validation=False,
+        use_metadata_sanitization=False
     )
 
     # ==========================================================================
@@ -935,7 +993,7 @@ def run_bad_actor_simulation():
     # ==========================================================================
     print("\n" + "#"*70)
     print("# PHASE 2: PROTECTED MODE")
-    print("# (All protections enabled: validation, deduplication, rate limiting, timestamp)")
+    print("# (All protections enabled)")
     print("# This demonstrates how all protections work together to block attacks")
     print("#"*70)
 
@@ -943,7 +1001,8 @@ def run_bad_actor_simulation():
         use_validation=True,
         use_deduplication=True,
         use_rate_limiting=True,
-        use_timestamp_validation=True
+        use_timestamp_validation=True,
+        use_metadata_sanitization=True
     )
 
     # Generate Summary Report
@@ -1044,6 +1103,14 @@ def run_bad_actor_simulation():
         for r in protected_results["Timestamp Manipulation"]["results"]:
             timestamp_blocked = r.get("blocked_by_timestamp_validation", False)
 
+    # Check metadata sanitization results
+    metadata_sanitized = False
+    if "Metadata Injection" in protected_results and "results" in protected_results["Metadata Injection"]:
+        for r in protected_results["Metadata Injection"]["results"]:
+            if r.get("stripped"):
+                metadata_sanitized = True
+                break
+
     print("\n" + "="*70)
     print("CONCLUSION")
     print("="*70)
@@ -1056,6 +1123,7 @@ def run_bad_actor_simulation():
   - Replay attacks: possible (no deduplication)
   - Flooding attacks: possible (no rate limiting)
   - Timestamp manipulation: possible (no validation)
+  - Metadata injection: possible (no sanitization)
 
   AFTER FIX (all protections enabled):
   - Semantic attacks: {protected_sem_total - protected_sem_blocked}/{protected_sem_total} exploitable
@@ -1063,9 +1131,9 @@ def run_bad_actor_simulation():
   - Replay attacks: BLOCKED by entry deduplication
   - Flooding attacks: BLOCKED by rate limiting ({rate_limited_in_protected} entries blocked)
   - Timestamp manipulation: {'BLOCKED by timestamp validation' if timestamp_blocked else 'NOT BLOCKED'}
+  - Metadata injection: {'BLOCKED by metadata sanitization' if metadata_sanitized else 'NOT BLOCKED'}
 
   REMAINING WORK:
-  - Metadata sanitization
   - Double-spending prevention (requires asset tracking layer)
 
   The security improvements implemented include:
@@ -1073,6 +1141,7 @@ def run_bad_actor_simulation():
   2. enable_deduplication=True - Prevents replay attacks
   3. enable_rate_limiting=True - Prevents Sybil/flooding attacks
   4. enable_timestamp_validation=True - Prevents backdating attacks
+  5. enable_metadata_sanitization=True - Prevents metadata injection attacks
 """)
 
     return {
