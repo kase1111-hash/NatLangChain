@@ -1,4 +1,43 @@
-import { writable } from 'svelte/store';
+import { writable, get } from 'svelte/store';
+import {
+  isEncryptionReady,
+  encryptData,
+  decryptData,
+  isEncrypted,
+  initializeEncryption,
+  clearEncryption
+} from './encryption.js';
+
+// Encryption status store
+export const encryptionStatus = writable({
+  initialized: false,
+  available: typeof window !== 'undefined' && !!window.crypto?.subtle
+});
+
+/**
+ * Initialize storage encryption with a passphrase
+ * @param {string} passphrase - Encryption passphrase
+ */
+export async function initializeStorageEncryption(passphrase) {
+  try {
+    await initializeEncryption(passphrase);
+    encryptionStatus.set({ initialized: true, available: true });
+    console.log('Storage encryption initialized');
+    return true;
+  } catch (error) {
+    console.error('Failed to initialize storage encryption:', error);
+    encryptionStatus.set({ initialized: false, available: true, error: error.message });
+    return false;
+  }
+}
+
+/**
+ * Clear storage encryption
+ */
+export function clearStorageEncryption() {
+  clearEncryption();
+  encryptionStatus.set({ initialized: false, available: true });
+}
 
 // Helper to create a persistent store that syncs with localStorage
 function createPersistentStore(key, initialValue) {
@@ -27,6 +66,74 @@ function createPersistentStore(key, initialValue) {
       }
     }
   });
+
+  return store;
+}
+
+/**
+ * Create a persistent store with encryption support for sensitive data
+ * @param {string} key - localStorage key
+ * @param {any} initialValue - Default value
+ * @param {boolean} sensitive - If true, will encrypt when encryption is available
+ */
+function createSecurePersistentStore(key, initialValue, sensitive = false) {
+  let storedValue = initialValue;
+  let isLoading = true;
+
+  const store = writable(storedValue);
+
+  // Async initialization
+  async function initStore() {
+    if (typeof window === 'undefined') {
+      isLoading = false;
+      return;
+    }
+
+    try {
+      const item = localStorage.getItem(key);
+      if (item !== null) {
+        // Check if data is encrypted
+        if (isEncrypted(item) && isEncryptionReady()) {
+          storedValue = await decryptData(item);
+        } else if (isEncrypted(item)) {
+          // Data is encrypted but encryption not ready - keep initial value
+          console.warn(`${key} is encrypted but encryption not initialized`);
+        } else {
+          storedValue = JSON.parse(item);
+        }
+        store.set(storedValue);
+      }
+    } catch (e) {
+      console.warn(`Failed to load ${key} from localStorage:`, e);
+    }
+
+    isLoading = false;
+  }
+
+  // Initialize asynchronously
+  initStore();
+
+  // Subscribe to changes and persist to localStorage
+  store.subscribe(async (value) => {
+    if (typeof window === 'undefined' || isLoading) return;
+
+    try {
+      if (sensitive && isEncryptionReady()) {
+        // Encrypt sensitive data
+        const encrypted = await encryptData(value);
+        localStorage.setItem(key, encrypted);
+      } else {
+        localStorage.setItem(key, JSON.stringify(value));
+      }
+    } catch (e) {
+      console.warn(`Failed to save ${key} to localStorage:`, e);
+    }
+  });
+
+  // Add a reload method to re-decrypt after encryption is initialized
+  store.reload = async function() {
+    await initStore();
+  };
 
   return store;
 }
@@ -88,3 +195,29 @@ export const debug = {
 export function clearDebugLogs() {
   debugLogs.set([]);
 }
+
+// Secure stores for sensitive data (encrypted when encryption is initialized)
+// These stores will automatically encrypt their contents when stored in localStorage
+
+// User wallet connection data (sensitive - contains wallet addresses)
+export const walletData = createSecurePersistentStore('natlangchain_wallet', {
+  connected: false,
+  address: null,
+  type: null
+}, true);
+
+// User session data (sensitive - may contain tokens)
+export const sessionData = createSecurePersistentStore('natlangchain_session', {
+  userId: null,
+  authenticated: false,
+  preferences: {}
+}, true);
+
+// Draft entries (sensitive - may contain personal/financial information)
+export const draftEntries = createSecurePersistentStore('natlangchain_drafts', [], true);
+
+// Export encryption utilities for components that need direct access
+export {
+  isEncryptionReady,
+  isEncrypted
+} from './encryption.js';

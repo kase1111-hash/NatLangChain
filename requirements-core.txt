@@ -4,5 +4,6 @@
 flask==3.0.0
 python-dotenv==1.0.0
 werkzeug>=3.0.0
+cryptography>=41.0.0  # For data encryption at rest
 
 # Optional: Install full requirements.txt for semantic search and LLM features

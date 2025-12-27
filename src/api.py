@@ -16,6 +16,30 @@ from dotenv import load_dotenv
 # Core imports (always required)
 from blockchain import NatLangChain, NaturalLanguageEntry, Block
 
+# Encryption support for data at rest
+try:
+    from encryption import (
+        is_encryption_enabled,
+        encrypt_chain_data,
+        decrypt_chain_data,
+        encrypt_sensitive_fields,
+        decrypt_sensitive_fields,
+        is_encrypted,
+        EncryptionError,
+        ENCRYPTION_KEY_ENV,
+    )
+    ENCRYPTION_AVAILABLE = True
+except ImportError:
+    ENCRYPTION_AVAILABLE = False
+    is_encryption_enabled = lambda: False
+    encrypt_chain_data = None
+    decrypt_chain_data = None
+    encrypt_sensitive_fields = lambda x, **kwargs: x
+    decrypt_sensitive_fields = lambda x, **kwargs: x
+    is_encrypted = lambda x: False
+    EncryptionError = Exception
+    ENCRYPTION_KEY_ENV = "NATLANGCHAIN_ENCRYPTION_KEY"
+
 # Optional imports - these require heavy dependencies (PyTorch, Anthropic, etc.)
 # The API will work without them, just with reduced functionality
 
@@ -476,21 +500,53 @@ def init_validators():
 
 def load_chain():
     """
-    Load blockchain from file if it exists.
+    Load blockchain from file if it exists, with automatic decryption support.
+
+    If the file contains encrypted data (starts with ENC:1:), it will be
+    automatically decrypted using the configured encryption key.
 
     Handles specific error cases:
     - FileNotFoundError: File doesn't exist (normal for fresh start)
     - PermissionError: File exists but cannot be read
     - json.JSONDecodeError: File is corrupted or malformed
     - KeyError/TypeError: File data is missing required fields
+    - EncryptionError: Encrypted data but decryption failed
     """
     global blockchain
     if os.path.exists(CHAIN_DATA_FILE):
         try:
             with open(CHAIN_DATA_FILE, 'r') as f:
-                data = json.load(f)
-                blockchain = NatLangChain.from_dict(data)
-                print(f"Loaded blockchain with {len(blockchain.chain)} blocks")
+                file_content = f.read()
+
+            # Check if data is encrypted
+            if ENCRYPTION_AVAILABLE and is_encrypted(file_content):
+                if not is_encryption_enabled():
+                    print(f"ERROR: Chain data is encrypted but {ENCRYPTION_KEY_ENV} is not set")
+                    print("Please set the encryption key to load the blockchain")
+                    print("Starting with fresh blockchain (WARNING: encrypted data preserved)")
+                    return
+
+                try:
+                    data = decrypt_chain_data(file_content)
+                    blockchain = NatLangChain.from_dict(data)
+                    print(f"Loaded encrypted blockchain with {len(blockchain.chain)} blocks")
+                    return
+                except EncryptionError as e:
+                    print(f"Failed to decrypt chain data: {e}")
+                    print("Check that the correct encryption key is set")
+                    print("Starting with fresh blockchain (WARNING: encrypted data preserved)")
+                    return
+
+            # Not encrypted - load as JSON
+            data = json.loads(file_content)
+            blockchain = NatLangChain.from_dict(data)
+            print(f"Loaded blockchain with {len(blockchain.chain)} blocks")
+
+            # Warn if encryption is enabled but data is not encrypted
+            if ENCRYPTION_AVAILABLE and is_encryption_enabled():
+                print("WARNING: Existing chain data is not encrypted.")
+                print("It will be encrypted on next save.")
+
         except FileNotFoundError:
             print(f"Chain data file not found: {CHAIN_DATA_FILE}")
             print("Starting with fresh blockchain")
@@ -517,18 +573,39 @@ def load_chain():
 
 def save_chain():
     """
-    Save blockchain to file.
+    Save blockchain to file with optional encryption.
+
+    If encryption is enabled (NATLANGCHAIN_ENCRYPTION_KEY is set),
+    the chain data will be encrypted using AES-256-GCM before saving.
 
     Handles specific error cases:
     - PermissionError: Cannot write to file/directory
     - OSError: Disk full or other I/O errors
     - TypeError: Data cannot be serialized to JSON
+    - EncryptionError: Encryption failed
     """
     try:
-        # Write to temporary file first for atomic operation
+        chain_data = blockchain.to_dict()
+
+        # Encrypt if enabled
+        if ENCRYPTION_AVAILABLE and is_encryption_enabled():
+            try:
+                encrypted_data = encrypt_chain_data(chain_data)
+                # Write encrypted data to file
+                temp_file = f"{CHAIN_DATA_FILE}.tmp"
+                with open(temp_file, 'w') as f:
+                    f.write(encrypted_data)
+                os.replace(temp_file, CHAIN_DATA_FILE)
+                print("Chain data saved with encryption")
+                return
+            except EncryptionError as e:
+                print(f"Encryption failed, falling back to unencrypted save: {e}")
+                # Fall through to unencrypted save
+
+        # Write to temporary file first for atomic operation (unencrypted)
         temp_file = f"{CHAIN_DATA_FILE}.tmp"
         with open(temp_file, 'w') as f:
-            json.dump(blockchain.to_dict(), f, indent=2)
+            json.dump(chain_data, f, indent=2)
         # Atomic rename for data integrity
         os.replace(temp_file, CHAIN_DATA_FILE)
     except PermissionError as e:
@@ -543,6 +620,65 @@ def save_chain():
     except Exception as e:
         print(f"Unexpected error saving chain data: {type(e).__name__}: {e}")
         print("WARNING: Blockchain state may not be persisted!")
+
+
+def create_entry_with_encryption(content: str, author: str, intent: str,
+                                   metadata: Optional[Dict[str, Any]] = None) -> NaturalLanguageEntry:
+    """
+    Create a NaturalLanguageEntry with sensitive metadata fields encrypted.
+
+    This helper ensures that sensitive data in metadata (like financial terms,
+    wallet addresses, personal info) is encrypted before being stored in the
+    blockchain.
+
+    Args:
+        content: The entry content
+        author: The entry author
+        intent: The entry intent
+        metadata: Optional metadata dictionary
+
+    Returns:
+        NaturalLanguageEntry with encrypted sensitive fields
+    """
+    processed_metadata = metadata or {}
+
+    # Encrypt sensitive fields if encryption is enabled
+    if ENCRYPTION_AVAILABLE and is_encryption_enabled() and processed_metadata:
+        try:
+            processed_metadata = encrypt_sensitive_fields(processed_metadata)
+        except Exception as e:
+            print(f"Warning: Failed to encrypt sensitive metadata fields: {e}")
+            # Continue with unencrypted metadata
+
+    return NaturalLanguageEntry(
+        content=content,
+        author=author,
+        intent=intent,
+        metadata=processed_metadata
+    )
+
+
+def decrypt_entry_metadata(entry_dict: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Decrypt sensitive fields in an entry's metadata for API responses.
+
+    Args:
+        entry_dict: Entry dictionary (from entry.to_dict())
+
+    Returns:
+        Entry dictionary with decrypted metadata
+    """
+    if not ENCRYPTION_AVAILABLE:
+        return entry_dict
+
+    result = entry_dict.copy()
+    if result.get("metadata"):
+        try:
+            result["metadata"] = decrypt_sensitive_fields(result["metadata"])
+        except Exception as e:
+            print(f"Warning: Failed to decrypt some metadata fields: {e}")
+
+    return result
 
 
 # Initialize on startup
@@ -625,8 +761,8 @@ def add_entry():
             "required": ["content", "author", "intent"]
         }), 400
 
-    # Create entry
-    entry = NaturalLanguageEntry(
+    # Create entry with encrypted sensitive metadata
+    entry = create_entry_with_encryption(
         content=content,
         author=author,
         intent=intent,
@@ -1474,8 +1610,8 @@ def post_contract():
                 "reason": reason
             }), 400
 
-        # Create entry with contract metadata
-        entry = NaturalLanguageEntry(
+        # Create entry with contract metadata (encrypted sensitive fields)
+        entry = create_entry_with_encryption(
             content=content,
             author=author,
             intent=intent,
@@ -1636,7 +1772,7 @@ def respond_to_contract():
         response_metadata["mediation"] = mediation_result
         response_metadata["negotiation_round"] = original_entry.metadata.get("negotiation_round", 0) + 1
 
-    response_entry = NaturalLanguageEntry(
+    response_entry = create_entry_with_encryption(
         content=f"[RESPONSE TO: {block.hash[:8]}] {response_content}",
         author=author,
         intent=f"Response to contract: {response_type}",
@@ -1749,8 +1885,8 @@ def file_dispute():
             dispute_data["dispute_id"]
         )
 
-        # Create blockchain entry
-        entry = NaturalLanguageEntry(
+        # Create blockchain entry with encrypted sensitive fields
+        entry = create_entry_with_encryption(
             content=formatted_content,
             author=claimant,
             intent=f"File dispute against {respondent}",
@@ -1938,7 +2074,7 @@ def add_dispute_evidence(dispute_id: str):
             dispute_id
         )
 
-        entry = NaturalLanguageEntry(
+        entry = create_entry_with_encryption(
             content=formatted_content,
             author=author,
             intent=f"Submit evidence for dispute {dispute_id}",
@@ -2026,7 +2162,7 @@ def escalate_dispute(dispute_id: str):
             dispute_id
         )
 
-        entry = NaturalLanguageEntry(
+        entry = create_entry_with_encryption(
             content=formatted_content,
             author=escalating_party,
             intent=f"Escalate dispute {dispute_id} to {escalation_path}",
@@ -2125,7 +2261,7 @@ def resolve_dispute(dispute_id: str):
             dispute_id
         )
 
-        entry = NaturalLanguageEntry(
+        entry = create_entry_with_encryption(
             content=formatted_content,
             author=resolution_authority,
             intent=f"Resolve dispute {dispute_id}: {resolution_type}",
