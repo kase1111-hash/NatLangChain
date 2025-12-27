@@ -8,6 +8,9 @@
   import SearchPanel from './components/SearchPanel.svelte';
   import Dashboard from './components/Dashboard.svelte';
   import ChatHelper from './components/ChatHelper.svelte';
+  import Settings from './components/Settings.svelte';
+  import DebugWindow from './components/DebugWindow.svelte';
+  import { settings, debug } from './lib/stores.js';
 
   let currentView = 'dashboard';
   let mounted = false;
@@ -15,10 +18,12 @@
 
   onMount(() => {
     mounted = true;
+    debug.info('App', 'Application initialized');
   });
 
   function handleNavigate(event) {
     currentView = event.detail.view;
+    debug.info('Navigation', `Navigated to ${event.detail.view}`);
   }
 
   function toggleChat() {
@@ -81,6 +86,8 @@
               <ContractViewer />
             {:else if currentView === 'search'}
               <SearchPanel />
+            {:else if currentView === 'settings'}
+              <Settings />
             {/if}
           </div>
         {/key}
@@ -103,6 +110,11 @@
     isOpen={chatOpen}
     on:toggle={toggleChat}
   />
+
+  <!-- Debug Window (shown when enabled in settings) -->
+  {#if $settings.debugWindowEnabled}
+    <DebugWindow />
+  {/if}
 </div>
 
 <style>
