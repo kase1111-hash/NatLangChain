@@ -6,8 +6,12 @@ Uses multiple LLM providers for robust consensus
 
 import os
 import json
+import logging
 from typing import Dict, Any, Optional, List
 from anthropic import Anthropic
+
+# Configure module-level logger
+logger = logging.getLogger(__name__)
 
 
 class MultiModelConsensus:
@@ -110,7 +114,10 @@ Return JSON:
                         "result": result
                     })
             except Exception as e:
-                print(f"Model {model_name} failed: {e}")
+                logger.warning(
+                    "Model '%s' validation failed during consensus: %s: %s",
+                    model_name, type(e).__name__, str(e)
+                )
 
         if not validations:
             return {
@@ -320,7 +327,10 @@ Return JSON:
                         "confidence": result.get("confidence", 0.5)
                     })
             except Exception as e:
-                print(f"Model {model_name} match verification failed: {e}")
+                logger.warning(
+                    "Model '%s' contract match verification failed: %s: %s",
+                    model_name, type(e).__name__, str(e)
+                )
 
         if len(scores) < min_models:
             return {
@@ -391,7 +401,10 @@ class HallucimationDetector:
                         "response": result
                     })
             except Exception as e:
-                print(f"Model {model_name} failed: {e}")
+                logger.warning(
+                    "Model '%s' hallucination detection failed: %s: %s",
+                    model_name, type(e).__name__, str(e)
+                )
 
         if len(responses) < 2:
             return {

@@ -6,10 +6,14 @@ This is a quality helper, not an enforcer - it asks questions and offers suggest
 
 import os
 import json
+import logging
 import requests
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass, field
 from datetime import datetime
+
+# Configure module-level logger
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -213,8 +217,31 @@ If the user shares draft content, point out what's good and what needs clarifica
                     "current_model": self.model,
                     "model_available": self.model in models or any(self.model in m for m in models)
                 }
-        except requests.exceptions.RequestException:
-            pass
+            else:
+                logger.warning(
+                    "Ollama status check returned non-200 status: %d",
+                    response.status_code
+                )
+        except requests.exceptions.ConnectionError as e:
+            logger.debug(
+                "Cannot connect to Ollama at %s: %s. Ensure Ollama is running (ollama serve)",
+                self.ollama_url, str(e)
+            )
+        except requests.exceptions.Timeout:
+            logger.debug(
+                "Ollama status check timed out at %s",
+                self.ollama_url
+            )
+        except requests.exceptions.RequestException as e:
+            logger.warning(
+                "Ollama status check failed with unexpected error: %s",
+                str(e)
+            )
+        except json.JSONDecodeError as e:
+            logger.warning(
+                "Ollama returned invalid JSON response: %s",
+                str(e)
+            )
 
         return {
             "available": False,
@@ -297,23 +324,55 @@ If the user shares draft content, point out what's good and what needs clarifica
                     "error": error_msg
                 }
 
-        except requests.exceptions.ConnectionError:
+        except requests.exceptions.ConnectionError as e:
+            logger.error(
+                "Cannot connect to Ollama at %s: %s",
+                self.ollama_url, str(e)
+            )
             return {
                 "success": False,
                 "response": None,
                 "error": "Cannot connect to Ollama. Make sure Ollama is running (ollama serve)"
             }
         except requests.exceptions.Timeout:
+            logger.warning(
+                "Ollama chat request timed out for model %s",
+                self.model
+            )
             return {
                 "success": False,
                 "response": None,
                 "error": "Request timed out. The model might be loading or busy."
             }
-        except Exception as e:
+        except json.JSONDecodeError as e:
+            logger.error(
+                "Failed to parse Ollama response as JSON: %s",
+                str(e)
+            )
             return {
                 "success": False,
                 "response": None,
-                "error": str(e)
+                "error": f"Invalid JSON response from Ollama: {e.msg}"
+            }
+        except requests.exceptions.RequestException as e:
+            logger.error(
+                "Ollama request failed: %s",
+                str(e)
+            )
+            return {
+                "success": False,
+                "response": None,
+                "error": f"Request failed: {str(e)}"
+            }
+        except Exception as e:
+            logger.exception(
+                "Unexpected error during Ollama chat: %s",
+                str(e)
+            )
+            return {
+                "success": False,
+                "response": None,
+                "error": f"Unexpected error: {type(e).__name__}: {str(e)}"
             }
 
     def get_suggestions(self, content: str, intent: str, contract_type: str = "") -> Dict[str, Any]:
