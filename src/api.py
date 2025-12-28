@@ -7,6 +7,8 @@ import os
 import json
 import secrets
 import time
+import hashlib
+from datetime import datetime
 from typing import Dict, Any, Optional
 from dataclasses import dataclass, field
 from functools import wraps
@@ -165,6 +167,20 @@ try:
 except ImportError:
     OllamaChatHelper = None
     get_chat_helper = None
+
+try:
+    from p2p_network import (
+        P2PNetwork, init_p2p_network, get_p2p_network,
+        NodeRole, ConsensusMode, PeerStatus, BroadcastType
+    )
+    P2P_AVAILABLE = True
+except ImportError:
+    P2P_AVAILABLE = False
+    P2PNetwork = None
+    init_p2p_network = None
+    get_p2p_network = lambda: None
+    NodeRole = None
+    ConsensusMode = None
 
 
 # Load environment variables
@@ -6792,6 +6808,650 @@ def chat_clear():
             "success": False,
             "error": "Failed to clear history"
         }), 500
+
+
+# =============================================================================
+# P2P Network & Mediator Node API (api/v1/)
+# =============================================================================
+
+# Global P2P network instance
+p2p_network = None
+
+
+def init_p2p():
+    """Initialize P2P network if available."""
+    global p2p_network
+    if P2P_AVAILABLE and p2p_network is None:
+        bootstrap_peers = os.getenv("NATLANGCHAIN_BOOTSTRAP_PEERS", "").split(",")
+        bootstrap_peers = [p.strip() for p in bootstrap_peers if p.strip()]
+
+        p2p_network = init_p2p_network(
+            node_id=os.getenv("NATLANGCHAIN_NODE_ID"),
+            endpoint=os.getenv("NATLANGCHAIN_ENDPOINT", f"http://localhost:{os.getenv('PORT', 5000)}"),
+            bootstrap_peers=bootstrap_peers if bootstrap_peers else None
+        )
+
+        # Set up chain provider callbacks
+        p2p_network.set_chain_provider(
+            get_chain_info=lambda: blockchain.to_dict(),
+            get_blocks=lambda start, end: [
+                blockchain.chain[i].to_dict()
+                for i in range(start, min(end + 1, len(blockchain.chain)))
+            ],
+            add_block=lambda block_data: _add_synced_block(block_data)
+        )
+
+        # Set up broadcast handlers
+        p2p_network.on_entry_received(_handle_broadcast_entry)
+        p2p_network.on_block_received(_handle_broadcast_block)
+        p2p_network.on_settlement_received(_handle_broadcast_settlement)
+
+        p2p_network.start()
+        return True
+    return False
+
+
+def _add_synced_block(block_data):
+    """Add a block received from sync."""
+    try:
+        from blockchain import Block
+        block = Block.from_dict(block_data)
+        # Verify block links to our chain
+        if len(blockchain.chain) > 0:
+            if block.previous_hash != blockchain.chain[-1].hash:
+                return False
+        blockchain.chain.append(block)
+        save_chain()
+        return True
+    except Exception as e:
+        print(f"Failed to add synced block: {e}")
+        return False
+
+
+def _handle_broadcast_entry(entry_data):
+    """Handle a broadcast entry from peers."""
+    try:
+        from blockchain import NaturalLanguageEntry
+        entry = NaturalLanguageEntry.from_dict(entry_data)
+        blockchain.add_entry(entry)
+    except Exception as e:
+        print(f"Failed to handle broadcast entry: {e}")
+
+
+def _handle_broadcast_block(block_data):
+    """Handle a broadcast block from peers."""
+    _add_synced_block(block_data)
+
+
+def _handle_broadcast_settlement(settlement_data):
+    """Handle a broadcast settlement from mediator."""
+    try:
+        # Create settlement entry
+        entry = create_entry_with_encryption(
+            content=settlement_data.get("content", ""),
+            author=settlement_data.get("author", "mediator"),
+            intent="settlement",
+            metadata=settlement_data.get("metadata", {})
+        )
+        blockchain.add_entry(entry)
+    except Exception as e:
+        print(f"Failed to handle broadcast settlement: {e}")
+
+
+@app.route('/api/v1/node/info', methods=['GET'])
+def get_node_info():
+    """
+    Get this node's information for peer discovery.
+
+    Returns:
+        Node ID, role, chain height, capabilities
+    """
+    if not P2P_AVAILABLE:
+        return jsonify({
+            "node_id": "standalone",
+            "role": "full_node",
+            "chain_height": len(blockchain.chain) - 1,
+            "chain_tip_hash": blockchain.chain[-1].hash if blockchain.chain else "",
+            "version": "1.0.0",
+            "p2p_enabled": False
+        })
+
+    if p2p_network is None:
+        init_p2p()
+
+    if p2p_network:
+        return jsonify(p2p_network.get_node_info())
+    else:
+        return jsonify({"error": "P2P network not initialized"}), 503
+
+
+@app.route('/api/v1/health', methods=['GET'])
+def p2p_health():
+    """P2P health check endpoint for peers."""
+    return jsonify({
+        "status": "healthy",
+        "chain_height": len(blockchain.chain) - 1,
+        "pending_entries": len(blockchain.pending_entries),
+        "timestamp": datetime.utcnow().isoformat()
+    })
+
+
+@app.route('/api/v1/peers/register', methods=['POST'])
+def register_peer():
+    """
+    Register a peer with this node.
+
+    Request body:
+    {
+        "node_id": "peer_id",
+        "endpoint": "http://peer:5000",
+        "role": "full_node",
+        "chain_height": 100,
+        ...
+    }
+    """
+    if not P2P_AVAILABLE or p2p_network is None:
+        return jsonify({"error": "P2P not available"}), 503
+
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    peer_id = data.get("node_id")
+    endpoint = data.get("endpoint")
+
+    if not peer_id or not endpoint:
+        return jsonify({"error": "node_id and endpoint required"}), 400
+
+    from p2p_network import PeerInfo, NodeRole, PeerStatus
+
+    peer = PeerInfo(
+        peer_id=peer_id,
+        endpoint=endpoint,
+        role=NodeRole(data.get("role", "full_node")),
+        status=PeerStatus.CONNECTED,
+        chain_height=data.get("chain_height", 0),
+        chain_tip_hash=data.get("chain_tip_hash", ""),
+        last_seen=datetime.utcnow(),
+        version=data.get("version", "unknown"),
+        capabilities=set(data.get("capabilities", []))
+    )
+
+    p2p_network.peers[peer_id] = peer
+
+    return jsonify({
+        "status": "registered",
+        "node_id": p2p_network.node_id
+    })
+
+
+@app.route('/api/v1/peers', methods=['GET'])
+def list_peers():
+    """List all connected peers."""
+    if not P2P_AVAILABLE or p2p_network is None:
+        return jsonify({"peers": [], "count": 0})
+
+    peers = [p.to_dict() for p in p2p_network.get_connected_peers()]
+    return jsonify({
+        "peers": peers,
+        "count": len(peers)
+    })
+
+
+@app.route('/api/v1/peers/connect', methods=['POST'])
+def connect_peer():
+    """
+    Connect to a new peer.
+
+    Request body:
+    {
+        "endpoint": "http://peer:5000"
+    }
+    """
+    if not P2P_AVAILABLE:
+        return jsonify({"error": "P2P not available"}), 503
+
+    if p2p_network is None:
+        init_p2p()
+
+    data = request.get_json()
+    endpoint = data.get("endpoint") if data else None
+
+    if not endpoint:
+        return jsonify({"error": "endpoint required"}), 400
+
+    success, peer = p2p_network.connect_to_peer(endpoint)
+
+    if success:
+        return jsonify({
+            "status": "connected",
+            "peer": peer.to_dict()
+        })
+    else:
+        return jsonify({"error": "Failed to connect to peer"}), 500
+
+
+# =============================================================================
+# Mediator Node Integration API
+# =============================================================================
+
+@app.route('/api/v1/intents', methods=['GET'])
+def get_intents():
+    """
+    Get pending intents for mediator nodes.
+
+    This is the primary endpoint mediators poll to find matching opportunities.
+
+    Query params:
+        status: Filter by status (pending, open)
+        limit: Max results (default 100)
+
+    Returns:
+        List of intent entries ready for matching
+    """
+    status_filter = request.args.get('status', 'open')
+    limit = min(int(request.args.get('limit', 100)), 1000)
+
+    intents = []
+
+    # Get pending entries
+    for entry in blockchain.pending_entries[:limit]:
+        if entry.metadata.get("is_contract"):
+            intent_id = hashlib.sha256(
+                json.dumps(entry.to_dict(), sort_keys=True).encode()
+            ).hexdigest()[:16]
+
+            intents.append({
+                "intent_id": intent_id,
+                "content": entry.content,
+                "author": entry.author,
+                "intent": entry.intent,
+                "metadata": decrypt_entry_metadata(entry.to_dict()).get("metadata", {}),
+                "timestamp": entry.timestamp,
+                "status": "pending"
+            })
+
+    # Get open contracts from chain
+    if status_filter in ("open", "all"):
+        for block in blockchain.chain:
+            for entry in block.entries:
+                if len(intents) >= limit:
+                    break
+                metadata = entry.metadata or {}
+                if metadata.get("is_contract") and metadata.get("status") == "open":
+                    intent_id = hashlib.sha256(
+                        json.dumps(entry.to_dict(), sort_keys=True).encode()
+                    ).hexdigest()[:16]
+
+                    intents.append({
+                        "intent_id": intent_id,
+                        "block_index": block.index,
+                        "block_hash": block.hash,
+                        "content": entry.content,
+                        "author": entry.author,
+                        "intent": entry.intent,
+                        "metadata": decrypt_entry_metadata(entry.to_dict()).get("metadata", {}),
+                        "timestamp": entry.timestamp,
+                        "status": "open"
+                    })
+
+    return jsonify({
+        "intents": intents,
+        "count": len(intents)
+    })
+
+
+@app.route('/api/v1/entries', methods=['POST'])
+def submit_entry_v1():
+    """
+    Submit an entry to the chain (used by mediator nodes).
+
+    Request body:
+    {
+        "type": "settlement",
+        "author": "mediator_id",
+        "content": {...},
+        "metadata": {...},
+        "signature": "optional_signature"
+    }
+    """
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    entry_type = data.get("type")
+    author = data.get("author")
+    content = data.get("content")
+    metadata = data.get("metadata", {})
+
+    if not all([entry_type, author, content]):
+        return jsonify({"error": "type, author, and content required"}), 400
+
+    try:
+        # Create entry with encryption for sensitive fields
+        entry = create_entry_with_encryption(
+            content=content if isinstance(content, str) else json.dumps(content),
+            author=author,
+            intent=entry_type,
+            metadata=metadata
+        )
+
+        result = blockchain.add_entry(entry)
+
+        # Broadcast to network if P2P enabled
+        if P2P_AVAILABLE and p2p_network:
+            p2p_network.broadcast_entry(entry.to_dict())
+
+        return jsonify({
+            "status": "accepted",
+            "entryId": hashlib.sha256(
+                json.dumps(entry.to_dict(), sort_keys=True).encode()
+            ).hexdigest()[:16],
+            "result": result
+        }), 201
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/v1/settlements', methods=['POST'])
+def submit_settlement():
+    """
+    Submit a settlement from a mediator node.
+
+    Request body:
+    {
+        "mediator_id": "mediator_xxx",
+        "intent_a": "intent_id_1",
+        "intent_b": "intent_id_2",
+        "terms": {...},
+        "settlement_text": "Natural language settlement...",
+        "model_hash": "reproducibility_hash",
+        "consensus_mode": "permissionless",
+        "acceptance_window": 72
+    }
+    """
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    required = ["mediator_id", "intent_a", "intent_b", "terms", "settlement_text"]
+    for field in required:
+        if field not in data:
+            return jsonify({"error": f"Missing required field: {field}"}), 400
+
+    try:
+        # Create settlement entry
+        settlement_id = secrets.token_hex(8)
+        metadata = {
+            "is_settlement": True,
+            "settlement_id": settlement_id,
+            "intent_a": data["intent_a"],
+            "intent_b": data["intent_b"],
+            "terms": data["terms"],
+            "mediator_id": data["mediator_id"],
+            "model_hash": data.get("model_hash"),
+            "consensus_mode": data.get("consensus_mode", "permissionless"),
+            "acceptance_window_hours": data.get("acceptance_window", 72),
+            "status": "proposed",
+            "proposed_at": datetime.utcnow().isoformat()
+        }
+
+        entry = create_entry_with_encryption(
+            content=data["settlement_text"],
+            author=data["mediator_id"],
+            intent="settlement",
+            metadata=metadata
+        )
+
+        result = blockchain.add_entry(entry)
+
+        # Broadcast to network
+        if P2P_AVAILABLE and p2p_network:
+            p2p_network.broadcast_settlement(entry.to_dict())
+
+        return jsonify({
+            "status": "proposed",
+            "settlement_id": settlement_id,
+            "acceptance_window_hours": metadata["acceptance_window_hours"],
+            "result": result
+        }), 201
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/v1/settlements/<settlement_id>/status', methods=['GET'])
+def get_settlement_status(settlement_id):
+    """Get status of a settlement."""
+    for block in blockchain.chain:
+        for entry in block.entries:
+            if entry.metadata.get("settlement_id") == settlement_id:
+                return jsonify({
+                    "settlement_id": settlement_id,
+                    "status": entry.metadata.get("status", "unknown"),
+                    "block_index": block.index,
+                    "block_hash": block.hash,
+                    "metadata": entry.metadata
+                })
+
+    # Check pending
+    for entry in blockchain.pending_entries:
+        if entry.metadata.get("settlement_id") == settlement_id:
+            return jsonify({
+                "settlement_id": settlement_id,
+                "status": "pending",
+                "metadata": entry.metadata
+            })
+
+    return jsonify({"error": "Settlement not found"}), 404
+
+
+@app.route('/api/v1/settlements/<settlement_id>/accept', methods=['POST'])
+def accept_settlement(settlement_id):
+    """
+    Accept a settlement.
+
+    Request body:
+    {
+        "party": "A" or "B",
+        "party_id": "user_identifier",
+        "signature": "optional_signature"
+    }
+    """
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    party = data.get("party")
+    party_id = data.get("party_id")
+
+    if not party or not party_id:
+        return jsonify({"error": "party and party_id required"}), 400
+
+    # Find settlement and update
+    for block in blockchain.chain:
+        for entry in block.entries:
+            if entry.metadata.get("settlement_id") == settlement_id:
+                # Create acceptance entry
+                acceptance = create_entry_with_encryption(
+                    content=f"Party {party} ({party_id}) accepts settlement {settlement_id}",
+                    author=party_id,
+                    intent="settlement_accept",
+                    metadata={
+                        "settlement_id": settlement_id,
+                        "party": party,
+                        "party_id": party_id,
+                        "accepted_at": datetime.utcnow().isoformat()
+                    }
+                )
+                blockchain.add_entry(acceptance)
+
+                return jsonify({
+                    "status": "accepted",
+                    "settlement_id": settlement_id,
+                    "party": party
+                })
+
+    return jsonify({"error": "Settlement not found"}), 404
+
+
+@app.route('/api/v1/reputation/<mediator_id>', methods=['GET'])
+def get_mediator_reputation(mediator_id):
+    """Get reputation metrics for a mediator."""
+    # Count successful settlements
+    successes = 0
+    violations = 0
+    total = 0
+
+    for block in blockchain.chain:
+        for entry in block.entries:
+            if entry.metadata.get("mediator_id") == mediator_id:
+                total += 1
+                status = entry.metadata.get("status", "")
+                if status in ("accepted", "finalized"):
+                    successes += 1
+                elif status in ("challenged", "rejected"):
+                    violations += 1
+
+    # Calculate reputation score
+    if total > 0:
+        score = (successes - violations) / total
+        score = max(0, min(1, (score + 1) / 2))  # Normalize to 0-1
+    else:
+        score = 0.5  # Default for new mediators
+
+    return jsonify({
+        "mediator_id": mediator_id,
+        "reputation_score": score,
+        "total_settlements": total,
+        "successful": successes,
+        "violations": violations
+    })
+
+
+@app.route('/api/v1/reputation', methods=['POST'])
+def update_reputation():
+    """
+    Update mediator reputation (called after settlement finalization).
+
+    Request body:
+    {
+        "mediator_id": "mediator_xxx",
+        "settlement_id": "settlement_xxx",
+        "outcome": "success" | "violation",
+        "reason": "optional reason"
+    }
+    """
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    # Create reputation update entry
+    entry = create_entry_with_encryption(
+        content=f"Reputation update for {data.get('mediator_id')}",
+        author="system",
+        intent="reputation_update",
+        metadata={
+            "mediator_id": data.get("mediator_id"),
+            "settlement_id": data.get("settlement_id"),
+            "outcome": data.get("outcome"),
+            "reason": data.get("reason"),
+            "updated_at": datetime.utcnow().isoformat()
+        }
+    )
+    blockchain.add_entry(entry)
+
+    return jsonify({"status": "updated"})
+
+
+# =============================================================================
+# Chain Sync API
+# =============================================================================
+
+@app.route('/api/v1/blocks', methods=['GET'])
+def get_blocks_range():
+    """
+    Get blocks in a range (for chain sync).
+
+    Query params:
+        start: Start block index
+        end: End block index
+    """
+    start = int(request.args.get('start', 0))
+    end = int(request.args.get('end', len(blockchain.chain) - 1))
+
+    # Limit range
+    end = min(end, start + 100)
+    end = min(end, len(blockchain.chain) - 1)
+
+    blocks = [
+        blockchain.chain[i].to_dict()
+        for i in range(start, end + 1)
+        if i < len(blockchain.chain)
+    ]
+
+    return jsonify({
+        "blocks": blocks,
+        "start": start,
+        "end": end,
+        "total": len(blockchain.chain)
+    })
+
+
+@app.route('/api/v1/sync', methods=['POST'])
+def trigger_sync():
+    """
+    Trigger chain synchronization with peers.
+
+    Request body:
+    {
+        "target_peer": "optional_peer_id"
+    }
+    """
+    if not P2P_AVAILABLE or p2p_network is None:
+        return jsonify({"error": "P2P not available"}), 503
+
+    data = request.get_json() or {}
+    target_peer = data.get("target_peer")
+
+    success = p2p_network.sync_chain(target_peer)
+
+    return jsonify({
+        "status": "success" if success else "failed",
+        "chain_height": len(blockchain.chain) - 1
+    })
+
+
+@app.route('/api/v1/broadcast', methods=['POST'])
+def receive_broadcast():
+    """
+    Receive a broadcast message from a peer.
+
+    This endpoint is called by peers when broadcasting entries/blocks.
+    """
+    if not P2P_AVAILABLE or p2p_network is None:
+        return jsonify({"error": "P2P not available"}), 503
+
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    success = p2p_network.handle_broadcast(data)
+
+    return jsonify({"status": "received" if success else "duplicate"})
+
+
+@app.route('/api/v1/network/stats', methods=['GET'])
+def network_stats():
+    """Get P2P network statistics."""
+    if not P2P_AVAILABLE or p2p_network is None:
+        return jsonify({
+            "p2p_enabled": False,
+            "peer_count": 0
+        })
+
+    return jsonify(p2p_network.get_network_stats())
 
 
 @app.errorhandler(404)

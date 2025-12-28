@@ -291,10 +291,19 @@ def encrypt_sensitive_fields(metadata: Dict[str, Any],
     result = {}
     for field, value in metadata.items():
         field_lower = field.lower()
+        # Normalize separators (hyphens to underscores) for consistent matching
+        field_normalized = field_lower.replace('-', '_')
         # Check if field name matches any sensitive pattern
+        # Use word-boundary matching to avoid false positives like "secretary" matching "secret"
+        # A sensitive field matches if it appears as a complete word (delimited by _ or at start/end)
+        field_parts = set(field_normalized.split('_'))
         should_encrypt = (
-            field_lower in fields_to_encrypt or
-            any(sensitive in field_lower for sensitive in fields_to_encrypt)
+            field_normalized in fields_to_encrypt or
+            any(sensitive in field_parts for sensitive in fields_to_encrypt) or
+            any(field_normalized.startswith(sensitive + '_') or
+                field_normalized.endswith('_' + sensitive) or
+                ('_' + sensitive + '_') in field_normalized
+                for sensitive in fields_to_encrypt)
         )
 
         if should_encrypt and value is not None:
