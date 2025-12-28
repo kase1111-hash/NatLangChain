@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
 Verifies that the broken code has been fixed by checking:
-1. dialetic-consensus.py - LLM implementation is no longer a mock
+1. dialectic_consensus.py - LLM implementation is no longer a mock
 2. SemanticDiff.py - Renamed from .md and has proper implementation
-3. semantic-search.py - Code is correct (dependencies in requirements.txt)
+3. semantic_search.py - Code is correct (dependencies in requirements.txt)
 """
 import os
 import re
@@ -12,9 +12,9 @@ print("=" * 70)
 print("VERIFICATION: Code Fixes Applied Successfully")
 print("=" * 70)
 
-# Check 1: dialetic-consensus.py has real LLM implementation
-print("\n[CHECK 1] dialetic-consensus.py - Real LLM Implementation")
-with open("dialetic-consensus.py", "r") as f:
+# Check 1: dialectic_consensus.py has real LLM implementation
+print("\n[CHECK 1] dialectic_consensus.py - Real LLM Implementation")
+with open("dialectic_consensus.py", "r") as f:
     content = f.read()
 
 if "return \"Analysis completed.\"" in content:
@@ -66,9 +66,9 @@ if not missing:
 else:
     print(f"  ✗ FAILED: Missing dependencies: {', '.join(missing)}")
 
-# Check 4: semantic-search.py code structure is correct
-print("\n[CHECK 4] semantic-search.py - Code Structure")
-with open("semantic-search.py", "r") as f:
+# Check 4: semantic_search.py code structure is correct
+print("\n[CHECK 4] semantic_search.py - Code Structure")
+with open("semantic_search.py", "r") as f:
     content = f.read()
 
 checks = [
@@ -88,15 +88,15 @@ for check_str, desc in checks:
         all_passed = False
 
 if all_passed:
-    print("  ✓ PASSED: semantic-search.py structure is correct")
+    print("  ✓ PASSED: semantic_search.py structure is correct")
 
 # Summary
 print("\n" + "=" * 70)
 print("SUMMARY OF FIXES")
 print("=" * 70)
-print("1. dialetic-consensus.py: Mock LLM replaced with real API calls ✓")
+print("1. dialectic_consensus.py: Mock LLM replaced with real API calls ✓")
 print("2. SemanticDiff.md → SemanticDiff.py: Renamed and fixed ✓")
 print("3. requirements.txt: Added missing dependencies ✓")
-print("4. semantic-search.py: Code structure verified ✓")
+print("4. semantic_search.py: Code structure verified ✓")
 print("\nAll broken code has been successfully fixed!")
 print("=" * 70)

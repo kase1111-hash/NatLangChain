@@ -24,8 +24,8 @@ except Exception as e:
     print(f"✗ Core blockchain test failed: {e}")
     sys.exit(1)
 
-# Test 2: Test semantic-search.py with sample data
-print("\n[TEST 2] Testing semantic-search.py with chain.json...")
+# Test 2: Test semantic_search.py with sample data
+print("\n[TEST 2] Testing semantic_search.py with chain.json...")
 try:
     # Check if dependencies are available
     import numpy
@@ -54,15 +54,15 @@ except ImportError as e:
 except Exception as e:
     print(f"✗ Semantic search test failed: {e}")
 
-# Test 3: Test dialetic-consensus.py with API
-print("\n[TEST 3] Testing dialetic-consensus.py LLM integration...")
+# Test 3: Test dialectic_consensus.py with API
+print("\n[TEST 3] Testing dialectic_consensus.py LLM integration...")
 api_key = os.getenv("ANTHROPIC_API_KEY")
 if not api_key:
     print("⚠ ANTHROPIC_API_KEY not set - skipping LLM API tests")
     print("  Set ANTHROPIC_API_KEY to test LLM functionality")
 else:
     try:
-        from dialetic_consensus import ConsensusModule
+        from dialectic_consensus import ConsensusModule
         consensus = ConsensusModule(api_key=api_key)
 
         # Test with a clear, well-defined entry
