@@ -8,6 +8,7 @@ import json
 import secrets
 import time
 import hashlib
+import threading
 from datetime import datetime
 from typing import Dict, Any, Optional
 from dataclasses import dataclass, field
@@ -422,6 +423,23 @@ def add_security_headers(response):
     response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate'
     response.headers['Pragma'] = 'no-cache'
 
+    # SECURITY: Content Security Policy - restrictive defaults for API
+    # This is an API server, so we restrict all content loading
+    response.headers['Content-Security-Policy'] = (
+        "default-src 'none'; "  # Block everything by default
+        "frame-ancestors 'none'; "  # Prevent embedding in frames
+        "form-action 'none'; "  # Prevent form submissions
+        "base-uri 'none'"  # Prevent base tag injection
+    )
+
+    # SECURITY: Strict Transport Security (only effective over HTTPS)
+    # Tells browsers to always use HTTPS for this domain
+    # max-age=31536000 = 1 year, includeSubDomains for all subdomains
+    if os.getenv("NATLANGCHAIN_ENABLE_HSTS", "false").lower() == "true":
+        response.headers['Strict-Transport-Security'] = (
+            'max-age=31536000; includeSubDomains'
+        )
+
     # SECURITY: CORS headers - restrictive by default
     # Set CORS_ALLOWED_ORIGINS to comma-separated list of allowed origins
     # Use "*" only for development (explicitly set, not default)
@@ -671,12 +689,19 @@ def init_validators():
             print("API will operate without LLM validation")
 
 
+# SECURITY: Lock for file operations to prevent TOCTOU race conditions
+# Used by load_chain and save_chain to ensure atomic read/write operations
+_chain_file_lock = threading.Lock()
+
+
 def load_chain():
     """
     Load blockchain from file if it exists, with automatic decryption support.
 
     If the file contains encrypted data (starts with ENC:1:), it will be
     automatically decrypted using the configured encryption key.
+
+    Thread-safe: Uses _chain_file_lock to prevent race conditions.
 
     Handles specific error cases:
     - FileNotFoundError: File doesn't exist (normal for fresh start)
@@ -686,7 +711,13 @@ def load_chain():
     - EncryptionError: Encrypted data but decryption failed
     """
     global blockchain
-    if os.path.exists(CHAIN_DATA_FILE):
+
+    # SECURITY: Acquire lock to prevent race conditions during file operations
+    with _chain_file_lock:
+        if not os.path.exists(CHAIN_DATA_FILE):
+            print("Chain data file not found - starting with fresh blockchain")
+            return
+
         try:
             with open(CHAIN_DATA_FILE, 'r') as f:
                 file_content = f.read()
@@ -694,9 +725,10 @@ def load_chain():
             # Check if data is encrypted
             if ENCRYPTION_AVAILABLE and is_encrypted(file_content):
                 if not is_encryption_enabled():
-                    print(f"ERROR: Chain data is encrypted but {ENCRYPTION_KEY_ENV} is not set")
-                    print("Please set the encryption key to load the blockchain")
-                    print("Starting with fresh blockchain (WARNING: encrypted data preserved)")
+                    # SECURITY: Don't expose env var name in logs
+                    print("ERROR: Chain data is encrypted but encryption key is not configured")
+                    print("Please set the encryption key environment variable")
+                    print("Starting with fresh blockchain (encrypted data preserved)")
                     return
 
                 try:
@@ -704,10 +736,10 @@ def load_chain():
                     blockchain = NatLangChain.from_dict(data)
                     print(f"Loaded encrypted blockchain with {len(blockchain.chain)} blocks")
                     return
-                except EncryptionError as e:
-                    print(f"Failed to decrypt chain data: {e}")
-                    print("Check that the correct encryption key is set")
-                    print("Starting with fresh blockchain (WARNING: encrypted data preserved)")
+                except EncryptionError:
+                    # SECURITY: Don't expose decryption error details
+                    print("Failed to decrypt chain data - check encryption key")
+                    print("Starting with fresh blockchain (encrypted data preserved)")
                     return
 
             # Not encrypted - load as JSON
@@ -720,28 +752,25 @@ def load_chain():
                 print("WARNING: Existing chain data is not encrypted.")
                 print("It will be encrypted on next save.")
 
-        except FileNotFoundError:
-            print(f"Chain data file not found: {CHAIN_DATA_FILE}")
-            print("Starting with fresh blockchain")
-        except PermissionError as e:
-            print(f"Permission denied reading chain data file: {e}")
-            print("Starting with fresh blockchain (WARNING: existing data may be lost)")
-        except json.JSONDecodeError as e:
-            print(f"Chain data file is corrupted or malformed: {e.msg} at line {e.lineno}, column {e.colno}")
-            print("Starting with fresh blockchain (WARNING: corrupted data file preserved)")
+        except PermissionError:
+            # SECURITY: Don't expose permission error details
+            print("Permission denied reading chain data - starting with fresh blockchain")
+        except json.JSONDecodeError:
+            # SECURITY: Don't expose JSON parsing details (line/column numbers)
+            print("Chain data file is corrupted - starting with fresh blockchain")
             # Preserve corrupted file for recovery
             corrupted_path = f"{CHAIN_DATA_FILE}.corrupted.{int(time.time())}"
             try:
                 os.rename(CHAIN_DATA_FILE, corrupted_path)
-                print(f"Corrupted file renamed to: {corrupted_path}")
-            except OSError as rename_err:
-                print(f"Failed to rename corrupted file: {rename_err}")
-        except (KeyError, TypeError) as e:
-            print(f"Chain data file has invalid structure: {e}")
-            print("Starting with fresh blockchain (WARNING: existing data may be incompatible)")
-        except Exception as e:
-            print(f"Unexpected error loading chain data: {type(e).__name__}: {e}")
-            print("Starting with fresh blockchain")
+                print("Corrupted file preserved for recovery")
+            except OSError:
+                pass  # Silently fail rename - don't expose filesystem errors
+        except (KeyError, TypeError):
+            # SECURITY: Don't expose data structure details
+            print("Chain data format invalid - starting with fresh blockchain")
+        except Exception:
+            # SECURITY: Don't expose unexpected error details
+            print("Error loading chain data - starting with fresh blockchain")
 
 
 def save_chain():
@@ -751,48 +780,55 @@ def save_chain():
     If encryption is enabled (NATLANGCHAIN_ENCRYPTION_KEY is set),
     the chain data will be encrypted using AES-256-GCM before saving.
 
+    Thread-safe: Uses _chain_file_lock to prevent TOCTOU race conditions
+    between encryption check and file write.
+
     Handles specific error cases:
     - PermissionError: Cannot write to file/directory
     - OSError: Disk full or other I/O errors
     - TypeError: Data cannot be serialized to JSON
     - EncryptionError: Encryption failed
     """
-    try:
-        chain_data = blockchain.to_dict()
+    # SECURITY: Acquire lock to prevent TOCTOU race conditions
+    # This ensures encryption state doesn't change between check and write
+    with _chain_file_lock:
+        try:
+            chain_data = blockchain.to_dict()
 
-        # Encrypt if enabled
-        if ENCRYPTION_AVAILABLE and is_encryption_enabled():
-            try:
-                encrypted_data = encrypt_chain_data(chain_data)
-                # Write encrypted data to file
-                temp_file = f"{CHAIN_DATA_FILE}.tmp"
-                with open(temp_file, 'w') as f:
-                    f.write(encrypted_data)
-                os.replace(temp_file, CHAIN_DATA_FILE)
-                print("Chain data saved with encryption")
-                return
-            except EncryptionError as e:
-                print(f"Encryption failed, falling back to unencrypted save: {e}")
-                # Fall through to unencrypted save
+            # Encrypt if enabled (check is now atomic with write)
+            if ENCRYPTION_AVAILABLE and is_encryption_enabled():
+                try:
+                    encrypted_data = encrypt_chain_data(chain_data)
+                    # Write encrypted data to file
+                    temp_file = f"{CHAIN_DATA_FILE}.tmp"
+                    with open(temp_file, 'w') as f:
+                        f.write(encrypted_data)
+                    os.replace(temp_file, CHAIN_DATA_FILE)
+                    print("Chain data saved with encryption")
+                    return
+                except EncryptionError:
+                    # SECURITY: Don't expose encryption error details
+                    print("Encryption failed - falling back to unencrypted save")
+                    # Fall through to unencrypted save
 
-        # Write to temporary file first for atomic operation (unencrypted)
-        temp_file = f"{CHAIN_DATA_FILE}.tmp"
-        with open(temp_file, 'w') as f:
-            json.dump(chain_data, f, indent=2)
-        # Atomic rename for data integrity
-        os.replace(temp_file, CHAIN_DATA_FILE)
-    except PermissionError as e:
-        print(f"Permission denied writing chain data: {e}")
-        print("WARNING: Blockchain state may not be persisted!")
-    except OSError as e:
-        print(f"OS error saving chain data (disk full?): {e}")
-        print("WARNING: Blockchain state may not be persisted!")
-    except TypeError as e:
-        print(f"Failed to serialize chain data to JSON: {e}")
-        print("WARNING: Blockchain state contains non-serializable data!")
-    except Exception as e:
-        print(f"Unexpected error saving chain data: {type(e).__name__}: {e}")
-        print("WARNING: Blockchain state may not be persisted!")
+            # Write to temporary file first for atomic operation (unencrypted)
+            temp_file = f"{CHAIN_DATA_FILE}.tmp"
+            with open(temp_file, 'w') as f:
+                json.dump(chain_data, f, indent=2)
+            # Atomic rename for data integrity
+            os.replace(temp_file, CHAIN_DATA_FILE)
+        except PermissionError:
+            # SECURITY: Don't expose permission error details or file paths
+            print("WARNING: Permission denied - blockchain state may not be persisted")
+        except OSError:
+            # SECURITY: Don't expose OS error details
+            print("WARNING: I/O error - blockchain state may not be persisted")
+        except TypeError:
+            # SECURITY: Don't expose serialization error details
+            print("WARNING: Serialization error - blockchain state contains invalid data")
+        except Exception:
+            # SECURITY: Don't expose unexpected error details
+            print("WARNING: Error saving chain data")
 
 
 def create_entry_with_encryption(content: str, author: str, intent: str,

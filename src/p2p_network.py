@@ -26,8 +26,40 @@ from typing import Dict, List, Optional, Any, Tuple, Set, Callable
 from enum import Enum
 import logging
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+# Configure logging with security considerations
+# SECURITY: Use a formatter that doesn't allow newline injection in log messages
+# Also sanitizes potentially malicious input in log entries
+
+
+class SafeLogFormatter(logging.Formatter):
+    """
+    A log formatter that sanitizes log messages to prevent log injection attacks.
+
+    This prevents attackers from injecting fake log entries or escape sequences
+    by removing/escaping dangerous characters from log messages.
+    """
+
+    def format(self, record: logging.LogRecord) -> str:
+        # Sanitize the message to prevent log injection
+        if isinstance(record.msg, str):
+            # Replace newlines and carriage returns that could create fake log entries
+            record.msg = record.msg.replace('\n', '\\n').replace('\r', '\\r')
+            # Remove ANSI escape sequences that could manipulate terminal output
+            import re
+            record.msg = re.sub(r'\x1b\[[0-9;]*[a-zA-Z]', '', record.msg)
+        return super().format(record)
+
+
+# Set up logging with safe formatter
+_log_handler = logging.StreamHandler()
+_log_handler.setFormatter(SafeLogFormatter(
+    fmt='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+))
+logging.basicConfig(
+    level=logging.INFO,
+    handlers=[_log_handler]
+)
 logger = logging.getLogger(__name__)
 
 # Try to import requests
