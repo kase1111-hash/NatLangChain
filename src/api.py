@@ -242,10 +242,44 @@ def validate_pagination_params(
     return bounded_limit, bounded_offset
 
 
+def is_valid_ip(ip_str: str) -> bool:
+    """
+    Validate that a string is a valid IPv4 or IPv6 address.
+
+    Args:
+        ip_str: String to validate as IP address
+
+    Returns:
+        True if valid IP address, False otherwise
+    """
+    import ipaddress
+    try:
+        ipaddress.ip_address(ip_str.strip())
+        return True
+    except (ValueError, AttributeError):
+        return False
+
+
 def get_client_ip() -> str:
-    """Get client IP address, considering proxies."""
-    if request.headers.get('X-Forwarded-For'):
-        return request.headers.get('X-Forwarded-For').split(',')[0].strip()
+    """
+    Get client IP address, considering proxies.
+
+    SECURITY: Validates IP format to prevent rate limit bypass attacks.
+    """
+    # Check X-Forwarded-For header (set by reverse proxies)
+    xff = request.headers.get('X-Forwarded-For')
+    if xff:
+        # Take the first (leftmost) IP which is the original client
+        # X-Forwarded-For format: "client, proxy1, proxy2, ..."
+        parts = xff.split(',')
+        for part in parts:
+            candidate = part.strip()
+            # Validate it's actually an IP address to prevent bypass
+            if candidate and is_valid_ip(candidate):
+                return candidate
+        # If no valid IP found in header, fall through to remote_addr
+
+    # Fall back to direct connection address
     return request.remote_addr or 'unknown'
 
 
@@ -339,9 +373,24 @@ def add_security_headers(response):
     response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate'
     response.headers['Pragma'] = 'no-cache'
 
-    # CORS headers (configurable origins)
-    allowed_origins = os.getenv("CORS_ALLOWED_ORIGINS", "*")
-    response.headers['Access-Control-Allow-Origin'] = allowed_origins
+    # SECURITY: CORS headers - restrictive by default
+    # Set CORS_ALLOWED_ORIGINS to comma-separated list of allowed origins
+    # Use "*" only for development (explicitly set, not default)
+    allowed_origins_str = os.getenv("CORS_ALLOWED_ORIGINS", "")
+
+    if allowed_origins_str == "*":
+        # Explicitly allowed wildcard (development only)
+        response.headers['Access-Control-Allow-Origin'] = "*"
+    elif allowed_origins_str:
+        # Check if request origin matches any allowed origin
+        request_origin = request.headers.get('Origin', '')
+        allowed_list = [o.strip() for o in allowed_origins_str.split(',')]
+        if request_origin in allowed_list:
+            response.headers['Access-Control-Allow-Origin'] = request_origin
+            response.headers['Vary'] = 'Origin'
+        # If origin not in list, don't set CORS header (request will be blocked)
+    # If CORS_ALLOWED_ORIGINS not set, no CORS header = same-origin only
+
     response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
     response.headers['Access-Control-Allow-Headers'] = 'Content-Type, X-API-Key, Authorization'
 
@@ -808,6 +857,52 @@ def add_entry():
             "required": ["content", "author", "intent"]
         }), 400
 
+    # SECURITY: Validate input lengths to prevent DoS via LLM token exhaustion
+    MAX_CONTENT_LEN = 50000   # 50KB max for content
+    MAX_AUTHOR_LEN = 500      # 500 chars for author
+    MAX_INTENT_LEN = 2000     # 2KB for intent
+    MAX_METADATA_LEN = 10000  # 10KB for metadata
+
+    if not isinstance(content, str) or not isinstance(author, str) or not isinstance(intent, str):
+        return jsonify({"error": "content, author, and intent must be strings"}), 400
+
+    if len(content) > MAX_CONTENT_LEN:
+        return jsonify({
+            "error": f"Content too long",
+            "max_length": MAX_CONTENT_LEN,
+            "received_length": len(content)
+        }), 400
+
+    if len(author) > MAX_AUTHOR_LEN:
+        return jsonify({
+            "error": f"Author too long",
+            "max_length": MAX_AUTHOR_LEN,
+            "received_length": len(author)
+        }), 400
+
+    if len(intent) > MAX_INTENT_LEN:
+        return jsonify({
+            "error": f"Intent too long",
+            "max_length": MAX_INTENT_LEN,
+            "received_length": len(intent)
+        }), 400
+
+    # Validate metadata size if provided
+    metadata = data.get("metadata", {})
+    if metadata:
+        try:
+            metadata_str = json.dumps(metadata)
+            if len(metadata_str) > MAX_METADATA_LEN:
+                return jsonify({
+                    "error": f"Metadata too large",
+                    "max_length": MAX_METADATA_LEN,
+                    "received_length": len(metadata_str)
+                }), 400
+        except (TypeError, ValueError):
+            return jsonify({"error": "Invalid metadata format"}), 400
+
+    # Fields validated, continue with entry creation
+
     # Create entry with encrypted sensitive metadata
     entry = create_entry_with_encryption(
         content=content,
@@ -1096,6 +1191,21 @@ def search_entries():
     if not intent_keyword:
         return jsonify({
             "error": "Missing 'intent' query parameter"
+        }), 400
+
+    # SECURITY: Validate intent query parameter
+    MAX_SEARCH_LEN = 500  # Maximum search term length
+    if len(intent_keyword) > MAX_SEARCH_LEN:
+        return jsonify({
+            "error": "Search term too long",
+            "max_length": MAX_SEARCH_LEN
+        }), 400
+
+    # Strip whitespace and validate non-empty after strip
+    intent_keyword = intent_keyword.strip()
+    if not intent_keyword:
+        return jsonify({
+            "error": "Search term cannot be empty or whitespace only"
         }), 400
 
     entries = blockchain.get_entries_by_intent(intent_keyword)
