@@ -199,7 +199,9 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
 # API Key for authentication (set via environment or generate secure default)
 API_KEY = os.getenv("NATLANGCHAIN_API_KEY", None)
-API_KEY_REQUIRED = os.getenv("NATLANGCHAIN_REQUIRE_AUTH", "false").lower() == "true"
+# SECURITY: Default to requiring authentication for production safety
+# Set NATLANGCHAIN_REQUIRE_AUTH=false explicitly to disable for development
+API_KEY_REQUIRED = os.getenv("NATLANGCHAIN_REQUIRE_AUTH", "true").lower() == "true"
 
 # Rate limiting configuration
 RATE_LIMIT_REQUESTS = int(os.getenv("RATE_LIMIT_REQUESTS", "100"))
@@ -210,6 +212,34 @@ rate_limit_store: Dict[str, Dict[str, Any]] = {}
 MAX_VALIDATORS = 10
 MAX_ORACLES = 10
 MAX_RESULTS = 100
+MAX_OFFSET = 100000  # Maximum offset to prevent memory exhaustion
+
+
+def validate_pagination_params(
+    limit: int,
+    offset: int = 0,
+    max_limit: int = MAX_RESULTS,
+    max_offset: int = MAX_OFFSET
+) -> tuple:
+    """
+    Validate and bound pagination parameters to prevent DoS attacks.
+
+    Args:
+        limit: Requested limit
+        offset: Requested offset
+        max_limit: Maximum allowed limit
+        max_offset: Maximum allowed offset
+
+    Returns:
+        Tuple of (bounded_limit, bounded_offset)
+    """
+    # Bound limit to maximum allowed
+    bounded_limit = max(1, min(int(limit) if limit else max_limit, max_limit))
+
+    # Bound offset to maximum allowed and ensure non-negative
+    bounded_offset = max(0, min(int(offset) if offset else 0, max_offset))
+
+    return bounded_limit, bounded_offset
 
 
 def get_client_ip() -> str:
@@ -744,6 +774,7 @@ def get_narrative():
 
 
 @app.route('/entry', methods=['POST'])
+@require_api_key
 def add_entry():
     """
     Add a new natural language entry to the blockchain.
@@ -858,6 +889,7 @@ def add_entry():
 
 
 @app.route('/entry/validate', methods=['POST'])
+@require_api_key
 def validate_entry():
     """
     Validate an entry without adding it to the blockchain.
@@ -906,6 +938,7 @@ def validate_entry():
 
 
 @app.route('/mine', methods=['POST'])
+@require_api_key
 def mine_block():
     """
     Mine pending entries into a new block.
@@ -1567,6 +1600,7 @@ def match_contracts():
 
 
 @app.route('/contract/post', methods=['POST'])
+@require_api_key
 def post_contract():
     """
     Post a new live contract (offer or seek).
@@ -1715,6 +1749,7 @@ def list_contracts():
 
 
 @app.route('/contract/respond', methods=['POST'])
+@require_api_key
 def respond_to_contract():
     """
     Respond to a contract proposal or create a counter-offer.
@@ -1807,6 +1842,7 @@ def respond_to_contract():
 # ========== Dispute Protocol (MP-03) Endpoints ==========
 
 @app.route('/dispute/file', methods=['POST'])
+@require_api_key
 def file_dispute():
     """
     File a new dispute (MP-03 Dispute Declaration).
@@ -2027,6 +2063,7 @@ def get_dispute(dispute_id: str):
 
 
 @app.route('/dispute/<dispute_id>/evidence', methods=['POST'])
+@require_api_key
 def add_dispute_evidence(dispute_id: str):
     """
     Add evidence to an existing dispute.
@@ -2116,6 +2153,7 @@ def add_dispute_evidence(dispute_id: str):
 
 
 @app.route('/dispute/<dispute_id>/escalate', methods=['POST'])
+@require_api_key
 def escalate_dispute(dispute_id: str):
     """
     Escalate a dispute to higher authority.
@@ -2204,6 +2242,7 @@ def escalate_dispute(dispute_id: str):
 
 
 @app.route('/dispute/<dispute_id>/resolve', methods=['POST'])
+@require_api_key
 def resolve_dispute(dispute_id: str):
     """
     Record the resolution of a dispute.
@@ -2457,6 +2496,7 @@ def check_entry_frozen(block_index: int, entry_index: int):
 # ========== Escalation Fork Endpoints ==========
 
 @app.route('/fork/trigger', methods=['POST'])
+@require_api_key
 def trigger_escalation_fork():
     """
     Trigger an Escalation Fork after failed mediation.
@@ -2546,6 +2586,7 @@ def get_fork_status(fork_id: str):
 
 
 @app.route('/fork/<fork_id>/submit-proposal', methods=['POST'])
+@require_api_key
 def submit_fork_proposal(fork_id: str):
     """
     Submit a resolution proposal to an active fork.
@@ -2608,6 +2649,7 @@ def list_fork_proposals(fork_id: str):
 
 
 @app.route('/fork/<fork_id>/ratify', methods=['POST'])
+@require_api_key
 def ratify_fork_proposal(fork_id: str):
     """
     Ratify a proposal (both parties must ratify for resolution).
@@ -2652,6 +2694,7 @@ def ratify_fork_proposal(fork_id: str):
 
 
 @app.route('/fork/<fork_id>/veto', methods=['POST'])
+@require_api_key
 def veto_fork_proposal(fork_id: str):
     """
     Veto a proposal with documented reasoning.
@@ -2755,6 +2798,7 @@ def list_active_forks():
 # ========== Observance Burn Endpoints ==========
 
 @app.route('/burn/observance', methods=['POST'])
+@require_api_key
 def perform_observance_burn():
     """
     Perform an Observance Burn.
@@ -2821,6 +2865,7 @@ def perform_observance_burn():
 
 
 @app.route('/burn/voluntary', methods=['POST'])
+@require_api_key
 def perform_voluntary_burn():
     """
     Perform a voluntary signal burn (simplified endpoint).
@@ -2872,6 +2917,8 @@ def get_burn_history():
 
     limit = request.args.get("limit", 50, type=int)
     offset = request.args.get("offset", 0, type=int)
+    # SECURITY: Validate pagination parameters to prevent DoS
+    limit, offset = validate_pagination_params(limit, offset)
 
     history = observance_burn_manager.get_burn_history(limit=limit, offset=offset)
 
@@ -2930,6 +2977,8 @@ def get_observance_ledger():
         return jsonify({"error": "Observance burn not available"}), 503
 
     limit = request.args.get("limit", 20, type=int)
+    # SECURITY: Validate limit parameter
+    limit, _ = validate_pagination_params(limit, 0)
 
     ledger = observance_burn_manager.get_observance_ledger(limit=limit)
 
@@ -3379,6 +3428,8 @@ def get_harassment_audit_trail():
         return jsonify({"error": "Anti-harassment features not available"}), 503
 
     limit = request.args.get("limit", 100, type=int)
+    # SECURITY: Validate limit parameter
+    limit, _ = validate_pagination_params(limit, 0)
 
     trail = anti_harassment_manager.get_audit_trail(limit=limit)
 
@@ -3409,6 +3460,7 @@ def get_treasury_balance():
 
 
 @app.route('/treasury/deposit', methods=['POST'])
+@require_api_key
 def deposit_to_treasury():
     """
     Deposit funds into treasury.
@@ -3558,6 +3610,8 @@ def get_treasury_inflows():
         return jsonify({"error": "Treasury not available"}), 503
 
     limit = request.args.get("limit", 50, type=int)
+    # SECURITY: Validate limit parameter
+    limit, _ = validate_pagination_params(limit, 0)
     inflow_type_str = request.args.get("type")
 
     inflow_type = None
@@ -3575,6 +3629,7 @@ def get_treasury_inflows():
 
 
 @app.route('/treasury/subsidy/request', methods=['POST'])
+@require_api_key
 def request_treasury_subsidy():
     """
     Request a defensive stake subsidy.
@@ -3624,6 +3679,7 @@ def request_treasury_subsidy():
 
 
 @app.route('/treasury/subsidy/disburse', methods=['POST'])
+@require_api_key
 def disburse_treasury_subsidy():
     """
     Disburse an approved subsidy to the stake escrow.
@@ -3758,6 +3814,8 @@ def get_treasury_audit():
         return jsonify({"error": "Treasury not available"}), 503
 
     limit = request.args.get("limit", 100, type=int)
+    # SECURITY: Validate limit parameter
+    limit, _ = validate_pagination_params(limit, 0)
 
     trail = treasury.get_audit_trail(limit=limit)
 
@@ -4382,6 +4440,8 @@ def get_signature_history(user_id: str):
         return jsonify({"error": "FIDO2 authentication not available"}), 503
 
     limit = request.args.get("limit", 50, type=int)
+    # SECURITY: Validate limit parameter
+    limit, _ = validate_pagination_params(limit, 0)
     sig_type_str = request.args.get("signature_type")
 
     signature_type = None
@@ -4429,6 +4489,8 @@ def get_fido2_audit():
         return jsonify({"error": "FIDO2 authentication not available"}), 503
 
     limit = request.args.get("limit", 100, type=int)
+    # SECURITY: Validate limit parameter
+    limit, _ = validate_pagination_params(limit, 0)
 
     trail = fido2_manager.get_audit_trail(limit=limit)
 
@@ -5051,6 +5113,8 @@ def get_zk_privacy_audit():
         return jsonify({"error": "ZK privacy not available"}), 503
 
     limit = request.args.get("limit", 100, type=int)
+    # SECURITY: Validate limit parameter
+    limit, _ = validate_pagination_params(limit, 0)
 
     trail = zk_privacy_manager.get_audit_trail(limit=limit)
 
@@ -5063,6 +5127,7 @@ def get_zk_privacy_audit():
 # ========== Automated Negotiation Engine Endpoints ==========
 
 @app.route('/negotiation/session', methods=['POST'])
+@require_api_key
 def initiate_negotiation_session():
     """
     Initiate a new negotiation session.
@@ -5558,6 +5623,8 @@ def get_negotiation_audit():
         return jsonify({"error": "Negotiation engine not available"}), 503
 
     limit = request.args.get("limit", 100, type=int)
+    # SECURITY: Validate limit parameter
+    limit, _ = validate_pagination_params(limit, 0)
 
     trail = negotiation_engine.get_audit_trail(limit=limit)
 
@@ -6026,6 +6093,8 @@ def get_market_pricing_audit():
         return jsonify({"error": "Market pricing not available"}), 503
 
     limit = request.args.get("limit", 100, type=int)
+    # SECURITY: Validate limit parameter
+    limit, _ = validate_pagination_params(limit, 0)
 
     trail = market_pricing.get_audit_trail(limit=limit)
 
@@ -6578,6 +6647,8 @@ def get_mobile_audit():
         return jsonify({"error": "Mobile deployment not available"}), 503
 
     limit = request.args.get("limit", 100, type=int)
+    # SECURITY: Validate limit parameter
+    limit, _ = validate_pagination_params(limit, 0)
 
     trail = mobile_deployment.get_audit_trail(limit=limit)
 
@@ -7102,6 +7173,7 @@ def get_intents():
 
 
 @app.route('/api/v1/entries', methods=['POST'])
+@require_api_key
 def submit_entry_v1():
     """
     Submit an entry to the chain (used by mediator nodes).
@@ -7155,6 +7227,7 @@ def submit_entry_v1():
 
 
 @app.route('/api/v1/settlements', methods=['POST'])
+@require_api_key
 def submit_settlement():
     """
     Submit a settlement from a mediator node.
@@ -7424,6 +7497,7 @@ def trigger_sync():
 
 
 @app.route('/api/v1/broadcast', methods=['POST'])
+@require_api_key
 def receive_broadcast():
     """
     Receive a broadcast message from a peer.

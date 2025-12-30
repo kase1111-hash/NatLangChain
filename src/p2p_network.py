@@ -614,8 +614,9 @@ class BlockValidator:
             size = len(entry_str.encode('utf-8'))
             if size > MAX_ENTRY_SIZE:
                 return False, f"Entry too large: {size} bytes (max {MAX_ENTRY_SIZE})"
-        except:
-            return False, "Invalid entry data"
+        except (json.JSONDecodeError, TypeError, UnicodeEncodeError) as e:
+            logger.warning(f"Entry validation failed: {type(e).__name__}: {e}")
+            return False, f"Invalid entry data: {type(e).__name__}"
 
         return True, "OK"
 
@@ -682,7 +683,8 @@ class PeerSecurityManager:
             if host in ('localhost', '127.0.0.1', '::1'):
                 return '127.0.0.1'
             return host
-        except:
+        except (ValueError, AttributeError) as e:
+            logger.debug(f"IP extraction failed for endpoint: {type(e).__name__}")
             return 'unknown'
 
     def get_ip_prefix(self, ip: str, prefix_len: int = 16) -> str:
@@ -692,7 +694,8 @@ class PeerSecurityManager:
             if len(parts) == 4 and prefix_len == 16:
                 return f"{parts[0]}.{parts[1]}"
             return ip
-        except:
+        except (ValueError, IndexError, AttributeError) as e:
+            logger.debug(f"IP prefix extraction failed: {type(e).__name__}")
             return ip
 
     def check_peer_allowed(self, peer_id: str, endpoint: str, current_peers: Dict[str, Any]) -> Tuple[bool, str]:
@@ -1113,8 +1116,8 @@ class P2PNetwork:
                 peer.status = PeerStatus.CONNECTED
                 peer.last_seen = datetime.utcnow()
                 return True
-        except:
-            pass
+        except (requests.RequestException, OSError, ValueError) as e:
+            logger.debug(f"Ping to peer {peer.peer_id} failed: {type(e).__name__}")
         return False
 
     def disconnect_peer(self, peer_id: str):
@@ -1380,8 +1383,8 @@ class P2PNetwork:
                     json=message.to_dict(),
                     timeout=BROADCAST_TIMEOUT
                 )
-            except:
-                pass
+            except (requests.RequestException, OSError, ValueError) as e:
+                logger.debug(f"Forward broadcast to {peer.peer_id} failed: {type(e).__name__}")
 
     # =========================================================================
     # Chain Synchronization
