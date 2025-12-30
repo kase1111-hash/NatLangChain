@@ -194,8 +194,9 @@ app.config['JSON_SORT_KEYS'] = False
 # Security Configuration
 # ============================================================
 
-# Request size limit (16MB max)
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+# SECURITY: Request size limit reduced from 16MB to 2MB to prevent storage attacks
+# Natural language entries shouldn't need more than 2MB
+app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024
 
 # API Key for authentication (set via environment or generate secure default)
 API_KEY = os.getenv("NATLANGCHAIN_API_KEY", None)
@@ -240,6 +241,54 @@ def validate_pagination_params(
     bounded_offset = max(0, min(int(offset) if offset else 0, max_offset))
 
     return bounded_limit, bounded_offset
+
+
+def validate_json_schema(
+    data: Dict[str, Any],
+    required_fields: Dict[str, type],
+    optional_fields: Optional[Dict[str, type]] = None,
+    max_lengths: Optional[Dict[str, int]] = None
+) -> tuple:
+    """
+    Validate JSON payload against a simple schema.
+
+    SECURITY: Provides type and structure validation for API payloads
+    to prevent type confusion and injection attacks.
+
+    Args:
+        data: The JSON data to validate
+        required_fields: Dict mapping field names to expected types
+        optional_fields: Dict mapping optional field names to expected types
+        max_lengths: Dict mapping field names to maximum string lengths
+
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    if not isinstance(data, dict):
+        return False, "Request body must be a JSON object"
+
+    # Check required fields
+    for field, expected_type in required_fields.items():
+        if field not in data:
+            return False, f"Missing required field: {field}"
+        if not isinstance(data[field], expected_type):
+            return False, f"Field '{field}' must be of type {expected_type.__name__}"
+
+    # Check optional fields if present
+    if optional_fields:
+        for field, expected_type in optional_fields.items():
+            if field in data and data[field] is not None:
+                if not isinstance(data[field], expected_type):
+                    return False, f"Field '{field}' must be of type {expected_type.__name__}"
+
+    # Check string lengths
+    if max_lengths:
+        for field, max_len in max_lengths.items():
+            if field in data and isinstance(data[field], str):
+                if len(data[field]) > max_len:
+                    return False, f"Field '{field}' exceeds maximum length of {max_len}"
+
+    return True, None
 
 
 def is_valid_ip(ip_str: str) -> bool:
@@ -404,6 +453,35 @@ def request_entity_too_large(error):
         "error": "Request too large",
         "max_size_mb": app.config['MAX_CONTENT_LENGTH'] / (1024 * 1024)
     }), 413
+
+
+@app.errorhandler(400)
+def bad_request(error):
+    """
+    Handle bad request errors including type coercion failures.
+
+    SECURITY: Returns generic error message to prevent information disclosure
+    about internal type expectations.
+    """
+    return jsonify({
+        "error": "Bad request",
+        "message": "Invalid request format or parameters"
+    }), 400
+
+
+@app.errorhandler(ValueError)
+def handle_value_error(error):
+    """
+    Handle ValueError exceptions from type coercion.
+
+    SECURITY: Catches errors from Flask's request.args.get(type=int) etc.
+    Returns generic message to prevent leaking internal type information.
+    """
+    return jsonify({
+        "error": "Invalid parameter value",
+        "message": "One or more parameters have invalid values"
+    }), 400
+
 
 # Initialize blockchain and validator
 blockchain = NatLangChain()
@@ -846,48 +924,36 @@ def add_entry():
     if not data:
         return jsonify({"error": "No data provided"}), 400
 
-    # Required fields
-    content = data.get("content")
-    author = data.get("author")
-    intent = data.get("intent")
+    # SECURITY: Schema validation for entry payload
+    ENTRY_MAX_LENGTHS = {
+        "content": 50000,   # 50KB max for content
+        "author": 500,      # 500 chars for author
+        "intent": 2000,     # 2KB for intent
+    }
 
-    if not all([content, author, intent]):
-        return jsonify({
-            "error": "Missing required fields",
-            "required": ["content", "author", "intent"]
-        }), 400
+    is_valid, error_msg = validate_json_schema(
+        data,
+        required_fields={"content": str, "author": str, "intent": str},
+        optional_fields={
+            "metadata": dict,
+            "validate": bool,
+            "auto_mine": bool,
+            "validation_mode": str,
+            "multi_validator": bool
+        },
+        max_lengths=ENTRY_MAX_LENGTHS
+    )
 
-    # SECURITY: Validate input lengths to prevent DoS via LLM token exhaustion
-    MAX_CONTENT_LEN = 50000   # 50KB max for content
-    MAX_AUTHOR_LEN = 500      # 500 chars for author
-    MAX_INTENT_LEN = 2000     # 2KB for intent
-    MAX_METADATA_LEN = 10000  # 10KB for metadata
+    if not is_valid:
+        return jsonify({"error": error_msg}), 400
 
-    if not isinstance(content, str) or not isinstance(author, str) or not isinstance(intent, str):
-        return jsonify({"error": "content, author, and intent must be strings"}), 400
-
-    if len(content) > MAX_CONTENT_LEN:
-        return jsonify({
-            "error": f"Content too long",
-            "max_length": MAX_CONTENT_LEN,
-            "received_length": len(content)
-        }), 400
-
-    if len(author) > MAX_AUTHOR_LEN:
-        return jsonify({
-            "error": f"Author too long",
-            "max_length": MAX_AUTHOR_LEN,
-            "received_length": len(author)
-        }), 400
-
-    if len(intent) > MAX_INTENT_LEN:
-        return jsonify({
-            "error": f"Intent too long",
-            "max_length": MAX_INTENT_LEN,
-            "received_length": len(intent)
-        }), 400
+    # Extract validated fields
+    content = data["content"]
+    author = data["author"]
+    intent = data["intent"]
 
     # Validate metadata size if provided
+    MAX_METADATA_LEN = 10000  # 10KB for metadata
     metadata = data.get("metadata", {})
     if metadata:
         try:
@@ -1010,6 +1076,17 @@ def validate_entry():
 
     if not data:
         return jsonify({"error": "No data provided"}), 400
+
+    # SECURITY: Schema validation for validate payload
+    is_valid, error_msg = validate_json_schema(
+        data,
+        required_fields={"content": str, "author": str, "intent": str},
+        optional_fields={"multi_validator": bool},
+        max_lengths={"content": 50000, "author": 500, "intent": 2000}
+    )
+
+    if not is_valid:
+        return jsonify({"error": error_msg}), 400
 
     content = data.get("content")
     author = data.get("author")

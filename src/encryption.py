@@ -6,7 +6,7 @@ Uses AES-256-GCM for authenticated encryption with PBKDF2 key derivation.
 
 Security Features:
 - AES-256-GCM for encryption with authentication
-- PBKDF2-HMAC-SHA256 for key derivation (600,000 iterations)
+- PBKDF2-HMAC-SHA256 for key derivation (1,000,000 iterations)
 - Random salt and IV for each encryption operation
 - Secure key management via environment variables
 - Field-level encryption support for sensitive metadata
@@ -27,7 +27,9 @@ from cryptography.hazmat.backends import default_backend
 SALT_SIZE = 16  # 128 bits
 IV_SIZE = 12  # 96 bits for GCM (recommended)
 KEY_SIZE = 32  # 256 bits
-PBKDF2_ITERATIONS = 600_000  # OWASP recommended minimum for PBKDF2-HMAC-SHA256
+# SECURITY: 1M iterations exceeds OWASP 2023 minimum (600k) for better protection
+# against brute-force attacks on modern hardware
+PBKDF2_ITERATIONS = 1_000_000
 
 # Environment variable for encryption key
 ENCRYPTION_KEY_ENV = "NATLANGCHAIN_ENCRYPTION_KEY"
