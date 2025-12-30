@@ -8,6 +8,7 @@ import json
 import secrets
 import time
 import hashlib
+import threading
 from datetime import datetime
 from typing import Dict, Any, Optional
 from dataclasses import dataclass, field
@@ -194,12 +195,15 @@ app.config['JSON_SORT_KEYS'] = False
 # Security Configuration
 # ============================================================
 
-# Request size limit (16MB max)
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+# SECURITY: Request size limit reduced from 16MB to 2MB to prevent storage attacks
+# Natural language entries shouldn't need more than 2MB
+app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024
 
 # API Key for authentication (set via environment or generate secure default)
 API_KEY = os.getenv("NATLANGCHAIN_API_KEY", None)
-API_KEY_REQUIRED = os.getenv("NATLANGCHAIN_REQUIRE_AUTH", "false").lower() == "true"
+# SECURITY: Default to requiring authentication for production safety
+# Set NATLANGCHAIN_REQUIRE_AUTH=false explicitly to disable for development
+API_KEY_REQUIRED = os.getenv("NATLANGCHAIN_REQUIRE_AUTH", "true").lower() == "true"
 
 # Rate limiting configuration
 RATE_LIMIT_REQUESTS = int(os.getenv("RATE_LIMIT_REQUESTS", "100"))
@@ -210,12 +214,122 @@ rate_limit_store: Dict[str, Dict[str, Any]] = {}
 MAX_VALIDATORS = 10
 MAX_ORACLES = 10
 MAX_RESULTS = 100
+MAX_OFFSET = 100000  # Maximum offset to prevent memory exhaustion
+
+
+def validate_pagination_params(
+    limit: int,
+    offset: int = 0,
+    max_limit: int = MAX_RESULTS,
+    max_offset: int = MAX_OFFSET
+) -> tuple:
+    """
+    Validate and bound pagination parameters to prevent DoS attacks.
+
+    Args:
+        limit: Requested limit
+        offset: Requested offset
+        max_limit: Maximum allowed limit
+        max_offset: Maximum allowed offset
+
+    Returns:
+        Tuple of (bounded_limit, bounded_offset)
+    """
+    # Bound limit to maximum allowed
+    bounded_limit = max(1, min(int(limit) if limit else max_limit, max_limit))
+
+    # Bound offset to maximum allowed and ensure non-negative
+    bounded_offset = max(0, min(int(offset) if offset else 0, max_offset))
+
+    return bounded_limit, bounded_offset
+
+
+def validate_json_schema(
+    data: Dict[str, Any],
+    required_fields: Dict[str, type],
+    optional_fields: Optional[Dict[str, type]] = None,
+    max_lengths: Optional[Dict[str, int]] = None
+) -> tuple:
+    """
+    Validate JSON payload against a simple schema.
+
+    SECURITY: Provides type and structure validation for API payloads
+    to prevent type confusion and injection attacks.
+
+    Args:
+        data: The JSON data to validate
+        required_fields: Dict mapping field names to expected types
+        optional_fields: Dict mapping optional field names to expected types
+        max_lengths: Dict mapping field names to maximum string lengths
+
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    if not isinstance(data, dict):
+        return False, "Request body must be a JSON object"
+
+    # Check required fields
+    for field, expected_type in required_fields.items():
+        if field not in data:
+            return False, f"Missing required field: {field}"
+        if not isinstance(data[field], expected_type):
+            return False, f"Field '{field}' must be of type {expected_type.__name__}"
+
+    # Check optional fields if present
+    if optional_fields:
+        for field, expected_type in optional_fields.items():
+            if field in data and data[field] is not None:
+                if not isinstance(data[field], expected_type):
+                    return False, f"Field '{field}' must be of type {expected_type.__name__}"
+
+    # Check string lengths
+    if max_lengths:
+        for field, max_len in max_lengths.items():
+            if field in data and isinstance(data[field], str):
+                if len(data[field]) > max_len:
+                    return False, f"Field '{field}' exceeds maximum length of {max_len}"
+
+    return True, None
+
+
+def is_valid_ip(ip_str: str) -> bool:
+    """
+    Validate that a string is a valid IPv4 or IPv6 address.
+
+    Args:
+        ip_str: String to validate as IP address
+
+    Returns:
+        True if valid IP address, False otherwise
+    """
+    import ipaddress
+    try:
+        ipaddress.ip_address(ip_str.strip())
+        return True
+    except (ValueError, AttributeError):
+        return False
 
 
 def get_client_ip() -> str:
-    """Get client IP address, considering proxies."""
-    if request.headers.get('X-Forwarded-For'):
-        return request.headers.get('X-Forwarded-For').split(',')[0].strip()
+    """
+    Get client IP address, considering proxies.
+
+    SECURITY: Validates IP format to prevent rate limit bypass attacks.
+    """
+    # Check X-Forwarded-For header (set by reverse proxies)
+    xff = request.headers.get('X-Forwarded-For')
+    if xff:
+        # Take the first (leftmost) IP which is the original client
+        # X-Forwarded-For format: "client, proxy1, proxy2, ..."
+        parts = xff.split(',')
+        for part in parts:
+            candidate = part.strip()
+            # Validate it's actually an IP address to prevent bypass
+            if candidate and is_valid_ip(candidate):
+                return candidate
+        # If no valid IP found in header, fall through to remote_addr
+
+    # Fall back to direct connection address
     return request.remote_addr or 'unknown'
 
 
@@ -309,9 +423,41 @@ def add_security_headers(response):
     response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate'
     response.headers['Pragma'] = 'no-cache'
 
-    # CORS headers (configurable origins)
-    allowed_origins = os.getenv("CORS_ALLOWED_ORIGINS", "*")
-    response.headers['Access-Control-Allow-Origin'] = allowed_origins
+    # SECURITY: Content Security Policy - restrictive defaults for API
+    # This is an API server, so we restrict all content loading
+    response.headers['Content-Security-Policy'] = (
+        "default-src 'none'; "  # Block everything by default
+        "frame-ancestors 'none'; "  # Prevent embedding in frames
+        "form-action 'none'; "  # Prevent form submissions
+        "base-uri 'none'"  # Prevent base tag injection
+    )
+
+    # SECURITY: Strict Transport Security (only effective over HTTPS)
+    # Tells browsers to always use HTTPS for this domain
+    # max-age=31536000 = 1 year, includeSubDomains for all subdomains
+    if os.getenv("NATLANGCHAIN_ENABLE_HSTS", "false").lower() == "true":
+        response.headers['Strict-Transport-Security'] = (
+            'max-age=31536000; includeSubDomains'
+        )
+
+    # SECURITY: CORS headers - restrictive by default
+    # Set CORS_ALLOWED_ORIGINS to comma-separated list of allowed origins
+    # Use "*" only for development (explicitly set, not default)
+    allowed_origins_str = os.getenv("CORS_ALLOWED_ORIGINS", "")
+
+    if allowed_origins_str == "*":
+        # Explicitly allowed wildcard (development only)
+        response.headers['Access-Control-Allow-Origin'] = "*"
+    elif allowed_origins_str:
+        # Check if request origin matches any allowed origin
+        request_origin = request.headers.get('Origin', '')
+        allowed_list = [o.strip() for o in allowed_origins_str.split(',')]
+        if request_origin in allowed_list:
+            response.headers['Access-Control-Allow-Origin'] = request_origin
+            response.headers['Vary'] = 'Origin'
+        # If origin not in list, don't set CORS header (request will be blocked)
+    # If CORS_ALLOWED_ORIGINS not set, no CORS header = same-origin only
+
     response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
     response.headers['Access-Control-Allow-Headers'] = 'Content-Type, X-API-Key, Authorization'
 
@@ -325,6 +471,35 @@ def request_entity_too_large(error):
         "error": "Request too large",
         "max_size_mb": app.config['MAX_CONTENT_LENGTH'] / (1024 * 1024)
     }), 413
+
+
+@app.errorhandler(400)
+def bad_request(error):
+    """
+    Handle bad request errors including type coercion failures.
+
+    SECURITY: Returns generic error message to prevent information disclosure
+    about internal type expectations.
+    """
+    return jsonify({
+        "error": "Bad request",
+        "message": "Invalid request format or parameters"
+    }), 400
+
+
+@app.errorhandler(ValueError)
+def handle_value_error(error):
+    """
+    Handle ValueError exceptions from type coercion.
+
+    SECURITY: Catches errors from Flask's request.args.get(type=int) etc.
+    Returns generic message to prevent leaking internal type information.
+    """
+    return jsonify({
+        "error": "Invalid parameter value",
+        "message": "One or more parameters have invalid values"
+    }), 400
+
 
 # Initialize blockchain and validator
 blockchain = NatLangChain()
@@ -514,12 +689,19 @@ def init_validators():
             print("API will operate without LLM validation")
 
 
+# SECURITY: Lock for file operations to prevent TOCTOU race conditions
+# Used by load_chain and save_chain to ensure atomic read/write operations
+_chain_file_lock = threading.Lock()
+
+
 def load_chain():
     """
     Load blockchain from file if it exists, with automatic decryption support.
 
     If the file contains encrypted data (starts with ENC:1:), it will be
     automatically decrypted using the configured encryption key.
+
+    Thread-safe: Uses _chain_file_lock to prevent race conditions.
 
     Handles specific error cases:
     - FileNotFoundError: File doesn't exist (normal for fresh start)
@@ -529,7 +711,13 @@ def load_chain():
     - EncryptionError: Encrypted data but decryption failed
     """
     global blockchain
-    if os.path.exists(CHAIN_DATA_FILE):
+
+    # SECURITY: Acquire lock to prevent race conditions during file operations
+    with _chain_file_lock:
+        if not os.path.exists(CHAIN_DATA_FILE):
+            print("Chain data file not found - starting with fresh blockchain")
+            return
+
         try:
             with open(CHAIN_DATA_FILE, 'r') as f:
                 file_content = f.read()
@@ -537,9 +725,10 @@ def load_chain():
             # Check if data is encrypted
             if ENCRYPTION_AVAILABLE and is_encrypted(file_content):
                 if not is_encryption_enabled():
-                    print(f"ERROR: Chain data is encrypted but {ENCRYPTION_KEY_ENV} is not set")
-                    print("Please set the encryption key to load the blockchain")
-                    print("Starting with fresh blockchain (WARNING: encrypted data preserved)")
+                    # SECURITY: Don't expose env var name in logs
+                    print("ERROR: Chain data is encrypted but encryption key is not configured")
+                    print("Please set the encryption key environment variable")
+                    print("Starting with fresh blockchain (encrypted data preserved)")
                     return
 
                 try:
@@ -547,10 +736,10 @@ def load_chain():
                     blockchain = NatLangChain.from_dict(data)
                     print(f"Loaded encrypted blockchain with {len(blockchain.chain)} blocks")
                     return
-                except EncryptionError as e:
-                    print(f"Failed to decrypt chain data: {e}")
-                    print("Check that the correct encryption key is set")
-                    print("Starting with fresh blockchain (WARNING: encrypted data preserved)")
+                except EncryptionError:
+                    # SECURITY: Don't expose decryption error details
+                    print("Failed to decrypt chain data - check encryption key")
+                    print("Starting with fresh blockchain (encrypted data preserved)")
                     return
 
             # Not encrypted - load as JSON
@@ -563,28 +752,25 @@ def load_chain():
                 print("WARNING: Existing chain data is not encrypted.")
                 print("It will be encrypted on next save.")
 
-        except FileNotFoundError:
-            print(f"Chain data file not found: {CHAIN_DATA_FILE}")
-            print("Starting with fresh blockchain")
-        except PermissionError as e:
-            print(f"Permission denied reading chain data file: {e}")
-            print("Starting with fresh blockchain (WARNING: existing data may be lost)")
-        except json.JSONDecodeError as e:
-            print(f"Chain data file is corrupted or malformed: {e.msg} at line {e.lineno}, column {e.colno}")
-            print("Starting with fresh blockchain (WARNING: corrupted data file preserved)")
+        except PermissionError:
+            # SECURITY: Don't expose permission error details
+            print("Permission denied reading chain data - starting with fresh blockchain")
+        except json.JSONDecodeError:
+            # SECURITY: Don't expose JSON parsing details (line/column numbers)
+            print("Chain data file is corrupted - starting with fresh blockchain")
             # Preserve corrupted file for recovery
             corrupted_path = f"{CHAIN_DATA_FILE}.corrupted.{int(time.time())}"
             try:
                 os.rename(CHAIN_DATA_FILE, corrupted_path)
-                print(f"Corrupted file renamed to: {corrupted_path}")
-            except OSError as rename_err:
-                print(f"Failed to rename corrupted file: {rename_err}")
-        except (KeyError, TypeError) as e:
-            print(f"Chain data file has invalid structure: {e}")
-            print("Starting with fresh blockchain (WARNING: existing data may be incompatible)")
-        except Exception as e:
-            print(f"Unexpected error loading chain data: {type(e).__name__}: {e}")
-            print("Starting with fresh blockchain")
+                print("Corrupted file preserved for recovery")
+            except OSError:
+                pass  # Silently fail rename - don't expose filesystem errors
+        except (KeyError, TypeError):
+            # SECURITY: Don't expose data structure details
+            print("Chain data format invalid - starting with fresh blockchain")
+        except Exception:
+            # SECURITY: Don't expose unexpected error details
+            print("Error loading chain data - starting with fresh blockchain")
 
 
 def save_chain():
@@ -594,48 +780,55 @@ def save_chain():
     If encryption is enabled (NATLANGCHAIN_ENCRYPTION_KEY is set),
     the chain data will be encrypted using AES-256-GCM before saving.
 
+    Thread-safe: Uses _chain_file_lock to prevent TOCTOU race conditions
+    between encryption check and file write.
+
     Handles specific error cases:
     - PermissionError: Cannot write to file/directory
     - OSError: Disk full or other I/O errors
     - TypeError: Data cannot be serialized to JSON
     - EncryptionError: Encryption failed
     """
-    try:
-        chain_data = blockchain.to_dict()
+    # SECURITY: Acquire lock to prevent TOCTOU race conditions
+    # This ensures encryption state doesn't change between check and write
+    with _chain_file_lock:
+        try:
+            chain_data = blockchain.to_dict()
 
-        # Encrypt if enabled
-        if ENCRYPTION_AVAILABLE and is_encryption_enabled():
-            try:
-                encrypted_data = encrypt_chain_data(chain_data)
-                # Write encrypted data to file
-                temp_file = f"{CHAIN_DATA_FILE}.tmp"
-                with open(temp_file, 'w') as f:
-                    f.write(encrypted_data)
-                os.replace(temp_file, CHAIN_DATA_FILE)
-                print("Chain data saved with encryption")
-                return
-            except EncryptionError as e:
-                print(f"Encryption failed, falling back to unencrypted save: {e}")
-                # Fall through to unencrypted save
+            # Encrypt if enabled (check is now atomic with write)
+            if ENCRYPTION_AVAILABLE and is_encryption_enabled():
+                try:
+                    encrypted_data = encrypt_chain_data(chain_data)
+                    # Write encrypted data to file
+                    temp_file = f"{CHAIN_DATA_FILE}.tmp"
+                    with open(temp_file, 'w') as f:
+                        f.write(encrypted_data)
+                    os.replace(temp_file, CHAIN_DATA_FILE)
+                    print("Chain data saved with encryption")
+                    return
+                except EncryptionError:
+                    # SECURITY: Don't expose encryption error details
+                    print("Encryption failed - falling back to unencrypted save")
+                    # Fall through to unencrypted save
 
-        # Write to temporary file first for atomic operation (unencrypted)
-        temp_file = f"{CHAIN_DATA_FILE}.tmp"
-        with open(temp_file, 'w') as f:
-            json.dump(chain_data, f, indent=2)
-        # Atomic rename for data integrity
-        os.replace(temp_file, CHAIN_DATA_FILE)
-    except PermissionError as e:
-        print(f"Permission denied writing chain data: {e}")
-        print("WARNING: Blockchain state may not be persisted!")
-    except OSError as e:
-        print(f"OS error saving chain data (disk full?): {e}")
-        print("WARNING: Blockchain state may not be persisted!")
-    except TypeError as e:
-        print(f"Failed to serialize chain data to JSON: {e}")
-        print("WARNING: Blockchain state contains non-serializable data!")
-    except Exception as e:
-        print(f"Unexpected error saving chain data: {type(e).__name__}: {e}")
-        print("WARNING: Blockchain state may not be persisted!")
+            # Write to temporary file first for atomic operation (unencrypted)
+            temp_file = f"{CHAIN_DATA_FILE}.tmp"
+            with open(temp_file, 'w') as f:
+                json.dump(chain_data, f, indent=2)
+            # Atomic rename for data integrity
+            os.replace(temp_file, CHAIN_DATA_FILE)
+        except PermissionError:
+            # SECURITY: Don't expose permission error details or file paths
+            print("WARNING: Permission denied - blockchain state may not be persisted")
+        except OSError:
+            # SECURITY: Don't expose OS error details
+            print("WARNING: I/O error - blockchain state may not be persisted")
+        except TypeError:
+            # SECURITY: Don't expose serialization error details
+            print("WARNING: Serialization error - blockchain state contains invalid data")
+        except Exception:
+            # SECURITY: Don't expose unexpected error details
+            print("WARNING: Error saving chain data")
 
 
 def create_entry_with_encryption(content: str, author: str, intent: str,
@@ -744,6 +937,7 @@ def get_narrative():
 
 
 @app.route('/entry', methods=['POST'])
+@require_api_key
 def add_entry():
     """
     Add a new natural language entry to the blockchain.
@@ -766,16 +960,50 @@ def add_entry():
     if not data:
         return jsonify({"error": "No data provided"}), 400
 
-    # Required fields
-    content = data.get("content")
-    author = data.get("author")
-    intent = data.get("intent")
+    # SECURITY: Schema validation for entry payload
+    ENTRY_MAX_LENGTHS = {
+        "content": 50000,   # 50KB max for content
+        "author": 500,      # 500 chars for author
+        "intent": 2000,     # 2KB for intent
+    }
 
-    if not all([content, author, intent]):
-        return jsonify({
-            "error": "Missing required fields",
-            "required": ["content", "author", "intent"]
-        }), 400
+    is_valid, error_msg = validate_json_schema(
+        data,
+        required_fields={"content": str, "author": str, "intent": str},
+        optional_fields={
+            "metadata": dict,
+            "validate": bool,
+            "auto_mine": bool,
+            "validation_mode": str,
+            "multi_validator": bool
+        },
+        max_lengths=ENTRY_MAX_LENGTHS
+    )
+
+    if not is_valid:
+        return jsonify({"error": error_msg}), 400
+
+    # Extract validated fields
+    content = data["content"]
+    author = data["author"]
+    intent = data["intent"]
+
+    # Validate metadata size if provided
+    MAX_METADATA_LEN = 10000  # 10KB for metadata
+    metadata = data.get("metadata", {})
+    if metadata:
+        try:
+            metadata_str = json.dumps(metadata)
+            if len(metadata_str) > MAX_METADATA_LEN:
+                return jsonify({
+                    "error": f"Metadata too large",
+                    "max_length": MAX_METADATA_LEN,
+                    "received_length": len(metadata_str)
+                }), 400
+        except (TypeError, ValueError):
+            return jsonify({"error": "Invalid metadata format"}), 400
+
+    # Fields validated, continue with entry creation
 
     # Create entry with encrypted sensitive metadata
     entry = create_entry_with_encryption(
@@ -858,6 +1086,7 @@ def add_entry():
 
 
 @app.route('/entry/validate', methods=['POST'])
+@require_api_key
 def validate_entry():
     """
     Validate an entry without adding it to the blockchain.
@@ -884,6 +1113,17 @@ def validate_entry():
     if not data:
         return jsonify({"error": "No data provided"}), 400
 
+    # SECURITY: Schema validation for validate payload
+    is_valid, error_msg = validate_json_schema(
+        data,
+        required_fields={"content": str, "author": str, "intent": str},
+        optional_fields={"multi_validator": bool},
+        max_lengths={"content": 50000, "author": 500, "intent": 2000}
+    )
+
+    if not is_valid:
+        return jsonify({"error": error_msg}), 400
+
     content = data.get("content")
     author = data.get("author")
     intent = data.get("intent")
@@ -906,6 +1146,7 @@ def validate_entry():
 
 
 @app.route('/mine', methods=['POST'])
+@require_api_key
 def mine_block():
     """
     Mine pending entries into a new block.
@@ -1063,6 +1304,21 @@ def search_entries():
     if not intent_keyword:
         return jsonify({
             "error": "Missing 'intent' query parameter"
+        }), 400
+
+    # SECURITY: Validate intent query parameter
+    MAX_SEARCH_LEN = 500  # Maximum search term length
+    if len(intent_keyword) > MAX_SEARCH_LEN:
+        return jsonify({
+            "error": "Search term too long",
+            "max_length": MAX_SEARCH_LEN
+        }), 400
+
+    # Strip whitespace and validate non-empty after strip
+    intent_keyword = intent_keyword.strip()
+    if not intent_keyword:
+        return jsonify({
+            "error": "Search term cannot be empty or whitespace only"
         }), 400
 
     entries = blockchain.get_entries_by_intent(intent_keyword)
@@ -1567,6 +1823,7 @@ def match_contracts():
 
 
 @app.route('/contract/post', methods=['POST'])
+@require_api_key
 def post_contract():
     """
     Post a new live contract (offer or seek).
@@ -1715,6 +1972,7 @@ def list_contracts():
 
 
 @app.route('/contract/respond', methods=['POST'])
+@require_api_key
 def respond_to_contract():
     """
     Respond to a contract proposal or create a counter-offer.
@@ -1807,6 +2065,7 @@ def respond_to_contract():
 # ========== Dispute Protocol (MP-03) Endpoints ==========
 
 @app.route('/dispute/file', methods=['POST'])
+@require_api_key
 def file_dispute():
     """
     File a new dispute (MP-03 Dispute Declaration).
@@ -2027,6 +2286,7 @@ def get_dispute(dispute_id: str):
 
 
 @app.route('/dispute/<dispute_id>/evidence', methods=['POST'])
+@require_api_key
 def add_dispute_evidence(dispute_id: str):
     """
     Add evidence to an existing dispute.
@@ -2116,6 +2376,7 @@ def add_dispute_evidence(dispute_id: str):
 
 
 @app.route('/dispute/<dispute_id>/escalate', methods=['POST'])
+@require_api_key
 def escalate_dispute(dispute_id: str):
     """
     Escalate a dispute to higher authority.
@@ -2204,6 +2465,7 @@ def escalate_dispute(dispute_id: str):
 
 
 @app.route('/dispute/<dispute_id>/resolve', methods=['POST'])
+@require_api_key
 def resolve_dispute(dispute_id: str):
     """
     Record the resolution of a dispute.
@@ -2457,6 +2719,7 @@ def check_entry_frozen(block_index: int, entry_index: int):
 # ========== Escalation Fork Endpoints ==========
 
 @app.route('/fork/trigger', methods=['POST'])
+@require_api_key
 def trigger_escalation_fork():
     """
     Trigger an Escalation Fork after failed mediation.
@@ -2546,6 +2809,7 @@ def get_fork_status(fork_id: str):
 
 
 @app.route('/fork/<fork_id>/submit-proposal', methods=['POST'])
+@require_api_key
 def submit_fork_proposal(fork_id: str):
     """
     Submit a resolution proposal to an active fork.
@@ -2608,6 +2872,7 @@ def list_fork_proposals(fork_id: str):
 
 
 @app.route('/fork/<fork_id>/ratify', methods=['POST'])
+@require_api_key
 def ratify_fork_proposal(fork_id: str):
     """
     Ratify a proposal (both parties must ratify for resolution).
@@ -2652,6 +2917,7 @@ def ratify_fork_proposal(fork_id: str):
 
 
 @app.route('/fork/<fork_id>/veto', methods=['POST'])
+@require_api_key
 def veto_fork_proposal(fork_id: str):
     """
     Veto a proposal with documented reasoning.
@@ -2755,6 +3021,7 @@ def list_active_forks():
 # ========== Observance Burn Endpoints ==========
 
 @app.route('/burn/observance', methods=['POST'])
+@require_api_key
 def perform_observance_burn():
     """
     Perform an Observance Burn.
@@ -2821,6 +3088,7 @@ def perform_observance_burn():
 
 
 @app.route('/burn/voluntary', methods=['POST'])
+@require_api_key
 def perform_voluntary_burn():
     """
     Perform a voluntary signal burn (simplified endpoint).
@@ -2872,6 +3140,8 @@ def get_burn_history():
 
     limit = request.args.get("limit", 50, type=int)
     offset = request.args.get("offset", 0, type=int)
+    # SECURITY: Validate pagination parameters to prevent DoS
+    limit, offset = validate_pagination_params(limit, offset)
 
     history = observance_burn_manager.get_burn_history(limit=limit, offset=offset)
 
@@ -2930,6 +3200,8 @@ def get_observance_ledger():
         return jsonify({"error": "Observance burn not available"}), 503
 
     limit = request.args.get("limit", 20, type=int)
+    # SECURITY: Validate limit parameter
+    limit, _ = validate_pagination_params(limit, 0)
 
     ledger = observance_burn_manager.get_observance_ledger(limit=limit)
 
@@ -3379,6 +3651,8 @@ def get_harassment_audit_trail():
         return jsonify({"error": "Anti-harassment features not available"}), 503
 
     limit = request.args.get("limit", 100, type=int)
+    # SECURITY: Validate limit parameter
+    limit, _ = validate_pagination_params(limit, 0)
 
     trail = anti_harassment_manager.get_audit_trail(limit=limit)
 
@@ -3409,6 +3683,7 @@ def get_treasury_balance():
 
 
 @app.route('/treasury/deposit', methods=['POST'])
+@require_api_key
 def deposit_to_treasury():
     """
     Deposit funds into treasury.
@@ -3558,6 +3833,8 @@ def get_treasury_inflows():
         return jsonify({"error": "Treasury not available"}), 503
 
     limit = request.args.get("limit", 50, type=int)
+    # SECURITY: Validate limit parameter
+    limit, _ = validate_pagination_params(limit, 0)
     inflow_type_str = request.args.get("type")
 
     inflow_type = None
@@ -3575,6 +3852,7 @@ def get_treasury_inflows():
 
 
 @app.route('/treasury/subsidy/request', methods=['POST'])
+@require_api_key
 def request_treasury_subsidy():
     """
     Request a defensive stake subsidy.
@@ -3624,6 +3902,7 @@ def request_treasury_subsidy():
 
 
 @app.route('/treasury/subsidy/disburse', methods=['POST'])
+@require_api_key
 def disburse_treasury_subsidy():
     """
     Disburse an approved subsidy to the stake escrow.
@@ -3758,6 +4037,8 @@ def get_treasury_audit():
         return jsonify({"error": "Treasury not available"}), 503
 
     limit = request.args.get("limit", 100, type=int)
+    # SECURITY: Validate limit parameter
+    limit, _ = validate_pagination_params(limit, 0)
 
     trail = treasury.get_audit_trail(limit=limit)
 
@@ -4382,6 +4663,8 @@ def get_signature_history(user_id: str):
         return jsonify({"error": "FIDO2 authentication not available"}), 503
 
     limit = request.args.get("limit", 50, type=int)
+    # SECURITY: Validate limit parameter
+    limit, _ = validate_pagination_params(limit, 0)
     sig_type_str = request.args.get("signature_type")
 
     signature_type = None
@@ -4429,6 +4712,8 @@ def get_fido2_audit():
         return jsonify({"error": "FIDO2 authentication not available"}), 503
 
     limit = request.args.get("limit", 100, type=int)
+    # SECURITY: Validate limit parameter
+    limit, _ = validate_pagination_params(limit, 0)
 
     trail = fido2_manager.get_audit_trail(limit=limit)
 
@@ -5051,6 +5336,8 @@ def get_zk_privacy_audit():
         return jsonify({"error": "ZK privacy not available"}), 503
 
     limit = request.args.get("limit", 100, type=int)
+    # SECURITY: Validate limit parameter
+    limit, _ = validate_pagination_params(limit, 0)
 
     trail = zk_privacy_manager.get_audit_trail(limit=limit)
 
@@ -5063,6 +5350,7 @@ def get_zk_privacy_audit():
 # ========== Automated Negotiation Engine Endpoints ==========
 
 @app.route('/negotiation/session', methods=['POST'])
+@require_api_key
 def initiate_negotiation_session():
     """
     Initiate a new negotiation session.
@@ -5558,6 +5846,8 @@ def get_negotiation_audit():
         return jsonify({"error": "Negotiation engine not available"}), 503
 
     limit = request.args.get("limit", 100, type=int)
+    # SECURITY: Validate limit parameter
+    limit, _ = validate_pagination_params(limit, 0)
 
     trail = negotiation_engine.get_audit_trail(limit=limit)
 
@@ -6026,6 +6316,8 @@ def get_market_pricing_audit():
         return jsonify({"error": "Market pricing not available"}), 503
 
     limit = request.args.get("limit", 100, type=int)
+    # SECURITY: Validate limit parameter
+    limit, _ = validate_pagination_params(limit, 0)
 
     trail = market_pricing.get_audit_trail(limit=limit)
 
@@ -6578,6 +6870,8 @@ def get_mobile_audit():
         return jsonify({"error": "Mobile deployment not available"}), 503
 
     limit = request.args.get("limit", 100, type=int)
+    # SECURITY: Validate limit parameter
+    limit, _ = validate_pagination_params(limit, 0)
 
     trail = mobile_deployment.get_audit_trail(limit=limit)
 
@@ -7102,6 +7396,7 @@ def get_intents():
 
 
 @app.route('/api/v1/entries', methods=['POST'])
+@require_api_key
 def submit_entry_v1():
     """
     Submit an entry to the chain (used by mediator nodes).
@@ -7155,6 +7450,7 @@ def submit_entry_v1():
 
 
 @app.route('/api/v1/settlements', methods=['POST'])
+@require_api_key
 def submit_settlement():
     """
     Submit a settlement from a mediator node.
@@ -7424,6 +7720,7 @@ def trigger_sync():
 
 
 @app.route('/api/v1/broadcast', methods=['POST'])
+@require_api_key
 def receive_broadcast():
     """
     Receive a broadcast message from a peer.

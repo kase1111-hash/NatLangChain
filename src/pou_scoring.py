@@ -234,17 +234,25 @@ class PoUScorer:
 
         Returns:
             SemanticFingerprint with hashes
+
+        Algorithm Details:
+            - Hash Algorithm: SHA-256 (FIPS 180-4 compliant)
+            - Semantic Hash: SHA-256 of (pou_content + separator + contract_content)
+            - Content Hash: SHA-256 of pou_content only
+            - Output: First 16 hex characters (64 bits) prefixed with "0x"
+            - Encoding: UTF-8 for all string inputs
         """
-        # Combine PoU and contract for semantic hash
+        # Combine PoU and contract for semantic fingerprint
+        # Uses "---" separator to distinguish content boundaries
         combined = f"{pou_content}\n---\n{contract_content}"
 
-        # Generate SHA-256 hash
+        # Generate SHA-256 hashes (cryptographically secure, collision-resistant)
         semantic_hash = hashlib.sha256(combined.encode('utf-8')).hexdigest()
         content_hash = hashlib.sha256(pou_content.encode('utf-8')).hexdigest()
 
         return SemanticFingerprint(
-            method="sha256-semantic-v1",
-            hash=f"0x{semantic_hash[:16]}",
+            method="sha256-semantic-v1",  # Version identifier for hash scheme
+            hash=f"0x{semantic_hash[:16]}",  # Truncated for display (full hash in registry)
             content_hash=f"0x{content_hash[:16]}",
             timestamp=datetime.utcnow().isoformat() + "Z",
             registry_version=self.registry_version
