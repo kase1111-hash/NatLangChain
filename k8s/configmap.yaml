@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: natlangchain-config
+  namespace: natlangchain
+  labels:
+    app.kubernetes.io/name: natlangchain
+    app.kubernetes.io/component: config
+data:
+  # Storage configuration
+  STORAGE_BACKEND: "postgresql"
+
+  # Logging configuration
+  LOG_LEVEL: "INFO"
+  LOG_FORMAT: "json"
+
+  # Server configuration
+  HOST: "0.0.0.0"
+  PORT: "5000"
+  WORKERS: "4"
+
+  # Feature flags
+  ENABLE_METRICS: "true"
+  ENABLE_HEALTH_CHECKS: "true"

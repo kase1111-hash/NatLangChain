@@ -46,6 +46,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `GET /cluster/instances`: List active API instances
   - `GET /cluster/info`: Cluster coordination status
 
+#### Deployment
+- **Kubernetes Manifests** (`k8s/`)
+  - Namespace, ConfigMap, and Secret templates
+  - Deployment with rolling updates and anti-affinity
+  - Service (ClusterIP) and headless Service
+  - HorizontalPodAutoscaler (CPU/memory based, 3-10 replicas)
+  - PodDisruptionBudget (min 2 available)
+  - NetworkPolicy for ingress/egress control
+  - Ingress with TLS and rate limiting
+  - ServiceAccount with RBAC for pod discovery
+  - Kustomization for environment overlays
+
+- **Database Migrations** (`migrations/`)
+  - `001_initial_schema.sql`: Core tables (entries, blocks, contracts, disputes)
+  - `002_add_semantic_search.sql`: pgvector embeddings for similarity search
+  - `003_add_scaling_tables.sql`: Distributed locking, caching, job queue
+  - `migrate.py`: Migration runner with status, rollback, dry-run support
+
 #### Code Quality
 - Modular API blueprint structure (`src/api/`)
 - Strengthened mypy configuration with gradual typing
