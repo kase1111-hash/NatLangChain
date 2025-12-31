@@ -1,0 +1,96 @@
+# Changelog
+
+All notable changes to NatLangChain will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+### Added
+
+#### Production Infrastructure
+- **Storage Abstraction Layer** (`src/storage/`)
+  - Pluggable storage backends for blockchain persistence
+  - `JSONFileStorage`: Default file-based storage with atomic writes
+  - `PostgreSQLStorage`: Production-ready with connection pooling
+  - `MemoryStorage`: Fast in-memory storage for testing
+  - Configuration via `STORAGE_BACKEND` environment variable
+
+- **Monitoring & Metrics** (`src/monitoring/`)
+  - `MetricsCollector`: Thread-safe counters, gauges, and histograms
+  - Prometheus-compatible `/metrics` endpoint
+  - Structured JSON logging with request context
+  - Request middleware for automatic timing and logging
+  - `@timed` and `@counted` decorators for instrumentation
+
+- **Horizontal Scaling** (`src/scaling/`)
+  - `LocalLockManager`: Thread-based locks for single instance
+  - `RedisLockManager`: Distributed locks for multi-instance
+  - `LocalCache`: In-memory LRU cache with TTL
+  - `RedisCache`: Distributed cache for shared state
+  - `InstanceCoordinator`: Leader election and instance discovery
+  - `@with_lock` and `@cached` decorators
+
+- **CLI Entry Point** (`src/cli.py`)
+  - `natlangchain serve`: Start API server (dev or production)
+  - `natlangchain check`: Verify installation and configuration
+  - `natlangchain info`: Display system information
+
+- **New API Endpoints**
+  - `GET /metrics`: Prometheus text format metrics
+  - `GET /metrics/json`: JSON format metrics
+  - `GET /health/live`: Kubernetes liveness probe
+  - `GET /health/ready`: Kubernetes readiness probe
+  - `GET /health/detailed`: Comprehensive system diagnostics
+  - `GET /cluster/instances`: List active API instances
+  - `GET /cluster/info`: Cluster coordination status
+
+#### Code Quality
+- Modular API blueprint structure (`src/api/`)
+- Strengthened mypy configuration with gradual typing
+- Architecture documentation (`ARCHITECTURE.md`)
+
+### Changed
+- Package exports now include infrastructure accessors
+- Optional dependencies reorganized: `redis`, `postgres`, `production`, `all`
+
+### Fixed
+- Moved misplaced test file from `src/` to `tests/`
+- Thread safety in MemoryStorage using RLock
+
+## [0.1.0] - 2024-01-15
+
+### Added
+- Initial release of NatLangChain
+- Core blockchain implementation with natural language entries
+- Proof of Understanding (PoU) validation via LLM
+- Hybrid validation combining rules and LLM
+- Flask REST API with 190+ endpoints
+- Semantic search and drift detection
+- Contract parsing and matching
+- Dispute resolution system
+- Mobile deployment support
+- P2P network capabilities
+- FIDO2 authentication support
+- Zero-knowledge privacy features
+- Docker and docker-compose configuration
+- GitHub Actions CI/CD pipeline
+- Comprehensive test suite (950+ tests)
+
+### Security
+- API key authentication
+- Rate limiting
+- Input validation and sanitization
+- Bandit security scanning in CI
+
+---
+
+## Version History
+
+| Version | Date | Highlights |
+|---------|------|------------|
+| 0.1.0 | 2024-01-15 | Initial release |
+
+[Unreleased]: https://github.com/kase1111-hash/NatLangChain/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/kase1111-hash/NatLangChain/releases/tag/v0.1.0
