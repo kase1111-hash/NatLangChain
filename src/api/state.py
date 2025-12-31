@@ -4,11 +4,14 @@ Shared state for NatLangChain API.
 This module holds the shared instances that are used across all blueprints.
 The instances are initialized by the main api module and then shared via
 this module for clean dependency injection.
+
+Storage backends are pluggable - set STORAGE_BACKEND environment variable:
+- "json" (default): JSON file storage
+- "postgresql": PostgreSQL database
+- "memory": In-memory (for testing)
 """
 
-import json
 import os
-import threading
 from typing import Any
 
 # Import blockchain - always required
@@ -24,11 +27,17 @@ from api.utils import managers
 # The blockchain instance
 blockchain: NatLangChain = NatLangChain()
 
-# Data file for persistence
-CHAIN_DATA_FILE = os.getenv("CHAIN_DATA_FILE", "chain_data.json")
+# Storage backend (lazy initialized)
+_storage = None
 
-# SECURITY: Lock for file operations to prevent TOCTOU race conditions
-_chain_file_lock = threading.Lock()
+
+def get_storage():
+    """Get or create the storage backend."""
+    global _storage
+    if _storage is None:
+        from storage import get_storage_backend
+        _storage = get_storage_backend()
+    return _storage
 
 
 # ============================================================
@@ -119,65 +128,62 @@ def decrypt_entry_metadata(entry_dict: dict[str, Any]) -> dict[str, Any]:
 
 
 # ============================================================
-# Chain Persistence
+# Chain Persistence (using storage abstraction)
 # ============================================================
 
 def load_chain():
     """
-    Load blockchain from file if it exists, with automatic decryption support.
+    Load blockchain from storage backend.
 
-    Thread-safe: Uses _chain_file_lock to prevent race conditions.
+    Uses the configured storage backend (JSON file, PostgreSQL, etc.)
     """
     global blockchain
 
-    with _chain_file_lock:
-        try:
-            with open(CHAIN_DATA_FILE, 'r') as f:
-                raw_data = f.read()
+    try:
+        storage = get_storage()
+        data = storage.load_chain()
 
-            # Check if data is encrypted
-            if is_encryption_enabled() and is_encrypted(raw_data):
-                try:
-                    raw_data = decrypt_chain_data(raw_data)
-                except Exception as e:
-                    print(f"Warning: Failed to decrypt chain data: {e}")
-                    print("Starting with empty blockchain")
-                    return
-
-            data = json.loads(raw_data)
-            blockchain = NatLangChain.from_dict(data)
-            print(f"Loaded blockchain with {len(blockchain.chain)} blocks")
-
-        except FileNotFoundError:
+        if data is None:
             print("No existing chain data found. Starting fresh.")
-        except PermissionError:
-            print(f"Warning: Cannot read {CHAIN_DATA_FILE} - permission denied")
-        except json.JSONDecodeError as e:
-            print(f"Warning: Invalid chain data format: {e}")
-        except Exception as e:
-            print(f"Warning: Error loading chain: {e}")
+            return
+
+        blockchain = NatLangChain.from_dict(data)
+        print(f"Loaded blockchain with {len(blockchain.chain)} blocks")
+        print(f"Storage backend: {storage.__class__.__name__}")
+
+    except Exception as e:
+        print(f"Warning: Error loading chain: {e}")
+        print("Starting with empty blockchain")
 
 
 def save_chain():
     """
-    Save blockchain to file with optional encryption.
+    Save blockchain to storage backend.
 
-    Thread-safe: Uses _chain_file_lock to prevent race conditions.
+    Uses the configured storage backend (JSON file, PostgreSQL, etc.)
     """
     global blockchain
 
-    with _chain_file_lock:
-        try:
-            data = json.dumps(blockchain.to_dict(), indent=2)
+    try:
+        storage = get_storage()
+        storage.save_chain(blockchain.to_dict())
 
-            # Encrypt if enabled
-            if is_encryption_enabled() and encrypt_chain_data:
-                data = encrypt_chain_data(data)
+    except Exception as e:
+        print(f"Warning: Error saving chain: {e}")
 
-            with open(CHAIN_DATA_FILE, 'w') as f:
-                f.write(data)
 
-        except PermissionError:
-            print(f"Warning: Cannot write to {CHAIN_DATA_FILE} - permission denied")
-        except Exception as e:
-            print(f"Warning: Error saving chain: {e}")
+def get_storage_info() -> dict[str, Any]:
+    """
+    Get information about the current storage backend.
+
+    Returns:
+        Dictionary with storage backend info
+    """
+    try:
+        storage = get_storage()
+        return storage.get_info()
+    except Exception as e:
+        return {
+            "error": str(e),
+            "available": False,
+        }
