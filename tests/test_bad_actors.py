@@ -1203,15 +1203,21 @@ def test_all_bad_actors():
     # Count critical failures
     critical_failures = 0
     for _name, data in results.items():
+        # Skip non-dict values like improvement_pct
+        if not isinstance(data, dict):
+            continue
         if "attack_log" in data:
             for attack in data["attack_log"]:
                 if attack["severity"] == "CRITICAL" and attack["success"]:
                     critical_failures += 1
 
-    # The chain tampering attacks should be blocked
-    if "Chain Tampering" in results and "attack_log" in results["Chain Tampering"]:
-        for attack in results["Chain Tampering"]["attack_log"]:
-            assert not attack["success"], f"CRITICAL: Chain tampering attack succeeded: {attack['details']}"
+    # The chain tampering attacks should be blocked (check in protected results)
+    protected = results.get("protected", {})
+    if isinstance(protected, dict) and "Chain Tampering" in protected:
+        chain_tampering = protected["Chain Tampering"]
+        if isinstance(chain_tampering, dict) and "attack_log" in chain_tampering:
+            for attack in chain_tampering["attack_log"]:
+                assert not attack["success"], f"CRITICAL: Chain tampering attack succeeded: {attack['details']}"
 
     print(f"\nTest completed with {critical_failures} critical vulnerabilities in non-crypto layer")
 
