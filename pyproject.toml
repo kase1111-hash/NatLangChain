@@ -228,36 +228,33 @@ python_version = "3.11"
 # Handle missing imports gracefully
 ignore_missing_imports = true
 
-# Gradual typing - lenient for legacy codebase
-# These can be enabled incrementally as types are added
-warn_return_any = false  # Too noisy for untyped code
+# Enable warnings that help catch bugs
+warn_return_any = true           # Enabled: catch untyped returns
 warn_unused_configs = true
 warn_redundant_casts = true
-warn_unused_ignores = false  # Allow # type: ignore without specific codes
-strict_equality = false  # Comparisons with None
-extra_checks = false
+warn_unused_ignores = true       # Enabled: keep type: ignore comments clean
+strict_equality = true           # Enabled: catch None comparison issues
+extra_checks = true              # Enabled: additional checks
 
-# Untyped definitions - disabled for legacy code
-check_untyped_defs = false
-disallow_untyped_defs = false
+# Untyped definitions - enabled for new code, legacy modules exempted below
+check_untyped_defs = true        # Enabled: catch bugs in untyped functions
+disallow_untyped_defs = false    # Too strict for gradual adoption
 disallow_incomplete_defs = false
 disallow_untyped_decorators = false
 
-# Disable error codes that are too noisy for untyped legacy code
+# Error codes - reduced list from original, but still lenient for gradual adoption
+# These can be enabled one-by-one as the codebase is typed
 disable_error_code = [
     "union-attr",      # Item "None" of "X | None" has no attribute
-    "arg-type",        # Argument type mismatches
+    "arg-type",        # Argument type mismatches (common in legacy)
     "return-value",    # Return type mismatches
     "assignment",      # Type mismatch in assignments
-    "var-annotated",   # Missing type annotation hints
-    "dict-item",       # Dict entry type mismatches
-    "operator",        # Operator type mismatches with None
-    "attr-defined",    # Attribute access issues
-    "misc",            # Miscellaneous issues
-    "no-any-return",   # Returning Any from typed function
     "call-overload",   # No overload variant matches (numpy/scipy)
-    "index",           # Unsupported target for indexed assignment
-    "truthy-function", # Function could be true in boolean context
+    "no-any-return",   # Returning Any (common in legacy code)
+    "index",           # Indexed assignment issues
+    "attr-defined",    # Attribute access issues with optional imports
+    "var-annotated",   # Missing type annotations
+    "dict-item",       # Dict type mismatches
 ]
 
 # Exclude directories
@@ -270,7 +267,47 @@ exclude = [
     "\\.venv",
 ]
 
-# Per-module overrides
+# =============================================================================
+# Per-Module Overrides
+# =============================================================================
+
+# Tests - ignore all errors
 [[tool.mypy.overrides]]
 module = "tests.*"
+ignore_errors = true
+
+# New API blueprints - stricter checking for new modular code
+[[tool.mypy.overrides]]
+module = "api.*"
+check_untyped_defs = true
+warn_return_any = true
+disallow_incomplete_defs = true
+
+# Legacy modules - ignore errors (can be enabled incrementally)
+[[tool.mypy.overrides]]
+module = [
+    "blockchain",
+    "validator",
+    "semantic_search",
+    "semantic_diff",
+    "dialectic_consensus",
+    "contract_parser",
+    "contract_matcher",
+    "dispute",
+    "mediator",
+    "p2p_network",
+    "negotiation_engine",
+    "mobile_deployment",
+    "treasury",
+    "encryption",
+    "temporal_fixity",
+    "semantic_oracles",
+    "multi_model_consensus",
+    "escalation_fork",
+    "observance_burn",
+    "anti_harassment",
+    "fido2_auth",
+    "zk_privacy",
+    "market_pricing",
+]
 ignore_errors = true
