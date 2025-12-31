@@ -22,7 +22,7 @@ class TestBoundaryDaemonBlockchainIntegration:
     def test_record_violation_on_chain(self):
         """Violations should be recordable on the blockchain."""
         daemon = BoundaryDaemon(enforcement_mode=EnforcementMode.STRICT)
-        chain = NatLangChain()
+        chain = NatLangChain(require_validation=False)
 
         # Trigger a violation
         daemon.authorize_request({
@@ -69,7 +69,7 @@ class TestBoundaryDaemonBlockchainIntegration:
     def test_authorized_request_flow(self):
         """Authorized requests should allow normal blockchain operations."""
         daemon = BoundaryDaemon(enforcement_mode=EnforcementMode.STRICT)
-        chain = NatLangChain()
+        chain = NatLangChain(require_validation=False)
 
         # Prepare payload
         payload_content = "I offer web development services for $50/hour"
@@ -106,7 +106,7 @@ class TestBoundaryDaemonBlockchainIntegration:
     def test_blocked_request_prevents_chain_entry(self):
         """Blocked requests should not be added to the chain."""
         daemon = BoundaryDaemon(enforcement_mode=EnforcementMode.STRICT)
-        chain = NatLangChain()
+        chain = NatLangChain(require_validation=False)
 
         # Prepare malicious payload
         payload_content = "password=super_secret_123"
