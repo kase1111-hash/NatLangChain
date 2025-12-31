@@ -59,9 +59,9 @@ ENV PYTHONUNBUFFERED=1 \
 # Expose API port
 EXPOSE 5000
 
-# Health check
+# Health check (uses Kubernetes-compatible liveness endpoint)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')" || exit 1
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000/health/live')" || exit 1
 
 # Run the server
 CMD ["python", "run_server.py"]

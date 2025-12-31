@@ -1,0 +1,129 @@
+# NatLangChain Production Docker Compose
+# Usage: docker-compose -f docker-compose.production.yml up -d
+
+version: "3.8"
+
+services:
+  # ===========================================================================
+  # NatLangChain API (Production)
+  # ===========================================================================
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: natlangchain:latest
+    container_name: natlangchain-api
+    restart: unless-stopped
+    ports:
+      - "${PORT:-5000}:5000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=5000
+      - FLASK_DEBUG=false
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      # Storage
+      - STORAGE_BACKEND=postgresql
+      - DATABASE_URL=postgresql://natlang:${POSTGRES_PASSWORD}@postgres:5432/natlangchain
+      # Scaling
+      - REDIS_URL=redis://redis:6379/0
+      # Security
+      - NATLANGCHAIN_ENCRYPTION_KEY=${NATLANGCHAIN_ENCRYPTION_KEY}
+      - NATLANGCHAIN_ENCRYPTION_ENABLED=true
+      - NATLANGCHAIN_API_KEY=${NATLANGCHAIN_API_KEY}
+      - NATLANGCHAIN_REQUIRE_AUTH=true
+      # Rate limiting
+      - RATE_LIMIT_REQUESTS=${RATE_LIMIT_REQUESTS:-100}
+      - RATE_LIMIT_WINDOW=${RATE_LIMIT_WINDOW:-60}
+      # Logging
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_FORMAT=json
+      # Server
+      - WORKERS=${WORKERS:-4}
+    volumes:
+      - api-data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health/live')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    networks:
+      - natlangchain
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+  # ===========================================================================
+  # PostgreSQL Database
+  # ===========================================================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: natlangchain-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=natlang
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=natlangchain
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./migrations/001_initial_schema.sql:/docker-entrypoint-initdb.d/001_initial_schema.sql:ro
+      - ./migrations/003_add_scaling_tables.sql:/docker-entrypoint-initdb.d/003_add_scaling_tables.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U natlang -d natlangchain"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - natlangchain
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+
+  # ===========================================================================
+  # Redis Cache
+  # ===========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: natlangchain-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - natlangchain
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
+volumes:
+  api-data:
+    driver: local
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+
+networks:
+  natlangchain:
+    driver: bridge
