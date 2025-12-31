@@ -1,0 +1,77 @@
+# Ruff configuration for NatLangChain
+# https://docs.astral.sh/ruff/configuration/
+
+# Target Python version
+target-version = "py311"
+
+# Line length to match Black defaults
+line-length = 100
+
+# Exclude common non-source directories
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    "__pycache__",
+    "*.egg-info",
+    "build",
+    "dist",
+    "frontend",
+]
+
+[lint]
+# Enable these rule sets
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # Pyflakes
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
+    "SIM",    # flake8-simplify
+    "S",      # flake8-bandit (security)
+    "RUF",    # Ruff-specific rules
+]
+
+# Ignore specific rules that are too noisy for this codebase
+ignore = [
+    "E501",   # Line too long (handled by formatter)
+    "S101",   # Use of assert (needed for tests)
+    "S104",   # Possible binding to all interfaces (intentional for server)
+    "S105",   # Possible hardcoded password (false positives)
+    "S106",   # Possible hardcoded password (false positives)
+    "S311",   # Standard pseudo-random generators (acceptable for non-crypto use)
+    "B008",   # Function call in default argument (Flask patterns)
+    "B904",   # raise without from (too noisy)
+    "SIM108", # Use ternary operator (readability preference)
+]
+
+# Allow autofix for all enabled rules
+fixable = ["ALL"]
+unfixable = []
+
+[lint.per-file-ignores]
+# Tests can use assert, magic values, etc.
+"tests/*.py" = ["S101", "S105", "S106", "B011"]
+# Allow print in run_server
+"run_server.py" = ["T201"]
+
+[lint.isort]
+# isort configuration
+known-first-party = ["blockchain", "api", "validator"]
+force-single-line = false
+combine-as-imports = true
+
+[format]
+# Use double quotes for strings
+quote-style = "double"
+
+# Indent with spaces
+indent-style = "space"
+
+# Respect magic trailing commas
+skip-magic-trailing-comma = false
+
+# Unix-style line endings
+line-ending = "auto"

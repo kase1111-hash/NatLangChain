@@ -1,0 +1,65 @@
+version: "3.8"
+
+services:
+  # =============================================================================
+  # NatLangChain API Server
+  # =============================================================================
+  natlangchain:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: natlangchain-api
+    ports:
+      - "${PORT:-5000}:5000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=5000
+      - FLASK_DEBUG=${FLASK_DEBUG:-false}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - CHAIN_DATA_FILE=/app/data/chain_data.json
+      - NATLANGCHAIN_ENCRYPTION_KEY=${NATLANGCHAIN_ENCRYPTION_KEY:-}
+      - NATLANGCHAIN_ENCRYPTION_ENABLED=${NATLANGCHAIN_ENCRYPTION_ENABLED:-true}
+      - NATLANGCHAIN_API_KEY=${NATLANGCHAIN_API_KEY:-}
+      - NATLANGCHAIN_REQUIRE_AUTH=${NATLANGCHAIN_REQUIRE_AUTH:-false}
+      - RATE_LIMIT_REQUESTS=${RATE_LIMIT_REQUESTS:-100}
+      - RATE_LIMIT_WINDOW=${RATE_LIMIT_WINDOW:-60}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-}
+    volumes:
+      - natlangchain-data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # =============================================================================
+  # Development Server (with hot reload)
+  # =============================================================================
+  natlangchain-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: natlangchain-dev
+    ports:
+      - "${PORT:-5000}:5000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=5000
+      - FLASK_DEBUG=true
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - CHAIN_DATA_FILE=/app/data/chain_data.json
+      - NATLANGCHAIN_REQUIRE_AUTH=false
+    volumes:
+      - ./src:/app/src:ro
+      - ./config:/app/config:ro
+      - natlangchain-dev-data:/app/data
+    profiles:
+      - dev
+
+volumes:
+  natlangchain-data:
+    driver: local
+  natlangchain-dev-data:
+    driver: local
