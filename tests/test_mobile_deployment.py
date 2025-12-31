@@ -3,9 +3,12 @@ End-to-end tests for Mobile Deployment module (Plan 17)
 Runs 10 comprehensive simulations covering all features
 """
 
+import os
 import sys
 import traceback
 from datetime import datetime
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from mobile_deployment import (
     ConnectionState,
