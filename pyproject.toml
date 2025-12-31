@@ -54,6 +54,10 @@ dev = [
     "bandit>=1.7.0",
     "safety>=2.0.0",
     "pre-commit>=3.0.0",
+    # Type checking
+    "mypy>=1.8.0",
+    "types-requests>=2.31.0",
+    "types-Flask>=1.1.0",
 ]
 
 # All optional features
@@ -198,3 +202,47 @@ line-ending = "auto"
 [tool.bandit]
 exclude_dirs = ["tests", "frontend"]
 skips = ["B101"]  # assert_used - needed for tests
+
+# =============================================================================
+# Mypy Configuration (Type Checking)
+# =============================================================================
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+strict_equality = true
+extra_checks = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+
+# Gradually enable stricter checks
+disallow_untyped_defs = false  # Enable later when adding type hints
+disallow_incomplete_defs = false
+
+# Handle missing imports gracefully
+ignore_missing_imports = true
+
+# Exclude directories
+exclude = [
+    "tests",
+    "frontend",
+    "build",
+    "dist",
+    "venv",
+    "\\.venv",
+]
+
+# Per-module overrides for stricter checking on new code
+[[tool.mypy.overrides]]
+module = "blockchain"
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = "api"
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+ignore_errors = true
