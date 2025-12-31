@@ -1196,6 +1196,205 @@ Mobile device support with edge inference and offline sync.
 
 ---
 
+### Monitoring & Metrics
+
+Production monitoring endpoints for observability and health checking.
+
+#### `GET /metrics`
+
+Prometheus-compatible metrics endpoint.
+
+**Response:** (text/plain)
+```
+# TYPE natlangchain_http_requests_total counter
+natlangchain_http_requests_total{method="GET",path="/health",status="200"} 42
+
+# TYPE natlangchain_http_request_duration_ms histogram
+natlangchain_http_request_duration_ms_bucket{le="50"} 100
+natlangchain_http_request_duration_ms_sum 1234.56
+natlangchain_http_request_duration_ms_count 150
+
+# TYPE natlangchain_blockchain_blocks_total gauge
+natlangchain_blockchain_blocks_total 5
+```
+
+#### `GET /metrics/json`
+
+JSON format metrics.
+
+**Response:**
+```json
+{
+  "uptime_seconds": 3600.5,
+  "counters": {
+    "http_requests_total": 1000
+  },
+  "gauges": {
+    "blockchain_blocks_total": 5,
+    "blockchain_pending_entries": 2
+  },
+  "histograms": {
+    "http_request_duration_ms": {
+      "_total": {
+        "count": 1000,
+        "sum": 5000.0,
+        "avg": 5.0
+      }
+    }
+  }
+}
+```
+
+#### `GET /health/live`
+
+Kubernetes liveness probe. Returns 200 if the application is running.
+
+**Response:**
+```json
+{
+  "status": "alive"
+}
+```
+
+#### `GET /health/ready`
+
+Kubernetes readiness probe. Returns 200 if ready to accept traffic, 503 if not.
+
+**Response (ready):**
+```json
+{
+  "status": "ready"
+}
+```
+
+**Response (not ready):**
+```json
+{
+  "status": "not_ready",
+  "issues": ["storage: not available"]
+}
+```
+
+#### `GET /health/detailed`
+
+Comprehensive system diagnostics.
+
+**Response:**
+```json
+{
+  "status": "healthy",
+  "service": "NatLangChain API",
+  "version": "0.1.0",
+  "uptime_seconds": 3600.5,
+  "system": {
+    "python_version": "3.11.0",
+    "platform": "Linux-5.15.0-x86_64",
+    "hostname": "api-server-1"
+  },
+  "blockchain": {
+    "blocks": 5,
+    "pending_entries": 2,
+    "difficulty": 2,
+    "valid": true
+  },
+  "storage": {
+    "backend_type": "JSONFileStorage",
+    "available": true
+  },
+  "features": {
+    "llm_validator": true,
+    "search_engine": true,
+    "drift_detector": true
+  }
+}
+```
+
+---
+
+### Cluster Management
+
+Endpoints for multi-instance deployments and horizontal scaling.
+
+#### `GET /cluster/instances`
+
+List all active API instances in the cluster.
+
+**Response:**
+```json
+{
+  "instance_count": 3,
+  "instances": [
+    {
+      "instance_id": "api-server-abc123",
+      "hostname": "api-1.example.com",
+      "port": 5000,
+      "started_at": 1704067200.0,
+      "last_heartbeat": 1704070800.0,
+      "is_leader": true,
+      "healthy": true
+    },
+    {
+      "instance_id": "api-server-def456",
+      "hostname": "api-2.example.com",
+      "port": 5000,
+      "started_at": 1704067210.0,
+      "last_heartbeat": 1704070800.0,
+      "is_leader": false,
+      "healthy": true
+    }
+  ]
+}
+```
+
+#### `GET /cluster/info`
+
+Get cluster coordination information.
+
+**Response:**
+```json
+{
+  "instance": {
+    "instance_id": "api-server-abc123",
+    "hostname": "api-1.example.com",
+    "port": 5000,
+    "is_leader": true,
+    "uptime_seconds": 3600.0,
+    "instance_count": 3
+  },
+  "leader": {
+    "is_leader": true,
+    "leader_info": {
+      "instance_id": "api-server-abc123",
+      "hostname": "api-1.example.com"
+    }
+  },
+  "lock_manager": {
+    "type": "RedisLockManager"
+  },
+  "cache": {
+    "type": "RedisCache",
+    "hits": 1000,
+    "misses": 50
+  },
+  "scaling_config": {
+    "redis_url": true,
+    "storage_backend": "postgresql"
+  }
+}
+```
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/metrics` | Prometheus format metrics |
+| GET | `/metrics/json` | JSON format metrics |
+| GET | `/health/live` | Kubernetes liveness probe |
+| GET | `/health/ready` | Kubernetes readiness probe |
+| GET | `/health/detailed` | Full system diagnostics |
+| GET | `/cluster/instances` | List cluster instances |
+| GET | `/cluster/info` | Cluster coordination info |
+
+---
+
 ## Feature Requirements
 
 Many advanced endpoints require specific configuration:
@@ -1209,8 +1408,26 @@ Many advanced endpoints require specific configuration:
 | Semantic Oracle | `ANTHROPIC_API_KEY` |
 | Contract Parsing | `ANTHROPIC_API_KEY` |
 | Contract Matching | `ANTHROPIC_API_KEY` |
+| PostgreSQL Storage | `DATABASE_URL`, `pip install natlangchain[postgres]` |
+| Distributed Locking | `REDIS_URL`, `pip install natlangchain[redis]` |
+| Distributed Caching | `REDIS_URL`, `pip install natlangchain[redis]` |
+| Cluster Coordination | `REDIS_URL`, `pip install natlangchain[redis]` |
 
 Endpoints return `503 Service Unavailable` with descriptive error when requirements not met.
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | `5000` | API server port |
+| `HOST` | `0.0.0.0` | API server host |
+| `ANTHROPIC_API_KEY` | - | Required for LLM features |
+| `STORAGE_BACKEND` | `json` | Storage backend: `json`, `postgresql`, `memory` |
+| `DATABASE_URL` | - | PostgreSQL connection string |
+| `REDIS_URL` | - | Redis connection string for scaling |
+| `LOG_LEVEL` | `INFO` | Logging level |
+| `LOG_FORMAT` | `console` | Log format: `console`, `json` |
+| `WORKERS` | `4` | Gunicorn workers (production mode) |
 
 ---
 
