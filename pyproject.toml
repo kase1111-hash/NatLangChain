@@ -1,0 +1,248 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# =============================================================================
+# Project Metadata
+# =============================================================================
+[project]
+name = "natlangchain"
+version = "0.1.0"
+description = "A prose-first, intent-native blockchain protocol using natural language as the primary substrate"
+readme = "README.md"
+license = "CC-BY-SA-4.0"
+requires-python = ">=3.9"
+authors = [
+    { name = "kase1111-hash" }
+]
+keywords = [
+    "blockchain",
+    "natural-language",
+    "llm",
+    "smart-contracts",
+    "intent-matching",
+    "proof-of-understanding",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: System :: Distributed Computing",
+]
+
+# Core dependencies
+dependencies = [
+    "flask>=3.0.0",
+    "anthropic>=0.34.2",
+    "python-dotenv>=1.0.0",
+    "sentence-transformers>=2.2.0",
+    "numpy>=1.20.0",
+    "cryptography>=41.0.0",
+]
+
+[project.optional-dependencies]
+# Development dependencies
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "ruff>=0.1.0",
+    "bandit>=1.7.0",
+    "safety>=2.0.0",
+    "pre-commit>=3.0.0",
+    # Type checking
+    "mypy>=1.8.0",
+    "types-requests>=2.31.0",
+    "types-Flask>=1.1.0",
+]
+
+# All optional features
+all = [
+    "fido2>=1.1.0",  # Hardware security key support
+]
+
+[project.scripts]
+natlangchain = "api:run_server"
+
+[project.urls]
+Homepage = "https://github.com/kase1111-hash/NatLangChain"
+Documentation = "https://github.com/kase1111-hash/NatLangChain#readme"
+Repository = "https://github.com/kase1111-hash/NatLangChain.git"
+Issues = "https://github.com/kase1111-hash/NatLangChain/issues"
+
+# =============================================================================
+# Build Configuration
+# =============================================================================
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src",
+    "/config",
+    "/tests",
+    "/README.md",
+    "/SPEC.md",
+    "/API.md",
+]
+
+# =============================================================================
+# Pytest Configuration
+# =============================================================================
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--tb=short",
+    "--strict-markers",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "e2e: marks tests as end-to-end tests",
+]
+
+# =============================================================================
+# Coverage Configuration
+# =============================================================================
+[tool.coverage.run]
+source = ["src"]
+branch = true
+omit = [
+    "tests/*",
+    "*/__pycache__/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
+show_missing = true
+skip_covered = true
+
+# =============================================================================
+# Ruff Configuration (Linting & Formatting)
+# =============================================================================
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    "__pycache__",
+    "*.egg-info",
+    "build",
+    "dist",
+    "frontend",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # Pyflakes
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
+    "SIM",    # flake8-simplify
+    "S",      # flake8-bandit (security)
+    "RUF",    # Ruff-specific rules
+]
+ignore = [
+    "E501",   # Line too long (handled by formatter)
+    "S101",   # Use of assert (needed for tests)
+    "S104",   # Possible binding to all interfaces (intentional for server)
+    "S105",   # Possible hardcoded password (false positives)
+    "S106",   # Possible hardcoded password (false positives)
+    "S311",   # Standard pseudo-random generators (acceptable for non-crypto use)
+    "B008",   # Function call in default argument (Flask patterns)
+    "B904",   # raise without from (too noisy)
+    "SIM108", # Use ternary operator (readability preference)
+]
+fixable = ["ALL"]
+unfixable = []
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*.py" = ["S101", "S105", "S106", "B011"]
+"run_server.py" = ["T201"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["blockchain", "api", "validator"]
+force-single-line = false
+combine-as-imports = true
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+# =============================================================================
+# Bandit Configuration (Security)
+# =============================================================================
+[tool.bandit]
+exclude_dirs = ["tests", "frontend"]
+skips = ["B101"]  # assert_used - needed for tests
+
+# =============================================================================
+# Mypy Configuration (Type Checking)
+# =============================================================================
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+strict_equality = true
+extra_checks = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+
+# Gradually enable stricter checks
+disallow_untyped_defs = false  # Enable later when adding type hints
+disallow_incomplete_defs = false
+
+# Handle missing imports gracefully
+ignore_missing_imports = true
+
+# Exclude directories
+exclude = [
+    "tests",
+    "frontend",
+    "build",
+    "dist",
+    "venv",
+    "\\.venv",
+]
+
+# Per-module overrides for stricter checking on new code
+[[tool.mypy.overrides]]
+module = "blockchain"
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = "api"
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+ignore_errors = true
