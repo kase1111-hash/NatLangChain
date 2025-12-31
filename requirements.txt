@@ -1,11 +1,23 @@
 # NatLangChain Dependencies
-# For development: pip install -e ".[dev]"
-# For production: pip install -r requirements.txt
+# =============================================================================
+#
+# Dependency Files:
+#   requirements.txt      - Minimum version constraints (for flexibility)
+#   requirements-lock.txt - Pinned versions (for reproducible production builds)
+#   requirements-dev.txt  - Pinned dev dependencies (includes production deps)
+#
+# Installation Options:
+#   Quick start:     pip install -r requirements.txt
+#   Production:      pip install -r requirements-lock.txt
+#   Development:     pip install -r requirements-dev.txt
+#   Editable + dev:  pip install -e ".[dev]"
+#
+# =============================================================================
 
-# Core dependencies (pinned for reproducibility)
-flask==3.0.0
-anthropic==0.34.2
-python-dotenv==1.0.0
+# Core dependencies (minimum versions)
+flask>=3.0.0
+anthropic>=0.34.2
+python-dotenv>=1.0.0
 sentence-transformers>=2.2.0
 numpy>=1.20.0
 cryptography>=41.0.0
