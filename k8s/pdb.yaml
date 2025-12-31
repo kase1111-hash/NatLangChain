@@ -1,0 +1,14 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: natlangchain-api
+  namespace: natlangchain
+  labels:
+    app.kubernetes.io/name: natlangchain
+    app.kubernetes.io/component: api
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: natlangchain
+      app.kubernetes.io/component: api
