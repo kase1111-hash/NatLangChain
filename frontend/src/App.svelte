@@ -47,13 +47,26 @@
         <div class="logo-container">
           <div class="logo-icon">
             <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect x="4" y="4" width="32" height="32" rx="8" stroke="url(#logo-grad)" stroke-width="2"/>
-              <path d="M12 20h16M20 12v16" stroke="url(#logo-grad)" stroke-width="2" stroke-linecap="round"/>
-              <circle cx="20" cy="20" r="4" fill="url(#logo-grad)"/>
+              <rect
+                x="4"
+                y="4"
+                width="32"
+                height="32"
+                rx="8"
+                stroke="url(#logo-grad)"
+                stroke-width="2"
+              />
+              <path
+                d="M12 20h16M20 12v16"
+                stroke="url(#logo-grad)"
+                stroke-width="2"
+                stroke-linecap="round"
+              />
+              <circle cx="20" cy="20" r="4" fill="url(#logo-grad)" />
               <defs>
                 <linearGradient id="logo-grad" x1="4" y1="4" x2="36" y2="36">
-                  <stop stop-color="#667eea"/>
-                  <stop offset="1" stop-color="#764ba2"/>
+                  <stop stop-color="#667eea" />
+                  <stop offset="1" stop-color="#764ba2" />
                 </linearGradient>
               </defs>
             </svg>
@@ -105,11 +118,7 @@
   </main>
 
   <!-- AI Chat Helper -->
-  <ChatHelper
-    {currentView}
-    isOpen={chatOpen}
-    on:toggle={toggleChat}
-  />
+  <ChatHelper {currentView} isOpen={chatOpen} on:toggle={toggleChat} />
 
   <!-- Debug Window (shown when enabled in settings) -->
   {#if $settings.debugWindowEnabled}
@@ -125,8 +134,18 @@
   }
 
   :global(body) {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
-      Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    font-family:
+      'Inter',
+      -apple-system,
+      BlinkMacSystemFont,
+      'Segoe UI',
+      Roboto,
+      Oxygen,
+      Ubuntu,
+      Cantarell,
+      'Open Sans',
+      'Helvetica Neue',
+      sans-serif;
     min-height: 100vh;
     color: #e4e4e7;
     overflow-x: hidden;
@@ -175,8 +194,7 @@
   .bg-pattern {
     position: fixed;
     inset: 0;
-    background-image:
-      radial-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-image: radial-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px);
     background-size: 40px 40px;
     z-index: 0;
   }
@@ -225,10 +243,19 @@
   }
 
   @keyframes float {
-    0%, 100% { transform: translate(0, 0) scale(1); }
-    25% { transform: translate(30px, -30px) scale(1.05); }
-    50% { transform: translate(-20px, 20px) scale(0.95); }
-    75% { transform: translate(20px, 30px) scale(1.02); }
+    0%,
+    100% {
+      transform: translate(0, 0) scale(1);
+    }
+    25% {
+      transform: translate(30px, -30px) scale(1.05);
+    }
+    50% {
+      transform: translate(-20px, 20px) scale(0.95);
+    }
+    75% {
+      transform: translate(20px, 30px) scale(1.02);
+    }
   }
 
   main {
@@ -292,8 +319,13 @@
   }
 
   @keyframes shimmer {
-    0%, 100% { background-position: 0% center; }
-    50% { background-position: 100% center; }
+    0%,
+    100% {
+      background-position: 0% center;
+    }
+    50% {
+      background-position: 100% center;
+    }
   }
 
   .tagline {
@@ -329,8 +361,15 @@
   }
 
   @keyframes pulse {
-    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
-    50% { opacity: 0.8; box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
+    0%,
+    100% {
+      opacity: 1;
+      box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
+    }
+    50% {
+      opacity: 0.8;
+      box-shadow: 0 0 0 8px rgba(34, 197, 94, 0);
+    }
   }
 
   .content {

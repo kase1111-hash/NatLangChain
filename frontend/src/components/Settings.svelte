@@ -4,21 +4,21 @@
   import { settings, debug, clearDebugLogs, debugLogs } from '../lib/stores.js';
 
   let localSettings;
-  let hasChanges = false;
+  let _hasChanges = false; // Track for future "unsaved changes" indicator
   let saveMessage = '';
 
   // Subscribe to settings store
   $: localSettings = { ...$settings };
 
   function updateSetting(key, value) {
-    settings.update(s => ({ ...s, [key]: value }));
-    hasChanges = true;
+    settings.update((s) => ({ ...s, [key]: value }));
+    _hasChanges = true;
     showSaveMessage('Settings saved automatically');
   }
 
   function showSaveMessage(msg) {
     saveMessage = msg;
-    setTimeout(() => saveMessage = '', 2000);
+    setTimeout(() => (saveMessage = ''), 2000);
   }
 
   function resetToDefaults() {
@@ -31,7 +31,7 @@
         debugMaxLines: 500,
         theme: 'dark',
         animationsEnabled: true,
-        compactMode: false
+        compactMode: false,
       });
       clearDebugLogs();
       showSaveMessage('Settings reset to defaults');
@@ -110,7 +110,9 @@
         <div class="setting-item">
           <div class="setting-info">
             <label for="debugWindow">Enable Debug Window</label>
-            <span class="setting-description">Show a floating debug console with real-time logs</span>
+            <span class="setting-description"
+              >Show a floating debug console with real-time logs</span
+            >
           </div>
           <label class="toggle">
             <input
@@ -162,12 +164,14 @@
 
         <div class="setting-item">
           <div class="setting-info">
-            <label>Current Log Count</label>
+            <span class="setting-label">Current Log Count</span>
             <span class="setting-description">{$debugLogs.length} entries in memory</span>
           </div>
           <button class="btn btn-secondary" on:click={clearDebugLogs}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              <path
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+              />
             </svg>
             Clear Logs
           </button>
@@ -180,7 +184,9 @@
       <div class="section-header">
         <div class="section-icon appearance">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+            <path
+              d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"
+            />
           </svg>
         </div>
         <div>
@@ -246,7 +252,9 @@
       <div class="section-header">
         <div class="section-icon data">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+            <path
+              d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"
+            />
           </svg>
         </div>
         <div>
@@ -258,7 +266,7 @@
       <div class="settings-group">
         <div class="setting-item">
           <div class="setting-info">
-            <label>Export Settings</label>
+            <span class="setting-label">Export Settings</span>
             <span class="setting-description">Download your settings as a JSON file</span>
           </div>
           <button class="btn btn-secondary" on:click={exportSettings}>
@@ -271,7 +279,7 @@
 
         <div class="setting-item">
           <div class="setting-info">
-            <label>Import Settings</label>
+            <span class="setting-label">Import Settings</span>
             <span class="setting-description">Load settings from a JSON file</span>
           </div>
           <label class="btn btn-secondary file-input-label">
@@ -279,18 +287,25 @@
               <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
             </svg>
             Import
-            <input type="file" accept=".json" on:change={importSettings} class="hidden-file-input" />
+            <input
+              type="file"
+              accept=".json"
+              on:change={importSettings}
+              class="hidden-file-input"
+            />
           </label>
         </div>
 
         <div class="setting-item danger">
           <div class="setting-info">
-            <label>Reset All Settings</label>
+            <span class="setting-label">Reset All Settings</span>
             <span class="setting-description">Restore all settings to their default values</span>
           </div>
           <button class="btn btn-danger" on:click={resetToDefaults}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              <path
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
             </svg>
             Reset to Defaults
           </button>
@@ -479,7 +494,8 @@
     flex: 1;
   }
 
-  .setting-info label {
+  .setting-info label,
+  .setting-info .setting-label {
     display: block;
     font-size: 0.9375rem;
     font-weight: 500;
@@ -518,7 +534,7 @@
 
   .toggle-slider::before {
     position: absolute;
-    content: "";
+    content: '';
     height: 20px;
     width: 20px;
     left: 3px;

@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte';
-  import { fly, fade, scale } from 'svelte/transition';
+  import { fly, fade } from 'svelte/transition';
   import { getChainInfo, getBlock } from '../lib/api.js';
 
   let blocks = [];
@@ -37,7 +37,7 @@
 
   function formatHash(hash) {
     if (!hash) return 'N/A';
-    return hash.slice(0, 8) + '...' + hash.slice(-8);
+    return `${hash.slice(0, 8)}...${hash.slice(-8)}`;
   }
 
   function formatTimestamp(ts) {
@@ -50,13 +50,15 @@
   }
 
   const icons = {
-    refresh: 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15',
+    refresh:
+      'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15',
     block: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4',
     hash: 'M7 20l4-16m2 16l4-16M6 9h14M4 15h14',
     clock: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
-    document: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+    document:
+      'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
     user: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z',
-    link: 'M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1'
+    link: 'M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1',
   };
 </script>
 
@@ -64,7 +66,14 @@
   <div class="explorer-header">
     <div class="header-content">
       <div class="header-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
           <path d={icons.block} />
         </svg>
       </div>
@@ -74,7 +83,14 @@
       </div>
     </div>
     <button class="refresh-btn" on:click={loadChain}>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
         <path d={icons.refresh} />
       </svg>
       <span>Refresh</span>
@@ -94,7 +110,14 @@
     <div class="error-container" in:fly={{ y: 20, duration: 300 }}>
       <div class="error-card">
         <div class="error-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
             <circle cx="12" cy="12" r="10" />
             <line x1="12" y1="8" x2="12" y2="12" />
             <line x1="12" y1="16" x2="12.01" y2="16" />
@@ -109,7 +132,14 @@
       <div class="blocks-panel" in:fly={{ x: -20, duration: 400, delay: 100 }}>
         <div class="panel-header">
           <h3>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
               <path d={icons.link} />
             </svg>
             Blocks
@@ -129,20 +159,41 @@
                   <span class="index-hash">#</span>{block.index}
                 </span>
                 <span class="block-entries">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
                     <path d={icons.document} />
                   </svg>
                   {block.entries?.length || 0}
                 </span>
               </div>
               <div class="block-hash">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
                   <path d={icons.hash} />
                 </svg>
                 {formatHash(block.hash)}
               </div>
               <div class="block-time">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
                   <path d={icons.clock} />
                 </svg>
                 {formatTimestamp(block.timestamp)}
@@ -160,7 +211,14 @@
           <div class="block-details" in:fade={{ duration: 200 }}>
             <div class="details-header">
               <div class="details-title">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
                   <path d={icons.block} />
                 </svg>
                 <h3>Block #{selectedBlock.index}</h3>
@@ -174,7 +232,14 @@
               <div class="detail-grid">
                 <div class="detail-item">
                   <div class="detail-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
                       <path d={icons.hash} />
                     </svg>
                   </div>
@@ -182,8 +247,18 @@
                     <span class="detail-label">Hash</span>
                     <span class="detail-value mono">{selectedBlock.hash || 'N/A'}</span>
                   </div>
-                  <button class="copy-btn" on:click={() => navigator.clipboard.writeText(selectedBlock.hash)}>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <button
+                    class="copy-btn"
+                    on:click={() => navigator.clipboard.writeText(selectedBlock.hash)}
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
                       <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
                       <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
                     </svg>
@@ -192,19 +267,35 @@
 
                 <div class="detail-item">
                   <div class="detail-icon prev">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
                       <path d={icons.link} />
                     </svg>
                   </div>
                   <div class="detail-content">
                     <span class="detail-label">Previous Hash</span>
-                    <span class="detail-value mono prev">{selectedBlock.previous_hash || 'Genesis Block'}</span>
+                    <span class="detail-value mono prev"
+                      >{selectedBlock.previous_hash || 'Genesis Block'}</span
+                    >
                   </div>
                 </div>
 
                 <div class="detail-item">
                   <div class="detail-icon time">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
                       <path d={icons.clock} />
                     </svg>
                   </div>
@@ -216,9 +307,18 @@
 
                 <div class="detail-item">
                   <div class="detail-icon nonce">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
                       <circle cx="12" cy="12" r="3" />
-                      <path d="M12 2v4m0 12v4m10-10h-4M6 12H2m15.364-6.364l-2.828 2.828M9.464 14.536l-2.828 2.828m0-11.314l2.828 2.828m5.656 5.656l2.828 2.828" />
+                      <path
+                        d="M12 2v4m0 12v4m10-10h-4M6 12H2m15.364-6.364l-2.828 2.828M9.464 14.536l-2.828 2.828m0-11.314l2.828 2.828m5.656 5.656l2.828 2.828"
+                      />
                     </svg>
                   </div>
                   <div class="detail-content">
@@ -232,7 +332,14 @@
             <div class="entries-section">
               <div class="entries-header">
                 <h4>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
                     <path d={icons.document} />
                   </svg>
                   Entries
@@ -244,7 +351,14 @@
                 <div class="entry-card" in:fly={{ y: 10, duration: 200, delay: i * 50 }}>
                   <div class="entry-header">
                     <div class="entry-author">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
                         <path d={icons.user} />
                       </svg>
                       {entry.author}
@@ -260,7 +374,14 @@
                     <div class="entry-metadata">
                       <details>
                         <summary>
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          >
                             <polyline points="9 18 15 12 9 6" />
                           </svg>
                           Metadata
@@ -276,7 +397,14 @@
         {:else}
           <div class="no-selection">
             <div class="empty-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
                 <path d={icons.block} />
               </svg>
             </div>
@@ -409,7 +537,9 @@
   }
 
   @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   .loading-container p {
@@ -588,7 +718,8 @@
     height: 12px;
   }
 
-  .block-hash, .block-time {
+  .block-hash,
+  .block-time {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -597,7 +728,8 @@
     margin-bottom: 6px;
   }
 
-  .block-hash svg, .block-time svg {
+  .block-hash svg,
+  .block-time svg {
     width: 12px;
     height: 12px;
     color: #52525b;

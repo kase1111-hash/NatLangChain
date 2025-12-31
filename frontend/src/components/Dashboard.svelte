@@ -35,12 +35,15 @@
   }
 
   const statIcons = {
-    blocks: 'M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1',
-    entries: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+    blocks:
+      'M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1',
+    entries:
+      'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
     pending: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
     valid: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
     invalid: 'M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z',
-    unknown: 'M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+    unknown:
+      'M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
   };
 </script>
 
@@ -63,8 +66,17 @@
     <div class="error-container" in:fly={{ y: 20, duration: 300 }}>
       <div class="error-card">
         <div class="error-icon-wrapper">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path
+              d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
+            />
             <line x1="12" y1="9" x2="12" y2="13" />
             <line x1="12" y1="17" x2="12.01" y2="17" />
           </svg>
@@ -75,9 +87,13 @@
           <div class="error-instructions">
             <p class="instruction-title">To start the backend:</p>
             <ol>
-              <li><span class="step-number">1</span> Open a terminal in the NatLangChain directory</li>
+              <li>
+                <span class="step-number">1</span> Open a terminal in the NatLangChain directory
+              </li>
               <li><span class="step-number">2</span> Run: <code>python src/api.py</code></li>
-              <li><span class="step-number">3</span> Wait for "Running on http://localhost:5000"</li>
+              <li>
+                <span class="step-number">3</span> Wait for "Running on http://localhost:5000"
+              </li>
               <li><span class="step-number">4</span> Click Retry below</li>
             </ol>
           </div>
@@ -85,7 +101,14 @@
           <p class="error-message">{error}</p>
         {/if}
         <button class="retry-button" on:click={loadDashboard}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
             <polyline points="23 4 23 10 17 10" />
             <path d="M20.49 15a9 9 0 11-2.12-9.36L23 10" />
           </svg>
@@ -95,12 +118,7 @@
     </div>
   {:else if chainInfo}
     <div class="stats-grid">
-      {#each [
-        { key: 'blocks', icon: statIcons.blocks, value: chainInfo.length || 0, label: 'Total Blocks', tooltip: { text: 'Blocks form the immutable chain. Each block contains one or more entries and links to the previous block.', ncipRef: 'NCIP-001' }, color: 'blue' },
-        { key: 'entries', icon: statIcons.entries, value: chainInfo.total_entries || 0, label: 'Total Entries', tooltip: ncipDefinitions.entry, color: 'purple' },
-        { key: 'pending', icon: statIcons.pending, value: pendingCount, label: 'Pending Entries', tooltip: ncipDefinitions.pendingEntries, color: 'amber' },
-        { key: 'status', icon: isValid === true ? statIcons.valid : isValid === false ? statIcons.invalid : statIcons.unknown, value: isValid === true ? 'Valid' : isValid === false ? 'Invalid' : 'Unknown', label: 'Chain Status', tooltip: { text: isValid === true ? ncipDefinitions.chainValid.text : isValid === false ? ncipDefinitions.chainInvalid.text : 'Chain validation status is pending.', ncipRef: isValid === true ? ncipDefinitions.chainValid.ncipRef : ncipDefinitions.chainInvalid.ncipRef }, color: isValid === true ? 'green' : isValid === false ? 'red' : 'gray', isStatus: true }
-      ] as stat, i}
+      {#each [{ key: 'blocks', icon: statIcons.blocks, value: chainInfo.length || 0, label: 'Total Blocks', tooltip: { text: 'Blocks form the immutable chain. Each block contains one or more entries and links to the previous block.', ncipRef: 'NCIP-001' }, color: 'blue' }, { key: 'entries', icon: statIcons.entries, value: chainInfo.total_entries || 0, label: 'Total Entries', tooltip: ncipDefinitions.entry, color: 'purple' }, { key: 'pending', icon: statIcons.pending, value: pendingCount, label: 'Pending Entries', tooltip: ncipDefinitions.pendingEntries, color: 'amber' }, { key: 'status', icon: isValid === true ? statIcons.valid : isValid === false ? statIcons.invalid : statIcons.unknown, value: isValid === true ? 'Valid' : isValid === false ? 'Invalid' : 'Unknown', label: 'Chain Status', tooltip: { text: isValid === true ? ncipDefinitions.chainValid.text : isValid === false ? ncipDefinitions.chainInvalid.text : 'Chain validation status is pending.', ncipRef: isValid === true ? ncipDefinitions.chainValid.ncipRef : ncipDefinitions.chainInvalid.ncipRef }, color: isValid === true ? 'green' : isValid === false ? 'red' : 'gray', isStatus: true }] as stat, i}
         <div
           class="stat-card {stat.color}"
           class:valid={stat.key === 'status' && isValid === true}
@@ -110,7 +128,14 @@
           <Tooltip text={stat.tooltip.text} ncipRef={stat.tooltip.ncipRef} position="bottom">
             <div class="stat-inner">
               <div class="stat-icon-wrapper {stat.color}">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
                   <path d={stat.icon} />
                 </svg>
               </div>
@@ -129,7 +154,14 @@
       <div class="latest-block" in:fly={{ y: 20, duration: 400, delay: 400 }}>
         <div class="block-header">
           <div class="block-title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
               <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
               <line x1="3" y1="9" x2="21" y2="9" />
               <line x1="9" y1="21" x2="9" y2="9" />
@@ -141,7 +173,14 @@
         <div class="block-info">
           <div class="info-item">
             <div class="info-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
                 <line x1="4" y1="9" x2="20" y2="9" />
                 <line x1="4" y1="15" x2="20" y2="15" />
                 <line x1="10" y1="3" x2="8" y2="21" />
@@ -152,8 +191,19 @@
               <span class="info-label">Hash</span>
               <span class="info-value hash">{chainInfo.latest_block.hash?.slice(0, 24)}...</span>
             </div>
-            <button class="copy-btn" on:click={() => navigator.clipboard.writeText(chainInfo.latest_block.hash)} title="Copy full hash">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <button
+              class="copy-btn"
+              on:click={() => navigator.clipboard.writeText(chainInfo.latest_block.hash)}
+              title="Copy full hash"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
                 <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
               </svg>
@@ -161,19 +211,35 @@
           </div>
           <div class="info-item">
             <div class="info-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
                 <circle cx="12" cy="12" r="10" />
                 <polyline points="12 6 12 12 16 14" />
               </svg>
             </div>
             <div class="info-content">
               <span class="info-label">Timestamp</span>
-              <span class="info-value">{new Date(chainInfo.latest_block.timestamp).toLocaleString()}</span>
+              <span class="info-value"
+                >{new Date(chainInfo.latest_block.timestamp).toLocaleString()}</span
+              >
             </div>
           </div>
           <div class="info-item">
             <div class="info-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
                 <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
                 <polyline points="14 2 14 8 20 8" />
                 <line x1="16" y1="13" x2="8" y2="13" />
@@ -193,7 +259,14 @@
       <h3>Quick Actions</h3>
       <div class="actions-grid">
         <button class="action-card" on:click={loadDashboard}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
             <polyline points="23 4 23 10 17 10" />
             <path d="M20.49 15a9 9 0 11-2.12-9.36L23 10" />
           </svg>
@@ -271,7 +344,9 @@
   }
 
   @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   .loading-container p {
@@ -508,12 +583,24 @@
     pointer-events: none;
   }
 
-  .stat-glow.blue { background: #667eea; }
-  .stat-glow.purple { background: #a855f7; }
-  .stat-glow.amber { background: #f59e0b; }
-  .stat-glow.green { background: #22c55e; }
-  .stat-glow.red { background: #ef4444; }
-  .stat-glow.gray { background: #71717a; }
+  .stat-glow.blue {
+    background: #667eea;
+  }
+  .stat-glow.purple {
+    background: #a855f7;
+  }
+  .stat-glow.amber {
+    background: #f59e0b;
+  }
+  .stat-glow.green {
+    background: #22c55e;
+  }
+  .stat-glow.red {
+    background: #ef4444;
+  }
+  .stat-glow.gray {
+    background: #71717a;
+  }
 
   .stat-card.valid {
     border-color: rgba(34, 197, 94, 0.3);

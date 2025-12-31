@@ -1,17 +1,17 @@
-import { writable, get } from 'svelte/store';
+import { writable } from 'svelte/store';
 import {
   isEncryptionReady,
   encryptData,
   decryptData,
   isEncrypted,
   initializeEncryption,
-  clearEncryption
+  clearEncryption,
 } from './encryption.js';
 
 // Encryption status store
 export const encryptionStatus = writable({
   initialized: false,
-  available: typeof window !== 'undefined' && !!window.crypto?.subtle
+  available: typeof window !== 'undefined' && !!window.crypto?.subtle,
 });
 
 /**
@@ -22,7 +22,7 @@ export async function initializeStorageEncryption(passphrase) {
   try {
     await initializeEncryption(passphrase);
     encryptionStatus.set({ initialized: true, available: true });
-    console.log('Storage encryption initialized');
+    console.info('Storage encryption initialized');
     return true;
   } catch (error) {
     console.error('Failed to initialize storage encryption:', error);
@@ -57,7 +57,7 @@ function createPersistentStore(key, initialValue) {
   const store = writable(storedValue);
 
   // Subscribe to changes and persist to localStorage
-  store.subscribe(value => {
+  store.subscribe((value) => {
     if (typeof window !== 'undefined') {
       try {
         localStorage.setItem(key, JSON.stringify(value));
@@ -131,7 +131,7 @@ function createSecurePersistentStore(key, initialValue, sensitive = false) {
   });
 
   // Add a reload method to re-decrypt after encryption is initialized
-  store.reload = async function() {
+  store.reload = async function () {
     await initStore();
   };
 
@@ -147,7 +147,7 @@ export const settings = createPersistentStore('natlangchain_settings', {
   debugMaxLines: 500,
   theme: 'dark', // Reserved for future use
   animationsEnabled: true,
-  compactMode: false
+  compactMode: false,
 });
 
 // Debug log entries (not persisted - cleared on reload)
@@ -161,14 +161,14 @@ export function addDebugLog(level, category, message, data = null) {
     level,
     category,
     message,
-    data
+    data,
   };
 
-  debugLogs.update(logs => {
+  debugLogs.update((logs) => {
     const newLogs = [...logs, entry];
     // Get current max lines setting
     let maxLines = 500;
-    settings.subscribe(s => maxLines = s.debugMaxLines)();
+    settings.subscribe((s) => (maxLines = s.debugMaxLines))();
     // Trim to max lines
     if (newLogs.length > maxLines) {
       return newLogs.slice(-maxLines);
@@ -177,7 +177,8 @@ export function addDebugLog(level, category, message, data = null) {
   });
 
   // Also log to browser console in dev mode
-  const consoleMethod = level === 'error' ? 'error' : level === 'warn' ? 'warn' : 'log';
+  const consoleMethod = level === 'error' ? 'error' : level === 'warn' ? 'warn' : 'info';
+  // eslint-disable-next-line no-console -- Intentional debug logging
   console[consoleMethod](`[${category}] ${message}`, data || '');
 }
 
@@ -188,7 +189,7 @@ export const debug = {
   warn: (category, message, data) => addDebugLog('warn', category, message, data),
   error: (category, message, data) => addDebugLog('error', category, message, data),
   api: (method, url, response) => addDebugLog('info', 'API', `${method} ${url}`, response),
-  apiError: (method, url, error) => addDebugLog('error', 'API', `${method} ${url} failed`, error)
+  apiError: (method, url, error) => addDebugLog('error', 'API', `${method} ${url} failed`, error),
 };
 
 // Clear all debug logs
@@ -200,24 +201,29 @@ export function clearDebugLogs() {
 // These stores will automatically encrypt their contents when stored in localStorage
 
 // User wallet connection data (sensitive - contains wallet addresses)
-export const walletData = createSecurePersistentStore('natlangchain_wallet', {
-  connected: false,
-  address: null,
-  type: null
-}, true);
+export const walletData = createSecurePersistentStore(
+  'natlangchain_wallet',
+  {
+    connected: false,
+    address: null,
+    type: null,
+  },
+  true
+);
 
 // User session data (sensitive - may contain tokens)
-export const sessionData = createSecurePersistentStore('natlangchain_session', {
-  userId: null,
-  authenticated: false,
-  preferences: {}
-}, true);
+export const sessionData = createSecurePersistentStore(
+  'natlangchain_session',
+  {
+    userId: null,
+    authenticated: false,
+    preferences: {},
+  },
+  true
+);
 
 // Draft entries (sensitive - may contain personal/financial information)
 export const draftEntries = createSecurePersistentStore('natlangchain_drafts', [], true);
 
 // Export encryption utilities for components that need direct access
-export {
-  isEncryptionReady,
-  isEncrypted
-} from './encryption.js';
+export { isEncryptionReady, isEncrypted } from './encryption.js';

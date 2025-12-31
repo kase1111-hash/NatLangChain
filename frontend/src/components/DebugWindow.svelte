@@ -17,23 +17,25 @@
   let logsContainer;
 
   // Get unique categories from logs
-  $: categories = [...new Set($debugLogs.map(log => log.category))];
+  $: categories = [...new Set($debugLogs.map((log) => log.category))];
 
   // Filter logs based on level, category, and search
-  $: filteredLogs = $debugLogs.filter(log => {
+  $: filteredLogs = $debugLogs.filter((log) => {
     if (filterLevel !== 'all' && log.level !== filterLevel) return false;
     if (filterCategory !== 'all' && log.category !== filterCategory) return false;
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      return log.message.toLowerCase().includes(query) ||
-             log.category.toLowerCase().includes(query) ||
-             (log.data && JSON.stringify(log.data).toLowerCase().includes(query));
+      return (
+        log.message.toLowerCase().includes(query) ||
+        log.category.toLowerCase().includes(query) ||
+        (log.data && JSON.stringify(log.data).toLowerCase().includes(query))
+      );
     }
     return true;
   });
 
   // Load saved position/size from settings
-  const unsubscribe = settings.subscribe(s => {
+  const unsubscribe = settings.subscribe((s) => {
     if (s.debugWindowPosition) position = s.debugWindowPosition;
     if (s.debugWindowSize) size = s.debugWindowSize;
   });
@@ -56,11 +58,17 @@
   }
 
   function startDrag(e) {
-    if (e.target.closest('.resize-handle') || e.target.closest('button') || e.target.closest('input') || e.target.closest('select')) return;
+    if (
+      e.target.closest('.resize-handle') ||
+      e.target.closest('button') ||
+      e.target.closest('input') ||
+      e.target.closest('select')
+    )
+      return;
     isDragging = true;
     dragOffset = {
       x: e.clientX - position.x,
-      y: e.clientY - position.y
+      y: e.clientY - position.y,
     };
     e.preventDefault();
   }
@@ -75,12 +83,12 @@
     if (isDragging) {
       position = {
         x: Math.max(0, Math.min(window.innerWidth - size.width, e.clientX - dragOffset.x)),
-        y: Math.max(0, Math.min(window.innerHeight - size.height, e.clientY - dragOffset.y))
+        y: Math.max(0, Math.min(window.innerHeight - size.height, e.clientY - dragOffset.y)),
       };
     } else if (isResizing) {
       size = {
         width: Math.max(300, Math.min(window.innerWidth - position.x, e.clientX - position.x)),
-        height: Math.max(200, Math.min(window.innerHeight - position.y, e.clientY - position.y))
+        height: Math.max(200, Math.min(window.innerHeight - position.y, e.clientY - position.y)),
       };
     }
   }
@@ -88,10 +96,10 @@
   function handleMouseUp() {
     if (isDragging || isResizing) {
       // Save position/size to settings
-      settings.update(s => ({
+      settings.update((s) => ({
         ...s,
         debugWindowPosition: position,
-        debugWindowSize: size
+        debugWindowSize: size,
       }));
     }
     isDragging = false;
@@ -103,32 +111,48 @@
   }
 
   function closeWindow() {
-    settings.update(s => ({ ...s, debugWindowEnabled: false }));
+    settings.update((s) => ({ ...s, debugWindowEnabled: false }));
   }
 
   function getLevelColor(level) {
     switch (level) {
-      case 'debug': return '#8b8b8b';
-      case 'info': return '#60a5fa';
-      case 'warn': return '#fbbf24';
-      case 'error': return '#f87171';
-      default: return '#a1a1aa';
+      case 'debug':
+        return '#8b8b8b';
+      case 'info':
+        return '#60a5fa';
+      case 'warn':
+        return '#fbbf24';
+      case 'error':
+        return '#f87171';
+      default:
+        return '#a1a1aa';
     }
   }
 
   function getLevelIcon(level) {
     switch (level) {
-      case 'debug': return 'M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4';
-      case 'info': return 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z';
-      case 'warn': return 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z';
-      case 'error': return 'M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z';
-      default: return 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z';
+      case 'debug':
+        return 'M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4';
+      case 'info':
+        return 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z';
+      case 'warn':
+        return 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z';
+      case 'error':
+        return 'M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z';
+      default:
+        return 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z';
     }
   }
 
   function formatTimestamp(iso) {
     const date = new Date(iso);
-    return date.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 });
+    return date.toLocaleTimeString('en-US', {
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      fractionalSecondDigits: 3,
+    });
   }
 
   function formatData(data) {
@@ -141,9 +165,12 @@
   }
 
   function copyLogs() {
-    const text = filteredLogs.map(log =>
-      `[${log.timestamp}] [${log.level.toUpperCase()}] [${log.category}] ${log.message}${log.data ? '\n' + formatData(log.data) : ''}`
-    ).join('\n');
+    const text = filteredLogs
+      .map(
+        (log) =>
+          `[${log.timestamp}] [${log.level.toUpperCase()}] [${log.category}] ${log.message}${log.data ? `\n${formatData(log.data)}` : ''}`
+      )
+      .join('\n');
     navigator.clipboard.writeText(text);
     debug.info('Debug', 'Logs copied to clipboard');
   }
@@ -155,12 +182,20 @@
   class="debug-window"
   class:minimized={isMinimized}
   bind:this={windowEl}
-  style="left: {position.x}px; top: {position.y}px; width: {size.width}px; height: {isMinimized ? 'auto' : size.height + 'px'};"
+  style="left: {position.x}px; top: {position.y}px; width: {size.width}px; height: {isMinimized
+    ? 'auto'
+    : `${size.height}px`};"
   in:fly={{ y: 20, duration: 300 }}
   out:fade={{ duration: 150 }}
 >
   <!-- Title bar -->
-  <div class="title-bar" on:mousedown={startDrag}>
+  <div
+    class="title-bar"
+    role="button"
+    tabindex="0"
+    on:mousedown={startDrag}
+    on:keydown={(e) => e.key === 'Enter' && startDrag(e)}
+  >
     <div class="title">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
@@ -169,10 +204,16 @@
       <span class="log-count">{filteredLogs.length} / {$debugLogs.length}</span>
     </div>
     <div class="window-controls">
-      <button class="control-btn" on:click={toggleMinimize} title={isMinimized ? 'Expand' : 'Minimize'}>
+      <button
+        class="control-btn"
+        on:click={toggleMinimize}
+        title={isMinimized ? 'Expand' : 'Minimize'}
+      >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           {#if isMinimized}
-            <path d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+            <path
+              d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"
+            />
           {:else}
             <path d="M20 12H4" />
           {/if}
@@ -217,12 +258,16 @@
         </label>
         <button class="toolbar-btn" on:click={copyLogs} title="Copy logs">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+            <path
+              d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"
+            />
           </svg>
         </button>
         <button class="toolbar-btn" on:click={clearDebugLogs} title="Clear logs">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            <path
+              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+            />
           </svg>
         </button>
       </div>
@@ -233,7 +278,9 @@
       {#if filteredLogs.length === 0}
         <div class="no-logs">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            <path
+              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+            />
           </svg>
           <span>No logs to display</span>
         </div>
@@ -241,7 +288,13 @@
         {#each filteredLogs as log (log.id)}
           <div class="log-entry" style="--level-color: {getLevelColor(log.level)}">
             <div class="log-header">
-              <svg class="level-icon" viewBox="0 0 24 24" fill="none" stroke={getLevelColor(log.level)} stroke-width="2">
+              <svg
+                class="level-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke={getLevelColor(log.level)}
+                stroke-width="2"
+              >
                 <path d={getLevelIcon(log.level)} />
               </svg>
               <span class="log-time">{formatTimestamp(log.timestamp)}</span>
@@ -257,9 +310,17 @@
     </div>
 
     <!-- Resize handle -->
-    <div class="resize-handle" on:mousedown={startResize}>
+    <div
+      class="resize-handle"
+      role="button"
+      tabindex="0"
+      on:mousedown={startResize}
+      on:keydown={(e) => e.key === 'Enter' && startResize(e)}
+    >
       <svg viewBox="0 0 24 24" fill="currentColor">
-        <path d="M22 22H20V20H22V22ZM22 18H20V16H22V18ZM18 22H16V20H18V22ZM22 14H20V12H22V14ZM18 18H16V16H18V18ZM14 22H12V20H14V22Z" />
+        <path
+          d="M22 22H20V20H22V22ZM22 18H20V16H22V18ZM18 22H16V20H18V22ZM22 14H20V12H22V14ZM18 18H16V16H18V18ZM14 22H12V20H14V22Z"
+        />
       </svg>
     </div>
   {/if}

@@ -22,8 +22,8 @@ module.exports = {
   ],
   rules: {
     // Code quality
-    'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
-    'no-console': ['warn', { allow: ['warn', 'error'] }],
+    'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+    'no-console': ['warn', { allow: ['warn', 'error', 'info'] }],
 
     // Style (let Prettier handle most formatting)
     'semi': ['error', 'always'],

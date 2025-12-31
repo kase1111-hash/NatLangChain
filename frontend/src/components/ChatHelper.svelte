@@ -1,8 +1,12 @@
 <script>
   import { onMount, onDestroy, createEventDispatcher } from 'svelte';
-  import { fly, fade, slide } from 'svelte/transition';
-  import { getChatStatus, sendChatMessage, getChatQuestions, clearChatHistory } from '../lib/api.js';
-  import { ncipDefinitions } from '../lib/ncip-definitions.js';
+  import { fly, fade } from 'svelte/transition';
+  import {
+    getChatStatus,
+    sendChatMessage,
+    getChatQuestions,
+    clearChatHistory,
+  } from '../lib/api.js';
 
   const dispatch = createEventDispatcher();
 
@@ -27,74 +31,74 @@
   // NCIP Tips - helpful guidance from the documentation
   const ncipTips = [
     {
-      tip: "An Intent is your expression of desired outcome - write it in your own words, not legalese.",
-      ncipRef: "NCIP-001",
-      category: "intent"
+      tip: 'An Intent is your expression of desired outcome - write it in your own words, not legalese.',
+      ncipRef: 'NCIP-001',
+      category: 'intent',
     },
     {
-      tip: "Be specific about what, who, when, and how much. Vague terms lead to disputes.",
-      ncipRef: "NCIP-004",
-      category: "clarity"
+      tip: 'Be specific about what, who, when, and how much. Vague terms lead to disputes.',
+      ncipRef: 'NCIP-004',
+      category: 'clarity',
     },
     {
-      tip: "Proof of Understanding means you can explain the contract in your own words, not just copy it.",
-      ncipRef: "NCIP-004",
-      category: "understanding"
+      tip: 'Proof of Understanding means you can explain the contract in your own words, not just copy it.',
+      ncipRef: 'NCIP-004',
+      category: 'understanding',
     },
     {
-      tip: "Include clear success criteria - how will both parties know the agreement was fulfilled?",
-      ncipRef: "NCIP-001",
-      category: "success"
+      tip: 'Include clear success criteria - how will both parties know the agreement was fulfilled?',
+      ncipRef: 'NCIP-001',
+      category: 'success',
     },
     {
-      tip: "State what happens if things go wrong. Good contracts plan for failure gracefully.",
-      ncipRef: "NCIP-005",
-      category: "failure"
+      tip: 'State what happens if things go wrong. Good contracts plan for failure gracefully.',
+      ncipRef: 'NCIP-005',
+      category: 'failure',
     },
     {
       tip: "Avoid ambiguous phrases like 'reasonable time' or 'best effort' - be concrete.",
-      ncipRef: "NCIP-002",
-      category: "ambiguity"
+      ncipRef: 'NCIP-002',
+      category: 'ambiguity',
     },
     {
-      tip: "Both parties must explicitly ratify an Agreement - silence is not consent.",
-      ncipRef: "NCIP-001",
-      category: "ratification"
+      tip: 'Both parties must explicitly ratify an Agreement - silence is not consent.',
+      ncipRef: 'NCIP-001',
+      category: 'ratification',
     },
     {
-      tip: "Semantic drift happens when meaning changes over time. Lock important terms at signing.",
-      ncipRef: "NCIP-002",
-      category: "drift"
+      tip: 'Semantic drift happens when meaning changes over time. Lock important terms at signing.',
+      ncipRef: 'NCIP-002',
+      category: 'drift',
     },
     {
       tip: "A contract's meaning is bound to its creation time (Temporal Fixity) - context matters.",
-      ncipRef: "NCIP-001",
-      category: "temporal"
+      ncipRef: 'NCIP-001',
+      category: 'temporal',
     },
     {
-      tip: "List all Key Obligations clearly - what must each party actually do?",
-      ncipRef: "NCIP-004",
-      category: "obligations"
+      tip: 'List all Key Obligations clearly - what must each party actually do?',
+      ncipRef: 'NCIP-004',
+      category: 'obligations',
     },
     {
-      tip: "Disputes have a 24-72 hour cooling period for clarification before escalation.",
-      ncipRef: "NCIP-005",
-      category: "disputes"
+      tip: 'Disputes have a 24-72 hour cooling period for clarification before escalation.',
+      ncipRef: 'NCIP-005',
+      category: 'disputes',
     },
     {
-      tip: "When in doubt, ask yourself: would a neutral third party understand this the same way?",
-      ncipRef: "NCIP-004",
-      category: "clarity"
-    }
+      tip: 'When in doubt, ask yourself: would a neutral third party understand this the same way?',
+      ncipRef: 'NCIP-004',
+      category: 'clarity',
+    },
   ];
 
   // View-specific tips
   const viewTips = {
-    submit: [0, 1, 2, 3, 5, 9],  // Intent, clarity, understanding tips
+    submit: [0, 1, 2, 3, 5, 9], // Intent, clarity, understanding tips
     contracts: [3, 4, 6, 7, 10], // Success, failure, ratification tips
-    dashboard: [8, 7],           // Temporal, drift tips
-    explorer: [8, 7],            // Temporal, drift tips
-    search: [5, 11]              // Ambiguity, clarity tips
+    dashboard: [8, 7], // Temporal, drift tips
+    explorer: [8, 7], // Temporal, drift tips
+    search: [5, 11], // Ambiguity, clarity tips
   };
 
   $: relevantTipIndices = viewTips[currentView] || [0, 1, 2, 3];
@@ -194,7 +198,7 @@
 
     try {
       const context = {
-        current_view: currentView
+        current_view: currentView,
       };
 
       const result = await sendChatMessage(userMessage, context);
@@ -202,18 +206,24 @@
       if (result.success) {
         messages = [...messages, { role: 'assistant', content: result.response }];
       } else {
-        messages = [...messages, {
-          role: 'assistant',
-          content: result.error || 'Sorry, I encountered an error. Please try again.',
-          isError: true
-        }];
+        messages = [
+          ...messages,
+          {
+            role: 'assistant',
+            content: result.error || 'Sorry, I encountered an error. Please try again.',
+            isError: true,
+          },
+        ];
       }
     } catch (e) {
-      messages = [...messages, {
-        role: 'assistant',
-        content: `Connection error: ${e.message}. Make sure Ollama is running.`,
-        isError: true
-      }];
+      messages = [
+        ...messages,
+        {
+          role: 'assistant',
+          content: `Connection error: ${e.message}. Make sure Ollama is running.`,
+          isError: true,
+        },
+      ];
     } finally {
       isLoading = false;
       scrollToBottom();
@@ -252,14 +262,14 @@
 
   // View-specific context hints
   const viewHints = {
-    dashboard: "I can help you understand the blockchain overview and stats.",
+    dashboard: 'I can help you understand the blockchain overview and stats.',
     explorer: "I can explain blocks and entries you're viewing.",
-    submit: "I can help you write clear entries and contracts.",
-    contracts: "I can help you understand and create contracts.",
-    search: "I can help you find what you're looking for."
+    submit: 'I can help you write clear entries and contracts.',
+    contracts: 'I can help you understand and create contracts.',
+    search: "I can help you find what you're looking for.",
   };
 
-  $: contextHint = viewHints[currentView] || "How can I help you today?";
+  $: contextHint = viewHints[currentView] || 'How can I help you today?';
 </script>
 
 <!-- Toggle Button (always visible) -->
@@ -267,7 +277,7 @@
   class="chat-toggle"
   class:open={isOpen}
   on:click={togglePanel}
-  title={isOpen ? "Close helper" : "Open AI helper"}
+  title={isOpen ? 'Close helper' : 'Open AI helper'}
 >
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
     {#if isOpen}
@@ -303,7 +313,9 @@
       </div>
       <button class="clear-btn" on:click={clearChat} title="Clear conversation">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14z" />
+          <path
+            d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14z"
+          />
         </svg>
       </button>
     </div>
@@ -318,7 +330,9 @@
             </svg>
           </div>
           <h4>Ollama Not Running</h4>
-          <p class="offline-desc">The AI helper needs Ollama to work. It's a free, local LLM server.</p>
+          <p class="offline-desc">
+            The AI helper needs Ollama to work. It's a free, local LLM server.
+          </p>
 
           <div class="offline-steps">
             <div class="step">
@@ -384,10 +398,7 @@
             <div class="starter-questions" in:fade>
               <span class="questions-label">Try asking:</span>
               {#each starterQuestions as question}
-                <button
-                  class="question-btn"
-                  on:click={() => askStarterQuestion(question)}
-                >
+                <button class="question-btn" on:click={() => askStarterQuestion(question)}>
                   {question}
                 </button>
               {/each}
@@ -396,7 +407,7 @@
         </div>
       {/if}
 
-      {#each messages as message, i}
+      {#each messages as message, _i}
         <div
           class="message"
           class:user={message.role === 'user'}
@@ -422,7 +433,10 @@
             {message.content}
           </div>
           {#if message.role === 'assistant' && !message.isError}
-            <div class="no-copy-badge" title="Write your own contract - copying defeats Proof of Understanding">
+            <div
+              class="no-copy-badge"
+              title="Write your own contract - copying defeats Proof of Understanding"
+            >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M18.36 6.64a9 9 0 11-12.73 0M12 2v10" />
               </svg>
@@ -459,7 +473,10 @@
         </svg>
         <div>
           <strong>Write your own contract</strong>
-          <p>Per NCIP-004, you must demonstrate Proof of Understanding. Copying defeats this requirement.</p>
+          <p>
+            Per NCIP-004, you must demonstrate Proof of Understanding. Copying defeats this
+            requirement.
+          </p>
         </div>
       </div>
     {/if}
@@ -904,8 +921,16 @@
   }
 
   @keyframes typing {
-    0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
-    30% { transform: translateY(-4px); opacity: 1; }
+    0%,
+    60%,
+    100% {
+      transform: translateY(0);
+      opacity: 0.4;
+    }
+    30% {
+      transform: translateY(-4px);
+      opacity: 1;
+    }
   }
 
   /* Copy warning message */
@@ -921,8 +946,13 @@
   }
 
   @keyframes pulse-warning {
-    0%, 100% { border-color: rgba(251, 191, 36, 0.3); }
-    50% { border-color: rgba(251, 191, 36, 0.6); }
+    0%,
+    100% {
+      border-color: rgba(251, 191, 36, 0.3);
+    }
+    50% {
+      border-color: rgba(251, 191, 36, 0.6);
+    }
   }
 
   .copy-warning svg {
