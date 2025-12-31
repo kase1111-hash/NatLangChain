@@ -60,13 +60,33 @@ dev = [
     "types-Flask>=1.1.0",
 ]
 
+# Redis support (distributed locking, caching, coordination)
+redis = [
+    "redis>=4.0.0",
+]
+
+# PostgreSQL storage backend
+postgres = [
+    "psycopg2-binary>=2.9.0",
+]
+
+# Production deployment (all scaling features + WSGI server)
+production = [
+    "redis>=4.0.0",
+    "psycopg2-binary>=2.9.0",
+    "gunicorn>=21.0.0",
+]
+
 # All optional features
 all = [
     "fido2>=1.1.0",  # Hardware security key support
+    "redis>=4.0.0",
+    "psycopg2-binary>=2.9.0",
+    "gunicorn>=21.0.0",
 ]
 
 [project.scripts]
-natlangchain = "api:run_server"
+natlangchain = "cli:main"
 
 [project.urls]
 Homepage = "https://github.com/kase1111-hash/NatLangChain"
