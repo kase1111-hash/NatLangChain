@@ -6,9 +6,8 @@ Core blockchain data structures and logic
 import hashlib
 import json
 import time
-from typing import List, Dict, Optional, Any, Callable
 from datetime import datetime
-
+from typing import Any
 
 # Validation decision constants
 VALIDATION_VALID = "VALID"
@@ -90,13 +89,13 @@ class AssetRegistry:
     def __init__(self):
         """Initialize the asset registry."""
         # Asset ownership: {asset_id: owner}
-        self._ownership: Dict[str, str] = {}
+        self._ownership: dict[str, str] = {}
         # Pending transfers: {asset_id: {"from": owner, "to": recipient, "fingerprint": fp}}
-        self._pending_transfers: Dict[str, Dict[str, str]] = {}
+        self._pending_transfers: dict[str, dict[str, str]] = {}
         # Transfer history for audit: [{asset_id, from, to, timestamp, fingerprint}]
-        self._transfer_history: List[Dict[str, Any]] = []
+        self._transfer_history: list[dict[str, Any]] = []
 
-    def register_asset(self, asset_id: str, owner: str) -> Dict[str, Any]:
+    def register_asset(self, asset_id: str, owner: str) -> dict[str, Any]:
         """
         Register a new asset with an owner.
 
@@ -121,7 +120,7 @@ class AssetRegistry:
             "owner": owner
         }
 
-    def get_owner(self, asset_id: str) -> Optional[str]:
+    def get_owner(self, asset_id: str) -> str | None:
         """Get the current owner of an asset."""
         return self._ownership.get(asset_id)
 
@@ -135,7 +134,7 @@ class AssetRegistry:
         from_owner: str,
         to_recipient: str,
         fingerprint: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Reserve an asset for pending transfer.
 
@@ -186,7 +185,7 @@ class AssetRegistry:
             "asset_id": asset_id
         }
 
-    def complete_transfer(self, asset_id: str, fingerprint: str) -> Dict[str, Any]:
+    def complete_transfer(self, asset_id: str, fingerprint: str) -> dict[str, Any]:
         """
         Complete a pending transfer after block is mined.
 
@@ -237,7 +236,7 @@ class AssetRegistry:
             "new_owner": new_owner
         }
 
-    def cancel_transfer(self, asset_id: str) -> Dict[str, Any]:
+    def cancel_transfer(self, asset_id: str) -> dict[str, Any]:
         """
         Cancel a pending transfer (e.g., entry rejected or expired).
 
@@ -263,18 +262,18 @@ class AssetRegistry:
         """Check if asset has a pending transfer."""
         return asset_id in self._pending_transfers
 
-    def get_pending_transfer(self, asset_id: str) -> Optional[Dict[str, str]]:
+    def get_pending_transfer(self, asset_id: str) -> dict[str, str] | None:
         """Get pending transfer details for an asset."""
         return self._pending_transfers.get(asset_id)
 
-    def get_assets_by_owner(self, owner: str) -> List[str]:
+    def get_assets_by_owner(self, owner: str) -> list[str]:
         """Get all assets owned by a specific owner."""
         return [
             asset_id for asset_id, asset_owner in self._ownership.items()
             if asset_owner == owner
         ]
 
-    def get_transfer_history(self, asset_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    def get_transfer_history(self, asset_id: str | None = None) -> list[dict[str, Any]]:
         """Get transfer history, optionally filtered by asset."""
         if asset_id is None:
             return self._transfer_history.copy()
@@ -283,7 +282,7 @@ class AssetRegistry:
             if t["asset_id"] == asset_id
         ]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize the registry."""
         return {
             "ownership": self._ownership.copy(),
@@ -292,7 +291,7 @@ class AssetRegistry:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'AssetRegistry':
+    def from_dict(cls, data: dict[str, Any]) -> 'AssetRegistry':
         """Deserialize the registry."""
         registry = cls()
         registry._ownership = data.get("ownership", {})
@@ -326,11 +325,11 @@ class RateLimiter:
         self.max_global = max_global
 
         # Track submissions: {author: [timestamps]}
-        self._author_submissions: Dict[str, List[float]] = {}
+        self._author_submissions: dict[str, list[float]] = {}
         # Track global submissions: [timestamps]
-        self._global_submissions: List[float] = []
+        self._global_submissions: list[float] = []
 
-    def check_rate_limit(self, author: str) -> Dict[str, Any]:
+    def check_rate_limit(self, author: str) -> dict[str, Any]:
         """
         Check if an author can submit a new entry.
 
@@ -401,7 +400,7 @@ class RateLimiter:
             if ts > cutoff
         ]
 
-    def _get_retry_after(self, timestamps: List[float], current_time: float) -> float:
+    def _get_retry_after(self, timestamps: list[float], current_time: float) -> float:
         """Calculate seconds until oldest entry expires from window."""
         if not timestamps:
             return 0
@@ -409,7 +408,7 @@ class RateLimiter:
         retry_after = (oldest + self.window_seconds) - current_time
         return max(0, retry_after)
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get current rate limiter statistics."""
         self._cleanup_old_entries(time.time())
         return {
@@ -510,7 +509,7 @@ class MockValidator:
         "agreement": {"agree", "accept", "approve", "confirm", "sign", "consent", "contract"},
     }
 
-    def _detect_action_mismatch(self, content: str, intent: str) -> Optional[Dict[str, Any]]:
+    def _detect_action_mismatch(self, content: str, intent: str) -> dict[str, Any] | None:
         """
         Detect if high-impact actions in content don't match the stated intent.
 
@@ -575,7 +574,7 @@ class MockValidator:
         content: str,
         intent: str,
         author: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Perform mock validation with basic heuristic checks.
 
@@ -601,7 +600,7 @@ class MockValidator:
             return {
                 "status": "success",
                 "validation": {
-                    "paraphrase": f"[MOCK] Entry contains adversarial patterns",
+                    "paraphrase": "[MOCK] Entry contains adversarial patterns",
                     "intent_match": False,
                     "ambiguities": [],
                     "adversarial_indicators": adversarial_found,
@@ -616,7 +615,7 @@ class MockValidator:
             return {
                 "status": "success",
                 "validation": {
-                    "paraphrase": f"[MOCK] Entry action doesn't match stated intent",
+                    "paraphrase": "[MOCK] Entry action doesn't match stated intent",
                     "intent_match": False,
                     "ambiguities": [],
                     "adversarial_indicators": [],
@@ -663,7 +662,7 @@ class MockValidator:
             return {
                 "status": "success",
                 "validation": {
-                    "paraphrase": f"[MOCK] Entry content does not match stated intent",
+                    "paraphrase": "[MOCK] Entry content does not match stated intent",
                     "intent_match": False,
                     "ambiguities": [],
                     "adversarial_indicators": [],
@@ -697,7 +696,7 @@ class NaturalLanguageEntry:
         content: str,
         author: str,
         intent: str,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: dict[str, Any] | None = None
     ):
         """
         Create a natural language entry.
@@ -716,7 +715,7 @@ class NaturalLanguageEntry:
         self.validation_status = "pending"
         self.validation_paraphrases = []
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert entry to dictionary for serialization."""
         return {
             "content": self.content,
@@ -729,7 +728,7 @@ class NaturalLanguageEntry:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'NaturalLanguageEntry':
+    def from_dict(cls, data: dict[str, Any]) -> 'NaturalLanguageEntry':
         """Create entry from dictionary."""
         entry = cls(
             content=data["content"],
@@ -752,7 +751,7 @@ class Block:
     def __init__(
         self,
         index: int,
-        entries: List[NaturalLanguageEntry],
+        entries: list[NaturalLanguageEntry],
         previous_hash: str,
         nonce: int = 0
     ):
@@ -787,7 +786,7 @@ class Block:
         block_string = json.dumps(block_data, sort_keys=True)
         return hashlib.sha256(block_string.encode()).hexdigest()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert block to dictionary for serialization."""
         return {
             "index": self.index,
@@ -799,7 +798,7 @@ class Block:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'Block':
+    def from_dict(cls, data: dict[str, Any]) -> 'Block':
         """Create block from dictionary."""
         entries = [NaturalLanguageEntry.from_dict(e) for e in data["entries"]]
         block = cls(
@@ -822,7 +821,7 @@ class NatLangChain:
     def __init__(
         self,
         require_validation: bool = True,
-        validator: Optional[Any] = None,
+        validator: Any | None = None,
         allow_needs_clarification: bool = False,
         enable_deduplication: bool = True,
         dedup_window_seconds: int = DEFAULT_DEDUP_WINDOW_SECONDS,
@@ -835,9 +834,9 @@ class NatLangChain:
         max_future_drift: int = DEFAULT_MAX_FUTURE_DRIFT_SECONDS,
         enable_metadata_sanitization: bool = True,
         metadata_sanitize_mode: str = DEFAULT_SANITIZE_MODE,
-        forbidden_metadata_fields: Optional[set] = None,
+        forbidden_metadata_fields: set | None = None,
         enable_asset_tracking: bool = True,
-        asset_registry: Optional[AssetRegistry] = None
+        asset_registry: AssetRegistry | None = None
     ):
         """
         Initialize the blockchain with genesis block.
@@ -875,8 +874,8 @@ class NatLangChain:
             asset_registry: Optional pre-configured AssetRegistry instance.
                            If None and enable_asset_tracking is True, a new registry is created.
         """
-        self.chain: List[Block] = []
-        self.pending_entries: List[NaturalLanguageEntry] = []
+        self.chain: list[Block] = []
+        self.pending_entries: list[NaturalLanguageEntry] = []
         self.require_validation = require_validation
         self.validator = validator
         self.allow_needs_clarification = allow_needs_clarification
@@ -896,7 +895,7 @@ class NatLangChain:
             self._acceptable_decisions.add(VALIDATION_NEEDS_CLARIFICATION)
 
         # Entry fingerprint registry for deduplication: {fingerprint: timestamp}
-        self._entry_fingerprints: Dict[str, float] = {}
+        self._entry_fingerprints: dict[str, float] = {}
 
         # Rate limiter for anti-flooding
         self._rate_limiter = RateLimiter(
@@ -941,7 +940,7 @@ class NatLangChain:
         self,
         entry: NaturalLanguageEntry,
         skip_validation: bool = False
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Add a new natural language entry to pending entries.
 
@@ -1101,7 +1100,7 @@ class NatLangChain:
             }
         return response
 
-    def _check_duplicate(self, entry: NaturalLanguageEntry) -> Dict[str, Any]:
+    def _check_duplicate(self, entry: NaturalLanguageEntry) -> dict[str, Any]:
         """
         Check if an entry is a duplicate of a previously seen entry.
 
@@ -1180,7 +1179,7 @@ class NatLangChain:
         for fp in expired:
             del self._entry_fingerprints[fp]
 
-    def _validate_timestamp(self, entry: NaturalLanguageEntry) -> Dict[str, Any]:
+    def _validate_timestamp(self, entry: NaturalLanguageEntry) -> dict[str, Any]:
         """
         Validate an entry's timestamp against the current system time.
 
@@ -1238,7 +1237,7 @@ class NatLangChain:
             "drift_seconds": time_diff
         }
 
-    def _sanitize_metadata(self, entry: NaturalLanguageEntry) -> Dict[str, Any]:
+    def _sanitize_metadata(self, entry: NaturalLanguageEntry) -> dict[str, Any]:
         """
         Sanitize entry metadata to prevent injection attacks.
 
@@ -1260,15 +1259,9 @@ class NatLangChain:
 
         # Find forbidden fields in metadata
         found_forbidden = []
-        for field in entry.metadata.keys():
+        for field in entry.metadata:
             # Check exact match
-            if field in self.forbidden_metadata_fields:
-                found_forbidden.append(field)
-            # Check case-insensitive match for bypass attempts
-            elif field.lower() in {f.lower() for f in self.forbidden_metadata_fields}:
-                found_forbidden.append(field)
-            # Check for suspicious patterns
-            elif field.startswith("__") or field.startswith("_system"):
+            if field in self.forbidden_metadata_fields or field.lower() in {f.lower() for f in self.forbidden_metadata_fields} or field.startswith("__") or field.startswith("_system"):
                 found_forbidden.append(field)
 
         if not found_forbidden:
@@ -1304,7 +1297,7 @@ class NatLangChain:
             "rejected": False
         }
 
-    def _detect_asset_transfer(self, entry: NaturalLanguageEntry) -> Dict[str, Any]:
+    def _detect_asset_transfer(self, entry: NaturalLanguageEntry) -> dict[str, Any]:
         """
         Detect if an entry represents an asset transfer.
 
@@ -1357,7 +1350,7 @@ class NatLangChain:
 
         return result
 
-    def _check_asset_transfer(self, entry: NaturalLanguageEntry) -> Dict[str, Any]:
+    def _check_asset_transfer(self, entry: NaturalLanguageEntry) -> dict[str, Any]:
         """
         Check if an asset transfer is allowed (no double-spending).
 
@@ -1410,7 +1403,7 @@ class NatLangChain:
             "fingerprint": fingerprint
         }
 
-    def _validate_entry(self, entry: NaturalLanguageEntry) -> Dict[str, Any]:
+    def _validate_entry(self, entry: NaturalLanguageEntry) -> dict[str, Any]:
         """
         Validate an entry using the configured validator.
 
@@ -1437,7 +1430,7 @@ class NatLangChain:
             author=entry.author
         )
 
-    def mine_pending_entries(self, difficulty: int = 2) -> Optional[Block]:
+    def mine_pending_entries(self, difficulty: int = 2) -> Block | None:
         """
         Mine pending entries into a new block.
         Implements a simple proof-of-work for demonstration.
@@ -1503,7 +1496,7 @@ class NatLangChain:
 
         return True
 
-    def get_entries_by_author(self, author: str) -> List[Dict[str, Any]]:
+    def get_entries_by_author(self, author: str) -> list[dict[str, Any]]:
         """
         Retrieve all entries by a specific author.
 
@@ -1524,7 +1517,7 @@ class NatLangChain:
                     })
         return entries
 
-    def get_entries_by_intent(self, intent_keyword: str) -> List[Dict[str, Any]]:
+    def get_entries_by_intent(self, intent_keyword: str) -> list[dict[str, Any]]:
         """
         Search for entries by intent keyword.
 
@@ -1570,14 +1563,14 @@ class NatLangChain:
                 narrative.append(f"  Status: {entry.validation_status}")
                 narrative.append(f"  Content:\n    {entry.content}")
                 if entry.validation_paraphrases:
-                    narrative.append(f"  Validation Paraphrases:")
+                    narrative.append("  Validation Paraphrases:")
                     for paraphrase in entry.validation_paraphrases:
                         narrative.append(f"    - {paraphrase}")
                 narrative.append("")
 
         return "\n".join(narrative)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Export the entire chain as dictionary."""
         return {
             "chain": [block.to_dict() for block in self.chain],
@@ -1587,9 +1580,9 @@ class NatLangChain:
     @classmethod
     def from_dict(
         cls,
-        data: Dict[str, Any],
+        data: dict[str, Any],
         require_validation: bool = False,
-        validator: Optional[Any] = None,
+        validator: Any | None = None,
         enable_deduplication: bool = True,
         dedup_window_seconds: int = DEFAULT_DEDUP_WINDOW_SECONDS,
         enable_rate_limiting: bool = True,
@@ -1601,9 +1594,9 @@ class NatLangChain:
         max_future_drift: int = DEFAULT_MAX_FUTURE_DRIFT_SECONDS,
         enable_metadata_sanitization: bool = True,
         metadata_sanitize_mode: str = DEFAULT_SANITIZE_MODE,
-        forbidden_metadata_fields: Optional[set] = None,
+        forbidden_metadata_fields: set | None = None,
         enable_asset_tracking: bool = True,
-        asset_registry: Optional[AssetRegistry] = None
+        asset_registry: AssetRegistry | None = None
     ) -> 'NatLangChain':
         """
         Import chain from dictionary.

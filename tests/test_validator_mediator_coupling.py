@@ -11,26 +11,20 @@ Tests cover:
 - Collusion resistance
 """
 
-import pytest
-from datetime import datetime, timedelta
-import sys
 import os
+import sys
+from datetime import datetime, timedelta
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from validator_mediator_coupling import (
+    ActorRole,
+    DisputePhase,
+    MediatorWeight,
+    ProtocolViolationType,
+    SemanticConsistencyScore,
     ValidatorMediatorCoupling,
     ValidatorWeight,
-    MediatorWeight,
-    SemanticConsistencyScore,
-    MediatorProposal,
-    ActorRole,
-    ProtocolViolationType,
-    ValidatorAction,
-    ValidatorProhibitedAction,
-    MediatorAction,
-    MediatorProhibitedAction,
-    DisputePhase,
     WeightUpdateStatus,
 )
 
@@ -89,7 +83,7 @@ class TestRoleSeparation:
     def test_mediator_cannot_override_drift_rulings(self):
         coupling = ValidatorMediatorCoupling()
 
-        allowed, violation = coupling.check_role_permission(
+        allowed, _violation = coupling.check_role_permission(
             "m1", ActorRole.MEDIATOR, "override_drift_rulings"
         )
         assert allowed is False
@@ -135,14 +129,14 @@ class TestWeightDomains:
 
     def test_register_validator(self):
         coupling = ValidatorMediatorCoupling()
-        vw = coupling.register_validator("v1", historical_accuracy=0.9)
+        coupling.register_validator("v1", historical_accuracy=0.9)
 
         assert coupling.get_validator_weight("v1") is not None
         assert coupling.validator_weights["v1"].historical_accuracy == 0.9
 
     def test_register_mediator(self):
         coupling = ValidatorMediatorCoupling()
-        mw = coupling.register_mediator("m1", acceptance_rate=0.8)
+        coupling.register_mediator("m1", acceptance_rate=0.8)
 
         assert coupling.get_mediator_weight("m1") is not None
         assert coupling.mediator_weights["m1"].acceptance_rate == 0.8
@@ -337,7 +331,7 @@ class TestCompetitiveMediation:
         )
         coupling.check_influence_gate(proposal.proposal_id)
 
-        success, msg = coupling.select_proposal(proposal.proposal_id, "human-001")
+        success, _msg = coupling.select_proposal(proposal.proposal_id, "human-001")
 
         assert success is True
         assert proposal.selected is True
@@ -381,7 +375,7 @@ class TestDisputePhase:
     def test_proposals_allowed_outside_dispute(self):
         coupling = ValidatorMediatorCoupling()
 
-        can_submit, msg = coupling.can_submit_proposal("contract-002")
+        can_submit, _msg = coupling.can_submit_proposal("contract-002")
 
         assert can_submit is True
 

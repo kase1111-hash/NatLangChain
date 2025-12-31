@@ -3,16 +3,16 @@ Integration test runner for Escalation Fork and Observance Burn protocols.
 Runs 10 test scenarios with various outcomes including escalations.
 """
 
-import sys
 import os
 import random
+import sys
 from datetime import datetime
 
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from escalation_fork import EscalationForkManager, ForkStatus, TriggerReason
-from observance_burn import ObservanceBurnManager, BurnReason
+from escalation_fork import EscalationForkManager, TriggerReason
+from observance_burn import BurnReason, ObservanceBurnManager
 
 # Test configuration
 SCENARIOS = [
@@ -282,7 +282,7 @@ def run_all_tests():
     escalated = sum(1 for r in results if r.get("escalated"))
     resolved = sum(1 for r in results if r.get("resolved"))
     timeouts = sum(1 for r in results if r.get("timeout"))
-    vetoed = sum(1 for r in results if r.get("scenario") and "veto" in str(results))
+    sum(1 for r in results if r.get("scenario") and "veto" in str(results))
 
     print_result("Total Scenarios", len(results))
     print_result("Resolved Without Escalation", len(results) - escalated)

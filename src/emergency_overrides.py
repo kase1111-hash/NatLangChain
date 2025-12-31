@@ -13,8 +13,7 @@ Core Principle: Emergencies may suspend execution — never meaning.
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Dict, List, Optional, Set, Tuple, Any
-import hashlib
+from typing import Any
 
 
 class ForceMajeureClass(Enum):
@@ -114,12 +113,12 @@ class SemanticFallback:
     # Validation
     declared_at: datetime = field(default_factory=datetime.utcnow)
     semantically_validated: bool = False
-    validation_timestamp: Optional[datetime] = None
+    validation_timestamp: datetime | None = None
 
     # Cannot be added post-hoc
     is_original: bool = True  # Must be True - set at contract creation
 
-    def validate(self) -> Tuple[bool, str]:
+    def validate(self) -> tuple[bool, str]:
         """Validate the fallback declaration."""
         if not self.is_original:
             return (False, "Fallback cannot be invented post-hoc")
@@ -147,7 +146,7 @@ class EmergencyDeclaration:
     scope: EmergencyScope
     force_majeure_class: ForceMajeureClass
     declared_reason: str
-    affected_refs: List[str]  # Contract IDs, jurisdiction codes, etc.
+    affected_refs: list[str]  # Contract IDs, jurisdiction codes, etc.
 
     # Timestamps
     declared_at: datetime = field(default_factory=datetime.utcnow)
@@ -157,24 +156,24 @@ class EmergencyDeclaration:
     max_duration: timedelta = field(default_factory=lambda: timedelta(days=180))
 
     # Computed expiry times
-    review_deadline: Optional[datetime] = None
-    expiry_deadline: Optional[datetime] = None
+    review_deadline: datetime | None = None
+    expiry_deadline: datetime | None = None
 
     # Status tracking
     status: EmergencyStatus = EmergencyStatus.DECLARED
 
     # Oracle evidence
-    oracle_evidence: List[OracleEvidence] = field(default_factory=list)
+    oracle_evidence: list[OracleEvidence] = field(default_factory=list)
 
     # Applied effects
-    applied_effects: List[ExecutionEffect] = field(default_factory=list)
+    applied_effects: list[ExecutionEffect] = field(default_factory=list)
 
     # Semantic lock (if disputed)
-    semantic_lock_id: Optional[str] = None
+    semantic_lock_id: str | None = None
 
     # Resolution
-    resolved_at: Optional[datetime] = None
-    resolution_reason: Optional[str] = None
+    resolved_at: datetime | None = None
+    resolution_reason: str | None = None
 
     # Abuse tracking
     frivolous: bool = False
@@ -202,7 +201,7 @@ class EmergencyDeclaration:
         """Get number of days emergency has been active."""
         return (datetime.utcnow() - self.declared_at).days
 
-    def has_required_fields(self) -> Tuple[bool, List[str]]:
+    def has_required_fields(self) -> tuple[bool, list[str]]:
         """Check if declaration has all required fields."""
         missing = []
         if not self.scope:
@@ -236,11 +235,11 @@ class EmergencyDispute:
 
     # Status
     created_at: datetime = field(default_factory=datetime.utcnow)
-    resolved_at: Optional[datetime] = None
-    upheld: Optional[bool] = None  # True = emergency upheld, False = rejected
+    resolved_at: datetime | None = None
+    upheld: bool | None = None  # True = emergency upheld, False = rejected
 
     # Semantic lock
-    semantic_lock_id: Optional[str] = None
+    semantic_lock_id: str | None = None
 
     # Burden of proof is on declarer
     burden_of_proof: str = "declarer"
@@ -272,17 +271,17 @@ class EmergencyManager:
     REPEAT_MULTIPLIER = 1.5
 
     def __init__(self):
-        self.emergencies: Dict[str, EmergencyDeclaration] = {}
-        self.fallbacks: Dict[str, List[SemanticFallback]] = {}  # contract_id -> fallbacks
-        self.disputes: Dict[str, EmergencyDispute] = {}
-        self.oracle_cache: Dict[str, OracleEvidence] = {}
+        self.emergencies: dict[str, EmergencyDeclaration] = {}
+        self.fallbacks: dict[str, list[SemanticFallback]] = {}  # contract_id -> fallbacks
+        self.disputes: dict[str, EmergencyDispute] = {}
+        self.oracle_cache: dict[str, OracleEvidence] = {}
 
         self.emergency_counter = 0
         self.fallback_counter = 0
         self.dispute_counter = 0
 
         # Track abuse
-        self.declarer_history: Dict[str, List[str]] = {}  # declarer_id -> emergency_ids
+        self.declarer_history: dict[str, list[str]] = {}  # declarer_id -> emergency_ids
 
     # -------------------------------------------------------------------------
     # Emergency Declaration
@@ -294,10 +293,10 @@ class EmergencyManager:
         scope: EmergencyScope,
         force_majeure_class: ForceMajeureClass,
         declared_reason: str,
-        affected_refs: List[str],
+        affected_refs: list[str],
         review_after_days: int = DEFAULT_REVIEW_DAYS,
         max_duration_days: int = DEFAULT_MAX_DURATION_DAYS
-    ) -> Tuple[Optional[EmergencyDeclaration], List[str]]:
+    ) -> tuple[EmergencyDeclaration | None, list[str]]:
         """
         Declare an emergency per NCIP-013 Section 3.
 
@@ -351,7 +350,7 @@ class EmergencyManager:
     def validate_emergency(
         self,
         emergency_id: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Validate an emergency declaration.
 
@@ -402,7 +401,7 @@ class EmergencyManager:
         self,
         emergency_id: str,
         effect: ExecutionEffect
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Apply an execution effect per NCIP-013 Section 6.
 
@@ -434,14 +433,14 @@ class EmergencyManager:
     def check_prohibited_effect(
         self,
         effect: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Check if an effect is prohibited per NCIP-013 Section 6.1.
 
         Prohibited effects NEVER alter meaning.
         """
         try:
-            prohibited = ProhibitedEffect(effect)
+            ProhibitedEffect(effect)
             return {
                 "effect": effect,
                 "prohibited": True,
@@ -451,7 +450,7 @@ class EmergencyManager:
             pass
 
         try:
-            allowed = ExecutionEffect(effect)
+            ExecutionEffect(effect)
             return {
                 "effect": effect,
                 "prohibited": False,
@@ -475,7 +474,7 @@ class EmergencyManager:
         contract_id: str,
         trigger_condition: str,
         fallback_action: str
-    ) -> Tuple[Optional[SemanticFallback], List[str]]:
+    ) -> tuple[SemanticFallback | None, list[str]]:
         """
         Declare a semantic fallback per NCIP-013 Section 7.
 
@@ -514,7 +513,7 @@ class EmergencyManager:
         self,
         fallback_id: str,
         contract_id: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Semantically validate a fallback.
         """
@@ -548,7 +547,7 @@ class EmergencyManager:
         emergency_id: str,
         fallback_id: str,
         contract_id: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Trigger a semantic fallback during an emergency.
         """
@@ -601,7 +600,7 @@ class EmergencyManager:
         contract_id: str,
         trigger_condition: str,
         fallback_action: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Reject an attempt to create a post-hoc fallback.
 
@@ -627,7 +626,7 @@ class EmergencyManager:
         oracle_type: OracleType,
         evidence_data: str,
         confidence_score: float
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Add oracle evidence to an emergency declaration.
 
@@ -668,7 +667,7 @@ class EmergencyManager:
         emergency_id: str,
         disputed_by: str,
         dispute_reason: str
-    ) -> Tuple[Optional[EmergencyDispute], List[str]]:
+    ) -> tuple[EmergencyDispute | None, list[str]]:
         """
         Dispute an emergency declaration per NCIP-013 Section 8.
 
@@ -713,7 +712,7 @@ class EmergencyManager:
         dispute_id: str,
         upheld: bool,
         resolution_notes: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Resolve an emergency dispute.
 
@@ -764,7 +763,7 @@ class EmergencyManager:
     # Timeout & Expiry
     # -------------------------------------------------------------------------
 
-    def check_expiry(self, emergency_id: str) -> Dict[str, Any]:
+    def check_expiry(self, emergency_id: str) -> dict[str, Any]:
         """
         Check if emergency has expired per NCIP-013 Section 9.
 
@@ -782,7 +781,7 @@ class EmergencyManager:
                 "message": f"Emergency {emergency_id} not found"
             }
 
-        now = datetime.utcnow()
+        datetime.utcnow()
         result = {
             "emergency_id": emergency_id,
             "declared_at": emergency.declared_at.isoformat(),
@@ -807,8 +806,8 @@ class EmergencyManager:
         self,
         emergency_id: str,
         action: str,
-        ratification_id: Optional[str] = None
-    ) -> Dict[str, Any]:
+        ratification_id: str | None = None
+    ) -> dict[str, Any]:
         """
         Process emergency expiry per NCIP-013 Section 9.1.
 
@@ -863,7 +862,7 @@ class EmergencyManager:
                 "message": f"Invalid action: {action}. Use resume_execution, terminate_fallback, or ratify_amendment"
             }
 
-    def check_escalation_needed(self, emergency_id: str) -> Dict[str, Any]:
+    def check_escalation_needed(self, emergency_id: str) -> dict[str, Any]:
         """
         Check if emergency needs escalation per NCIP-013 Section 11.
 
@@ -893,7 +892,7 @@ class EmergencyManager:
     # Machine-Readable Policy
     # -------------------------------------------------------------------------
 
-    def generate_emergency_policy(self) -> Dict[str, Any]:
+    def generate_emergency_policy(self) -> dict[str, Any]:
         """
         Generate machine-readable emergency policy per NCIP-013 Section 12.
         """
@@ -936,7 +935,7 @@ class EmergencyManager:
     def validator_check(
         self,
         emergency_id: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Validator behavior check per NCIP-013 Section 11.
 
@@ -985,15 +984,15 @@ class EmergencyManager:
     # Status & Reporting
     # -------------------------------------------------------------------------
 
-    def get_emergency(self, emergency_id: str) -> Optional[EmergencyDeclaration]:
+    def get_emergency(self, emergency_id: str) -> EmergencyDeclaration | None:
         """Get an emergency by ID."""
         return self.emergencies.get(emergency_id)
 
-    def get_active_emergencies(self) -> List[EmergencyDeclaration]:
+    def get_active_emergencies(self) -> list[EmergencyDeclaration]:
         """Get all active emergencies."""
         return [e for e in self.emergencies.values() if e.status == EmergencyStatus.ACTIVE]
 
-    def get_status_summary(self) -> Dict[str, Any]:
+    def get_status_summary(self) -> dict[str, Any]:
         """Get summary of emergency system status."""
         status_counts = {}
         for emergency in self.emergencies.values():

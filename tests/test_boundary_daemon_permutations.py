@@ -14,27 +14,23 @@ Test Strategy:
 - Concurrent-style stress testing
 """
 
-import sys
+import itertools
 import os
-import json
-import time
 import random
 import string
-import itertools
-from typing import List, Dict, Any, Tuple
+import sys
+import time
 from dataclasses import dataclass
+from typing import Any
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
+from blockchain import NatLangChain, NaturalLanguageEntry
 from boundary_daemon import (
     BoundaryDaemon,
     BoundaryPolicy,
     EnforcementMode,
-    DataClassification,
-    ViolationType,
 )
-from blockchain import NatLangChain, NaturalLanguageEntry
-
 
 # ============================================================
 # Test Configuration
@@ -132,10 +128,10 @@ class PermutationTestSuite:
     """Comprehensive permutation testing for Boundary Daemon."""
 
     def __init__(self):
-        self.results: List[PermutationResult] = []
-        self.soft_locks: List[Dict] = []
-        self.dead_ends: List[Dict] = []
-        self.errors: List[Dict] = []
+        self.results: list[PermutationResult] = []
+        self.soft_locks: list[dict] = []
+        self.dead_ends: list[dict] = []
+        self.errors: list[dict] = []
         self.start_time = None
 
     def _create_request(
@@ -144,7 +140,7 @@ class PermutationTestSuite:
         destination: Any,
         payload: Any,
         classification: Any
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Create a test request with given parameters."""
         request = {
             "request_id": f"REQ-{random.randint(1000, 9999)}",
@@ -220,7 +216,7 @@ class PermutationTestSuite:
                 response_time_ms=elapsed_ms
             )
 
-    def test_all_source_destination_classification_combinations(self) -> Dict[str, Any]:
+    def test_all_source_destination_classification_combinations(self) -> dict[str, Any]:
         """
         Test ALL combinations of source, destination, and classification.
         This is the core permutation test.
@@ -286,7 +282,7 @@ class PermutationTestSuite:
             "errors": len(self.errors)
         }
 
-    def test_all_payload_types(self) -> Dict[str, Any]:
+    def test_all_payload_types(self) -> dict[str, Any]:
         """Test all payload types with different configurations."""
         print("\n" + "=" * 60)
         print("Testing All Payload Types")
@@ -337,7 +333,7 @@ class PermutationTestSuite:
                         "result": result
                     })
 
-        print(f"\nResults:")
+        print("\nResults:")
         print(f"  Safe payloads allowed: {safe_allowed}/{len(SAFE_PAYLOADS)}")
         print(f"  Sensitive payloads blocked: {sensitive_blocked}/{len(SENSITIVE_PAYLOADS)}")
         print(f"  Issues found: {len(issues)}")
@@ -349,7 +345,7 @@ class PermutationTestSuite:
             "issues": issues
         }
 
-    def test_enforcement_mode_transitions(self) -> Dict[str, Any]:
+    def test_enforcement_mode_transitions(self) -> dict[str, Any]:
         """Test that mode transitions don't cause soft locks."""
         print("\n" + "=" * 60)
         print("Testing Enforcement Mode Transitions")
@@ -397,7 +393,7 @@ class PermutationTestSuite:
         print(f"\nMode transitions: {len(transitions) - len(issues)}/{len(transitions)} passed")
         return {"transitions": len(transitions), "issues": issues}
 
-    def test_sequential_operation_chains(self) -> Dict[str, Any]:
+    def test_sequential_operation_chains(self) -> dict[str, Any]:
         """
         Test sequential chains of operations to find state corruption.
         """
@@ -468,7 +464,7 @@ class PermutationTestSuite:
             "issues": issues
         }
 
-    def test_state_consistency(self) -> Dict[str, Any]:
+    def test_state_consistency(self) -> dict[str, Any]:
         """
         Test that daemon state remains consistent after any operation.
         """
@@ -494,7 +490,7 @@ class PermutationTestSuite:
         ]
 
         for source, dest, payload, classification, expect_violation in operations:
-            result = daemon.authorize_request({
+            daemon.authorize_request({
                 "source": source,
                 "destination": dest,
                 "payload": {"content": payload},
@@ -529,7 +525,7 @@ class PermutationTestSuite:
             "issues": issues
         }
 
-    def test_blockchain_integration_chains(self) -> Dict[str, Any]:
+    def test_blockchain_integration_chains(self) -> dict[str, Any]:
         """
         Test end-to-end chains with blockchain integration.
         """
@@ -603,7 +599,7 @@ class PermutationTestSuite:
                         entries_added += 1
 
             except Exception as e:
-                issues.append({"op": op, "issue": f"Exception: {str(e)}"})
+                issues.append({"op": op, "issue": f"Exception: {e!s}"})
 
         # Verify chain integrity
         if not chain.validate_chain():
@@ -623,7 +619,7 @@ class PermutationTestSuite:
             "issues": issues
         }
 
-    def test_fuzzing(self, iterations: int = 1000) -> Dict[str, Any]:
+    def test_fuzzing(self, iterations: int = 1000) -> dict[str, Any]:
         """
         Random fuzzing with edge cases and malformed inputs.
         """
@@ -639,7 +635,7 @@ class PermutationTestSuite:
         def random_string(length: int = 10) -> str:
             return ''.join(random.choices(string.printable, k=length))
 
-        def random_nested_dict(depth: int = 3) -> Dict:
+        def random_nested_dict(depth: int = 3) -> dict:
             if depth <= 0:
                 return random_string(5)
             return {random_string(3): random_nested_dict(depth - 1)}
@@ -665,10 +661,10 @@ class PermutationTestSuite:
                 payload = payload_gen()
 
                 result = daemon.authorize_request({
-                    "source": random.choice(SOURCES + [random_string(10)]),
-                    "destination": random.choice(DESTINATIONS + [random_string(10)]),
+                    "source": random.choice([*SOURCES, random_string(10)]),
+                    "destination": random.choice([*DESTINATIONS, random_string(10)]),
                     "payload": {"content": payload} if not isinstance(payload, dict) else payload,
-                    "data_classification": random.choice(CLASSIFICATIONS + [random_string(5)])
+                    "data_classification": random.choice([*CLASSIFICATIONS, random_string(5)])
                 })
 
                 # Must always return valid response
@@ -683,7 +679,7 @@ class PermutationTestSuite:
             if (i + 1) % 200 == 0:
                 print(f"  Progress: {i + 1}/{iterations}")
 
-        print(f"\nFuzzing results:")
+        print("\nFuzzing results:")
         print(f"  Iterations: {iterations}")
         print(f"  Issues: {len(issues)}")
         print(f"  Crashes: {len(crashes)}")
@@ -694,7 +690,7 @@ class PermutationTestSuite:
             "crashes": crashes
         }
 
-    def test_policy_permutations(self) -> Dict[str, Any]:
+    def test_policy_permutations(self) -> dict[str, Any]:
         """
         Test all policy configuration permutations.
         """
@@ -751,7 +747,7 @@ class PermutationTestSuite:
         for pattern in custom_patterns:
             daemon = BoundaryDaemon()
             policy = BoundaryPolicy(
-                policy_id=f"POLICY-PATTERN",
+                policy_id="POLICY-PATTERN",
                 owner="test",
                 agent_id="test_agent",
                 custom_blocked_patterns=[pattern]
@@ -759,7 +755,7 @@ class PermutationTestSuite:
             daemon.register_policy(policy)
 
             # Should block matching content
-            test_content = f"Working on project-123 today"
+            test_content = "Working on project-123 today"
             result = daemon.authorize_request({
                 "source": "test_agent",
                 "destination": "external",
@@ -778,7 +774,7 @@ class PermutationTestSuite:
 
         return {"issues": issues}
 
-    def run_all_tests(self) -> Dict[str, Any]:
+    def run_all_tests(self) -> dict[str, Any]:
         """Run all permutation tests and generate report."""
         self.start_time = time.time()
 
@@ -815,7 +811,7 @@ class PermutationTestSuite:
         total_errors = len(self.errors)
 
         print(f"\nTest Duration: {elapsed:.2f} seconds")
-        print(f"\nResults by Category:")
+        print("\nResults by Category:")
 
         for category, result in results.items():
             if isinstance(result, dict):
@@ -823,7 +819,7 @@ class PermutationTestSuite:
                 status = "✓ PASS" if issues == 0 else f"✗ FAIL ({issues} issues)"
                 print(f"  {category}: {status}")
 
-        print(f"\nOverall Statistics:")
+        print("\nOverall Statistics:")
         print(f"  Total Issues: {total_issues}")
         print(f"  Soft Locks: {total_soft_locks}")
         print(f"  Errors: {total_errors}")

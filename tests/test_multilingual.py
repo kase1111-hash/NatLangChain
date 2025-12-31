@@ -11,26 +11,24 @@ Tests cover:
 - Validator reporting
 """
 
-import sys
 import os
+import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 import unittest
-from datetime import datetime, timedelta
 
 from multilingual import (
-    MultilingualAlignmentManager,
-    MultilingualContract,
-    LanguageEntry,
-    LanguageRole,
-    DriftLevel,
-    ValidatorAction,
-    TranslationViolation,
+    SUPPORTED_LANGUAGE_CODES,
+    AlignmentRules,
     CanonicalTermMapping,
     ClauseDriftResult,
-    MultilingualRatification,
-    AlignmentRules,
-    SUPPORTED_LANGUAGE_CODES
+    DriftLevel,
+    LanguageEntry,
+    LanguageRole,
+    MultilingualAlignmentManager,
+    TranslationViolation,
+    ValidatorAction,
 )
 
 
@@ -138,7 +136,7 @@ class TestMultilingualContract(unittest.TestCase):
 
     def test_add_anchor_language(self):
         """Test adding anchor language."""
-        success, msg = self.contract.add_language(
+        success, _msg = self.contract.add_language(
             "en", LanguageRole.ANCHOR, "This is a test contract."
         )
         self.assertTrue(success)
@@ -148,7 +146,7 @@ class TestMultilingualContract(unittest.TestCase):
     def test_add_aligned_language(self):
         """Test adding aligned language."""
         self.contract.add_language("en", LanguageRole.ANCHOR, "Test contract")
-        success, msg = self.contract.add_language(
+        success, _msg = self.contract.add_language(
             "es", LanguageRole.ALIGNED, "Contrato de prueba"
         )
         self.assertTrue(success)
@@ -157,7 +155,7 @@ class TestMultilingualContract(unittest.TestCase):
     def test_add_informational_language(self):
         """Test adding informational language."""
         self.contract.add_language("en", LanguageRole.ANCHOR, "Test")
-        success, msg = self.contract.add_language(
+        success, _msg = self.contract.add_language(
             "ja", LanguageRole.INFORMATIONAL, "テスト"
         )
         self.assertTrue(success)
@@ -233,7 +231,7 @@ class TestDriftMeasurement(unittest.TestCase):
         anchor = "The contractor agrees to deliver the software by December 31, 2025."
         aligned = "El contratista acepta entregar el software antes del 31 de diciembre de 2025."
 
-        score, level = self.manager.measure_cross_language_drift(anchor, aligned, "es")
+        score, _level = self.manager.measure_cross_language_drift(anchor, aligned, "es")
         self.assertLess(score, 0.45)  # Should be D2 or lower
 
     def test_very_different_content_high_drift(self):
@@ -241,7 +239,7 @@ class TestDriftMeasurement(unittest.TestCase):
         anchor = "Payment is due within 30 days."
         aligned = "This is completely different text about something else entirely with no relation whatsoever."
 
-        score, level = self.manager.measure_cross_language_drift(anchor, aligned, "es")
+        score, _level = self.manager.measure_cross_language_drift(anchor, aligned, "es")
         self.assertGreater(score, 0.25)  # Should indicate drift
 
     def test_empty_anchor_returns_max_drift(self):
@@ -278,7 +276,7 @@ class TestContractValidation(unittest.TestCase):
         contract.add_language("es", LanguageRole.ALIGNED, "Contenido de prueba.")
         contract.add_language("de", LanguageRole.ALIGNED, "Completely different unrelated text here.")
 
-        valid, report = self.manager.validate_contract_alignment(contract)
+        _valid, report = self.manager.validate_contract_alignment(contract)
 
         # The maximum drift from any language applies
         self.assertGreater(report["max_drift_score"], 0)
@@ -368,7 +366,7 @@ class TestCanonicalTermMapping(unittest.TestCase):
         """Test validating term mapping in contract."""
         self.contract.add_language("en", LanguageRole.ANCHOR, "Test")
 
-        success, msg = self.manager.validate_term_mapping(
+        success, _msg = self.manager.validate_term_mapping(
             self.contract,
             term_id="RATIFICATION",
             anchor_term="Ratification",
@@ -424,7 +422,7 @@ class TestMultilingualRatification(unittest.TestCase):
             self.contract, "user-001", ["en", "es"]
         )
 
-        success, statement = self.manager.confirm_ratification(ratification)
+        success, _statement = self.manager.confirm_ratification(ratification)
 
         self.assertTrue(success)
         self.assertTrue(ratification.binding_acknowledged)
@@ -436,7 +434,7 @@ class TestMultilingualRatification(unittest.TestCase):
             self.contract, "user-001", []
         )
 
-        success, msg = self.manager.confirm_ratification(ratification)
+        success, _msg = self.manager.confirm_ratification(ratification)
         self.assertFalse(success)
 
 

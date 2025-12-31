@@ -11,11 +11,11 @@ This module implements temporal governance and semantic preservation:
 Core Principle: Meaning may expire. History must not.
 """
 
+import hashlib
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Dict, List, Optional, Set, Tuple, Any
-import hashlib
+from typing import Any
 
 
 class SunsetTriggerType(Enum):
@@ -86,8 +86,8 @@ class TemporalContext:
     registry_version: str
     language_variant: str
     jurisdiction_context: str
-    proof_of_understanding_ids: List[str] = field(default_factory=list)
-    validator_consensus_snapshot: Dict[str, Any] = field(default_factory=dict)
+    proof_of_understanding_ids: list[str] = field(default_factory=list)
+    validator_consensus_snapshot: dict[str, Any] = field(default_factory=dict)
 
     # Binding timestamp
     bound_at: datetime = field(default_factory=datetime.utcnow)
@@ -117,12 +117,12 @@ class SunsetClause:
     trigger_type: SunsetTriggerType
 
     # Trigger conditions
-    trigger_datetime: Optional[datetime] = None  # For time_based
-    trigger_event: Optional[str] = None          # For event_based
-    trigger_condition: Optional[str] = None      # For condition_fulfilled
-    max_uses: Optional[int] = None               # For exhaustion
-    revocation_terms: Optional[str] = None       # For revocation
-    amendment_id: Optional[str] = None           # For constitutional
+    trigger_datetime: datetime | None = None  # For time_based
+    trigger_event: str | None = None          # For event_based
+    trigger_condition: str | None = None      # For condition_fulfilled
+    max_uses: int | None = None               # For exhaustion
+    revocation_terms: str | None = None       # For revocation
+    amendment_id: str | None = None           # For constitutional
 
     # Configuration
     notice_period_days: int = 30
@@ -130,8 +130,8 @@ class SunsetClause:
 
     # Status
     triggered: bool = False
-    triggered_at: Optional[datetime] = None
-    trigger_reason: Optional[str] = None
+    triggered_at: datetime | None = None
+    trigger_reason: str | None = None
 
     # Usage tracking (for exhaustion type)
     current_uses: int = 0
@@ -152,7 +152,7 @@ class SunsetClause:
             return self.amendment_id is not None
         return False
 
-    def check_trigger(self, current_time: Optional[datetime] = None) -> Tuple[bool, str]:
+    def check_trigger(self, current_time: datetime | None = None) -> tuple[bool, str]:
         """Check if sunset should trigger."""
         now = current_time or datetime.utcnow()
 
@@ -203,7 +203,7 @@ class ArchivedEntry:
     archived_at: datetime = field(default_factory=datetime.utcnow)
 
     # Sunset details
-    sunset_clause: Optional[SunsetClause] = None
+    sunset_clause: SunsetClause | None = None
 
     # Archive properties
     enforceable: bool = False      # Always False for archived
@@ -212,7 +212,7 @@ class ArchivedEntry:
     drift_detection_disabled: bool = True  # Always True for archived
 
     # Hash for integrity verification
-    archive_hash: Optional[str] = None
+    archive_hash: str | None = None
 
     def __post_init__(self):
         """Compute archive hash."""
@@ -247,27 +247,27 @@ class ManagedEntry:
 
     # Timestamps
     created_at: datetime = field(default_factory=datetime.utcnow)
-    ratified_at: Optional[datetime] = None
-    activated_at: Optional[datetime] = None
-    sunset_pending_at: Optional[datetime] = None
-    sunset_at: Optional[datetime] = None
-    archived_at: Optional[datetime] = None
+    ratified_at: datetime | None = None
+    activated_at: datetime | None = None
+    sunset_pending_at: datetime | None = None
+    sunset_at: datetime | None = None
+    archived_at: datetime | None = None
 
     # Sunset clause
-    sunset_clause: Optional[SunsetClause] = None
+    sunset_clause: SunsetClause | None = None
 
     # Temporal context
-    temporal_context: Optional[TemporalContext] = None
+    temporal_context: TemporalContext | None = None
 
     # Original meaning (captured at ratification)
-    original_meaning: Optional[str] = None
+    original_meaning: str | None = None
 
     # Emergency pause (per NCIP-013)
     emergency_paused: bool = False
-    emergency_id: Optional[str] = None
+    emergency_id: str | None = None
 
     # State history for audit
-    state_history: List[Tuple[EntryState, datetime]] = field(default_factory=list)
+    state_history: list[tuple[EntryState, datetime]] = field(default_factory=list)
 
     def __post_init__(self):
         """Initialize state history."""
@@ -295,9 +295,9 @@ class SunsetManager:
     DEFAULT_HORIZON_YEARS = 20
 
     def __init__(self):
-        self.entries: Dict[str, ManagedEntry] = {}
-        self.sunset_clauses: Dict[str, SunsetClause] = {}
-        self.archives: Dict[str, ArchivedEntry] = {}
+        self.entries: dict[str, ManagedEntry] = {}
+        self.sunset_clauses: dict[str, SunsetClause] = {}
+        self.archives: dict[str, ArchivedEntry] = {}
 
         self.entry_counter = 0
         self.clause_counter = 0
@@ -311,7 +311,7 @@ class SunsetManager:
         self,
         entry_type: EntryType,
         prose_content: str,
-        entry_id: Optional[str] = None
+        entry_id: str | None = None
     ) -> ManagedEntry:
         """Create a new entry in DRAFT state."""
         self.entry_counter += 1
@@ -328,7 +328,7 @@ class SunsetManager:
         self.entries[entry_id] = entry
         return entry
 
-    def get_entry(self, entry_id: str) -> Optional[ManagedEntry]:
+    def get_entry(self, entry_id: str) -> ManagedEntry | None:
         """Get an entry by ID."""
         return self.entries.get(entry_id)
 
@@ -340,9 +340,9 @@ class SunsetManager:
         self,
         entry_id: str,
         new_state: EntryState,
-        temporal_context: Optional[TemporalContext] = None,
-        original_meaning: Optional[str] = None
-    ) -> Tuple[bool, str]:
+        temporal_context: TemporalContext | None = None,
+        original_meaning: str | None = None
+    ) -> tuple[bool, str]:
         """
         Transition entry to a new state per NCIP-015 Section 4.
 
@@ -422,7 +422,7 @@ class SunsetManager:
         entry.sunset_clause = clause
         self.sunset_clauses[clause_id] = clause
 
-    def can_transition(self, entry_id: str, new_state: EntryState) -> Tuple[bool, str]:
+    def can_transition(self, entry_id: str, new_state: EntryState) -> tuple[bool, str]:
         """Check if transition is valid without performing it."""
         entry = self.entries.get(entry_id)
         if not entry:
@@ -445,14 +445,14 @@ class SunsetManager:
         self,
         entry_id: str,
         trigger_type: SunsetTriggerType,
-        trigger_datetime: Optional[datetime] = None,
-        trigger_event: Optional[str] = None,
-        trigger_condition: Optional[str] = None,
-        max_uses: Optional[int] = None,
-        revocation_terms: Optional[str] = None,
-        amendment_id: Optional[str] = None,
+        trigger_datetime: datetime | None = None,
+        trigger_event: str | None = None,
+        trigger_condition: str | None = None,
+        max_uses: int | None = None,
+        revocation_terms: str | None = None,
+        amendment_id: str | None = None,
         notice_period_days: int = 30
-    ) -> Tuple[Optional[SunsetClause], List[str]]:
+    ) -> tuple[SunsetClause | None, list[str]]:
         """
         Declare a sunset clause per NCIP-015 Section 3.
 
@@ -496,7 +496,7 @@ class SunsetManager:
 
         return (clause, [])
 
-    def check_sunset_triggers(self) -> List[Dict[str, Any]]:
+    def check_sunset_triggers(self) -> list[dict[str, Any]]:
         """Check all active entries for sunset triggers."""
         triggered = []
         now = datetime.utcnow()
@@ -524,7 +524,7 @@ class SunsetManager:
         self,
         entry_id: str,
         trigger_reason: str
-    ) -> Tuple[bool, str]:
+    ) -> tuple[bool, str]:
         """
         Trigger sunset for an entry.
 
@@ -549,7 +549,7 @@ class SunsetManager:
 
         return (True, f"Sunset triggered for {entry_id}: {trigger_reason}")
 
-    def complete_sunset(self, entry_id: str) -> Tuple[bool, str]:
+    def complete_sunset(self, entry_id: str) -> tuple[bool, str]:
         """Complete sunset after notice period, transition to SUNSET state."""
         entry = self.entries.get(entry_id)
         if not entry:
@@ -571,8 +571,8 @@ class SunsetManager:
         self,
         entry_id: str,
         event_description: str,
-        oracle_evidence: Optional[str] = None
-    ) -> Tuple[bool, str]:
+        oracle_evidence: str | None = None
+    ) -> tuple[bool, str]:
         """Record an event trigger for event-based sunset."""
         entry = self.entries.get(entry_id)
         if not entry:
@@ -590,7 +590,7 @@ class SunsetManager:
         self,
         entry_id: str,
         fulfillment_description: str
-    ) -> Tuple[bool, str]:
+    ) -> tuple[bool, str]:
         """Record condition fulfillment for condition-based sunset."""
         entry = self.entries.get(entry_id)
         if not entry:
@@ -604,7 +604,7 @@ class SunsetManager:
 
         return self.trigger_sunset(entry_id, f"Condition fulfilled: {fulfillment_description}")
 
-    def record_use(self, entry_id: str) -> Dict[str, Any]:
+    def record_use(self, entry_id: str) -> dict[str, Any]:
         """Record a use for exhaustion-type sunset clauses."""
         entry = self.entries.get(entry_id)
         if not entry:
@@ -637,7 +637,7 @@ class SunsetManager:
         entry_id: str,
         revoker_id: str,
         revocation_reason: str
-    ) -> Tuple[bool, str]:
+    ) -> tuple[bool, str]:
         """Process explicit revocation under allowed terms."""
         entry = self.entries.get(entry_id)
         if not entry:
@@ -658,7 +658,7 @@ class SunsetManager:
     def archive_entry(
         self,
         entry_id: str
-    ) -> Tuple[Optional[ArchivedEntry], str]:
+    ) -> tuple[ArchivedEntry | None, str]:
         """
         Archive an entry per NCIP-015 Section 5.
 
@@ -713,11 +713,11 @@ class SunsetManager:
         self.archives[archive_id] = archive
         return archive
 
-    def get_archive(self, entry_id: str) -> Optional[ArchivedEntry]:
+    def get_archive(self, entry_id: str) -> ArchivedEntry | None:
         """Get an archived entry."""
         return self.archives.get(f"ARCHIVE-{entry_id}")
 
-    def check_archive_eligibility(self, entry_id: str) -> Dict[str, Any]:
+    def check_archive_eligibility(self, entry_id: str) -> dict[str, Any]:
         """Check if entry is eligible for archival."""
         entry = self.entries.get(entry_id)
         if not entry:
@@ -749,7 +749,7 @@ class SunsetManager:
         self,
         archived_entry_id: str,
         proposed_interpretation: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Validate a reference to historical/archived entry.
 
@@ -777,7 +777,7 @@ class SunsetManager:
         self,
         archived_entry_id: str,
         attempted_action: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Reject attempt to apply new definitions retroactively.
 
@@ -795,7 +795,7 @@ class SunsetManager:
     # Validator Behavior
     # -------------------------------------------------------------------------
 
-    def validator_check(self, entry_id: str) -> Dict[str, Any]:
+    def validator_check(self, entry_id: str) -> dict[str, Any]:
         """
         Validator behavior check per NCIP-015 Section 8.
 
@@ -855,7 +855,7 @@ class SunsetManager:
     # Mediator Constraints
     # -------------------------------------------------------------------------
 
-    def mediator_can_cite(self, entry_id: str) -> Dict[str, Any]:
+    def mediator_can_cite(self, entry_id: str) -> dict[str, Any]:
         """
         Check if mediator can cite an entry.
 
@@ -885,7 +885,7 @@ class SunsetManager:
         self,
         archived_entry_id: str,
         proposed_reactivation: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Check if mediator properly restates historical semantics.
 
@@ -915,7 +915,7 @@ class SunsetManager:
         self,
         entry_id: str,
         emergency_id: str
-    ) -> Tuple[bool, str]:
+    ) -> tuple[bool, str]:
         """
         Pause sunset timer during emergency per NCIP-015 Section 11.
 
@@ -934,7 +934,7 @@ class SunsetManager:
     def resume_sunset_timer(
         self,
         entry_id: str
-    ) -> Tuple[bool, str]:
+    ) -> tuple[bool, str]:
         """Resume sunset timer after emergency resolution."""
         entry = self.entries.get(entry_id)
         if not entry:
@@ -952,7 +952,7 @@ class SunsetManager:
     # Machine-Readable Schema
     # -------------------------------------------------------------------------
 
-    def generate_sunset_schema(self, entry_id: str) -> Dict[str, Any]:
+    def generate_sunset_schema(self, entry_id: str) -> dict[str, Any]:
         """
         Generate machine-readable sunset & archive schema per NCIP-015 Section 10.
         """
@@ -1046,11 +1046,11 @@ class SunsetManager:
     # Status & Reporting
     # -------------------------------------------------------------------------
 
-    def get_entries_by_state(self, state: EntryState) -> List[ManagedEntry]:
+    def get_entries_by_state(self, state: EntryState) -> list[ManagedEntry]:
         """Get all entries in a given state."""
         return [e for e in self.entries.values() if e.state == state]
 
-    def get_expiring_entries(self, days_ahead: int = 30) -> List[Dict[str, Any]]:
+    def get_expiring_entries(self, days_ahead: int = 30) -> list[dict[str, Any]]:
         """Get entries expiring within specified days."""
         expiring = []
         now = datetime.utcnow()
@@ -1072,7 +1072,7 @@ class SunsetManager:
 
         return sorted(expiring, key=lambda x: x["days_until_sunset"])
 
-    def get_status_summary(self) -> Dict[str, Any]:
+    def get_status_summary(self) -> dict[str, Any]:
         """Get summary of sunset system status."""
         state_counts = {}
         for entry in self.entries.values():

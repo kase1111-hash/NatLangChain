@@ -12,11 +12,11 @@ The "burn" mechanism permanently removes value from circulation, with the
 economic effect redistributed proportionally to remaining stakeholders.
 """
 
-import json
 import hashlib
-from typing import Dict, Any, Optional, List, Tuple
+import json
 from datetime import datetime
 from enum import Enum
+from typing import Any
 
 
 class BurnReason(Enum):
@@ -64,15 +64,15 @@ class ObservanceBurnManager:
         self.total_burned = 0.0
 
         # Burn records
-        self.burns: List[Dict[str, Any]] = []
+        self.burns: list[dict[str, Any]] = []
 
         # Burn counts by reason
-        self.burns_by_reason: Dict[str, int] = {
+        self.burns_by_reason: dict[str, int] = {
             reason.value: 0 for reason in BurnReason
         }
 
         # Rate limiting (address -> daily contract count)
-        self.daily_contract_counts: Dict[str, int] = {}
+        self.daily_contract_counts: dict[str, int] = {}
         self.rate_limit_threshold = 10  # contracts per day
 
     def perform_burn(
@@ -80,10 +80,10 @@ class ObservanceBurnManager:
         burner: str,
         amount: float,
         reason: BurnReason,
-        intent_hash: Optional[str] = None,
-        epitaph: Optional[str] = None,
-        signature: Optional[str] = None
-    ) -> Tuple[bool, Dict[str, Any]]:
+        intent_hash: str | None = None,
+        epitaph: str | None = None,
+        signature: str | None = None
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Perform an Observance Burn.
 
@@ -157,8 +157,8 @@ class ObservanceBurnManager:
         burner: str,
         amount: float,
         reason: BurnReason,
-        intent_hash: Optional[str],
-        epitaph: Optional[str]
+        intent_hash: str | None,
+        epitaph: str | None
     ) -> str:
         """Generate unique transaction hash for burn."""
         data = {
@@ -189,7 +189,7 @@ class ObservanceBurnManager:
         tx_hash: str,
         expected_amount: float,
         expected_intent_hash: str
-    ) -> Tuple[bool, Optional[Dict[str, Any]]]:
+    ) -> tuple[bool, dict[str, Any] | None]:
         """
         Verify that an escalation burn was performed correctly.
 
@@ -224,7 +224,7 @@ class ObservanceBurnManager:
         self,
         address: str,
         excess_contracts: int
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Perform burn for exceeding rate limit.
 
@@ -249,8 +249,8 @@ class ObservanceBurnManager:
         self,
         burner: str,
         amount: float,
-        epitaph: Optional[str] = None
-    ) -> Tuple[bool, Dict[str, Any]]:
+        epitaph: str | None = None
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Perform a voluntary signal burn.
 
@@ -270,23 +270,23 @@ class ObservanceBurnManager:
             epitaph=epitaph
         )
 
-    def get_burn_by_tx_hash(self, tx_hash: str) -> Optional[Dict[str, Any]]:
+    def get_burn_by_tx_hash(self, tx_hash: str) -> dict[str, Any] | None:
         """Get a specific burn by transaction hash."""
         for burn in self.burns:
             if burn["tx_hash"] == tx_hash:
                 return burn
         return None
 
-    def get_burns_by_address(self, address: str) -> List[Dict[str, Any]]:
+    def get_burns_by_address(self, address: str) -> list[dict[str, Any]]:
         """Get all burns by a specific address."""
         return [burn for burn in self.burns if burn["burner"] == address]
 
-    def get_burns_by_reason(self, reason: BurnReason) -> List[Dict[str, Any]]:
+    def get_burns_by_reason(self, reason: BurnReason) -> list[dict[str, Any]]:
         """Get all burns of a specific reason."""
         reason_value = reason.value if isinstance(reason, BurnReason) else reason
         return [burn for burn in self.burns if burn["reason"] == reason_value]
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """Get burn statistics."""
         # Calculate last 24 hours and 7 days burns
         now = datetime.utcnow()
@@ -326,7 +326,7 @@ class ObservanceBurnManager:
         self,
         limit: int = 50,
         offset: int = 0
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get paginated burn history.
 
@@ -355,7 +355,7 @@ class ObservanceBurnManager:
             "has_more": offset + limit < total
         }
 
-    def format_burn_for_display(self, burn: Dict[str, Any]) -> Dict[str, Any]:
+    def format_burn_for_display(self, burn: dict[str, Any]) -> dict[str, Any]:
         """
         Format a burn record for explorer/dashboard display.
 
@@ -383,7 +383,7 @@ class ObservanceBurnManager:
             "tx_hash": burn["tx_hash"]
         }
 
-    def get_observance_ledger(self, limit: int = 20) -> Dict[str, Any]:
+    def get_observance_ledger(self, limit: int = 20) -> dict[str, Any]:
         """
         Get data for the Observance Ledger explorer tab.
 
@@ -406,7 +406,7 @@ class ObservanceBurnManager:
             "recent_observances": formatted_burns
         }
 
-    def emit_observance_burn_event(self, burn: Dict[str, Any]) -> Dict[str, Any]:
+    def emit_observance_burn_event(self, burn: dict[str, Any]) -> dict[str, Any]:
         """
         Emit an ObservanceBurn event in Solidity-compatible format.
 

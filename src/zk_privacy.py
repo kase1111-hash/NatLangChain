@@ -12,15 +12,14 @@ This module implements:
 - Phase 14D: Threshold Decryption (BLS/FROST simulation)
 """
 
-import json
-import hashlib
-import secrets
 import base64
-from typing import Dict, Any, Optional, List, Tuple
-from datetime import datetime, timedelta
+import hashlib
+import json
+import secrets
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from enum import Enum
-
+from typing import Any
 
 # ============================================================
 # Phase 14A: Dispute Membership Circuit
@@ -46,13 +45,13 @@ class IdentityProof:
     dispute_id: str
     prover: str  # Address of prover (not revealed on-chain)
     identity_hash: str  # Public: hash that must match on-chain
-    proof_a: List[str]  # [2] elements
-    proof_b: List[List[str]]  # [2][2] elements
-    proof_c: List[str]  # [2] elements
-    public_signals: List[str]  # Public inputs to circuit
+    proof_a: list[str]  # [2] elements
+    proof_b: list[list[str]]  # [2][2] elements
+    proof_c: list[str]  # [2] elements
+    public_signals: list[str]  # Public inputs to circuit
     status: ProofStatus = ProofStatus.PENDING
     created_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
-    verified_at: Optional[str] = None
+    verified_at: str | None = None
     gas_estimate: int = 100000  # Estimated verification gas
 
 
@@ -75,7 +74,7 @@ class PoseidonHasher:
     ]
 
     @staticmethod
-    def hash(inputs: List[int]) -> str:
+    def hash(inputs: list[int]) -> str:
         """
         Compute Poseidon hash of inputs.
 
@@ -131,16 +130,16 @@ class DisputeMembershipCircuit:
 
     def __init__(self):
         """Initialize the circuit manager."""
-        self.proofs: Dict[str, IdentityProof] = {}
-        self.verified_proofs: Dict[str, List[str]] = {}  # dispute_id -> [proof_ids]
+        self.proofs: dict[str, IdentityProof] = {}
+        self.verified_proofs: dict[str, list[str]] = {}  # dispute_id -> [proof_ids]
         self.hasher = PoseidonHasher()
-        self.audit_trail: List[Dict[str, Any]] = []
+        self.audit_trail: list[dict[str, Any]] = []
 
     def generate_identity_commitment(
         self,
         user_address: str,
-        salt: Optional[str] = None
-    ) -> Tuple[str, str]:
+        salt: str | None = None
+    ) -> tuple[str, str]:
         """
         Generate identity commitment for on-chain registration.
 
@@ -173,7 +172,7 @@ class DisputeMembershipCircuit:
         prover_address: str,
         identity_secret: str,
         identity_manager: str
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Generate a ZK proof of dispute membership.
 
@@ -256,7 +255,7 @@ class DisputeMembershipCircuit:
         self,
         proof_id: str,
         expected_identity_hash: str
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Verify a ZK proof on-chain (simulated).
 
@@ -316,7 +315,7 @@ class DisputeMembershipCircuit:
             "gas_used": proof.gas_estimate
         }
 
-    def get_proof(self, proof_id: str) -> Optional[Dict[str, Any]]:
+    def get_proof(self, proof_id: str) -> dict[str, Any] | None:
         """Get proof details."""
         if proof_id not in self.proofs:
             return None
@@ -331,7 +330,7 @@ class DisputeMembershipCircuit:
             "verified_at": proof.verified_at
         }
 
-    def _log_audit(self, action: str, details: Dict[str, Any]):
+    def _log_audit(self, action: str, details: dict[str, Any]):
         """Log audit trail entry."""
         self.audit_trail.append({
             "action": action,
@@ -351,10 +350,10 @@ class ViewingKey:
     dispute_id: str
     public_key: str  # ECIES public key
     commitment: str  # Pedersen commitment hash
-    encrypted_metadata_cid: Optional[str] = None  # IPFS/Arweave CID
+    encrypted_metadata_cid: str | None = None  # IPFS/Arweave CID
     created_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
     shares_distributed: bool = False
-    share_holders: List[str] = field(default_factory=list)
+    share_holders: list[str] = field(default_factory=list)
     threshold: int = 3  # m-of-n threshold
     total_shares: int = 5
 
@@ -367,7 +366,7 @@ class KeyShare:
     holder: str
     share_index: int
     share_data: str  # Encrypted share
-    submitted_at: Optional[str] = None
+    submitted_at: str | None = None
 
 
 class PedersenCommitment:
@@ -386,7 +385,7 @@ class PedersenCommitment:
     H = "0x" + "02" * 32  # Generator h (nothing-up-my-sleeve)
 
     @staticmethod
-    def commit(value: str, blinding_factor: Optional[str] = None) -> Tuple[str, str]:
+    def commit(value: str, blinding_factor: str | None = None) -> tuple[str, str]:
         """
         Create a Pedersen commitment.
 
@@ -435,7 +434,7 @@ class ShamirSecretSharing:
     PRIME = 2**256 - 189  # Large prime
 
     @staticmethod
-    def split(secret: str, threshold: int, total_shares: int) -> List[Dict[str, Any]]:
+    def split(secret: str, threshold: int, total_shares: int) -> list[dict[str, Any]]:
         """
         Split a secret into shares.
 
@@ -476,7 +475,7 @@ class ShamirSecretSharing:
         return shares
 
     @staticmethod
-    def reconstruct(shares: List[Dict[str, Any]]) -> str:
+    def reconstruct(shares: list[dict[str, Any]]) -> str:
         """
         Reconstruct secret from shares using Lagrange interpolation.
 
@@ -525,7 +524,7 @@ class ECIESEncryption:
     """
 
     @staticmethod
-    def generate_keypair() -> Tuple[str, str]:
+    def generate_keypair() -> tuple[str, str]:
         """
         Generate ECIES keypair.
 
@@ -541,7 +540,7 @@ class ECIESEncryption:
         return private_key, public_key
 
     @staticmethod
-    def encrypt(public_key: str, plaintext: str) -> Dict[str, str]:
+    def encrypt(public_key: str, plaintext: str) -> dict[str, str]:
         """
         Encrypt data with ECIES.
 
@@ -563,7 +562,7 @@ class ECIESEncryption:
         plaintext_bytes = plaintext.encode()
         ciphertext = bytes(a ^ b for a, b in zip(
             plaintext_bytes,
-            (shared_secret * ((len(plaintext_bytes) // 32) + 1))[:len(plaintext_bytes)]
+            (shared_secret * ((len(plaintext_bytes) // 32) + 1))[:len(plaintext_bytes)], strict=False
         ))
 
         return {
@@ -573,7 +572,7 @@ class ECIESEncryption:
         }
 
     @staticmethod
-    def decrypt(private_key: str, encrypted: Dict[str, str]) -> str:
+    def decrypt(private_key: str, encrypted: dict[str, str]) -> str:
         """
         Decrypt ECIES encrypted data.
 
@@ -592,7 +591,7 @@ class ECIESEncryption:
         ciphertext = base64.b64decode(encrypted["ciphertext"])
         plaintext_bytes = bytes(a ^ b for a, b in zip(
             ciphertext,
-            (shared_secret * ((len(ciphertext) // 32) + 1))[:len(ciphertext)]
+            (shared_secret * ((len(ciphertext) // 32) + 1))[:len(ciphertext)], strict=False
         ))
 
         return plaintext_bytes.decode()
@@ -612,18 +611,18 @@ class ViewingKeyManager:
 
     def __init__(self):
         """Initialize viewing key manager."""
-        self.keys: Dict[str, ViewingKey] = {}
-        self.shares: Dict[str, List[KeyShare]] = {}  # key_id -> shares
-        self.submitted_shares: Dict[str, Dict[str, str]] = {}  # key_id -> {holder: share}
-        self.audit_trail: List[Dict[str, Any]] = []
+        self.keys: dict[str, ViewingKey] = {}
+        self.shares: dict[str, list[KeyShare]] = {}  # key_id -> shares
+        self.submitted_shares: dict[str, dict[str, str]] = {}  # key_id -> {holder: share}
+        self.audit_trail: list[dict[str, Any]] = []
 
     def create_viewing_key(
         self,
         dispute_id: str,
-        metadata: Dict[str, Any],
-        share_holders: List[str],
+        metadata: dict[str, Any],
+        share_holders: list[str],
         threshold: int = 3
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Create a viewing key for a dispute.
 
@@ -647,7 +646,7 @@ class ViewingKeyManager:
         encrypted = ECIESEncryption.encrypt(public_key, metadata_json)
 
         # Create Pedersen commitment to the key
-        commitment, blinding = PedersenCommitment.commit(private_key)
+        commitment, _blinding = PedersenCommitment.commit(private_key)
 
         # Generate key ID
         key_id = f"VKEY-{secrets.token_hex(8).upper()}"
@@ -674,7 +673,7 @@ class ViewingKeyManager:
 
         # Create share records
         self.shares[key_id] = []
-        for i, (holder, share_data) in enumerate(zip(share_holders, shares)):
+        for _i, (holder, share_data) in enumerate(zip(share_holders, shares, strict=False)):
             share = KeyShare(
                 share_id=f"SHARE-{secrets.token_hex(4).upper()}",
                 key_id=key_id,
@@ -707,7 +706,7 @@ class ViewingKeyManager:
         key_id: str,
         holder: str,
         share_data: str
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Submit a share for key reconstruction.
 
@@ -771,7 +770,7 @@ class ViewingKeyManager:
         self,
         key_id: str,
         authorization: str
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Reconstruct viewing key from submitted shares.
 
@@ -815,7 +814,7 @@ class ViewingKeyManager:
         try:
             reconstructed = ShamirSecretSharing.reconstruct(shares_for_reconstruction)
         except Exception as e:
-            return False, {"error": f"Reconstruction failed: {str(e)}"}
+            return False, {"error": f"Reconstruction failed: {e!s}"}
 
         self._log_audit("key_reconstructed", {
             "key_id": key_id,
@@ -833,7 +832,7 @@ class ViewingKeyManager:
             "reconstructed_at": datetime.utcnow().isoformat()
         }
 
-    def get_key_status(self, key_id: str) -> Optional[Dict[str, Any]]:
+    def get_key_status(self, key_id: str) -> dict[str, Any] | None:
         """Get viewing key status."""
         if key_id not in self.keys:
             return None
@@ -852,7 +851,7 @@ class ViewingKeyManager:
             "created_at": key.created_at
         }
 
-    def _log_audit(self, action: str, details: Dict[str, Any]):
+    def _log_audit(self, action: str, details: dict[str, Any]):
         """Log audit trail entry."""
         self.audit_trail.append({
             "action": action,
@@ -876,11 +875,11 @@ class BatchStatus(Enum):
 class TransactionBatch:
     """A batch of transactions for privacy."""
     batch_id: str
-    transactions: List[Dict[str, Any]] = field(default_factory=list)
+    transactions: list[dict[str, Any]] = field(default_factory=list)
     status: BatchStatus = BatchStatus.COLLECTING
     created_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
-    release_block: Optional[int] = None
-    released_at: Optional[str] = None
+    release_block: int | None = None
+    released_at: str | None = None
 
 
 class BatchingQueue:
@@ -897,10 +896,10 @@ class BatchingQueue:
 
     def __init__(self):
         """Initialize batching queue."""
-        self.current_batch: Optional[TransactionBatch] = None
-        self.released_batches: List[TransactionBatch] = []
+        self.current_batch: TransactionBatch | None = None
+        self.released_batches: list[TransactionBatch] = []
         self.current_block = 0
-        self.audit_trail: List[Dict[str, Any]] = []
+        self.audit_trail: list[dict[str, Any]] = []
 
         # Start new batch
         self._new_batch()
@@ -916,8 +915,8 @@ class BatchingQueue:
     def submit_transaction(
         self,
         tx_type: str,
-        tx_data: Dict[str, Any]
-    ) -> Tuple[bool, Dict[str, Any]]:
+        tx_data: dict[str, Any]
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Submit a transaction to the batching queue.
 
@@ -961,7 +960,7 @@ class BatchingQueue:
             "release_block": self.current_batch.release_block
         }
 
-    def advance_block(self, new_block: int) -> List[Dict[str, Any]]:
+    def advance_block(self, new_block: int) -> list[dict[str, Any]]:
         """
         Advance to a new block and release ready batches.
 
@@ -996,7 +995,7 @@ class BatchingQueue:
 
         return released
 
-    def get_batch_status(self, batch_id: str) -> Optional[Dict[str, Any]]:
+    def get_batch_status(self, batch_id: str) -> dict[str, Any] | None:
         """Get batch status."""
         if self.current_batch and self.current_batch.batch_id == batch_id:
             batch = self.current_batch
@@ -1018,7 +1017,7 @@ class BatchingQueue:
             "released_at": batch.released_at
         }
 
-    def _log_audit(self, action: str, details: Dict[str, Any]):
+    def _log_audit(self, action: str, details: dict[str, Any]):
         """Log audit trail entry."""
         self.audit_trail.append({
             "action": action,
@@ -1044,9 +1043,9 @@ class DummyTransactionGenerator:
 
     def __init__(self):
         """Initialize dummy generator."""
-        self.generated_dummies: List[Dict[str, Any]] = []
+        self.generated_dummies: list[dict[str, Any]] = []
         self.total_generated = 0
-        self.audit_trail: List[Dict[str, Any]] = []
+        self.audit_trail: list[dict[str, Any]] = []
 
     def should_generate(self) -> bool:
         """
@@ -1057,7 +1056,7 @@ class DummyTransactionGenerator:
         """
         return secrets.randbelow(100) < (self.DUMMY_PROBABILITY * 100)
 
-    def generate_dummy(self) -> Dict[str, Any]:
+    def generate_dummy(self) -> dict[str, Any]:
         """
         Generate a dummy transaction.
 
@@ -1093,7 +1092,7 @@ class DummyTransactionGenerator:
 
         return dummy_data
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """Get dummy generation statistics."""
         return {
             "total_generated": self.total_generated,
@@ -1102,7 +1101,7 @@ class DummyTransactionGenerator:
             "recent_dummies": len(self.generated_dummies)
         }
 
-    def _log_audit(self, action: str, details: Dict[str, Any]):
+    def _log_audit(self, action: str, details: dict[str, Any]):
         """Log audit trail entry."""
         self.audit_trail.append({
             "action": action,
@@ -1142,10 +1141,10 @@ class ComplianceRequest:
     requester: str
     warrant_hash: str
     justification: str
-    votes: List[ComplianceVote] = field(default_factory=list)
+    votes: list[ComplianceVote] = field(default_factory=list)
     status: VoteStatus = VoteStatus.PENDING
     created_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
-    resolved_at: Optional[str] = None
+    resolved_at: str | None = None
     threshold: int = 3  # Votes needed
 
 
@@ -1160,7 +1159,7 @@ class ThresholdDecryption:
     VOTE_EXPIRY_HOURS = 72
     DEFAULT_THRESHOLD = 3
 
-    def __init__(self, council_members: List[str]):
+    def __init__(self, council_members: list[str]):
         """
         Initialize threshold decryption.
 
@@ -1168,9 +1167,9 @@ class ThresholdDecryption:
             council_members: List of compliance council member addresses
         """
         self.council_members = council_members
-        self.requests: Dict[str, ComplianceRequest] = {}
-        self.member_public_keys: Dict[str, str] = {}
-        self.audit_trail: List[Dict[str, Any]] = []
+        self.requests: dict[str, ComplianceRequest] = {}
+        self.member_public_keys: dict[str, str] = {}
+        self.audit_trail: list[dict[str, Any]] = []
 
         # Generate public keys for council members
         for member in council_members:
@@ -1183,7 +1182,7 @@ class ThresholdDecryption:
         requester: str,
         warrant_hash: str,
         justification: str
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Submit a compliance request for key disclosure.
 
@@ -1231,7 +1230,7 @@ class ThresholdDecryption:
         voter: str,
         approve: bool,
         signature: str
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Submit a vote on a compliance request.
 
@@ -1307,7 +1306,7 @@ class ThresholdDecryption:
             "threshold": request.threshold
         }
 
-    def get_request_status(self, request_id: str) -> Optional[Dict[str, Any]]:
+    def get_request_status(self, request_id: str) -> dict[str, Any] | None:
         """Get compliance request status."""
         if request_id not in self.requests:
             return None
@@ -1338,7 +1337,7 @@ class ThresholdDecryption:
         self,
         request_id: str,
         message: str
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Generate threshold signature for approved request.
 
@@ -1386,7 +1385,7 @@ class ThresholdDecryption:
             "threshold": request.threshold
         }
 
-    def _log_audit(self, action: str, details: Dict[str, Any]):
+    def _log_audit(self, action: str, details: dict[str, Any]):
         """Log audit trail entry."""
         self.audit_trail.append({
             "action": action,
@@ -1406,7 +1405,7 @@ class ZKPrivacyManager:
     Coordinates all privacy-preserving features.
     """
 
-    def __init__(self, council_members: Optional[List[str]] = None):
+    def __init__(self, council_members: list[str] | None = None):
         """
         Initialize ZK Privacy Manager.
 
@@ -1433,15 +1432,15 @@ class ZKPrivacyManager:
         ]
         self.threshold_decryption = ThresholdDecryption(default_council)
 
-        self.audit_trail: List[Dict[str, Any]] = []
+        self.audit_trail: list[dict[str, Any]] = []
 
     # ===== Phase 14A: Dispute Membership =====
 
     def generate_identity_commitment(
         self,
         user_address: str,
-        salt: Optional[str] = None
-    ) -> Dict[str, Any]:
+        salt: str | None = None
+    ) -> dict[str, Any]:
         """Generate identity commitment for on-chain registration."""
         secret, hash_value = self.membership_circuit.generate_identity_commitment(
             user_address, salt
@@ -1458,7 +1457,7 @@ class ZKPrivacyManager:
         prover_address: str,
         identity_secret: str,
         identity_manager: str
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """Generate ZK proof of dispute membership."""
         return self.membership_circuit.generate_proof(
             dispute_id, prover_address, identity_secret, identity_manager
@@ -1468,7 +1467,7 @@ class ZKPrivacyManager:
         self,
         proof_id: str,
         expected_identity_hash: str
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """Verify ZK identity proof."""
         return self.membership_circuit.verify_proof(proof_id, expected_identity_hash)
 
@@ -1477,10 +1476,10 @@ class ZKPrivacyManager:
     def create_viewing_key(
         self,
         dispute_id: str,
-        metadata: Dict[str, Any],
-        share_holders: Optional[List[str]] = None,
+        metadata: dict[str, Any],
+        share_holders: list[str] | None = None,
         threshold: int = 3
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """Create viewing key for dispute."""
         if share_holders is None:
             share_holders = self.threshold_decryption.council_members
@@ -1494,7 +1493,7 @@ class ZKPrivacyManager:
         key_id: str,
         holder: str,
         share_data: str
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """Submit a share for key reconstruction."""
         return self.viewing_keys.submit_share(key_id, holder, share_data)
 
@@ -1502,7 +1501,7 @@ class ZKPrivacyManager:
         self,
         key_id: str,
         authorization: str
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """Reconstruct viewing key from shares."""
         return self.viewing_keys.reconstruct_key(key_id, authorization)
 
@@ -1511,12 +1510,12 @@ class ZKPrivacyManager:
     def submit_to_batch(
         self,
         tx_type: str,
-        tx_data: Dict[str, Any]
-    ) -> Tuple[bool, Dict[str, Any]]:
+        tx_data: dict[str, Any]
+    ) -> tuple[bool, dict[str, Any]]:
         """Submit transaction to batching queue."""
         return self.batching_queue.submit_transaction(tx_type, tx_data)
 
-    def advance_block(self, new_block: int) -> List[Dict[str, Any]]:
+    def advance_block(self, new_block: int) -> list[dict[str, Any]]:
         """Advance block and release batches."""
         released = self.batching_queue.advance_block(new_block)
 
@@ -1535,7 +1534,7 @@ class ZKPrivacyManager:
         requester: str,
         warrant_hash: str,
         justification: str
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """Submit compliance request for key disclosure."""
         return self.threshold_decryption.submit_compliance_request(
             key_id, requester, warrant_hash, justification
@@ -1547,19 +1546,19 @@ class ZKPrivacyManager:
         voter: str,
         approve: bool,
         signature: str
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """Submit vote on compliance request."""
         return self.threshold_decryption.submit_vote(
             request_id, voter, approve, signature
         )
 
-    def get_compliance_status(self, request_id: str) -> Optional[Dict[str, Any]]:
+    def get_compliance_status(self, request_id: str) -> dict[str, Any] | None:
         """Get compliance request status."""
         return self.threshold_decryption.get_request_status(request_id)
 
     # ===== Statistics & Audit =====
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """Get comprehensive statistics."""
         return {
             "identity_proofs": {
@@ -1586,7 +1585,7 @@ class ZKPrivacyManager:
             }
         }
 
-    def get_audit_trail(self, limit: int = 100) -> List[Dict[str, Any]]:
+    def get_audit_trail(self, limit: int = 100) -> list[dict[str, Any]]:
         """Get combined audit trail from all components."""
         trails = (
             self.membership_circuit.audit_trail +

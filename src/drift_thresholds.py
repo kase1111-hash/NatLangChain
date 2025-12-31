@@ -10,13 +10,11 @@ Drift Levels:
 - D4 (0.70-1.00): Semantic Break - reject, escalate to dispute
 """
 
-import json
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Any, Optional, Tuple
-from pathlib import Path
+from typing import Any
 
 # Configure drift logging
 logger = logging.getLogger("natlangchain.drift")
@@ -53,7 +51,7 @@ class DriftThreshold:
     max_score: float
     classification: str
     description: str
-    actions: List[ValidatorAction]
+    actions: list[ValidatorAction]
     requires_logging: bool
     requires_human: bool
 
@@ -65,7 +63,7 @@ class DriftClassification:
     level: DriftLevel
     classification: str
     description: str
-    actions: List[ValidatorAction]
+    actions: list[ValidatorAction]
     requires_logging: bool
     requires_human: bool
     message: str
@@ -77,13 +75,13 @@ class DriftLogEntry:
     timestamp: str
     drift_score: float
     drift_level: str
-    affected_terms: List[str]
+    affected_terms: list[str]
     source_of_divergence: str
     temporal_reference: str  # T_n
     registry_version: str
     validator_id: str
-    entry_id: Optional[str] = None
-    additional_context: Dict[str, Any] = field(default_factory=dict)
+    entry_id: str | None = None
+    additional_context: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -91,13 +89,13 @@ class AggregatedDrift:
     """Result of aggregating multiple drift scores."""
     max_score: float
     max_level: DriftLevel
-    component_scores: Dict[str, float]
+    component_scores: dict[str, float]
     governing_component: str
     classification: DriftClassification
 
 
 # NCIP-002 Normative Threshold Definitions
-DRIFT_THRESHOLDS: Dict[DriftLevel, DriftThreshold] = {
+DRIFT_THRESHOLDS: dict[DriftLevel, DriftThreshold] = {
     DriftLevel.D0: DriftThreshold(
         level=DriftLevel.D0,
         min_score=0.00,
@@ -182,7 +180,7 @@ class SemanticDriftClassifier:
         """
         self.validator_id = validator_id
         self.registry_version = registry_version
-        self._drift_log: List[DriftLogEntry] = []
+        self._drift_log: list[DriftLogEntry] = []
 
     def classify(self, score: float) -> DriftClassification:
         """
@@ -233,7 +231,7 @@ class SemanticDriftClassifier:
 
     def aggregate_drift(
         self,
-        component_scores: Dict[str, float]
+        component_scores: dict[str, float]
     ) -> AggregatedDrift:
         """
         Aggregate multiple drift scores per NCIP-002 rules.
@@ -347,12 +345,12 @@ class SemanticDriftClassifier:
     def log_drift_event(
         self,
         classification: DriftClassification,
-        affected_terms: List[str],
+        affected_terms: list[str],
         source_of_divergence: str,
-        temporal_reference: Optional[str] = None,
-        entry_id: Optional[str] = None,
-        additional_context: Optional[Dict[str, Any]] = None
-    ) -> Optional[DriftLogEntry]:
+        temporal_reference: str | None = None,
+        entry_id: str | None = None,
+        additional_context: dict[str, Any] | None = None
+    ) -> DriftLogEntry | None:
         """
         Log a drift event if required per NCIP-002.
 
@@ -401,7 +399,7 @@ class SemanticDriftClassifier:
 
         return log_entry
 
-    def get_drift_log(self) -> List[DriftLogEntry]:
+    def get_drift_log(self) -> list[DriftLogEntry]:
         """Get all logged drift events."""
         return self._drift_log.copy()
 
@@ -412,10 +410,10 @@ class SemanticDriftClassifier:
     def get_validator_response(
         self,
         score: float,
-        affected_terms: Optional[List[str]] = None,
-        source: Optional[str] = None,
-        entry_id: Optional[str] = None
-    ) -> Dict[str, Any]:
+        affected_terms: list[str] | None = None,
+        source: str | None = None,
+        entry_id: str | None = None
+    ) -> dict[str, Any]:
         """
         Get the complete validator response for a drift score.
 
@@ -502,7 +500,7 @@ class TemporalFixityContext:
         """Check if context is locked."""
         return self._locked
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary representation."""
         return {
             "t0_ratification_time": self.ratification_time,
@@ -512,7 +510,7 @@ class TemporalFixityContext:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "TemporalFixityContext":
+    def from_dict(cls, data: dict[str, Any]) -> "TemporalFixityContext":
         """Create from dictionary representation."""
         context = cls(
             ratification_time=data["t0_ratification_time"],
@@ -540,7 +538,7 @@ class HumanOverrideRecord:
         override_decision: str,
         human_id: str,
         rationale: str,
-        timestamp: Optional[str] = None
+        timestamp: str | None = None
     ):
         """
         Record a human override.
@@ -570,7 +568,7 @@ class HumanOverrideRecord:
         self.timestamp = timestamp or (datetime.utcnow().isoformat() + "Z")
         self.binds_future = True  # Per NCIP-002: Overrides bind future interpretations
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary representation."""
         return {
             "original_level": self.original_level.value,
@@ -622,7 +620,7 @@ NCIP_002_CONFIG = {
 }
 
 
-def get_drift_config() -> Dict[str, Any]:
+def get_drift_config() -> dict[str, Any]:
     """Get the NCIP-002 drift configuration."""
     return NCIP_002_CONFIG.copy()
 
@@ -641,7 +639,7 @@ def classify_drift_score(score: float) -> DriftClassification:
     return classifier.classify(score)
 
 
-def get_mandatory_response(score: float) -> Dict[str, Any]:
+def get_mandatory_response(score: float) -> dict[str, Any]:
     """
     Get the mandatory validator response for a drift score.
 

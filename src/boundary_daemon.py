@@ -10,14 +10,14 @@ Implements the BOUNDARY-DAEMON-INTEGRATION.md specification:
 - Violation alerting with escalation
 """
 
-import re
 import hashlib
-import time
 import json
-from typing import Dict, List, Any, Optional, Tuple
+import re
+import time
 from dataclasses import dataclass, field
-from enum import Enum
 from datetime import datetime
+from enum import Enum
+from typing import Any
 
 
 class EnforcementMode(Enum):
@@ -51,7 +51,7 @@ class PolicyViolation:
     violation_id: str
     violation_type: ViolationType
     severity: str  # low, medium, high, critical
-    details: Dict[str, Any]
+    details: dict[str, Any]
     timestamp: str
     action_taken: str
     owner_notified: bool = False
@@ -65,9 +65,9 @@ class AuditRecord:
     timestamp: str
     source: str
     destination: str
-    request: Dict[str, Any]
-    authorization: Dict[str, Any]
-    result: Dict[str, Any]
+    request: dict[str, Any]
+    authorization: dict[str, Any]
+    result: dict[str, Any]
 
 
 @dataclass
@@ -80,16 +80,16 @@ class BoundaryPolicy:
     enforcement_mode: EnforcementMode = EnforcementMode.STRICT
 
     # Data classifications and their allowed destinations
-    data_classifications: Dict[DataClassification, List[str]] = field(default_factory=dict)
+    data_classifications: dict[DataClassification, list[str]] = field(default_factory=dict)
 
     # Outbound rules
-    outbound_rules: List[Dict[str, Any]] = field(default_factory=list)
+    outbound_rules: list[dict[str, Any]] = field(default_factory=list)
 
     # Inbound rules
-    inbound_rules: List[Dict[str, Any]] = field(default_factory=list)
+    inbound_rules: list[dict[str, Any]] = field(default_factory=list)
 
     # Custom blocked patterns
-    custom_blocked_patterns: List[str] = field(default_factory=list)
+    custom_blocked_patterns: list[str] = field(default_factory=list)
 
     # Maximum payload size in bytes
     max_payload_size: int = 1024 * 1024  # 1MB default
@@ -192,9 +192,9 @@ class BoundaryDaemon:
             enforcement_mode: The default enforcement mode
         """
         self.enforcement_mode = enforcement_mode
-        self.policies: Dict[str, BoundaryPolicy] = {}
-        self.audit_log: List[AuditRecord] = []
-        self.violations: List[PolicyViolation] = []
+        self.policies: dict[str, BoundaryPolicy] = {}
+        self.audit_log: list[AuditRecord] = []
+        self.violations: list[PolicyViolation] = []
         self._violation_counter = 0
         self._audit_counter = 0
         self._auth_counter = 0
@@ -205,7 +205,7 @@ class BoundaryDaemon:
             for pattern in self.BUILTIN_BLOCKED_PATTERNS
         ]
 
-    def register_policy(self, policy: BoundaryPolicy) -> Dict[str, Any]:
+    def register_policy(self, policy: BoundaryPolicy) -> dict[str, Any]:
         """
         Register a new boundary policy.
 
@@ -242,7 +242,7 @@ class BoundaryDaemon:
         payload_str = json.dumps(payload, sort_keys=True, default=str)
         return f"SHA256:{hashlib.sha256(payload_str.encode()).hexdigest()}"
 
-    def _detect_blocked_patterns(self, data: str, custom_patterns: List[str] = None) -> List[Dict[str, Any]]:
+    def _detect_blocked_patterns(self, data: str, custom_patterns: list[str] | None = None) -> list[dict[str, Any]]:
         """
         Detect blocked patterns in data.
 
@@ -305,7 +305,7 @@ class BoundaryDaemon:
 
         return detected
 
-    def _classify_data(self, data: str, explicit_classification: Optional[str] = None) -> DataClassification:
+    def _classify_data(self, data: str, explicit_classification: str | None = None) -> DataClassification:
         """
         Classify data based on content analysis.
 
@@ -339,8 +339,8 @@ class BoundaryDaemon:
         self,
         classification: DataClassification,
         destination: str,
-        policy: Optional[BoundaryPolicy] = None
-    ) -> Tuple[bool, str]:
+        policy: BoundaryPolicy | None = None
+    ) -> tuple[bool, str]:
         """
         Check if a destination is allowed for the given classification.
 
@@ -381,7 +381,7 @@ class BoundaryDaemon:
         # FAIL-SAFE: Not in allowed list = blocked
         return False, f"Destination {destination} not in allowed list for {classification.value} data"
 
-    def authorize_request(self, request: Dict[str, Any]) -> Dict[str, Any]:
+    def authorize_request(self, request: dict[str, Any]) -> dict[str, Any]:
         """
         Authorize an outbound request.
 
@@ -513,7 +513,7 @@ class BoundaryDaemon:
                 rule="fail_safe",
                 source=request.get("source", "unknown"),
                 destination=request.get("destination", "unknown"),
-                reason=f"Authorization error (fail-safe block): {str(e)}"
+                reason=f"Authorization error (fail-safe block): {e!s}"
             )
 
     def _block_request(
@@ -525,9 +525,9 @@ class BoundaryDaemon:
         rule: str,
         source: str,
         destination: str,
-        reason: str = None,
-        all_detections: List[Dict] = None
-    ) -> Dict[str, Any]:
+        reason: str | None = None,
+        all_detections: list[dict] | None = None
+    ) -> dict[str, Any]:
         """
         Block a request and record the violation.
 
@@ -596,9 +596,9 @@ class BoundaryDaemon:
         event_type: str,
         source: str,
         destination: str,
-        request: Dict[str, Any],
-        authorization: Dict[str, Any],
-        result: Dict[str, Any]
+        request: dict[str, Any],
+        authorization: dict[str, Any],
+        result: dict[str, Any]
     ) -> AuditRecord:
         """
         Log an audit record.
@@ -631,7 +631,7 @@ class BoundaryDaemon:
         self.audit_log.append(record)
         return record
 
-    def inspect_data(self, data: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
+    def inspect_data(self, data: str, context: dict[str, Any] | None = None) -> dict[str, Any]:
         """
         Inspect data for sensitive patterns without authorizing.
 
@@ -671,7 +671,7 @@ class BoundaryDaemon:
             "policy_compliance": len(detected) == 0
         }
 
-    def get_violations(self, severity: str = None, limit: int = 100) -> List[Dict[str, Any]]:
+    def get_violations(self, severity: str | None = None, limit: int = 100) -> list[dict[str, Any]]:
         """
         Get recorded violations.
 
@@ -698,7 +698,7 @@ class BoundaryDaemon:
             for v in violations[-limit:]
         ]
 
-    def get_audit_log(self, event_type: str = None, limit: int = 100) -> List[Dict[str, Any]]:
+    def get_audit_log(self, event_type: str | None = None, limit: int = 100) -> list[dict[str, Any]]:
         """
         Get audit log entries.
 
@@ -727,7 +727,7 @@ class BoundaryDaemon:
             for r in records[-limit:]
         ]
 
-    def generate_chain_entry(self, violation: PolicyViolation) -> Dict[str, Any]:
+    def generate_chain_entry(self, violation: PolicyViolation) -> dict[str, Any]:
         """
         Generate a NatLangChain entry for a violation.
 
@@ -761,9 +761,9 @@ class BoundaryDaemon:
 def validate_outbound_data(
     data: str,
     destination: str,
-    classification: str = None,
+    classification: str | None = None,
     mode: EnforcementMode = EnforcementMode.STRICT
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Quick validation of outbound data.
 

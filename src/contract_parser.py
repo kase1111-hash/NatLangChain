@@ -4,11 +4,12 @@ Parses natural language contract entries and extracts structured terms
 Enables self-seeking live contracts with AI-mediated matching
 """
 
-import re
 import json
-from typing import Dict, Any, Optional, Tuple, List
-from anthropic import Anthropic
 import os
+import re
+from typing import Any
+
+from anthropic import Anthropic
 
 
 class ContractParser:
@@ -35,7 +36,7 @@ class ContractParser:
     STATUS_CLOSED = "closed"
     STATUS_CANCELLED = "cancelled"
 
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: str | None = None):
         """
         Initialize contract parser.
 
@@ -69,7 +70,7 @@ class ContractParser:
         content_lower = content.lower()
         return any(keyword in content_lower for keyword in contract_keywords)
 
-    def parse_contract(self, content: str, use_llm: bool = True) -> Dict[str, Any]:
+    def parse_contract(self, content: str, use_llm: bool = True) -> dict[str, Any]:
         """
         Parse contract from natural language.
 
@@ -106,7 +107,7 @@ class ContractParser:
 
         return contract_data
 
-    def _parse_tagged_format(self, content: str) -> Dict[str, Any]:
+    def _parse_tagged_format(self, content: str) -> dict[str, Any]:
         """
         Parse explicitly tagged contract format.
 
@@ -162,7 +163,7 @@ class ContractParser:
 
         return result
 
-    def _llm_extract_terms(self, content: str) -> Optional[Dict[str, str]]:
+    def _llm_extract_terms(self, content: str) -> dict[str, str] | None:
         """
         Use LLM to extract contract terms from natural prose.
 
@@ -270,7 +271,7 @@ If a term is not present, omit it. Return {{}} if no clear terms found."""
 
         return response_text.strip()
 
-    def validate_contract_clarity(self, content: str) -> Tuple[bool, str]:
+    def validate_contract_clarity(self, content: str) -> tuple[bool, str]:
         """
         Validate that contract terms are unambiguous.
 
@@ -346,20 +347,20 @@ Return JSON:
 
         except json.JSONDecodeError as e:
             print(f"Contract validation failed - JSON parsing error: {e}")
-            return False, f"JSON parsing error during validation: {str(e)}"
+            return False, f"JSON parsing error during validation: {e!s}"
         except ValueError as e:
             print(f"Contract validation failed - validation error: {e}")
-            return False, f"Validation error: {str(e)}"
+            return False, f"Validation error: {e!s}"
         except Exception as e:
             print(f"Contract validation failed - unexpected error: {e}")
-            return False, f"Unexpected validation error: {str(e)}"
+            return False, f"Unexpected validation error: {e!s}"
 
     def format_contract(
         self,
         contract_type: str,
         content: str,
-        terms: Optional[Dict[str, str]] = None,
-        links: Optional[List[str]] = None
+        terms: dict[str, str] | None = None,
+        links: list[str] | None = None
     ) -> str:
         """
         Format a contract with proper tags.

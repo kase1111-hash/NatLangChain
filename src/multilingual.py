@@ -13,12 +13,11 @@ Key concepts:
 - Translation validation preventing obligation changes
 """
 
+import re
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Optional, Set, Tuple, Any
-import hashlib
-import re
+from typing import Any
 
 
 class LanguageRole(Enum):
@@ -87,13 +86,13 @@ class LanguageEntry:
     role: LanguageRole
     content: str
     drift_tolerance: float = 0.25  # Default per NCIP-002 D2 threshold
-    drift_score: Optional[float] = None
-    drift_level: Optional[DriftLevel] = None
+    drift_score: float | None = None
+    drift_level: DriftLevel | None = None
     validated: bool = False
-    validation_timestamp: Optional[datetime] = None
-    violations: List[TranslationViolation] = field(default_factory=list)
-    affected_clauses: List[str] = field(default_factory=list)
-    affected_terms: List[str] = field(default_factory=list)
+    validation_timestamp: datetime | None = None
+    violations: list[TranslationViolation] = field(default_factory=list)
+    affected_clauses: list[str] = field(default_factory=list)
+    affected_terms: list[str] = field(default_factory=list)
 
     def __post_init__(self):
         if self.code not in SUPPORTED_LANGUAGE_CODES:
@@ -109,9 +108,7 @@ class LanguageEntry:
         """Check if the language entry is valid (no violations, acceptable drift)."""
         if self.violations:
             return False
-        if self.drift_score is not None and self.drift_score > self.drift_tolerance:
-            return False
-        return True
+        return not (self.drift_score is not None and self.drift_score > self.drift_tolerance)
 
 
 @dataclass
@@ -126,11 +123,11 @@ class CanonicalTermMapping:
     """
     term_id: str  # Registry ID from NCIP-001
     anchor_term: str  # Term in anchor language
-    translations: Dict[str, str] = field(default_factory=dict)  # lang_code -> translated term
-    glosses: Dict[str, str] = field(default_factory=dict)  # lang_code -> explanatory gloss
-    usage_notes: Dict[str, str] = field(default_factory=dict)  # lang_code -> usage note
+    translations: dict[str, str] = field(default_factory=dict)  # lang_code -> translated term
+    glosses: dict[str, str] = field(default_factory=dict)  # lang_code -> explanatory gloss
+    usage_notes: dict[str, str] = field(default_factory=dict)  # lang_code -> usage note
 
-    def get_term(self, lang_code: str) -> Optional[str]:
+    def get_term(self, lang_code: str) -> str | None:
         """Get the term in a specific language."""
         if lang_code == "en":  # Assuming anchor is English
             return self.anchor_term
@@ -150,10 +147,10 @@ class ClauseDriftResult:
     language_code: str
     drift_score: float
     drift_level: DriftLevel
-    terms_affected: List[str] = field(default_factory=list)
-    violations: List[TranslationViolation] = field(default_factory=list)
+    terms_affected: list[str] = field(default_factory=list)
+    violations: list[TranslationViolation] = field(default_factory=list)
     requires_action: bool = False
-    recommended_action: Optional[ValidatorAction] = None
+    recommended_action: ValidatorAction | None = None
 
 
 @dataclass
@@ -168,7 +165,7 @@ class MultilingualRatification:
     """
     ratification_id: str
     anchor_language: str
-    reviewed_languages: List[str]
+    reviewed_languages: list[str]
     ratified_at: datetime = field(default_factory=datetime.utcnow)
     ratifier_id: str = ""
     statement: str = ""  # "I ratify the English (anchor) meaning..."
@@ -206,7 +203,7 @@ class AlignmentRules:
     allow_obligation_removal: bool = False
     allow_scope_change: bool = False
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "core_terms": {
                 "must_map_to_registry": self.must_map_to_registry,
@@ -231,24 +228,24 @@ class MultilingualContract:
     """
     contract_id: str
     canonical_anchor_language: str = "en"  # Default per NCIP-003
-    languages: Dict[str, LanguageEntry] = field(default_factory=dict)
+    languages: dict[str, LanguageEntry] = field(default_factory=dict)
     alignment_rules: AlignmentRules = field(default_factory=AlignmentRules)
-    term_mappings: Dict[str, CanonicalTermMapping] = field(default_factory=dict)
-    ratifications: List[MultilingualRatification] = field(default_factory=list)
+    term_mappings: dict[str, CanonicalTermMapping] = field(default_factory=dict)
+    ratifications: list[MultilingualRatification] = field(default_factory=list)
     created_at: datetime = field(default_factory=datetime.utcnow)
 
     # Validation state
     validated: bool = False
     max_drift_score: float = 0.0
-    max_drift_level: Optional[DriftLevel] = None
-    overall_action: Optional[ValidatorAction] = None
+    max_drift_level: DriftLevel | None = None
+    overall_action: ValidatorAction | None = None
 
     def __post_init__(self):
         # Emit D1 warning if CSAL not explicitly set (using default)
         self._csal_explicit = self.canonical_anchor_language != "en"
 
     @property
-    def anchor_entry(self) -> Optional[LanguageEntry]:
+    def anchor_entry(self) -> LanguageEntry | None:
         """Get the anchor language entry."""
         for entry in self.languages.values():
             if entry.role == LanguageRole.ANCHOR:
@@ -256,17 +253,17 @@ class MultilingualContract:
         return None
 
     @property
-    def aligned_entries(self) -> List[LanguageEntry]:
+    def aligned_entries(self) -> list[LanguageEntry]:
         """Get all aligned language entries."""
         return [e for e in self.languages.values() if e.role == LanguageRole.ALIGNED]
 
     @property
-    def informational_entries(self) -> List[LanguageEntry]:
+    def informational_entries(self) -> list[LanguageEntry]:
         """Get all informational language entries."""
         return [e for e in self.languages.values() if e.role == LanguageRole.INFORMATIONAL]
 
     @property
-    def executable_languages(self) -> List[str]:
+    def executable_languages(self) -> list[str]:
         """Get language codes that may influence execution."""
         return [code for code, entry in self.languages.items() if entry.is_executable]
 
@@ -276,7 +273,7 @@ class MultilingualContract:
         role: LanguageRole,
         content: str,
         drift_tolerance: float = 0.25
-    ) -> Tuple[bool, str]:
+    ) -> tuple[bool, str]:
         """
         Add a language entry to the contract.
 
@@ -301,7 +298,7 @@ class MultilingualContract:
         self.languages[code] = entry
         return (True, f"Added {code} as {role.value}")
 
-    def get_language(self, code: str) -> Optional[LanguageEntry]:
+    def get_language(self, code: str) -> LanguageEntry | None:
         """Get a language entry by code."""
         return self.languages.get(code)
 
@@ -340,8 +337,8 @@ class MultilingualAlignmentManager:
     }
 
     def __init__(self):
-        self.contracts: Dict[str, MultilingualContract] = {}
-        self.term_registry: Dict[str, CanonicalTermMapping] = {}
+        self.contracts: dict[str, MultilingualContract] = {}
+        self.term_registry: dict[str, CanonicalTermMapping] = {}
 
     # -------------------------------------------------------------------------
     # Contract Management
@@ -365,14 +362,14 @@ class MultilingualAlignmentManager:
         self.contracts[contract_id] = contract
         return contract
 
-    def get_contract(self, contract_id: str) -> Optional[MultilingualContract]:
+    def get_contract(self, contract_id: str) -> MultilingualContract | None:
         """Get a contract by ID."""
         return self.contracts.get(contract_id)
 
     def validate_csal_declaration(
         self,
         contract: MultilingualContract
-    ) -> Tuple[bool, List[str]]:
+    ) -> tuple[bool, list[str]]:
         """
         Validate CSAL declaration per NCIP-003 Section 2.
 
@@ -419,7 +416,7 @@ class MultilingualAlignmentManager:
         anchor_text: str,
         aligned_text: str,
         language_code: str
-    ) -> Tuple[float, DriftLevel]:
+    ) -> tuple[float, DriftLevel]:
         """
         Measure semantic drift between anchor and aligned text.
 
@@ -454,8 +451,8 @@ class MultilingualAlignmentManager:
         sentence_score = min(sentence_diff * 0.1, 0.3)
 
         # Simple content similarity (shared numbers, proper nouns tend to appear in both)
-        anchor_tokens = set(re.findall(r'\b\w+\b', anchor_text.lower()))
-        aligned_tokens = set(re.findall(r'\b\w+\b', aligned_text.lower()))
+        set(re.findall(r'\b\w+\b', anchor_text.lower()))
+        set(re.findall(r'\b\w+\b', aligned_text.lower()))
         # Focus on numbers and capitalized words that might transfer
         anchor_nums = set(re.findall(r'\b\d+\b', anchor_text))
         aligned_nums = set(re.findall(r'\b\d+\b', aligned_text))
@@ -477,7 +474,7 @@ class MultilingualAlignmentManager:
         anchor_text: str,
         aligned_text: str,
         language_code: str,
-        canonical_terms: Optional[List[str]] = None
+        canonical_terms: list[str] | None = None
     ) -> ClauseDriftResult:
         """
         Analyze drift for a specific clause between anchor and aligned text.
@@ -518,7 +515,7 @@ class MultilingualAlignmentManager:
     def validate_contract_alignment(
         self,
         contract: MultilingualContract
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Validate alignment of all languages in a contract.
 
@@ -529,7 +526,7 @@ class MultilingualAlignmentManager:
 
         Returns (valid, validation_report).
         """
-        report: Dict[str, Any] = {
+        report: dict[str, Any] = {
             "contract_id": contract.contract_id,
             "csal": contract.canonical_anchor_language,
             "languages_checked": [],
@@ -618,8 +615,8 @@ class MultilingualAlignmentManager:
         anchor_text: str,
         aligned_text: str,
         language_code: str,
-        alignment_rules: Optional[AlignmentRules] = None
-    ) -> List[TranslationViolation]:
+        alignment_rules: AlignmentRules | None = None
+    ) -> list[TranslationViolation]:
         """
         Check for prohibited behaviors in aligned translation.
 
@@ -635,7 +632,6 @@ class MultilingualAlignmentManager:
         # Check for obligation indicators
         # This is simplified - real implementation would use NLP/LLM
         obligation_words = ["must", "shall", "required", "mandatory", "obligated"]
-        prohibition_words = ["must not", "shall not", "prohibited", "forbidden"]
 
         anchor_lower = anchor_text.lower()
         aligned_lower = aligned_text.lower()
@@ -654,7 +650,6 @@ class MultilingualAlignmentManager:
 
         # Check for scope changes (simplified: look for "all", "any", "limited", etc.)
         scope_broadeners = ["all", "any", "every", "unlimited"]
-        scope_narrowers = ["only", "limited", "restricted", "specific"]
 
         anchor_broad = sum(1 for w in scope_broadeners if w in anchor_lower)
         aligned_broad = sum(1 for w in scope_broadeners if w in aligned_lower)
@@ -673,7 +668,7 @@ class MultilingualAlignmentManager:
         anchor_term: str,
         translated_term: str,
         language_code: str
-    ) -> Tuple[bool, str]:
+    ) -> tuple[bool, str]:
         """
         Validate that a term mapping preserves semantic identity.
 
@@ -709,7 +704,7 @@ class MultilingualAlignmentManager:
         self,
         contract: MultilingualContract,
         ratifier_id: str,
-        reviewed_languages: List[str]
+        reviewed_languages: list[str]
     ) -> MultilingualRatification:
         """
         Create a multilingual ratification per NCIP-003 Section 8.
@@ -732,7 +727,7 @@ class MultilingualAlignmentManager:
     def confirm_ratification(
         self,
         ratification: MultilingualRatification
-    ) -> Tuple[bool, str]:
+    ) -> tuple[bool, str]:
         """
         Confirm a multilingual ratification binding.
 
@@ -752,7 +747,7 @@ class MultilingualAlignmentManager:
         self,
         contract_id: str,
         language_code: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Generate validator report for drift per NCIP-003 Section 6.
 
@@ -789,7 +784,7 @@ class MultilingualAlignmentManager:
     def generate_alignment_spec(
         self,
         contract: MultilingualContract
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Generate machine-readable multilingual alignment spec.
 
@@ -823,9 +818,9 @@ class MultilingualAlignmentManager:
     # Status and Queries
     # -------------------------------------------------------------------------
 
-    def get_status_summary(self) -> Dict[str, Any]:
+    def get_status_summary(self) -> dict[str, Any]:
         """Get summary of multilingual alignment system status."""
-        contracts_by_csal: Dict[str, int] = {}
+        contracts_by_csal: dict[str, int] = {}
         total_languages = 0
         aligned_count = 0
         informational_count = 0

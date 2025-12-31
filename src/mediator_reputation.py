@@ -14,14 +14,12 @@ are denominated in whatever currency is configured for the deployment
 (e.g., ETH, USDC, DAI). The default token symbol is configurable.
 """
 
+import hashlib
+import random  # Required for weighted random mediator selection
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Dict, List, Optional, Any, Tuple
-import hashlib
-import math
-import random  # Required for weighted random mediator selection
-
+from typing import Any
 
 # =============================================================================
 # NCIP-010 Constants
@@ -122,7 +120,7 @@ class ReputationScores:
     coercion_signal: float = 0.0  # CS: Penalty for pressure tactics
     latency_discipline: float = 1.0  # LD: Responsiveness
 
-    def to_dict(self) -> Dict[str, float]:
+    def to_dict(self) -> dict[str, float]:
         """Convert to dictionary representation."""
         return {
             "acceptance_rate": self.acceptance_rate,
@@ -141,9 +139,9 @@ class Bond:
     token: str = DEFAULT_STAKING_CURRENCY  # Configurable per deployment
     locked: bool = True
     locked_at: datetime = field(default_factory=datetime.utcnow)
-    unlock_requested_at: Optional[datetime] = None
+    unlock_requested_at: datetime | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary representation."""
         return {
             "amount": self.amount,
@@ -159,11 +157,11 @@ class Cooldown:
     """Active cooldown period."""
     cooldown_id: str
     reason: CooldownReason
-    offense: Optional[SlashingOffense] = None
+    offense: SlashingOffense | None = None
     started_at: datetime = field(default_factory=datetime.utcnow)
     duration_days: int = 14
     max_active_proposals: int = COOLDOWN_MAX_PROPOSALS
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     @property
     def ends_at(self) -> datetime:
@@ -181,7 +179,7 @@ class Cooldown:
         remaining = (self.ends_at - datetime.utcnow()).total_seconds()
         return max(0, remaining)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary representation."""
         return {
             "cooldown_id": self.cooldown_id,
@@ -204,11 +202,11 @@ class SlashingEvent:
     amount_slashed: float
     percentage: float
     timestamp: datetime = field(default_factory=datetime.utcnow)
-    evidence: Dict[str, Any] = field(default_factory=dict)
+    evidence: dict[str, Any] = field(default_factory=dict)
     treasury_portion: float = 0.0
     affected_party_portion: float = 0.0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary representation."""
         return {
             "event_id": self.event_id,
@@ -231,10 +229,10 @@ class MediatorProposal:
     content: str
     status: ProposalStatus = ProposalStatus.PENDING
     created_at: datetime = field(default_factory=datetime.utcnow)
-    responded_at: Optional[datetime] = None
-    response_latency_seconds: Optional[float] = None
+    responded_at: datetime | None = None
+    response_latency_seconds: float | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary representation."""
         return {
             "proposal_id": self.proposal_id,
@@ -257,20 +255,20 @@ class MediatorProfile:
     scores: ReputationScores = field(default_factory=ReputationScores)
     composite_trust_score: float = 0.5  # CTS
     status: MediatorStatus = MediatorStatus.ACTIVE
-    supported_domains: List[str] = field(default_factory=list)
-    models_used: List[str] = field(default_factory=list)
+    supported_domains: list[str] = field(default_factory=list)
+    models_used: list[str] = field(default_factory=list)
     registered_at: datetime = field(default_factory=datetime.utcnow)
     last_activity: datetime = field(default_factory=datetime.utcnow)
-    active_cooldowns: List[Cooldown] = field(default_factory=list)
+    active_cooldowns: list[Cooldown] = field(default_factory=list)
     total_slashed: float = 0.0
     proposal_count: int = 0
     accepted_count: int = 0
     rejected_count: int = 0
     appeal_count: int = 0
     appeal_losses: int = 0
-    slashing_history: List[SlashingEvent] = field(default_factory=list)
+    slashing_history: list[SlashingEvent] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary representation."""
         return {
             "mediator_id": self.mediator_id,
@@ -306,8 +304,8 @@ class MediatorReputationManager:
 
     def __init__(self):
         """Initialize the reputation manager."""
-        self.mediators: Dict[str, MediatorProfile] = {}
-        self.proposals: Dict[str, MediatorProposal] = {}
+        self.mediators: dict[str, MediatorProfile] = {}
+        self.proposals: dict[str, MediatorProposal] = {}
         self.treasury_balance: float = 0.0
         self._event_counter = 0
 
@@ -326,8 +324,8 @@ class MediatorReputationManager:
         self,
         mediator_id: str,
         stake_amount: float = DEFAULT_BOND,
-        supported_domains: Optional[List[str]] = None,
-        models_used: Optional[List[str]] = None
+        supported_domains: list[str] | None = None,
+        models_used: list[str] | None = None
     ) -> MediatorProfile:
         """
         Register a new mediator with required bond.
@@ -372,7 +370,7 @@ class MediatorReputationManager:
         self.mediators[mediator_id] = profile
         return profile
 
-    def get_mediator(self, mediator_id: str) -> Optional[MediatorProfile]:
+    def get_mediator(self, mediator_id: str) -> MediatorProfile | None:
         """Get a mediator's profile."""
         return self.mediators.get(mediator_id)
 
@@ -383,7 +381,7 @@ class MediatorReputationManager:
             return False
         return profile.bond.locked and profile.bond.amount >= MINIMUM_BOND
 
-    def can_submit_proposals(self, mediator_id: str) -> Tuple[bool, str]:
+    def can_submit_proposals(self, mediator_id: str) -> tuple[bool, str]:
         """
         Check if a mediator can submit proposals.
 
@@ -449,7 +447,7 @@ class MediatorReputationManager:
         mediator_id: str,
         dimension: str,
         value: float
-    ) -> Optional[float]:
+    ) -> float | None:
         """
         Update a specific reputation dimension.
 
@@ -494,10 +492,10 @@ class MediatorReputationManager:
         self,
         mediator_id: str,
         accepted: bool,
-        semantic_drift_score: Optional[float] = None,
-        latency_seconds: Optional[float] = None,
+        semantic_drift_score: float | None = None,
+        latency_seconds: float | None = None,
         coercion_detected: bool = False
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Record the outcome of a proposal and update reputation.
 
@@ -577,7 +575,7 @@ class MediatorReputationManager:
         self,
         mediator_id: str,
         appeal_survived: bool
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Record the outcome of an appeal affecting a mediator.
 
@@ -616,7 +614,7 @@ class MediatorReputationManager:
         self,
         mediator_id: str,
         dispute_occurred: bool
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Record whether a downstream dispute occurred after mediation.
 
@@ -655,9 +653,9 @@ class MediatorReputationManager:
         mediator_id: str,
         offense: SlashingOffense,
         severity: float = 0.5,
-        evidence: Optional[Dict[str, Any]] = None,
-        affected_party_id: Optional[str] = None
-    ) -> Optional[SlashingEvent]:
+        evidence: dict[str, Any] | None = None,
+        affected_party_id: str | None = None
+    ) -> SlashingEvent | None:
         """
         Slash a mediator's bond for an offense.
 
@@ -750,7 +748,7 @@ class MediatorReputationManager:
         self,
         mediator_id: str,
         window_days: int = 30
-    ) -> Tuple[bool, int]:
+    ) -> tuple[bool, int]:
         """
         Check if mediator has 3+ rejected proposals in the window.
 
@@ -782,10 +780,10 @@ class MediatorReputationManager:
 
     def get_proposal_ranking(
         self,
-        mediator_ids: List[str],
+        mediator_ids: list[str],
         include_cts: bool = True,
         diversity_weight: float = 0.2
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Rank mediator proposals by CTS with diversity weighting.
 
@@ -842,9 +840,9 @@ class MediatorReputationManager:
 
     def sample_proposals_by_trust(
         self,
-        mediator_ids: List[str],
+        mediator_ids: list[str],
         sample_size: int = 3
-    ) -> List[str]:
+    ) -> list[str]:
         """
         Sample mediators proportional to their trust scores.
 
@@ -880,7 +878,6 @@ class MediatorReputationManager:
         probabilities = [w / total_weight for w in weights]
 
         # Sample without replacement
-        import random
         sampled = []
         remaining_ids = list(valid_ids)
         remaining_probs = list(probabilities)
@@ -924,7 +921,7 @@ class MediatorReputationManager:
         self,
         amount: float,
         purpose: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Allocate treasury funds for defensive purposes.
 
@@ -959,7 +956,7 @@ class MediatorReputationManager:
     # Convenience Methods
     # =========================================================================
 
-    def get_mediator_summary(self, mediator_id: str) -> Dict[str, Any]:
+    def get_mediator_summary(self, mediator_id: str) -> dict[str, Any]:
         """Get a summary of a mediator's reputation."""
         profile = self.mediators.get(mediator_id)
         if not profile:
@@ -984,10 +981,10 @@ class MediatorReputationManager:
 
     def list_mediators(
         self,
-        min_cts: Optional[float] = None,
-        status: Optional[MediatorStatus] = None,
-        domain: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+        min_cts: float | None = None,
+        status: MediatorStatus | None = None,
+        domain: str | None = None
+    ) -> list[dict[str, Any]]:
         """
         List mediators matching criteria.
 
@@ -1052,7 +1049,7 @@ class MediatorReputationManager:
 # Module-level convenience functions
 # =============================================================================
 
-_default_manager: Optional[MediatorReputationManager] = None
+_default_manager: MediatorReputationManager | None = None
 
 
 def get_reputation_manager() -> MediatorReputationManager:
@@ -1069,7 +1066,7 @@ def reset_reputation_manager() -> None:
     _default_manager = None
 
 
-def get_ncip_010_config() -> Dict[str, Any]:
+def get_ncip_010_config() -> dict[str, Any]:
     """Get NCIP-010 configuration."""
     return {
         "version": "1.0",

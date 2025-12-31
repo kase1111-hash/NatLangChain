@@ -14,17 +14,18 @@ Architecture:
 - Chain sync uses longest-chain rule with hash verification
 """
 
-import os
-import json
-import time
-import secrets
 import hashlib
+import json
+import logging
+import os
+import secrets
 import threading
+import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple, Set, Callable
 from enum import Enum
-import logging
+from typing import Any
 
 # Configure logging with security considerations
 # SECURITY: Use a formatter that doesn't allow newline injection in log messages
@@ -209,13 +210,13 @@ class PeerInfo:
     status: PeerStatus = PeerStatus.UNKNOWN
     chain_height: int = 0
     chain_tip_hash: str = ""
-    last_seen: Optional[datetime] = None
+    last_seen: datetime | None = None
     latency_ms: float = 0.0
     reputation: float = 1.0
     version: str = "unknown"
-    capabilities: Set[str] = field(default_factory=set)
+    capabilities: set[str] = field(default_factory=set)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "peer_id": self.peer_id,
             "endpoint": self.endpoint,
@@ -231,7 +232,7 @@ class PeerInfo:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'PeerInfo':
+    def from_dict(cls, data: dict[str, Any]) -> 'PeerInfo':
         return cls(
             peer_id=data["peer_id"],
             endpoint=data["endpoint"],
@@ -252,13 +253,13 @@ class BroadcastMessage:
     """Message to broadcast to peers."""
     message_id: str
     broadcast_type: BroadcastType
-    payload: Dict[str, Any]
+    payload: dict[str, Any]
     origin_node: str
     timestamp: datetime = field(default_factory=datetime.utcnow)
     ttl: int = 3  # Hops remaining
-    signature: Optional[str] = None
+    signature: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "message_id": self.message_id,
             "broadcast_type": self.broadcast_type.value,
@@ -270,7 +271,7 @@ class BroadcastMessage:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'BroadcastMessage':
+    def from_dict(cls, data: dict[str, Any]) -> 'BroadcastMessage':
         return cls(
             message_id=data["message_id"],
             broadcast_type=BroadcastType(data["broadcast_type"]),
@@ -288,10 +289,10 @@ class SyncState:
     is_syncing: bool = False
     sync_target_height: int = 0
     sync_current_height: int = 0
-    sync_peer: Optional[str] = None
-    sync_started: Optional[datetime] = None
-    last_sync: Optional[datetime] = None
-    sync_errors: List[str] = field(default_factory=list)
+    sync_peer: str | None = None
+    sync_started: datetime | None = None
+    last_sync: datetime | None = None
+    sync_errors: list[str] = field(default_factory=list)
 
 
 # =============================================================================
@@ -308,10 +309,10 @@ class PeerRateLimiter:
     def __init__(self, max_per_minute: int = MAX_MESSAGES_PER_MINUTE, window: int = RATE_LIMIT_WINDOW):
         self.max_per_minute = max_per_minute
         self.window = window
-        self.peer_counts: Dict[str, List[float]] = {}  # peer_id -> list of timestamps
+        self.peer_counts: dict[str, list[float]] = {}  # peer_id -> list of timestamps
         self._lock = threading.Lock()
 
-    def check_rate_limit(self, peer_id: str) -> Tuple[bool, str]:
+    def check_rate_limit(self, peer_id: str) -> tuple[bool, str]:
         """
         Check if a peer has exceeded rate limits.
 
@@ -375,10 +376,10 @@ class MessageValidator:
     def __init__(self, secret_key: str, require_signatures: bool = REQUIRE_SIGNATURES):
         self.secret_key = secret_key.encode('utf-8') if isinstance(secret_key, str) else secret_key
         self.require_signatures = require_signatures
-        self.seen_nonces: Dict[str, float] = {}  # nonce -> timestamp
+        self.seen_nonces: dict[str, float] = {}  # nonce -> timestamp
         self._lock = threading.Lock()
 
-    def compute_signature(self, message_data: Dict[str, Any]) -> str:
+    def compute_signature(self, message_data: dict[str, Any]) -> str:
         """Compute HMAC signature for a message."""
         # Create canonical string from message (exclude signature field)
         sign_data = {k: v for k, v in message_data.items() if k != 'signature'}
@@ -393,7 +394,7 @@ class MessageValidator:
 
         return signature
 
-    def verify_signature(self, message_data: Dict[str, Any]) -> Tuple[bool, str]:
+    def verify_signature(self, message_data: dict[str, Any]) -> tuple[bool, str]:
         """
         Verify message HMAC signature.
 
@@ -415,7 +416,7 @@ class MessageValidator:
 
         return True, "OK"
 
-    def validate_timestamp(self, timestamp_str: str) -> Tuple[bool, str]:
+    def validate_timestamp(self, timestamp_str: str) -> tuple[bool, str]:
         """
         Validate message timestamp for replay protection.
 
@@ -439,7 +440,7 @@ class MessageValidator:
         except Exception as e:
             return False, f"Invalid timestamp format: {e}"
 
-    def check_replay(self, message_id: str, nonce: Optional[str] = None) -> Tuple[bool, str]:
+    def check_replay(self, message_id: str, nonce: str | None = None) -> tuple[bool, str]:
         """
         Check if message is a replay attack.
 
@@ -469,7 +470,7 @@ class MessageValidator:
             if ts > cutoff
         }
 
-    def validate_payload_size(self, payload: Any, max_size: int = MAX_PAYLOAD_SIZE) -> Tuple[bool, str]:
+    def validate_payload_size(self, payload: Any, max_size: int = MAX_PAYLOAD_SIZE) -> tuple[bool, str]:
         """
         Validate payload size.
 
@@ -487,7 +488,7 @@ class MessageValidator:
         except Exception as e:
             return False, f"Invalid payload: {e}"
 
-    def validate_message(self, message_data: Dict[str, Any]) -> Tuple[bool, str]:
+    def validate_message(self, message_data: dict[str, Any]) -> tuple[bool, str]:
         """
         Full message validation.
 
@@ -537,7 +538,7 @@ class BlockValidator:
     def __init__(self):
         pass
 
-    def validate_block_structure(self, block_data: Dict[str, Any]) -> Tuple[bool, str]:
+    def validate_block_structure(self, block_data: dict[str, Any]) -> tuple[bool, str]:
         """Validate block has required structure."""
         required = ['index', 'hash', 'previous_hash', 'timestamp', 'entries']
         for field in required:
@@ -551,7 +552,7 @@ class BlockValidator:
 
         return True, "OK"
 
-    def validate_block_size(self, block_data: Dict[str, Any]) -> Tuple[bool, str]:
+    def validate_block_size(self, block_data: dict[str, Any]) -> tuple[bool, str]:
         """Validate block size limits."""
         try:
             block_str = json.dumps(block_data)
@@ -564,7 +565,7 @@ class BlockValidator:
         except Exception as e:
             return False, f"Invalid block data: {e}"
 
-    def validate_block_hash(self, block_data: Dict[str, Any]) -> Tuple[bool, str]:
+    def validate_block_hash(self, block_data: dict[str, Any]) -> tuple[bool, str]:
         """Validate block hash is correct."""
         claimed_hash = block_data.get('hash', '')
 
@@ -576,7 +577,7 @@ class BlockValidator:
             'entries': block_data.get('entries', [])
         }, sort_keys=True)
 
-        computed_hash = hashlib.sha256(hash_input.encode()).hexdigest()
+        hashlib.sha256(hash_input.encode()).hexdigest()
 
         # Note: This is a simplified check - actual hash computation may differ
         # The real validation should use the same algorithm as blockchain.py
@@ -585,7 +586,7 @@ class BlockValidator:
 
         return True, "OK"  # Hash format valid, detailed check left to blockchain
 
-    def validate_chain_link(self, block_data: Dict[str, Any], previous_block: Optional[Dict[str, Any]]) -> Tuple[bool, str]:
+    def validate_chain_link(self, block_data: dict[str, Any], previous_block: dict[str, Any] | None) -> tuple[bool, str]:
         """Validate block links correctly to previous block."""
         if previous_block is None:
             # Genesis block
@@ -603,7 +604,7 @@ class BlockValidator:
 
         return True, "OK"
 
-    def validate_block_timestamp(self, block_data: Dict[str, Any], previous_block: Optional[Dict[str, Any]] = None) -> Tuple[bool, str]:
+    def validate_block_timestamp(self, block_data: dict[str, Any], previous_block: dict[str, Any] | None = None) -> tuple[bool, str]:
         """Validate block timestamp."""
         try:
             block_time = block_data.get('timestamp', '')
@@ -633,7 +634,7 @@ class BlockValidator:
         except Exception as e:
             return False, f"Invalid timestamp: {e}"
 
-    def validate_entry(self, entry_data: Dict[str, Any]) -> Tuple[bool, str]:
+    def validate_entry(self, entry_data: dict[str, Any]) -> tuple[bool, str]:
         """Validate an individual entry."""
         required = ['content', 'author', 'timestamp']
         for field in required:
@@ -652,7 +653,7 @@ class BlockValidator:
 
         return True, "OK"
 
-    def validate_block(self, block_data: Dict[str, Any], previous_block: Optional[Dict[str, Any]] = None) -> Tuple[bool, str]:
+    def validate_block(self, block_data: dict[str, Any], previous_block: dict[str, Any] | None = None) -> tuple[bool, str]:
         """Full block validation."""
         # Structure check
         valid, reason = self.validate_block_structure(block_data)
@@ -700,9 +701,9 @@ class PeerSecurityManager:
     """
 
     def __init__(self):
-        self.violations: Dict[str, List[Tuple[str, float, float]]] = {}  # peer_id -> [(type, weight, timestamp)]
-        self.banned_until: Dict[str, datetime] = {}  # peer_id -> unban time
-        self.peer_ips: Dict[str, str] = {}  # peer_id -> IP address
+        self.violations: dict[str, list[tuple[str, float, float]]] = {}  # peer_id -> [(type, weight, timestamp)]
+        self.banned_until: dict[str, datetime] = {}  # peer_id -> unban time
+        self.peer_ips: dict[str, str] = {}  # peer_id -> IP address
         self._lock = threading.Lock()
 
     def extract_ip(self, endpoint: str) -> str:
@@ -730,7 +731,7 @@ class PeerSecurityManager:
             logger.debug(f"IP prefix extraction failed: {type(e).__name__}")
             return ip
 
-    def check_peer_allowed(self, peer_id: str, endpoint: str, current_peers: Dict[str, Any]) -> Tuple[bool, str]:
+    def check_peer_allowed(self, peer_id: str, endpoint: str, current_peers: dict[str, Any]) -> tuple[bool, str]:
         """
         Check if a new peer should be allowed.
 
@@ -771,7 +772,7 @@ class PeerSecurityManager:
 
             return True, "OK"
 
-    def record_violation(self, peer_id: str, violation_type: str) -> Tuple[bool, str]:
+    def record_violation(self, peer_id: str, violation_type: str) -> tuple[bool, str]:
         """
         Record a security violation for a peer.
 
@@ -831,7 +832,7 @@ class PeerSecurityManager:
         else:
             return -REPUTATION_DECAY_RATE
 
-    def check_eclipse_attack(self, peers: Dict[str, Any]) -> Tuple[bool, str]:
+    def check_eclipse_attack(self, peers: dict[str, Any]) -> tuple[bool, str]:
         """
         Check for potential eclipse attack (low peer diversity).
 
@@ -843,7 +844,7 @@ class PeerSecurityManager:
 
         # Count unique IP prefixes
         prefixes = set()
-        for peer_id, peer in peers.items():
+        for _peer_id, peer in peers.items():
             if hasattr(peer, 'endpoint'):
                 ip = self.extract_ip(peer.endpoint)
             else:
@@ -873,12 +874,12 @@ class P2PNetwork:
 
     def __init__(
         self,
-        node_id: Optional[str] = None,
-        endpoint: Optional[str] = None,
+        node_id: str | None = None,
+        endpoint: str | None = None,
         role: NodeRole = NodeRole.FULL_NODE,
         consensus_mode: ConsensusMode = ConsensusMode.PERMISSIONLESS,
-        bootstrap_peers: Optional[List[str]] = None,
-        secret_key: Optional[str] = None
+        bootstrap_peers: list[str] | None = None,
+        secret_key: str | None = None
     ):
         """
         Initialize P2P network manager.
@@ -898,27 +899,27 @@ class P2PNetwork:
         self.secret_key = secret_key or secrets.token_hex(32)
 
         # Peer management
-        self.peers: Dict[str, PeerInfo] = {}
-        self.banned_peers: Set[str] = set()
+        self.peers: dict[str, PeerInfo] = {}
+        self.banned_peers: set[str] = set()
         self.bootstrap_peers = bootstrap_peers or []
 
         # Message deduplication
-        self.seen_messages: Dict[str, datetime] = {}
+        self.seen_messages: dict[str, datetime] = {}
         self.message_expiry = timedelta(minutes=10)
 
         # Sync state
         self.sync_state = SyncState()
 
         # Callbacks for handling received data
-        self._on_entry_received: Optional[Callable] = None
-        self._on_block_received: Optional[Callable] = None
-        self._on_settlement_received: Optional[Callable] = None
-        self._get_chain_info: Optional[Callable] = None
-        self._get_blocks: Optional[Callable] = None
-        self._add_block: Optional[Callable] = None
+        self._on_entry_received: Callable | None = None
+        self._on_block_received: Callable | None = None
+        self._on_settlement_received: Callable | None = None
+        self._get_chain_info: Callable | None = None
+        self._get_blocks: Callable | None = None
+        self._add_block: Callable | None = None
 
         # Background threads
-        self._health_check_thread: Optional[threading.Thread] = None
+        self._health_check_thread: threading.Thread | None = None
         self._running = False
 
         # HTTP session
@@ -1032,7 +1033,7 @@ class P2PNetwork:
     # Peer Management
     # =========================================================================
 
-    def connect_to_peer(self, endpoint: str) -> Tuple[bool, Optional[PeerInfo]]:
+    def connect_to_peer(self, endpoint: str) -> tuple[bool, PeerInfo | None]:
         """
         Connect to a peer node with security validation.
 
@@ -1167,14 +1168,14 @@ class P2PNetwork:
             del self.peers[peer_id]
         logger.warning(f"Banned peer {peer_id}: {reason}")
 
-    def get_connected_peers(self) -> List[PeerInfo]:
+    def get_connected_peers(self) -> list[PeerInfo]:
         """Get list of connected peers."""
         return [
             p for p in self.peers.values()
             if p.status == PeerStatus.CONNECTED
         ]
 
-    def get_mediator_peers(self) -> List[PeerInfo]:
+    def get_mediator_peers(self) -> list[PeerInfo]:
         """Get list of connected mediator nodes."""
         return [
             p for p in self.peers.values()
@@ -1185,7 +1186,7 @@ class P2PNetwork:
     # Broadcasting
     # =========================================================================
 
-    def broadcast_entry(self, entry_data: Dict[str, Any]) -> int:
+    def broadcast_entry(self, entry_data: dict[str, Any]) -> int:
         """
         Broadcast a new entry to all peers.
 
@@ -1204,7 +1205,7 @@ class P2PNetwork:
         )
         return self._broadcast(message)
 
-    def broadcast_block(self, block_data: Dict[str, Any]) -> int:
+    def broadcast_block(self, block_data: dict[str, Any]) -> int:
         """
         Broadcast a new block to all peers.
 
@@ -1223,7 +1224,7 @@ class P2PNetwork:
         )
         return self._broadcast(message)
 
-    def broadcast_settlement(self, settlement_data: Dict[str, Any]) -> int:
+    def broadcast_settlement(self, settlement_data: dict[str, Any]) -> int:
         """
         Broadcast a settlement from a mediator.
 
@@ -1278,7 +1279,7 @@ class P2PNetwork:
         logger.info(f"Broadcast {message.broadcast_type.value} to {success_count}/{len(peers)} peers")
         return success_count
 
-    def handle_broadcast(self, message_data: Dict[str, Any], sender_id: Optional[str] = None) -> Tuple[bool, str]:
+    def handle_broadcast(self, message_data: dict[str, Any], sender_id: str | None = None) -> tuple[bool, str]:
         """
         Handle an incoming broadcast message with security validation.
 
@@ -1422,7 +1423,7 @@ class P2PNetwork:
     # Chain Synchronization
     # =========================================================================
 
-    def sync_chain(self, target_peer: Optional[str] = None) -> bool:
+    def sync_chain(self, target_peer: str | None = None) -> bool:
         """
         Synchronize chain with peers.
 
@@ -1463,7 +1464,7 @@ class P2PNetwork:
             self.sync_state.is_syncing = False
             self.sync_state.sync_peer = None
 
-    def _find_best_sync_peer(self) -> Optional[PeerInfo]:
+    def _find_best_sync_peer(self) -> PeerInfo | None:
         """Find the best peer to sync with (highest chain, best reputation)."""
         peers = self.get_connected_peers()
         if not peers:
@@ -1530,7 +1531,7 @@ class P2PNetwork:
     # Mediator Node Integration
     # =========================================================================
 
-    def get_pending_intents(self) -> List[Dict[str, Any]]:
+    def get_pending_intents(self) -> list[dict[str, Any]]:
         """
         Get pending intents for mediator nodes.
 
@@ -1581,7 +1582,7 @@ class P2PNetwork:
 
         return intents
 
-    def submit_settlement(self, settlement: Dict[str, Any]) -> Tuple[bool, Dict[str, Any]]:
+    def submit_settlement(self, settlement: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
         """
         Submit a settlement from a mediator node.
 
@@ -1628,23 +1629,23 @@ class P2PNetwork:
     # Callback Registration
     # =========================================================================
 
-    def on_entry_received(self, callback: Callable[[Dict[str, Any]], None]):
+    def on_entry_received(self, callback: Callable[[dict[str, Any]], None]):
         """Register callback for received entries."""
         self._on_entry_received = callback
 
-    def on_block_received(self, callback: Callable[[Dict[str, Any]], None]):
+    def on_block_received(self, callback: Callable[[dict[str, Any]], None]):
         """Register callback for received blocks."""
         self._on_block_received = callback
 
-    def on_settlement_received(self, callback: Callable[[Dict[str, Any]], None]):
+    def on_settlement_received(self, callback: Callable[[dict[str, Any]], None]):
         """Register callback for received settlements."""
         self._on_settlement_received = callback
 
     def set_chain_provider(
         self,
-        get_chain_info: Callable[[], Dict[str, Any]],
-        get_blocks: Callable[[int, int], List[Dict[str, Any]]],
-        add_block: Callable[[Dict[str, Any]], bool]
+        get_chain_info: Callable[[], dict[str, Any]],
+        get_blocks: Callable[[int, int], list[dict[str, Any]]],
+        add_block: Callable[[dict[str, Any]], bool]
     ):
         """Set callbacks for chain data access."""
         self._get_chain_info = get_chain_info
@@ -1671,7 +1672,7 @@ class P2PNetwork:
                 return chain[-1].get("hash", "")
         return ""
 
-    def get_node_info(self) -> Dict[str, Any]:
+    def get_node_info(self) -> dict[str, Any]:
         """Get this node's info for peer discovery."""
         return {
             "node_id": self.node_id,
@@ -1685,7 +1686,7 @@ class P2PNetwork:
             "peer_count": len(self.get_connected_peers())
         }
 
-    def get_network_stats(self) -> Dict[str, Any]:
+    def get_network_stats(self) -> dict[str, Any]:
         """Get network statistics."""
         return {
             "node_id": self.node_id,
@@ -1705,20 +1706,20 @@ class P2PNetwork:
 # =============================================================================
 
 # Global P2P network instance
-_p2p_network: Optional[P2PNetwork] = None
+_p2p_network: P2PNetwork | None = None
 
 
-def get_p2p_network() -> Optional[P2PNetwork]:
+def get_p2p_network() -> P2PNetwork | None:
     """Get the global P2P network instance."""
     return _p2p_network
 
 
 def init_p2p_network(
-    node_id: Optional[str] = None,
-    endpoint: Optional[str] = None,
+    node_id: str | None = None,
+    endpoint: str | None = None,
     role: NodeRole = NodeRole.FULL_NODE,
     consensus_mode: ConsensusMode = ConsensusMode.PERMISSIONLESS,
-    bootstrap_peers: Optional[List[str]] = None
+    bootstrap_peers: list[str] | None = None
 ) -> P2PNetwork:
     """Initialize and return the global P2P network instance."""
     global _p2p_network

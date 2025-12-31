@@ -4,8 +4,8 @@ Tests that Finite-Intent-Executor can put assets on NatLangChain blockchain
 for execution by designated executors through defined directives.
 """
 
-import sys
 import os
+import sys
 import unittest
 from datetime import datetime, timedelta
 
@@ -275,9 +275,8 @@ class TestExecutorAssetAccess(unittest.TestCase):
 
         for block in self.blockchain.chain:
             for entry in block.entries:
-                if entry.metadata:
-                    if entry.metadata.get("asset_type") == "crypto":
-                        crypto_directives.append(entry)
+                if entry.metadata and entry.metadata.get("asset_type") == "crypto":
+                    crypto_directives.append(entry)
 
         self.assertEqual(len(crypto_directives), 2)
 
@@ -287,10 +286,9 @@ class TestExecutorAssetAccess(unittest.TestCase):
 
         for block in self.blockchain.chain:
             for entry in block.entries:
-                if entry.metadata:
-                    if (entry.metadata.get("asset_directive") and
-                            not entry.metadata.get("triggered", False)):
-                        pending_directives.append(entry)
+                if entry.metadata and (entry.metadata.get("asset_directive") and
+                        not entry.metadata.get("triggered", False)):
+                    pending_directives.append(entry)
 
         self.assertEqual(len(pending_directives), 3)
 
@@ -546,7 +544,7 @@ class TestConditionalAssetDirectives(unittest.TestCase):
 
     def test_time_locked_directive(self):
         """Test time-locked asset release directive."""
-        release_date = (datetime.utcnow() + timedelta(days=365*5)).isoformat()
+        (datetime.utcnow() + timedelta(days=365*5)).isoformat()
 
         entry = NaturalLanguageEntry(
             content="Time-Locked Release: On my child's 25th birthday (2030-03-15), "

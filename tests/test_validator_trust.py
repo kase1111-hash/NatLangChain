@@ -12,43 +12,40 @@ Tests cover:
 - Consensus integration
 """
 
-import pytest
-from datetime import datetime, timedelta
 import math
-import sys
 import os
+import sys
+from datetime import datetime, timedelta
+
+import pytest
 
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from validator_trust import (
-    # Enums
-    ValidatorType,
-    TrustScope,
-    TrustSignalType,
-    PositiveSignal,
-    NegativeSignal,
-    # Data classes
-    ValidatorIdentity,
-    ScopedScore,
-    TrustEvent,
-    TrustProfile,
-    WeightedSignal,
-    # Manager
-    TrustManager,
     # Constants
     BASE_WEIGHTS,
-    MAX_EFFECTIVE_WEIGHT,
     DECAY_LAMBDA,
     INACTIVITY_THRESHOLD_DAYS,
+    MAX_EFFECTIVE_WEIGHT,
     MIN_VALIDATOR_DIVERSITY,
+    NegativeSignal,
+    PositiveSignal,
+    # Data classes
+    ScopedScore,
+    # Manager
+    TrustManager,
+    TrustScope,
+    TrustSignalType,
+    # Enums
+    ValidatorType,
+    WeightedSignal,
+    calculate_weighted_consensus,
+    get_ncip_007_config,
     # Functions
     get_trust_manager,
     reset_trust_manager,
-    calculate_weighted_consensus,
-    get_ncip_007_config,
 )
-
 
 # =============================================================================
 # Fixtures
@@ -137,7 +134,7 @@ class TestValidatorRegistration:
 
     def test_register_human_validator(self, trust_manager):
         """Test registering a human validator."""
-        profile = trust_manager.register_validator(
+        trust_manager.register_validator(
             validator_id="vld-human",
             validator_type=ValidatorType.HUMAN,
             operator_id="john_doe"

@@ -7,13 +7,12 @@ Validators never decide outcomes alone, never override Semantic Locks,
 and never gain semantic authorship.
 """
 
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from enum import Enum
-from typing import Dict, List, Optional, Any, Set
-import math
 import hashlib
-
+import math
+from dataclasses import dataclass, field
+from datetime import datetime
+from enum import Enum
+from typing import Any
 
 # =============================================================================
 # NCIP-007 Constants (from machine-readable schema)
@@ -102,12 +101,12 @@ class ValidatorIdentity:
     """
     validator_id: str
     validator_type: ValidatorType
-    model_version: Optional[str] = None
-    operator_id: Optional[str] = None
-    declared_capabilities: List[TrustScope] = field(default_factory=list)
+    model_version: str | None = None
+    operator_id: str | None = None
+    declared_capabilities: list[TrustScope] = field(default_factory=list)
     created_at: datetime = field(default_factory=datetime.utcnow)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary representation."""
         return {
             "validator_id": self.validator_id,
@@ -127,7 +126,7 @@ class ScopedScore:
     sample_size: int = 0
     last_updated: datetime = field(default_factory=datetime.utcnow)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary representation."""
         return {
             "scope": self.scope.value,
@@ -147,9 +146,9 @@ class TrustEvent:
     scope: TrustScope
     magnitude: float  # How much trust changed
     timestamp: datetime = field(default_factory=datetime.utcnow)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary representation."""
         return {
             "event_id": self.event_id,
@@ -171,15 +170,15 @@ class TrustProfile:
     validator_id: str
     version: str = "1.0"
     overall_score: float = 0.5  # Default neutral score
-    scoped_scores: Dict[TrustScope, ScopedScore] = field(default_factory=dict)
+    scoped_scores: dict[TrustScope, ScopedScore] = field(default_factory=dict)
     confidence_interval: float = 0.15  # Default high uncertainty
     sample_size: int = 0
     last_updated: datetime = field(default_factory=datetime.utcnow)
     last_activity: datetime = field(default_factory=datetime.utcnow)
     is_frozen: bool = False  # True during disputes
-    frozen_at: Optional[datetime] = None
-    freeze_reason: Optional[str] = None
-    events: List[TrustEvent] = field(default_factory=list)
+    frozen_at: datetime | None = None
+    freeze_reason: str | None = None
+    events: list[TrustEvent] = field(default_factory=list)
 
     def get_scoped_score(self, scope: TrustScope) -> float:
         """Get score for a specific scope, defaulting to overall if not set."""
@@ -187,7 +186,7 @@ class TrustProfile:
             return self.scoped_scores[scope].score
         return self.overall_score
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary representation."""
         return {
             "validator_id": self.validator_id,
@@ -222,7 +221,7 @@ class WeightedSignal:
 @dataclass
 class ConsensusInput:
     """Input for weighted consensus calculation."""
-    signals: List[WeightedSignal]
+    signals: list[WeightedSignal]
     min_validators: int = MIN_VALIDATOR_DIVERSITY
     enforce_diversity: bool = True
 
@@ -240,8 +239,8 @@ class TrustManager:
 
     def __init__(self):
         """Initialize the trust manager."""
-        self.profiles: Dict[str, TrustProfile] = {}
-        self.identities: Dict[str, ValidatorIdentity] = {}
+        self.profiles: dict[str, TrustProfile] = {}
+        self.identities: dict[str, ValidatorIdentity] = {}
         self._event_counter = 0
 
     def _generate_event_id(self) -> str:
@@ -259,9 +258,9 @@ class TrustManager:
         self,
         validator_id: str,
         validator_type: ValidatorType,
-        model_version: Optional[str] = None,
-        operator_id: Optional[str] = None,
-        declared_capabilities: Optional[List[TrustScope]] = None
+        model_version: str | None = None,
+        operator_id: str | None = None,
+        declared_capabilities: list[TrustScope] | None = None
     ) -> TrustProfile:
         """
         Register a new validator and create its trust profile.
@@ -303,11 +302,11 @@ class TrustManager:
         self.profiles[validator_id] = profile
         return profile
 
-    def get_profile(self, validator_id: str) -> Optional[TrustProfile]:
+    def get_profile(self, validator_id: str) -> TrustProfile | None:
         """Get a validator's trust profile."""
         return self.profiles.get(validator_id)
 
-    def get_identity(self, validator_id: str) -> Optional[ValidatorIdentity]:
+    def get_identity(self, validator_id: str) -> ValidatorIdentity | None:
         """Get a validator's identity."""
         return self.identities.get(validator_id)
 
@@ -321,8 +320,8 @@ class TrustManager:
         signal: PositiveSignal,
         scope: TrustScope,
         magnitude: float = 0.05,
-        metadata: Optional[Dict[str, Any]] = None
-    ) -> Optional[TrustEvent]:
+        metadata: dict[str, Any] | None = None
+    ) -> TrustEvent | None:
         """
         Record a positive trust signal for a validator.
 
@@ -388,8 +387,8 @@ class TrustManager:
         signal: NegativeSignal,
         scope: TrustScope,
         magnitude: float = 0.05,
-        metadata: Optional[Dict[str, Any]] = None
-    ) -> Optional[TrustEvent]:
+        metadata: dict[str, Any] | None = None
+    ) -> TrustEvent | None:
         """
         Record a negative trust signal for a validator.
 
@@ -494,8 +493,8 @@ class TrustManager:
     def apply_temporal_decay(
         self,
         validator_id: str,
-        reference_time: Optional[datetime] = None
-    ) -> Optional[TrustProfile]:
+        reference_time: datetime | None = None
+    ) -> TrustProfile | None:
         """
         Apply temporal decay to a validator's trust score.
 
@@ -543,8 +542,8 @@ class TrustManager:
 
     def apply_decay_to_all(
         self,
-        reference_time: Optional[datetime] = None
-    ) -> List[str]:
+        reference_time: datetime | None = None
+    ) -> list[str]:
         """
         Apply temporal decay to all registered validators.
 
@@ -575,7 +574,7 @@ class TrustManager:
         self,
         validator_id: str,
         recovery_type: str = "low_stakes_validation"
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Initiate trust recovery process for a validator.
 
@@ -684,7 +683,7 @@ class TrustManager:
         signal_value: Any,
         scope: TrustScope,
         scope_modifier: float = 1.0
-    ) -> Optional[WeightedSignal]:
+    ) -> WeightedSignal | None:
         """
         Create a weighted signal from a validator's output.
 
@@ -755,7 +754,7 @@ class TrustManager:
     def unfreeze_trust(
         self,
         validator_id: str,
-        dispute_outcome: Optional[Dict[str, Any]] = None
+        dispute_outcome: dict[str, Any] | None = None
     ) -> bool:
         """
         Unfreeze a validator's trust after dispute resolution.
@@ -799,7 +798,7 @@ class TrustManager:
 
         return True
 
-    def freeze_all_for_dispute(self, dispute_id: str) -> List[str]:
+    def freeze_all_for_dispute(self, dispute_id: str) -> list[str]:
         """
         Freeze all validators' trust for a dispute.
 
@@ -821,8 +820,8 @@ class TrustManager:
 
     def check_diversity_threshold(
         self,
-        validator_ids: List[str]
-    ) -> Dict[str, Any]:
+        validator_ids: list[str]
+    ) -> dict[str, Any]:
         """
         Check if validator set meets diversity threshold.
 
@@ -852,9 +851,9 @@ class TrustManager:
 
     def identify_minority_signals(
         self,
-        weighted_signals: List[WeightedSignal],
+        weighted_signals: list[WeightedSignal],
         threshold: float = 0.25
-    ) -> List[WeightedSignal]:
+    ) -> list[WeightedSignal]:
         """
         Identify minority signals that must remain visible.
 
@@ -876,9 +875,9 @@ class TrustManager:
 
     def validate_consensus_input(
         self,
-        signals: List[WeightedSignal],
+        signals: list[WeightedSignal],
         scope: TrustScope
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Validate inputs for weighted consensus calculation.
 
@@ -934,7 +933,7 @@ class TrustManager:
     # Convenience Methods
     # =========================================================================
 
-    def get_trust_summary(self, validator_id: str) -> Dict[str, Any]:
+    def get_trust_summary(self, validator_id: str) -> dict[str, Any]:
         """Get a summary of a validator's trust status."""
         profile = self.profiles.get(validator_id)
         identity = self.identities.get(validator_id)
@@ -961,10 +960,10 @@ class TrustManager:
 
     def list_validators(
         self,
-        min_score: Optional[float] = None,
-        validator_type: Optional[ValidatorType] = None,
-        scope: Optional[TrustScope] = None
-    ) -> List[Dict[str, Any]]:
+        min_score: float | None = None,
+        validator_type: ValidatorType | None = None,
+        scope: TrustScope | None = None
+    ) -> list[dict[str, Any]]:
         """
         List validators matching criteria.
 
@@ -1005,7 +1004,7 @@ class TrustManager:
 # Module-level convenience functions
 # =============================================================================
 
-_default_manager: Optional[TrustManager] = None
+_default_manager: TrustManager | None = None
 
 
 def get_trust_manager() -> TrustManager:
@@ -1023,9 +1022,9 @@ def reset_trust_manager() -> None:
 
 
 def calculate_weighted_consensus(
-    signals: List[WeightedSignal],
+    signals: list[WeightedSignal],
     aggregation: str = "weighted_average"
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Calculate weighted consensus from validator signals.
 
@@ -1085,7 +1084,7 @@ def calculate_weighted_consensus(
     }
 
 
-def get_ncip_007_config() -> Dict[str, Any]:
+def get_ncip_007_config() -> dict[str, Any]:
     """Get NCIP-007 configuration."""
     return {
         "version": "1.0",

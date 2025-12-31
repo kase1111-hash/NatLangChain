@@ -15,15 +15,14 @@ Integration Points:
 - RRA: Agent delegation commands
 """
 
-import json
-import hashlib
 import base64
+import hashlib
+import json
 import secrets
-import hmac
-from typing import Dict, Any, Optional, List, Tuple
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from dataclasses import dataclass, field
+from typing import Any
 
 
 class CredentialType(Enum):
@@ -64,13 +63,13 @@ class FIDO2Credential:
     public_key_algorithm: int  # COSE algorithm ID
     sign_count: int
     created_at: str
-    last_used_at: Optional[str] = None
+    last_used_at: str | None = None
     authenticator_attachment: str = "cross-platform"
-    transports: List[str] = field(default_factory=lambda: ["usb"])
+    transports: list[str] = field(default_factory=lambda: ["usb"])
     user_verified: bool = False
     backup_eligible: bool = False
     backup_state: bool = False
-    device_name: Optional[str] = None
+    device_name: str | None = None
 
 
 @dataclass
@@ -78,13 +77,13 @@ class AuthChallenge:
     """Active authentication challenge."""
     challenge_id: str
     challenge: str  # Base64 encoded random bytes
-    user_id: Optional[str]  # None for discoverable credentials
+    user_id: str | None  # None for discoverable credentials
     signature_type: str
-    message_hash: Optional[str]  # Hash of message being signed
+    message_hash: str | None  # Hash of message being signed
     created_at: str
     expires_at: str
     used: bool = False
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -101,7 +100,7 @@ class SignedMessage:
     sign_count: int
     created_at: str
     verified: bool = False
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -111,12 +110,12 @@ class AgentDelegation:
     principal_user_id: str  # User delegating authority
     agent_id: str  # Agent receiving delegation
     credential_id: str  # Credential used to authorize
-    permissions: List[str]  # List of permitted actions
+    permissions: list[str]  # List of permitted actions
     signature: str
     created_at: str
     expires_at: str
     revoked: bool = False
-    revoked_at: Optional[str] = None
+    revoked_at: str | None = None
 
 
 class FIDO2AuthManager:
@@ -144,7 +143,7 @@ class FIDO2AuthManager:
 
     SUPPORTED_ALGORITHMS = [COSE_ES256, COSE_RS256, COSE_EDDSA]
 
-    def __init__(self, rp_id: Optional[str] = None, rp_name: Optional[str] = None):
+    def __init__(self, rp_id: str | None = None, rp_name: str | None = None):
         """
         Initialize FIDO2 auth manager.
 
@@ -156,14 +155,14 @@ class FIDO2AuthManager:
         self.rp_name = rp_name or self.RP_NAME
 
         # State tracking
-        self.credentials: Dict[str, FIDO2Credential] = {}  # credential_id -> credential
-        self.user_credentials: Dict[str, List[str]] = {}  # user_id -> [credential_ids]
-        self.challenges: Dict[str, AuthChallenge] = {}  # challenge_id -> challenge
-        self.signatures: Dict[str, SignedMessage] = {}  # signature_id -> signature
-        self.delegations: Dict[str, AgentDelegation] = {}  # delegation_id -> delegation
+        self.credentials: dict[str, FIDO2Credential] = {}  # credential_id -> credential
+        self.user_credentials: dict[str, list[str]] = {}  # user_id -> [credential_ids]
+        self.challenges: dict[str, AuthChallenge] = {}  # challenge_id -> challenge
+        self.signatures: dict[str, SignedMessage] = {}  # signature_id -> signature
+        self.delegations: dict[str, AgentDelegation] = {}  # delegation_id -> delegation
 
         # Audit trail
-        self.events: List[Dict[str, Any]] = []
+        self.events: list[dict[str, Any]] = []
 
     # ==================== PHASE 13A: CREDENTIAL REGISTRATION ====================
 
@@ -172,10 +171,10 @@ class FIDO2AuthManager:
         user_id: str,
         user_name: str,
         user_display_name: str,
-        authenticator_attachment: Optional[AuthenticatorAttachment] = None,
+        authenticator_attachment: AuthenticatorAttachment | None = None,
         require_resident_key: bool = False,
         user_verification: UserVerification = UserVerification.PREFERRED
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Begin FIDO2 credential registration (WebAuthn registration ceremony).
 
@@ -286,9 +285,9 @@ class FIDO2AuthManager:
         public_key_algorithm: int,
         authenticator_data: str,
         client_data_json: str,
-        transports: Optional[List[str]] = None,
-        device_name: Optional[str] = None
-    ) -> Tuple[bool, Dict[str, Any]]:
+        transports: list[str] | None = None,
+        device_name: str | None = None
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Complete FIDO2 credential registration.
 
@@ -373,12 +372,12 @@ class FIDO2AuthManager:
 
     def begin_authentication(
         self,
-        user_id: Optional[str] = None,
+        user_id: str | None = None,
         signature_type: SignatureType = SignatureType.LOGIN,
-        message_to_sign: Optional[str] = None,
+        message_to_sign: str | None = None,
         user_verification: UserVerification = UserVerification.PREFERRED,
-        metadata: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        metadata: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Begin FIDO2 authentication (WebAuthn authentication ceremony).
 
@@ -462,8 +461,8 @@ class FIDO2AuthManager:
         authenticator_data: str,
         client_data_json: str,
         signature: str,
-        user_handle: Optional[str] = None
-    ) -> Tuple[bool, Dict[str, Any]]:
+        user_handle: str | None = None
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Verify FIDO2 authentication response.
 
@@ -570,7 +569,7 @@ class FIDO2AuthManager:
         dispute_id: str,
         proposal_action: str,  # "accept" or "submit"
         proposal_hash: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Begin signing a proposal with FIDO2 credential.
 
@@ -604,7 +603,7 @@ class FIDO2AuthManager:
         user_id: str,
         contract_hash: str,
         counterparty: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Begin signing a contract with FIDO2 credential.
 
@@ -635,9 +634,9 @@ class FIDO2AuthManager:
         self,
         principal_user_id: str,
         agent_id: str,
-        permissions: List[str],
-        duration_hours: Optional[int] = None
-    ) -> Dict[str, Any]:
+        permissions: list[str],
+        duration_hours: int | None = None
+    ) -> dict[str, Any]:
         """
         Begin delegating authority to an agent with hardware authorization.
 
@@ -675,7 +674,7 @@ class FIDO2AuthManager:
         authenticator_data: str,
         client_data_json: str,
         signature: str
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Complete agent delegation with verified signature.
 
@@ -739,8 +738,8 @@ class FIDO2AuthManager:
         self,
         agent_id: str,
         permission: str,
-        principal_user_id: Optional[str] = None
-    ) -> Tuple[bool, Optional[str]]:
+        principal_user_id: str | None = None
+    ) -> tuple[bool, str | None]:
         """
         Verify an agent has a specific permission.
 
@@ -776,7 +775,7 @@ class FIDO2AuthManager:
         self,
         delegation_id: str,
         revoking_user: str
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Revoke an agent delegation.
 
@@ -816,11 +815,11 @@ class FIDO2AuthManager:
 
     def get_agent_delegations(
         self,
-        agent_id: Optional[str] = None,
-        principal_user_id: Optional[str] = None,
+        agent_id: str | None = None,
+        principal_user_id: str | None = None,
         include_expired: bool = False,
         include_revoked: bool = False
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Get agent delegations with optional filtering.
 
@@ -866,7 +865,7 @@ class FIDO2AuthManager:
 
     # ==================== CREDENTIAL MANAGEMENT ====================
 
-    def get_user_credentials(self, user_id: str) -> List[Dict[str, Any]]:
+    def get_user_credentials(self, user_id: str) -> list[dict[str, Any]]:
         """Get all credentials for a user."""
         credential_ids = self.user_credentials.get(user_id, [])
         results = []
@@ -890,7 +889,7 @@ class FIDO2AuthManager:
         self,
         credential_id: str,
         user_id: str
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Remove a credential.
 
@@ -928,7 +927,7 @@ class FIDO2AuthManager:
             "credential_id": credential_id
         }
 
-    def get_signature(self, signature_id: str) -> Optional[Dict[str, Any]]:
+    def get_signature(self, signature_id: str) -> dict[str, Any] | None:
         """Get a signature record by ID."""
         if signature_id not in self.signatures:
             return None
@@ -949,9 +948,9 @@ class FIDO2AuthManager:
     def verify_signature_record(
         self,
         signature_id: str,
-        expected_message_hash: Optional[str] = None,
-        expected_user_id: Optional[str] = None
-    ) -> Tuple[bool, Dict[str, Any]]:
+        expected_message_hash: str | None = None,
+        expected_user_id: str | None = None
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Verify a signature record exists and matches expectations.
 
@@ -995,7 +994,7 @@ class FIDO2AuthManager:
 
     # ==================== STATISTICS & AUDIT ====================
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """Get FIDO2 system statistics."""
         now = datetime.utcnow()
 
@@ -1031,7 +1030,7 @@ class FIDO2AuthManager:
             }
         }
 
-    def get_audit_trail(self, limit: int = 100) -> List[Dict[str, Any]]:
+    def get_audit_trail(self, limit: int = 100) -> list[dict[str, Any]]:
         """Get recent audit trail events."""
         return sorted(
             self.events[-limit:],
@@ -1074,7 +1073,7 @@ class FIDO2AuthManager:
         hash_input = json.dumps(data, sort_keys=True)
         return f"DELEG-{hashlib.sha256(hash_input.encode()).hexdigest()[:12].upper()}"
 
-    def _emit_event(self, event_type: str, data: Dict[str, Any]) -> None:
+    def _emit_event(self, event_type: str, data: dict[str, Any]) -> None:
         """Emit an event for audit trail."""
         event = {
             "event_type": event_type,

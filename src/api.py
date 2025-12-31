@@ -3,43 +3,48 @@ NatLangChain - REST API
 API endpoints for Agent OS to interact with the blockchain
 """
 
-import os
-import json
-import secrets
-import time
 import hashlib
+import json
+import os
+import secrets
 import threading
+import time
+from dataclasses import dataclass
 from datetime import datetime
-from typing import Dict, Any, Optional
-from dataclasses import dataclass, field
 from functools import wraps
-from flask import Flask, request, jsonify, g
+from typing import Any
+
 from dotenv import load_dotenv
+from flask import Flask, jsonify, request
 
 # Core imports (always required)
-from blockchain import NatLangChain, NaturalLanguageEntry, Block
+from blockchain import NatLangChain, NaturalLanguageEntry
 
 # Encryption support for data at rest
 try:
     from encryption import (
-        is_encryption_enabled,
-        encrypt_chain_data,
-        decrypt_chain_data,
-        encrypt_sensitive_fields,
-        decrypt_sensitive_fields,
-        is_encrypted,
-        EncryptionError,
         ENCRYPTION_KEY_ENV,
+        EncryptionError,
+        decrypt_chain_data,
+        decrypt_sensitive_fields,
+        encrypt_chain_data,
+        encrypt_sensitive_fields,
+        is_encrypted,
+        is_encryption_enabled,
     )
     ENCRYPTION_AVAILABLE = True
 except ImportError:
     ENCRYPTION_AVAILABLE = False
-    is_encryption_enabled = lambda: False
+    def is_encryption_enabled():
+        return False
     encrypt_chain_data = None
     decrypt_chain_data = None
-    encrypt_sensitive_fields = lambda x, **kwargs: x
-    decrypt_sensitive_fields = lambda x, **kwargs: x
-    is_encrypted = lambda x: False
+    def encrypt_sensitive_fields(x, **kwargs):
+        return x
+    def decrypt_sensitive_fields(x, **kwargs):
+        return x
+    def is_encrypted(x):
+        return False
     EncryptionError = Exception
     ENCRYPTION_KEY_ENV = "NATLANGCHAIN_ENCRYPTION_KEY"
 
@@ -47,7 +52,7 @@ except ImportError:
 # The API will work without them, just with reduced functionality
 
 try:
-    from validator import ProofOfUnderstanding, HybridValidator
+    from validator import HybridValidator, ProofOfUnderstanding
 except ImportError:
     ProofOfUnderstanding = None
     HybridValidator = None
@@ -88,7 +93,7 @@ except ImportError:
     DisputeManager = None
 
 try:
-    from semantic_oracles import SemanticOracle, SemanticCircuitBreaker
+    from semantic_oracles import SemanticCircuitBreaker, SemanticOracle
 except ImportError:
     SemanticOracle = None
     SemanticCircuitBreaker = None
@@ -106,20 +111,20 @@ except ImportError:
     TriggerReason = None
 
 try:
-    from observance_burn import ObservanceBurnManager, BurnReason
+    from observance_burn import BurnReason, ObservanceBurnManager
 except ImportError:
     ObservanceBurnManager = None
     BurnReason = None
 
 try:
-    from anti_harassment import AntiHarassmentManager, InitiationPath, DisputeResolution
+    from anti_harassment import AntiHarassmentManager, DisputeResolution, InitiationPath
 except ImportError:
     AntiHarassmentManager = None
     InitiationPath = None
     DisputeResolution = None
 
 try:
-    from treasury import NatLangChainTreasury, InflowType, SubsidyStatus
+    from treasury import InflowType, NatLangChainTreasury, SubsidyStatus
 except ImportError:
     NatLangChainTreasury = None
     InflowType = None
@@ -133,14 +138,19 @@ except ImportError:
     UserVerification = None
 
 try:
-    from zk_privacy import ZKPrivacyManager, ProofStatus, VoteStatus
+    from zk_privacy import ProofStatus, VoteStatus, ZKPrivacyManager
 except ImportError:
     ZKPrivacyManager = None
     ProofStatus = None
     VoteStatus = None
 
 try:
-    from negotiation_engine import AutomatedNegotiationEngine, NegotiationPhase, OfferType, ClauseType
+    from negotiation_engine import (
+        AutomatedNegotiationEngine,
+        ClauseType,
+        NegotiationPhase,
+        OfferType,
+    )
 except ImportError:
     AutomatedNegotiationEngine = None
     NegotiationPhase = None
@@ -148,7 +158,12 @@ except ImportError:
     ClauseType = None
 
 try:
-    from market_pricing import MarketAwarePricingManager, PricingStrategy, AssetClass, MarketCondition
+    from market_pricing import (
+        AssetClass,
+        MarketAwarePricingManager,
+        MarketCondition,
+        PricingStrategy,
+    )
 except ImportError:
     MarketAwarePricingManager = None
     PricingStrategy = None
@@ -156,7 +171,7 @@ except ImportError:
     MarketCondition = None
 
 try:
-    from mobile_deployment import MobileDeploymentManager, DeviceType, WalletType, ConnectionState
+    from mobile_deployment import ConnectionState, DeviceType, MobileDeploymentManager, WalletType
 except ImportError:
     MobileDeploymentManager = None
     DeviceType = None
@@ -171,15 +186,21 @@ except ImportError:
 
 try:
     from p2p_network import (
-        P2PNetwork, init_p2p_network, get_p2p_network,
-        NodeRole, ConsensusMode, PeerStatus, BroadcastType
+        BroadcastType,
+        ConsensusMode,
+        NodeRole,
+        P2PNetwork,
+        PeerStatus,
+        get_p2p_network,
+        init_p2p_network,
     )
     P2P_AVAILABLE = True
 except ImportError:
     P2P_AVAILABLE = False
     P2PNetwork = None
     init_p2p_network = None
-    get_p2p_network = lambda: None
+    def get_p2p_network():
+        return None
     NodeRole = None
     ConsensusMode = None
 
@@ -208,7 +229,7 @@ API_KEY_REQUIRED = os.getenv("NATLANGCHAIN_REQUIRE_AUTH", "true").lower() == "tr
 # Rate limiting configuration
 RATE_LIMIT_REQUESTS = int(os.getenv("RATE_LIMIT_REQUESTS", "100"))
 RATE_LIMIT_WINDOW = int(os.getenv("RATE_LIMIT_WINDOW", "60"))  # seconds
-rate_limit_store: Dict[str, Dict[str, Any]] = {}
+rate_limit_store: dict[str, dict[str, Any]] = {}
 
 # Bounded parameters - max values for iteration parameters
 MAX_VALIDATORS = 10
@@ -245,10 +266,10 @@ def validate_pagination_params(
 
 
 def validate_json_schema(
-    data: Dict[str, Any],
-    required_fields: Dict[str, type],
-    optional_fields: Optional[Dict[str, type]] = None,
-    max_lengths: Optional[Dict[str, int]] = None
+    data: dict[str, Any],
+    required_fields: dict[str, type],
+    optional_fields: dict[str, type] | None = None,
+    max_lengths: dict[str, int] | None = None
 ) -> tuple:
     """
     Validate JSON payload against a simple schema.
@@ -333,7 +354,7 @@ def get_client_ip() -> str:
     return request.remote_addr or 'unknown'
 
 
-def check_rate_limit() -> Optional[Dict[str, Any]]:
+def check_rate_limit() -> dict[str, Any] | None:
     """
     Check if client has exceeded rate limit.
 
@@ -719,7 +740,7 @@ def load_chain():
             return
 
         try:
-            with open(CHAIN_DATA_FILE, 'r') as f:
+            with open(CHAIN_DATA_FILE) as f:
                 file_content = f.read()
 
             # Check if data is encrypted
@@ -832,7 +853,7 @@ def save_chain():
 
 
 def create_entry_with_encryption(content: str, author: str, intent: str,
-                                   metadata: Optional[Dict[str, Any]] = None) -> NaturalLanguageEntry:
+                                   metadata: dict[str, Any] | None = None) -> NaturalLanguageEntry:
     """
     Create a NaturalLanguageEntry with sensitive metadata fields encrypted.
 
@@ -867,7 +888,7 @@ def create_entry_with_encryption(content: str, author: str, intent: str,
     )
 
 
-def decrypt_entry_metadata(entry_dict: Dict[str, Any]) -> Dict[str, Any]:
+def decrypt_entry_metadata(entry_dict: dict[str, Any]) -> dict[str, Any]:
     """
     Decrypt sensitive fields in an entry's metadata for API responses.
 
@@ -996,7 +1017,7 @@ def add_entry():
             metadata_str = json.dumps(metadata)
             if len(metadata_str) > MAX_METADATA_LEN:
                 return jsonify({
-                    "error": f"Metadata too large",
+                    "error": "Metadata too large",
                     "max_length": MAX_METADATA_LEN,
                     "received_length": len(metadata_str)
                 }), 400
@@ -6642,7 +6663,7 @@ def list_wallet_connections():
     device_id = request.args.get("device_id")
 
     connections = []
-    for conn_id, conn in mobile_deployment.wallet_manager.connections.items():
+    for _conn_id, conn in mobile_deployment.wallet_manager.connections.items():
         if device_id and conn.device_id != device_id:
             continue
         connections.append({
@@ -7151,9 +7172,8 @@ def _add_synced_block(block_data):
         from blockchain import Block
         block = Block.from_dict(block_data)
         # Verify block links to our chain
-        if len(blockchain.chain) > 0:
-            if block.previous_hash != blockchain.chain[-1].hash:
-                return False
+        if len(blockchain.chain) > 0 and block.previous_hash != blockchain.chain[-1].hash:
+            return False
         blockchain.chain.append(block)
         save_chain()
         return True
@@ -7257,7 +7277,7 @@ def register_peer():
     if not peer_id or not endpoint:
         return jsonify({"error": "node_id and endpoint required"}), 400
 
-    from p2p_network import PeerInfo, NodeRole, PeerStatus
+    from p2p_network import NodeRole, PeerInfo, PeerStatus
 
     peer = PeerInfo(
         peer_id=peer_id,

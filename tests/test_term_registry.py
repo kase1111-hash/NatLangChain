@@ -9,9 +9,10 @@ Tests the term_registry module for:
 - Term class categorization
 """
 
-import pytest
 import sys
 from pathlib import Path
+
+import pytest
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -19,14 +20,13 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 from term_registry import (
     CanonicalTermRegistry,
     TermClass,
-    TermStatus,
     TermDefinition,
-    TermLookupResult,
+    TermStatus,
     TermValidationResult,
     get_registry,
-    validate_entry_terms,
     get_term_definition,
-    resolve_synonym
+    resolve_synonym,
+    validate_entry_terms,
 )
 
 

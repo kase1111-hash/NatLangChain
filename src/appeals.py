@@ -12,12 +12,11 @@ Core Principle: Past meaning may inform future interpretation —
 but never replace explicit present intent.
 """
 
+import hashlib
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Dict, List, Optional, Set, Tuple, Any
-import hashlib
-import re
+from typing import Any
 
 
 class AppealableItem(Enum):
@@ -78,8 +77,8 @@ class AppealReference:
     drift_classification: DriftLevel
 
     # Optional additional context
-    original_prose: Optional[str] = None
-    pou_ids: List[str] = field(default_factory=list)  # Pre-dispute PoUs only
+    original_prose: str | None = None
+    pou_ids: list[str] = field(default_factory=list)  # Pre-dispute PoUs only
 
 
 @dataclass
@@ -108,8 +107,8 @@ class ReviewPanel:
     - Distinct implementations (model diversity)
     - No overlap with original validators
     """
-    members: List[ReviewPanelMember] = field(default_factory=list)
-    original_validator_ids: Set[str] = field(default_factory=set)
+    members: list[ReviewPanelMember] = field(default_factory=list)
+    original_validator_ids: set[str] = field(default_factory=set)
 
     @property
     def is_valid(self) -> bool:
@@ -118,18 +117,15 @@ class ReviewPanel:
             return False
 
         # Check for distinct implementations
-        implementations = set(m.implementation_type for m in self.members)
+        implementations = {m.implementation_type for m in self.members}
         if len(implementations) < 2:  # Need at least 2 different types
             return False
 
         # Check no overlap with original validators
-        member_ids = set(m.validator_id for m in self.members)
-        if member_ids & self.original_validator_ids:
-            return False
+        member_ids = {m.validator_id for m in self.members}
+        return not member_ids & self.original_validator_ids
 
-        return True
-
-    def add_member(self, member: ReviewPanelMember) -> Tuple[bool, str]:
+    def add_member(self, member: ReviewPanelMember) -> tuple[bool, str]:
         """Add a member to the panel."""
         if member.validator_id in self.original_validator_ids:
             return (False, "Member was an original validator - overlap not allowed")
@@ -146,7 +142,7 @@ class AppealVote:
     """A vote from a review panel member."""
     validator_id: str
     vote: AppealOutcome
-    revised_classification: Optional[DriftLevel] = None
+    revised_classification: DriftLevel | None = None
     rationale: str = ""
     voted_at: datetime = field(default_factory=datetime.utcnow)
 
@@ -164,30 +160,30 @@ class SemanticCaseRecord:
     case_id: str
     originating_entry: str
     appeal_reason: AppealableItem
-    disputed_terms: List[str]
+    disputed_terms: list[str]
 
     # Outcome
     outcome: AppealOutcome
     upheld: bool
-    revised_classification: Optional[DriftLevel] = None
+    revised_classification: DriftLevel | None = None
 
     # Rationale
     rationale_summary: str = ""
 
     # References
     canonical_terms_version: str = ""
-    prior_cases: List[str] = field(default_factory=list)
+    prior_cases: list[str] = field(default_factory=list)
 
     # Metadata
     resolution_timestamp: datetime = field(default_factory=datetime.utcnow)
     human_ratification: bool = False
-    human_ratifier_id: Optional[str] = None
+    human_ratifier_id: str | None = None
 
     # Panel votes
-    panel_votes: List[AppealVote] = field(default_factory=list)
+    panel_votes: list[AppealVote] = field(default_factory=list)
 
     # Immutability
-    _hash: Optional[str] = field(default=None, repr=False)
+    _hash: str | None = field(default=None, repr=False)
 
     def __post_init__(self):
         """Compute hash for integrity verification."""
@@ -207,7 +203,7 @@ class SemanticCaseRecord:
         """Verify the SCR has not been modified."""
         return self._hash == self._compute_hash()
 
-    def to_yaml_dict(self) -> Dict[str, Any]:
+    def to_yaml_dict(self) -> dict[str, Any]:
         """Generate YAML-compatible dictionary per NCIP-008 Section 5.2."""
         return {
             "semantic_case_record": {
@@ -246,7 +242,7 @@ class Appeal:
     reference: AppealReference
 
     # Appeal details
-    disputed_terms: List[str] = field(default_factory=list)
+    disputed_terms: list[str] = field(default_factory=list)
     appeal_rationale: str = ""
 
     # Status tracking
@@ -255,22 +251,22 @@ class Appeal:
 
     # Review window (default 7 days per Section 3.3)
     review_window_days: int = 7
-    review_deadline: Optional[datetime] = None
+    review_deadline: datetime | None = None
 
     # Burn fee
     burn_fee_paid: float = 0.0
 
     # Review panel
-    review_panel: Optional[ReviewPanel] = None
+    review_panel: ReviewPanel | None = None
 
     # Resolution
-    outcome: Optional[AppealOutcome] = None
-    scr: Optional[SemanticCaseRecord] = None
-    resolved_at: Optional[datetime] = None
+    outcome: AppealOutcome | None = None
+    scr: SemanticCaseRecord | None = None
+    resolved_at: datetime | None = None
 
     # Semantic lock
-    semantic_lock_id: Optional[str] = None
-    locked_terms: List[str] = field(default_factory=list)
+    semantic_lock_id: str | None = None
+    locked_terms: list[str] = field(default_factory=list)
 
     def __post_init__(self):
         if self.review_deadline is None:
@@ -293,8 +289,8 @@ class PrecedentEntry:
     """An entry in the precedent index."""
     scr: SemanticCaseRecord
     weight: PrecedentWeight
-    canonical_term_ids: List[str] = field(default_factory=list)
-    jurisdiction_context: Optional[str] = None
+    canonical_term_ids: list[str] = field(default_factory=list)
+    jurisdiction_context: str | None = None
 
     @property
     def age_months(self) -> float:
@@ -338,8 +334,8 @@ class AppealCooldown:
     appellant_id: str
     entry_id: str
     failed_appeals: int = 0
-    last_failed_at: Optional[datetime] = None
-    cooldown_until: Optional[datetime] = None
+    last_failed_at: datetime | None = None
+    cooldown_until: datetime | None = None
 
     # Default cooldown after failed appeal: 30 days
     DEFAULT_COOLDOWN_DAYS = 30
@@ -379,10 +375,10 @@ class AppealsManager:
     ESCALATING_FEE_MULTIPLIER = 2.0
 
     def __init__(self):
-        self.appeals: Dict[str, Appeal] = {}
-        self.scrs: Dict[str, SemanticCaseRecord] = {}
-        self.precedent_index: Dict[str, List[PrecedentEntry]] = {}  # term_id -> precedents
-        self.cooldowns: Dict[str, AppealCooldown] = {}  # (appellant_id, entry_id) -> cooldown
+        self.appeals: dict[str, Appeal] = {}
+        self.scrs: dict[str, SemanticCaseRecord] = {}
+        self.precedent_index: dict[str, list[PrecedentEntry]] = {}  # term_id -> precedents
+        self.cooldowns: dict[str, AppealCooldown] = {}  # (appellant_id, entry_id) -> cooldown
 
         self.appeal_counter: int = 0
         self.scr_counter: int = 0
@@ -401,11 +397,11 @@ class AppealsManager:
         original_entry_id: str,
         validator_decision_id: str,
         drift_classification: DriftLevel,
-        disputed_terms: List[str],
+        disputed_terms: list[str],
         appeal_rationale: str,
-        original_prose: Optional[str] = None,
-        pou_ids: Optional[List[str]] = None
-    ) -> Tuple[Optional[Appeal], List[str]]:
+        original_prose: str | None = None,
+        pou_ids: list[str] | None = None
+    ) -> tuple[Appeal | None, list[str]]:
         """
         Create a new appeal per NCIP-008 Section 3.
 
@@ -481,7 +477,7 @@ class AppealsManager:
 
         return self.BASE_BURN_FEE
 
-    def is_appealable(self, item_type: str) -> Tuple[bool, str]:
+    def is_appealable(self, item_type: str) -> tuple[bool, str]:
         """Check if an item type is appealable."""
         try:
             AppealableItem(item_type)
@@ -503,7 +499,7 @@ class AppealsManager:
         self,
         appeal: Appeal,
         lock_id: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Apply scoped semantic lock to disputed terms.
 
@@ -521,7 +517,7 @@ class AppealsManager:
             "status": "scoped_lock_applied"
         }
 
-    def release_lock(self, appeal: Appeal) -> Dict[str, Any]:
+    def release_lock(self, appeal: Appeal) -> dict[str, Any]:
         """Release semantic lock upon resolution."""
         old_lock_id = appeal.semantic_lock_id
         appeal.semantic_lock_id = None
@@ -540,14 +536,14 @@ class AppealsManager:
     def create_review_panel(
         self,
         appeal: Appeal,
-        original_validator_ids: List[str]
+        original_validator_ids: list[str]
     ) -> ReviewPanel:
         """Create a review panel for an appeal."""
         panel = ReviewPanel(original_validator_ids=set(original_validator_ids))
         appeal.review_panel = panel
         return panel
 
-    def validate_panel(self, panel: ReviewPanel) -> Tuple[bool, List[str]]:
+    def validate_panel(self, panel: ReviewPanel) -> tuple[bool, list[str]]:
         """
         Validate review panel meets requirements.
 
@@ -561,18 +557,18 @@ class AppealsManager:
         if len(panel.members) < 3:
             issues.append(f"Panel has {len(panel.members)} members, needs >= 3")
 
-        implementations = set(m.implementation_type for m in panel.members)
+        implementations = {m.implementation_type for m in panel.members}
         if len(implementations) < 2:
             issues.append("Panel needs at least 2 distinct implementation types")
 
-        member_ids = set(m.validator_id for m in panel.members)
+        member_ids = {m.validator_id for m in panel.members}
         overlap = member_ids & panel.original_validator_ids
         if overlap:
             issues.append(f"Panel has overlap with original validators: {overlap}")
 
         return (len(issues) == 0, issues)
 
-    def begin_review(self, appeal: Appeal) -> Tuple[bool, str]:
+    def begin_review(self, appeal: Appeal) -> tuple[bool, str]:
         """Begin the review process for an appeal."""
         if appeal.review_panel is None:
             return (False, "No review panel assigned")
@@ -589,9 +585,9 @@ class AppealsManager:
         appeal: Appeal,
         validator_id: str,
         vote: AppealOutcome,
-        revised_classification: Optional[DriftLevel] = None,
+        revised_classification: DriftLevel | None = None,
         rationale: str = ""
-    ) -> Tuple[bool, str]:
+    ) -> tuple[bool, str]:
         """Record a vote from a panel member."""
         if appeal.review_panel is None:
             return (False, "No review panel")
@@ -631,11 +627,11 @@ class AppealsManager:
         self,
         appeal: Appeal,
         outcome: AppealOutcome,
-        revised_classification: Optional[DriftLevel],
+        revised_classification: DriftLevel | None,
         rationale_summary: str,
         human_ratifier_id: str,
-        prior_cases: Optional[List[str]] = None
-    ) -> Tuple[Optional[SemanticCaseRecord], List[str]]:
+        prior_cases: list[str] | None = None
+    ) -> tuple[SemanticCaseRecord | None, list[str]]:
         """
         Resolve an appeal and generate Semantic Case Record.
 
@@ -704,7 +700,7 @@ class AppealsManager:
         self,
         appeal: Appeal,
         rejection_reason: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Reject an appeal (invalid/frivolous)."""
         appeal.status = AppealStatus.REJECTED
         appeal.resolved_at = datetime.utcnow()
@@ -741,12 +737,12 @@ class AppealsManager:
 
     def query_precedents(
         self,
-        canonical_term_id: Optional[str] = None,
-        drift_class: Optional[DriftLevel] = None,
-        jurisdiction_context: Optional[str] = None,
-        date_range: Optional[Tuple[datetime, datetime]] = None,
+        canonical_term_id: str | None = None,
+        drift_class: DriftLevel | None = None,
+        jurisdiction_context: str | None = None,
+        date_range: tuple[datetime, datetime] | None = None,
         include_zero_weight: bool = False
-    ) -> List[PrecedentEntry]:
+    ) -> list[PrecedentEntry]:
         """
         Query precedents per NCIP-008 Section 11.
 
@@ -807,7 +803,7 @@ class AppealsManager:
         self,
         term_id: str,
         drift_class: DriftLevel
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get advisory precedent signal for a term and drift class.
 
@@ -860,7 +856,7 @@ class AppealsManager:
     # SCR Index Generation
     # -------------------------------------------------------------------------
 
-    def generate_scr_index(self) -> Dict[str, Any]:
+    def generate_scr_index(self) -> dict[str, Any]:
         """
         Generate machine-readable SCR index per NCIP-008 Section 11.
         """
@@ -894,7 +890,7 @@ class AppealsManager:
         self,
         term_id: str,
         proposed_classification: DriftLevel
-    ) -> Optional[str]:
+    ) -> str | None:
         """
         Check if proposed classification diverges from strong precedent.
 
@@ -922,15 +918,15 @@ class AppealsManager:
     # Status & Reporting
     # -------------------------------------------------------------------------
 
-    def get_appeal(self, appeal_id: str) -> Optional[Appeal]:
+    def get_appeal(self, appeal_id: str) -> Appeal | None:
         """Get an appeal by ID."""
         return self.appeals.get(appeal_id)
 
-    def get_scr(self, case_id: str) -> Optional[SemanticCaseRecord]:
+    def get_scr(self, case_id: str) -> SemanticCaseRecord | None:
         """Get an SCR by ID."""
         return self.scrs.get(case_id)
 
-    def get_status_summary(self) -> Dict[str, Any]:
+    def get_status_summary(self) -> dict[str, Any]:
         """Get summary of appeals system status."""
         status_counts = {}
         for appeal in self.appeals.values():

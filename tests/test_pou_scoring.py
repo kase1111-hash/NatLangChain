@@ -17,20 +17,17 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from pou_scoring import (
-    PoUStatus,
+    POU_MESSAGES,
+    POU_THRESHOLDS,
+    BindingPoURecord,
     PoUDimension,
     PoUScorer,
     PoUScoreResult,
-    SemanticFingerprint,
-    BindingPoURecord,
-    NCIP_004_CONFIG,
-    POU_THRESHOLDS,
-    POU_MESSAGES,
-    score_pou,
+    PoUStatus,
     classify_pou_score,
-    get_pou_config
+    get_pou_config,
+    score_pou,
 )
-
 
 # Sample PoU data for testing
 VALID_POU_DATA = {
@@ -652,7 +649,7 @@ def run_tests():
     print(f"Tests: {passed_tests}/{total_tests} passed")
 
     if failed_tests:
-        print(f"\nFailed tests:")
+        print("\nFailed tests:")
         for name, error in failed_tests:
             print(f"  - {name}: {error}")
         return 1

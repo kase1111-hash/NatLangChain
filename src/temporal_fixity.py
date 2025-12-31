@@ -4,11 +4,12 @@ Preserves original context and meaning at T0 for legal/regulatory compliance
 Implements the dual-layer system: Transaction fixed, Law flexible
 """
 
-import json
 import hashlib
-from typing import Dict, Any, Optional
+import json
 from datetime import datetime
-from blockchain import NatLangChain, Block, NaturalLanguageEntry
+from typing import Any
+
+from blockchain import NatLangChain, NaturalLanguageEntry
 
 
 class TemporalFixity:
@@ -32,8 +33,8 @@ class TemporalFixity:
     def create_t0_snapshot(
         self,
         entry: NaturalLanguageEntry,
-        block_context: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        block_context: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Create immutable T0 snapshot of entry context.
 
@@ -100,7 +101,7 @@ class TemporalFixity:
     def add_t0_snapshot_to_entry(
         self,
         entry: NaturalLanguageEntry,
-        block_context: Optional[Dict[str, Any]] = None
+        block_context: dict[str, Any] | None = None
     ) -> NaturalLanguageEntry:
         """
         Enhance entry with T0 snapshot metadata.
@@ -126,8 +127,8 @@ class TemporalFixity:
     def verify_temporal_integrity(
         self,
         entry: NaturalLanguageEntry,
-        t_current: Optional[str] = None
-    ) -> Dict[str, Any]:
+        t_current: str | None = None
+    ) -> dict[str, Any]:
         """
         Verify that entry's T0 snapshot matches current content.
 
@@ -189,7 +190,7 @@ class TemporalFixity:
         self,
         entry: NaturalLanguageEntry,
         purpose: str = "legal_defense"
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Generate legal certificate proving T0 context.
 
@@ -271,8 +272,8 @@ class TemporalFixity:
         self,
         blockchain: NatLangChain,
         start_block: int = 0,
-        end_block: Optional[int] = None
-    ) -> Dict[str, Any]:
+        end_block: int | None = None
+    ) -> dict[str, Any]:
         """
         Export blockchain data formatted for WORM media archival.
 
@@ -384,7 +385,7 @@ class TemporalFixity:
 
 def enhance_entry_with_temporal_fixity(
     entry: NaturalLanguageEntry,
-    block_context: Optional[Dict[str, Any]] = None
+    block_context: dict[str, Any] | None = None
 ) -> NaturalLanguageEntry:
     """
     Convenience function to enhance an entry with temporal fixity.

@@ -2,14 +2,14 @@
 Tests for the Observance Burn Protocol implementation.
 """
 
-import unittest
-import sys
 import os
+import sys
+import unittest
 
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from observance_burn import ObservanceBurnManager, BurnReason
+from observance_burn import BurnReason, ObservanceBurnManager
 
 
 class TestObservanceBurnManager(unittest.TestCase):
@@ -109,7 +109,7 @@ class TestBurnReasons(unittest.TestCase):
         ]
 
         for reason in reasons:
-            success, result = self.manager.perform_burn(
+            success, _result = self.manager.perform_burn(
                 burner="0xTest",
                 amount=1.0,
                 reason=reason,
@@ -152,7 +152,7 @@ class TestEscalationBurnCalculation(unittest.TestCase):
     def test_verify_escalation_burn(self):
         """Test verifying an escalation burn."""
         # Perform the burn first
-        success, burn_result = self.manager.perform_burn(
+        _success, burn_result = self.manager.perform_burn(
             burner="0xAlice",
             amount=5.0,
             reason=BurnReason.ESCALATION_COMMITMENT,
@@ -162,7 +162,7 @@ class TestEscalationBurnCalculation(unittest.TestCase):
         tx_hash = burn_result["tx_hash"]
 
         # Verify it
-        is_valid, verification = self.manager.verify_escalation_burn(
+        is_valid, _verification = self.manager.verify_escalation_burn(
             tx_hash=tx_hash,
             expected_amount=5.0,
             expected_intent_hash="0xDispute123"
@@ -258,7 +258,7 @@ class TestBurnForDisplay(unittest.TestCase):
 
     def test_format_burn_for_display(self):
         """Test formatting burn for explorer display."""
-        success, result = self.manager.perform_voluntary_burn(
+        _success, result = self.manager.perform_voluntary_burn(
             burner="0xBeliever",
             amount=100.0,
             epitaph="For the health of NatLangChain"
@@ -293,7 +293,7 @@ class TestRedistributionEffect(unittest.TestCase):
         """Test that redistribution effect is calculated correctly."""
         manager = ObservanceBurnManager(initial_supply=1_000_000.0)
 
-        success, result = manager.perform_voluntary_burn(
+        _success, result = manager.perform_voluntary_burn(
             burner="0xAlice",
             amount=100.0
         )
@@ -317,7 +317,7 @@ class TestEventEmission(unittest.TestCase):
         """Test event emission in Solidity-compatible format."""
         manager = ObservanceBurnManager()
 
-        success, result = manager.perform_burn(
+        _success, result = manager.perform_burn(
             burner="0xAlice",
             amount=5.0,
             reason=BurnReason.ESCALATION_COMMITMENT,

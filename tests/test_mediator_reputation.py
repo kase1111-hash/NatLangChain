@@ -11,41 +11,34 @@ Tests cover:
 - Treasury management
 """
 
-import pytest
-from datetime import datetime, timedelta
-import sys
 import os
+import sys
+from datetime import datetime, timedelta
+
+import pytest
 
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from mediator_reputation import (
-    # Enums
-    SlashingOffense,
-    CooldownReason,
-    ProposalStatus,
-    MediatorStatus,
-    # Data classes
-    ReputationScores,
+    # Constants
+    MINIMUM_BOND,
     Bond,
     Cooldown,
-    SlashingEvent,
-    MediatorProfile,
+    CooldownReason,
     MediatorProposal,
     # Manager
     MediatorReputationManager,
-    # Constants
-    CTS_WEIGHTS,
-    SLASHING_RATES,
-    COOLDOWN_DURATIONS,
-    MINIMUM_BOND,
-    DEFAULT_BOND,
-    # Functions
+    MediatorStatus,
+    ProposalStatus,
+    # Data classes
+    ReputationScores,
+    # Enums
+    SlashingOffense,
+    get_ncip_010_config,
     get_reputation_manager,
     reset_reputation_manager,
-    get_ncip_010_config,
 )
-
 
 # =============================================================================
 # Fixtures
@@ -244,7 +237,7 @@ class TestReputationScores:
         """Test recording a survived appeal."""
         manager.register_mediator(mediator_id="med-appeal", stake_amount=50000)
 
-        result = manager.record_appeal_outcome("med-appeal", appeal_survived=True)
+        manager.record_appeal_outcome("med-appeal", appeal_survived=True)
 
         profile = manager.get_mediator("med-appeal")
         assert profile.appeal_count == 1
@@ -255,7 +248,7 @@ class TestReputationScores:
         """Test recording a lost appeal."""
         manager.register_mediator(mediator_id="med-lost", stake_amount=50000)
 
-        result = manager.record_appeal_outcome("med-lost", appeal_survived=False)
+        manager.record_appeal_outcome("med-lost", appeal_survived=False)
 
         profile = manager.get_mediator("med-lost")
         assert profile.appeal_losses == 1
@@ -539,7 +532,7 @@ class TestMarketDynamics:
 
         # Higher CTS should rank higher
         assert len(rankings) == 3
-        cts_values = [r["cts"] for r in rankings]
+        [r["cts"] for r in rankings]
         # Rankings should be sorted descending by final_score
         final_scores = [r["final_score"] for r in rankings]
         assert final_scores == sorted(final_scores, reverse=True)

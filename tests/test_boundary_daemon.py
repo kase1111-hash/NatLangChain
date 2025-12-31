@@ -9,20 +9,12 @@ This test suite verifies that the Boundary Daemon:
 5. Integrates correctly with NatLangChain for recording security events
 """
 
-import sys
 import os
-import json
+import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from boundary_daemon import (
-    BoundaryDaemon,
-    BoundaryPolicy,
-    EnforcementMode,
-    DataClassification,
-    ViolationType,
-    validate_outbound_data
-)
+from boundary_daemon import BoundaryDaemon, BoundaryPolicy, EnforcementMode, validate_outbound_data
 
 
 class TestFailSafeBehavior:

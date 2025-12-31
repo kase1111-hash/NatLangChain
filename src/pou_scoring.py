@@ -22,7 +22,7 @@ import os
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Any, Optional, Tuple
+from typing import Any
 
 # Configure PoU logging
 logger = logging.getLogger("natlangchain.pou")
@@ -52,7 +52,7 @@ class DimensionScore:
     dimension: PoUDimension
     score: float
     evidence: str
-    issues: List[str] = field(default_factory=list)
+    issues: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -64,7 +64,7 @@ class PoUScoreResult:
     completeness_score: float
     final_score: float
     status: PoUStatus
-    dimension_details: Dict[str, DimensionScore]
+    dimension_details: dict[str, DimensionScore]
     message: str
     binding_effect: bool  # Whether this PoU binds the signer
 
@@ -93,9 +93,9 @@ class PoUSubmission:
     language: str
     anchor_language: str
     summary: str
-    obligations: List[str]
-    rights: List[str]
-    consequences: List[str]
+    obligations: list[str]
+    rights: list[str]
+    consequences: list[str]
     acceptance_statement: str
     timestamp: str
 
@@ -105,12 +105,12 @@ class PoUValidationResult:
     """Complete PoU validation result with binding effect."""
     submission: PoUSubmission
     scores: PoUScoreResult
-    fingerprint: Optional[SemanticFingerprint]
+    fingerprint: SemanticFingerprint | None
     validator_id: str
     validated_at: str
     is_bound: bool  # Whether interpretation is bound to signer
     can_resubmit: bool
-    actions: Dict[str, bool]
+    actions: dict[str, bool]
 
 
 # NCIP-004 Normative Thresholds
@@ -150,7 +150,7 @@ class PoUScorer:
         self,
         validator_id: str = "default",
         registry_version: str = "1.0",
-        api_key: Optional[str] = None
+        api_key: str | None = None
     ):
         """
         Initialize the PoU scorer.
@@ -199,7 +199,7 @@ class PoUScorer:
         fidelity: float,
         consistency: float,
         completeness: float
-    ) -> Tuple[float, PoUStatus]:
+    ) -> tuple[float, PoUStatus]:
         """
         Calculate final score per NCIP-004.
 
@@ -258,7 +258,7 @@ class PoUScorer:
             registry_version=self.registry_version
         )
 
-    def validate_pou_structure(self, pou_data: Dict[str, Any]) -> Tuple[bool, List[str]]:
+    def validate_pou_structure(self, pou_data: dict[str, Any]) -> tuple[bool, list[str]]:
         """
         Validate PoU structure per NCIP-004 Section 4.1.
 
@@ -305,8 +305,8 @@ class PoUScorer:
 
     def score_coverage(
         self,
-        pou_sections: Dict[str, Any],
-        contract_clauses: List[str]
+        pou_sections: dict[str, Any],
+        contract_clauses: list[str]
     ) -> DimensionScore:
         """
         Score coverage dimension: All material clauses addressed.
@@ -368,7 +368,7 @@ class PoUScorer:
 
     def score_consistency(
         self,
-        pou_sections: Dict[str, Any]
+        pou_sections: dict[str, Any]
     ) -> DimensionScore:
         """
         Score consistency dimension: No contradictions.
@@ -428,7 +428,7 @@ class PoUScorer:
 
     def score_completeness(
         self,
-        pou_sections: Dict[str, Any]
+        pou_sections: dict[str, Any]
     ) -> DimensionScore:
         """
         Score completeness dimension: Obligations + consequences acknowledged.
@@ -492,7 +492,7 @@ class PoUScorer:
 
     def score_fidelity_basic(
         self,
-        pou_sections: Dict[str, Any],
+        pou_sections: dict[str, Any],
         contract_summary: str
     ) -> DimensionScore:
         """
@@ -554,9 +554,9 @@ class PoUScorer:
 
     def score_pou(
         self,
-        pou_data: Dict[str, Any],
+        pou_data: dict[str, Any],
         contract_content: str,
-        contract_clauses: Optional[List[str]] = None
+        contract_clauses: list[str] | None = None
     ) -> PoUScoreResult:
         """
         Score a complete PoU submission per NCIP-004.
@@ -629,9 +629,9 @@ class PoUScorer:
 
     def validate_and_score(
         self,
-        pou_data: Dict[str, Any],
+        pou_data: dict[str, Any],
         contract_content: str,
-        contract_clauses: Optional[List[str]] = None,
+        contract_clauses: list[str] | None = None,
         generate_fingerprint: bool = True
     ) -> PoUValidationResult:
         """
@@ -686,7 +686,7 @@ class PoUScorer:
                     final_score=0.0,
                     status=PoUStatus.ERROR,
                     dimension_details={},
-                    message=f"Failed to parse PoU: {str(e)}",
+                    message=f"Failed to parse PoU: {e!s}",
                     binding_effect=False
                 ),
                 fingerprint=None,
@@ -721,7 +721,7 @@ class PoUScorer:
             actions=self._get_actions(scores.status)
         )
 
-    def _get_actions(self, status: PoUStatus) -> Dict[str, bool]:
+    def _get_actions(self, status: PoUStatus) -> dict[str, bool]:
         """
         Get mandatory validator actions per NCIP-004 Section 7.
 
@@ -747,10 +747,10 @@ class PoUScorer:
 
     def get_validator_response(
         self,
-        pou_data: Dict[str, Any],
+        pou_data: dict[str, Any],
         contract_content: str,
-        contract_clauses: Optional[List[str]] = None
-    ) -> Dict[str, Any]:
+        contract_clauses: list[str] | None = None
+    ) -> dict[str, Any]:
         """
         Get complete validator response for a PoU submission.
 
@@ -818,7 +818,7 @@ class BindingPoURecord:
         self,
         contract_id: str,
         signer_id: str,
-        pou_data: Dict[str, Any],
+        pou_data: dict[str, Any],
         scores: PoUScoreResult,
         fingerprint: SemanticFingerprint,
         bound_at: str
@@ -848,7 +848,7 @@ class BindingPoURecord:
         self.waives_misunderstanding = True
         self.admissible_in_dispute = True
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for storage."""
         return {
             "contract_id": self.contract_id,
@@ -898,16 +898,16 @@ NCIP_004_CONFIG = {
 }
 
 
-def get_pou_config() -> Dict[str, Any]:
+def get_pou_config() -> dict[str, Any]:
     """Get the NCIP-004 PoU configuration."""
     return NCIP_004_CONFIG.copy()
 
 
 def score_pou(
-    pou_data: Dict[str, Any],
+    pou_data: dict[str, Any],
     contract_content: str,
-    contract_clauses: Optional[List[str]] = None
-) -> Dict[str, Any]:
+    contract_clauses: list[str] | None = None
+) -> dict[str, Any]:
     """
     Convenience function to score a PoU submission.
 

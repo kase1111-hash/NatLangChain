@@ -13,12 +13,12 @@ Core Principle: Law constrains enforcement, not meaning.
 - They may NOT redefine meaning
 """
 
+import hashlib
+import re
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Optional, Set, Tuple, Any
-import hashlib
-import re
+from typing import Any
 
 
 class JurisdictionRole(Enum):
@@ -85,7 +85,7 @@ US_STATE_CODES = {
 }
 
 
-def validate_jurisdiction_code(code: str) -> Tuple[bool, str]:
+def validate_jurisdiction_code(code: str) -> tuple[bool, str]:
     """
     Validate a jurisdiction code (ISO 3166-1 or subdivision).
 
@@ -125,8 +125,8 @@ class JurisdictionDeclaration:
     declared_at: datetime = field(default_factory=datetime.utcnow)
 
     # Additional metadata
-    notes: Optional[str] = None
-    treaty_reference: Optional[str] = None  # E.g., "Hague Convention"
+    notes: str | None = None
+    treaty_reference: str | None = None  # E.g., "Hague Convention"
 
     def __post_init__(self):
         valid, msg = validate_jurisdiction_code(self.code)
@@ -141,12 +141,12 @@ class JurisdictionDeclaration:
         return self.code.split("-")[0]
 
     @property
-    def subdivision(self) -> Optional[str]:
+    def subdivision(self) -> str | None:
         """Get the subdivision code if present."""
         parts = self.code.split("-")
         return parts[1] if len(parts) > 1 else None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "code": self.code,
             "role": self.role.value,
@@ -182,13 +182,13 @@ class LegalTranslationArtifact:
     # Validation state
     created_at: datetime = field(default_factory=datetime.utcnow)
     validated: bool = False
-    validation_timestamp: Optional[datetime] = None
-    drift_score: Optional[float] = None
-    drift_level: Optional[DriftLevel] = None
-    violations: List[LTAViolation] = field(default_factory=list)
+    validation_timestamp: datetime | None = None
+    drift_score: float | None = None
+    drift_level: DriftLevel | None = None
+    violations: list[LTAViolation] = field(default_factory=list)
 
     # Reference to canonical terms used
-    referenced_terms: List[str] = field(default_factory=list)
+    referenced_terms: list[str] = field(default_factory=list)
 
     def __post_init__(self):
         if not self.semantic_authority_disclaimer:
@@ -246,12 +246,12 @@ class CourtRuling:
 
     # Handling
     semantic_lock_preserved: bool = True
-    enforcement_outcome: Optional[str] = None
+    enforcement_outcome: str | None = None
     execution_halted: bool = False
 
     # Rejection info (for semantic override attempts)
     rejected: bool = False
-    rejection_reason: Optional[str] = None
+    rejection_reason: str | None = None
 
     def __post_init__(self):
         # Semantic override rulings are automatically rejected
@@ -275,16 +275,16 @@ class JurisdictionConflict:
     - Meaning remains unchanged
     """
     conflict_id: str
-    jurisdictions: List[str]
+    jurisdictions: list[str]
     prose_contract_id: str
     conflict_type: str  # e.g., "enforcement", "procedure"
     description: str
 
     # Resolution
     semantic_lock_applied: bool = True
-    most_restrictive_outcome: Optional[str] = None
-    resolution_notes: Optional[str] = None
-    resolved_at: Optional[datetime] = None
+    most_restrictive_outcome: str | None = None
+    resolution_notes: str | None = None
+    resolved_at: datetime | None = None
 
 
 @dataclass
@@ -295,10 +295,10 @@ class JurisdictionalBridge:
     Encapsulates all jurisdictional configuration for a Prose Contract.
     """
     prose_contract_id: str
-    jurisdictions: List[JurisdictionDeclaration] = field(default_factory=list)
-    ltas: Dict[str, LegalTranslationArtifact] = field(default_factory=dict)
-    court_rulings: List[CourtRuling] = field(default_factory=list)
-    conflicts: List[JurisdictionConflict] = field(default_factory=list)
+    jurisdictions: list[JurisdictionDeclaration] = field(default_factory=list)
+    ltas: dict[str, LegalTranslationArtifact] = field(default_factory=dict)
+    court_rulings: list[CourtRuling] = field(default_factory=list)
+    conflicts: list[JurisdictionConflict] = field(default_factory=list)
 
     # Bridge configuration
     semantic_authority_source: str = "natlangchain"
@@ -316,7 +316,7 @@ class JurisdictionalBridge:
         self.ltas_authoritative = False
 
     @property
-    def enforcement_jurisdictions(self) -> List[JurisdictionDeclaration]:
+    def enforcement_jurisdictions(self) -> list[JurisdictionDeclaration]:
         """Get jurisdictions with enforcement role."""
         return [j for j in self.jurisdictions if j.role == JurisdictionRole.ENFORCEMENT]
 
@@ -329,7 +329,7 @@ class JurisdictionalBridge:
         self,
         code: str,
         role: JurisdictionRole
-    ) -> Tuple[bool, str]:
+    ) -> tuple[bool, str]:
         """Add a jurisdiction declaration."""
         try:
             decl = JurisdictionDeclaration(code=code, role=role)
@@ -338,7 +338,7 @@ class JurisdictionalBridge:
         except ValueError as e:
             return (False, str(e))
 
-    def to_yaml_dict(self) -> Dict[str, Any]:
+    def to_yaml_dict(self) -> dict[str, Any]:
         """Generate YAML-compatible dictionary per Section 11."""
         return {
             "jurisdictional_bridge": {
@@ -390,7 +390,7 @@ class JurisdictionalManager:
     }
 
     def __init__(self):
-        self.bridges: Dict[str, JurisdictionalBridge] = {}
+        self.bridges: dict[str, JurisdictionalBridge] = {}
         self.lta_counter: int = 0
 
     # -------------------------------------------------------------------------
@@ -403,14 +403,14 @@ class JurisdictionalManager:
         self.bridges[prose_contract_id] = bridge
         return bridge
 
-    def get_bridge(self, prose_contract_id: str) -> Optional[JurisdictionalBridge]:
+    def get_bridge(self, prose_contract_id: str) -> JurisdictionalBridge | None:
         """Get a bridge by Prose Contract ID."""
         return self.bridges.get(prose_contract_id)
 
     def validate_jurisdiction_declaration(
         self,
         bridge: JurisdictionalBridge
-    ) -> Tuple[bool, List[str]]:
+    ) -> tuple[bool, list[str]]:
         """
         Validate jurisdiction declaration per NCIP-006 Section 3.
 
@@ -447,8 +447,8 @@ class JurisdictionalManager:
         legal_prose: str,
         registry_version: str,
         temporal_fixity_timestamp: datetime,
-        referenced_terms: Optional[List[str]] = None
-    ) -> Tuple[Optional[LegalTranslationArtifact], List[str]]:
+        referenced_terms: list[str] | None = None
+    ) -> tuple[LegalTranslationArtifact | None, list[str]]:
         """
         Create a Legal Translation Artifact per NCIP-006 Section 6.
 
@@ -490,7 +490,7 @@ class JurisdictionalManager:
         self,
         lta: LegalTranslationArtifact,
         original_prose: str
-    ) -> Tuple[bool, List[LTAViolation]]:
+    ) -> tuple[bool, list[LTAViolation]]:
         """
         Validate an LTA per NCIP-006 Section 7.
 
@@ -549,13 +549,12 @@ class JurisdictionalManager:
         self,
         original: str,
         legal: str
-    ) -> List[LTAViolation]:
+    ) -> list[LTAViolation]:
         """Check for obligation changes between original and legal prose."""
         violations = []
 
         # Simplified obligation detection
         obligation_words = ["must", "shall", "required", "obligated", "mandatory"]
-        prohibition_words = ["must not", "shall not", "prohibited", "forbidden"]
         scope_broadeners = ["all", "any", "every", "unlimited", "without limitation"]
         scope_narrowers = ["only", "limited", "restricted", "specific", "solely"]
 
@@ -637,7 +636,7 @@ class JurisdictionalManager:
         jurisdiction: str,
         ruling_type: CourtRulingType,
         summary: str,
-        enforcement_outcome: Optional[str] = None
+        enforcement_outcome: str | None = None
     ) -> CourtRuling:
         """
         Handle a court ruling per NCIP-006 Section 8.
@@ -683,7 +682,7 @@ class JurisdictionalManager:
     def handle_jurisdiction_conflict(
         self,
         prose_contract_id: str,
-        jurisdictions: List[str],
+        jurisdictions: list[str],
         conflict_type: str,
         description: str
     ) -> JurisdictionConflict:
@@ -732,7 +731,7 @@ class JurisdictionalManager:
     def validator_check_jurisdiction(
         self,
         prose_contract_id: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Validator check for jurisdiction declaration.
 
@@ -763,7 +762,7 @@ class JurisdictionalManager:
         self,
         lta: LegalTranslationArtifact,
         original_prose: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Validator check for LTA compliance."""
         valid, violations = self.validate_lta(lta, original_prose)
 
@@ -781,7 +780,7 @@ class JurisdictionalManager:
     def generate_bridge_spec(
         self,
         prose_contract_id: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Generate machine-readable jurisdiction bridge spec per Section 11."""
         bridge = self.get_bridge(prose_contract_id)
 
@@ -794,13 +793,13 @@ class JurisdictionalManager:
     # Status & Queries
     # -------------------------------------------------------------------------
 
-    def get_status_summary(self) -> Dict[str, Any]:
+    def get_status_summary(self) -> dict[str, Any]:
         """Get summary of jurisdictional bridging system status."""
         total_ltas = sum(len(b.ltas) for b in self.bridges.values())
         total_rulings = sum(len(b.court_rulings) for b in self.bridges.values())
         total_conflicts = sum(len(b.conflicts) for b in self.bridges.values())
 
-        jurisdictions_used: Dict[str, int] = {}
+        jurisdictions_used: dict[str, int] = {}
         for bridge in self.bridges.values():
             for j in bridge.jurisdictions:
                 jurisdictions_used[j.code] = jurisdictions_used.get(j.code, 0) + 1

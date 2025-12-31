@@ -177,13 +177,29 @@ ignore = [
     "B008",   # Function call in default argument (Flask patterns)
     "B904",   # raise without from (too noisy)
     "SIM108", # Use ternary operator (readability preference)
+    # Cosmetic/stylistic rules - can be addressed gradually
+    "RUF001", # Ambiguous Unicode in strings (×, –, etc. in docs)
+    "RUF002", # Ambiguous Unicode in docstrings
+    "RUF003", # Ambiguous Unicode in comments
+    "RUF012", # Mutable class attributes without ClassVar (add type hints gradually)
+    "SIM102", # Nested if statements (readability preference)
 ]
 fixable = ["ALL"]
 unfixable = []
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*.py" = ["S101", "S105", "S106", "B011"]
+"tests/*.py" = ["S101", "S105", "S106", "B011", "F401", "F402", "RUF059", "E741", "B015"]
 "run_server.py" = ["T201"]
+# Conditional imports in try/except blocks - used for optional dependencies
+"src/api.py" = ["F401"]
+"src/dispute.py" = ["F401"]
+"src/validator.py" = ["F401", "E741"]
+"src/mediator.py" = ["F401"]
+"src/natural_language_contracts.py" = ["F401"]
+"src/semantic_diff.py" = ["F401"]
+"src/semantic_search.py" = ["E402"]  # Import after try/except for optional dependency
+"src/cognitive_load.py" = ["E741"]  # Variable 'l' in list comprehensions
+"src/p2p_network.py" = ["F402"]  # Loop variable 'field' shadows dataclass import
 
 [tool.ruff.lint.isort]
 known-first-party = ["blockchain", "api", "validator"]
