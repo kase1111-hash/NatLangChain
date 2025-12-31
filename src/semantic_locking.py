@@ -18,12 +18,11 @@ Escalation Path:
 """
 
 import hashlib
-import json
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Dict, List, Any, Optional, Set, Tuple
+from typing import Any
 
 # Configure logging
 logger = logging.getLogger("natlangchain.semantic_lock")
@@ -132,8 +131,8 @@ class LockedState:
     registry_version: str
     prose_content_hash: str
     anchor_language: str
-    verified_pou_hashes: List[str]
-    applicable_ncips: List[str]
+    verified_pou_hashes: list[str]
+    applicable_ncips: list[str]
     contract_id: str
     locked_at: str  # ISO timestamp
 
@@ -169,7 +168,7 @@ class SemanticLock:
     cooling_ends_at: str  # ISO timestamp
     current_stage: EscalationStage
     execution_halted: bool
-    action_log: List[Dict[str, Any]] = field(default_factory=list)
+    action_log: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass
@@ -202,9 +201,9 @@ class SemanticLockManager:
             validator_id: Identifier for this validator instance
         """
         self.validator_id = validator_id
-        self._locks: Dict[str, SemanticLock] = {}  # lock_id -> lock
-        self._dispute_locks: Dict[str, str] = {}   # dispute_id -> lock_id
-        self._contract_locks: Dict[str, str] = {}  # contract_id -> lock_id
+        self._locks: dict[str, SemanticLock] = {}  # lock_id -> lock
+        self._dispute_locks: dict[str, str] = {}   # dispute_id -> lock_id
+        self._contract_locks: dict[str, str] = {}  # contract_id -> lock_id
 
     def _generate_lock_id(self, dispute_id: str, contract_id: str) -> str:
         """Generate unique lock ID."""
@@ -227,9 +226,9 @@ class SemanticLockManager:
         registry_version: str,
         prose_content: str,
         anchor_language: str = "en",
-        verified_pou_hashes: Optional[List[str]] = None,
-        applicable_ncips: Optional[List[str]] = None
-    ) -> Tuple[SemanticLock, DisputeEntry]:
+        verified_pou_hashes: list[str] | None = None,
+        applicable_ncips: list[str] | None = None
+    ) -> tuple[SemanticLock, DisputeEntry]:
         """
         Initiate a dispute and activate semantic lock per NCIP-005.
 
@@ -328,16 +327,16 @@ class SemanticLockManager:
 
         return lock, dispute_entry
 
-    def get_lock(self, lock_id: str) -> Optional[SemanticLock]:
+    def get_lock(self, lock_id: str) -> SemanticLock | None:
         """Get a lock by ID."""
         return self._locks.get(lock_id)
 
-    def get_lock_by_dispute(self, dispute_id: str) -> Optional[SemanticLock]:
+    def get_lock_by_dispute(self, dispute_id: str) -> SemanticLock | None:
         """Get lock by dispute ID."""
         lock_id = self._dispute_locks.get(dispute_id)
         return self._locks.get(lock_id) if lock_id else None
 
-    def get_lock_by_contract(self, contract_id: str) -> Optional[SemanticLock]:
+    def get_lock_by_contract(self, contract_id: str) -> SemanticLock | None:
         """Get lock by contract ID."""
         lock_id = self._contract_locks.get(contract_id)
         return self._locks.get(lock_id) if lock_id else None
@@ -347,7 +346,7 @@ class SemanticLockManager:
         lock = self.get_lock_by_contract(contract_id)
         return lock is not None and lock.is_active
 
-    def get_cooling_status(self, lock_id: str) -> Optional[CoolingPeriodStatus]:
+    def get_cooling_status(self, lock_id: str) -> CoolingPeriodStatus | None:
         """
         Get the cooling period status for a lock.
 
@@ -384,7 +383,7 @@ class SemanticLockManager:
         self,
         lock_id: str,
         action: LockAction
-    ) -> Tuple[bool, str]:
+    ) -> tuple[bool, str]:
         """
         Check if an action is allowed given the current lock state.
 
@@ -434,8 +433,8 @@ class SemanticLockManager:
         lock_id: str,
         action: LockAction,
         actor_id: str,
-        details: Optional[str] = None
-    ) -> Tuple[bool, str]:
+        details: str | None = None
+    ) -> tuple[bool, str]:
         """
         Attempt to perform an action, logging the attempt.
 
@@ -476,8 +475,8 @@ class SemanticLockManager:
         self,
         lock_id: str,
         actor_id: str,
-        reason: Optional[str] = None
-    ) -> Tuple[bool, str, Optional[EscalationStage]]:
+        reason: str | None = None
+    ) -> tuple[bool, str, EscalationStage | None]:
         """
         Advance to the next escalation stage per NCIP-005 Section 7.
 
@@ -512,11 +511,10 @@ class SemanticLockManager:
         ]
 
         # Check if cooling period is still active
-        if current == EscalationStage.COOLING:
-            if self.is_cooling_active(lock_id):
-                cooling_status = self.get_cooling_status(lock_id)
-                hours = cooling_status.time_remaining_seconds / 3600
-                return False, f"Cannot advance during cooling period. {hours:.1f} hours remaining", None
+        if current == EscalationStage.COOLING and self.is_cooling_active(lock_id):
+            cooling_status = self.get_cooling_status(lock_id)
+            hours = cooling_status.time_remaining_seconds / 3600
+            return False, f"Cannot advance during cooling period. {hours:.1f} hours remaining", None
 
         # Find current index and advance
         try:
@@ -549,8 +547,8 @@ class SemanticLockManager:
         outcome: ResolutionOutcome,
         resolution_authority: str,
         resolution_details: str,
-        findings: Optional[Dict[str, Any]] = None
-    ) -> Tuple[bool, str]:
+        findings: dict[str, Any] | None = None
+    ) -> tuple[bool, str]:
         """
         Resolve a dispute and release the semantic lock.
 
@@ -613,7 +611,7 @@ class SemanticLockManager:
 
         return True, f"Dispute resolved: {outcome.value}"
 
-    def _get_resolution_effects(self, outcome: ResolutionOutcome) -> Dict[str, Any]:
+    def _get_resolution_effects(self, outcome: ResolutionOutcome) -> dict[str, Any]:
         """Get the effects of a resolution outcome per NCIP-005 Section 9."""
         effects = {
             ResolutionOutcome.DISMISSED: {
@@ -647,7 +645,7 @@ class SemanticLockManager:
         lock_id: str,
         registry_version: str,
         prose_content: str
-    ) -> Tuple[bool, List[str]]:
+    ) -> tuple[bool, list[str]]:
         """
         Verify that content matches the locked state.
 
@@ -685,7 +683,7 @@ class SemanticLockManager:
         self,
         lock_id: str,
         action: LockAction
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get complete validator response for an action attempt.
 
@@ -733,7 +731,7 @@ class SemanticLockManager:
 
         return response
 
-    def get_lock_summary(self, lock_id: str) -> Optional[Dict[str, Any]]:
+    def get_lock_summary(self, lock_id: str) -> dict[str, Any] | None:
         """Get a summary of a lock's state."""
         lock = self._locks.get(lock_id)
         if not lock:
@@ -763,7 +761,7 @@ class SemanticLockManager:
             "action_count": len(lock.action_log)
         }
 
-    def get_action_log(self, lock_id: str) -> List[Dict[str, Any]]:
+    def get_action_log(self, lock_id: str) -> list[dict[str, Any]]:
         """Get the action log for a lock."""
         lock = self._locks.get(lock_id)
         return lock.action_log if lock else []
@@ -822,7 +820,7 @@ NCIP_005_CONFIG = {
 }
 
 
-def get_ncip_005_config() -> Dict[str, Any]:
+def get_ncip_005_config() -> dict[str, Any]:
     """Get the NCIP-005 configuration."""
     return NCIP_005_CONFIG.copy()
 

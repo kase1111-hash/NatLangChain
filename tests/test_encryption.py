@@ -11,26 +11,25 @@ These tests verify that:
 
 import os
 import sys
-import json
+
 import pytest
 
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from encryption import (
-    generate_encryption_key,
-    encrypt_data,
+    ENCRYPTED_PREFIX,
+    EncryptionError,
+    decrypt_chain_data,
     decrypt_data,
-    is_encrypted,
-    encrypt_sensitive_fields,
     decrypt_sensitive_fields,
     encrypt_chain_data,
-    decrypt_chain_data,
+    encrypt_data,
+    encrypt_sensitive_fields,
+    generate_encryption_key,
     hash_sensitive_value,
+    is_encrypted,
     verify_hashed_value,
-    EncryptionError,
-    ENCRYPTED_PREFIX,
-    SENSITIVE_METADATA_FIELDS,
 )
 
 

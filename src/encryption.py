@@ -12,16 +12,17 @@ Security Features:
 - Field-level encryption support for sensitive metadata
 """
 
-import os
-import json
 import base64
-import secrets
 import hashlib
-from typing import Any, Dict, Optional, Union, List
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+import json
+import os
+import secrets
+from typing import Any
+
 from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 # Constants
 SALT_SIZE = 16  # 128 bits
@@ -93,7 +94,7 @@ def _derive_key(password: str, salt: bytes) -> bytes:
     return kdf.derive(password.encode('utf-8'))
 
 
-def _get_encryption_key() -> Optional[str]:
+def _get_encryption_key() -> str | None:
     """
     Get the encryption key from environment variable.
 
@@ -127,8 +128,8 @@ def generate_encryption_key() -> str:
     return base64.b64encode(key_bytes).decode('utf-8')
 
 
-def encrypt_data(data: Union[str, bytes, Dict[str, Any]],
-                 key: Optional[str] = None) -> str:
+def encrypt_data(data: str | bytes | dict[str, Any],
+                 key: str | None = None) -> str:
     """
     Encrypt data using AES-256-GCM.
 
@@ -176,12 +177,12 @@ def encrypt_data(data: Union[str, bytes, Dict[str, Any]],
         return ENCRYPTED_PREFIX + encoded
 
     except Exception as e:
-        raise EncryptionError(f"Encryption failed: {str(e)}") from e
+        raise EncryptionError(f"Encryption failed: {e!s}") from e
 
 
 def decrypt_data(encrypted_data: str,
-                 key: Optional[str] = None,
-                 return_type: str = "auto") -> Union[str, bytes, Dict[str, Any]]:
+                 key: str | None = None,
+                 return_type: str = "auto") -> str | bytes | dict[str, Any]:
     """
     Decrypt AES-256-GCM encrypted data.
 
@@ -250,7 +251,7 @@ def decrypt_data(encrypted_data: str,
     except EncryptionError:
         raise
     except Exception as e:
-        raise EncryptionError(f"Decryption failed: {str(e)}") from e
+        raise EncryptionError(f"Decryption failed: {e!s}") from e
 
 
 def is_encrypted(data: str) -> bool:
@@ -266,9 +267,9 @@ def is_encrypted(data: str) -> bool:
     return isinstance(data, str) and data.startswith(ENCRYPTED_PREFIX)
 
 
-def encrypt_sensitive_fields(metadata: Dict[str, Any],
-                            key: Optional[str] = None,
-                            additional_fields: Optional[set] = None) -> Dict[str, Any]:
+def encrypt_sensitive_fields(metadata: dict[str, Any],
+                            key: str | None = None,
+                            additional_fields: set | None = None) -> dict[str, Any]:
     """
     Encrypt sensitive fields within metadata dictionary.
 
@@ -329,8 +330,8 @@ def encrypt_sensitive_fields(metadata: Dict[str, Any],
     return result
 
 
-def decrypt_sensitive_fields(metadata: Dict[str, Any],
-                            key: Optional[str] = None) -> Dict[str, Any]:
+def decrypt_sensitive_fields(metadata: dict[str, Any],
+                            key: str | None = None) -> dict[str, Any]:
     """
     Decrypt sensitive fields within metadata dictionary.
 
@@ -370,8 +371,8 @@ def decrypt_sensitive_fields(metadata: Dict[str, Any],
     return result
 
 
-def encrypt_chain_data(chain_data: Dict[str, Any],
-                       key: Optional[str] = None) -> str:
+def encrypt_chain_data(chain_data: dict[str, Any],
+                       key: str | None = None) -> str:
     """
     Encrypt entire blockchain data for storage.
 
@@ -386,7 +387,7 @@ def encrypt_chain_data(chain_data: Dict[str, Any],
 
 
 def decrypt_chain_data(encrypted_data: str,
-                       key: Optional[str] = None) -> Dict[str, Any]:
+                       key: str | None = None) -> dict[str, Any]:
     """
     Decrypt entire blockchain data from storage.
 
@@ -400,7 +401,7 @@ def decrypt_chain_data(encrypted_data: str,
     return decrypt_data(encrypted_data, key, return_type="json")
 
 
-def hash_sensitive_value(value: str, salt: Optional[str] = None) -> str:
+def hash_sensitive_value(value: str, salt: str | None = None) -> str:
     """
     Create a one-way hash of a sensitive value for comparison/lookup.
     Useful for wallet addresses or identifiers that need to be searchable
@@ -416,7 +417,7 @@ def hash_sensitive_value(value: str, salt: Optional[str] = None) -> str:
     if salt is None:
         salt = secrets.token_hex(16)
 
-    hash_input = f"{salt}:{value}".encode('utf-8')
+    hash_input = f"{salt}:{value}".encode()
     hash_value = hashlib.sha256(hash_input).hexdigest()
 
     return f"HASH:1:{salt}:{hash_value}"
@@ -443,7 +444,7 @@ def verify_hashed_value(value: str, hashed: str) -> bool:
     salt = parts[2]
     expected_hash = parts[3]
 
-    hash_input = f"{salt}:{value}".encode('utf-8')
+    hash_input = f"{salt}:{value}".encode()
     actual_hash = hashlib.sha256(hash_input).hexdigest()
 
     # Constant-time comparison
@@ -452,20 +453,20 @@ def verify_hashed_value(value: str, hashed: str) -> bool:
 
 # Export public API
 __all__ = [
+    'ENCRYPTION_ENABLED_ENV',
+    'ENCRYPTION_KEY_ENV',
+    'SENSITIVE_METADATA_FIELDS',
     'EncryptionError',
     'KeyDerivationError',
-    'is_encryption_enabled',
-    'generate_encryption_key',
-    'encrypt_data',
+    'decrypt_chain_data',
     'decrypt_data',
-    'is_encrypted',
-    'encrypt_sensitive_fields',
     'decrypt_sensitive_fields',
     'encrypt_chain_data',
-    'decrypt_chain_data',
+    'encrypt_data',
+    'encrypt_sensitive_fields',
+    'generate_encryption_key',
     'hash_sensitive_value',
+    'is_encrypted',
+    'is_encryption_enabled',
     'verify_hashed_value',
-    'SENSITIVE_METADATA_FIELDS',
-    'ENCRYPTION_KEY_ENV',
-    'ENCRYPTION_ENABLED_ENV',
 ]

@@ -4,11 +4,11 @@ Extends MP-01 with optional fork mechanism when mediation fails.
 Fee pool splits 50/50 between mediator and resolution bounty pool.
 """
 
-import json
 import hashlib
-from typing import Dict, Any, Optional, List, Tuple
+import json
 from datetime import datetime, timedelta
 from enum import Enum
+from typing import Any
 
 
 class ForkStatus(Enum):
@@ -59,10 +59,10 @@ class EscalationForkManager:
     def __init__(self):
         """Initialize fork manager."""
         # In production, these would be persisted
-        self.forks: Dict[str, Dict[str, Any]] = {}
-        self.proposals: Dict[str, List[Dict[str, Any]]] = {}  # fork_id -> proposals
-        self.ratifications: Dict[str, Dict[str, Dict]] = {}  # fork_id -> party -> ratification
-        self.vetoes: Dict[str, Dict[str, int]] = {}  # fork_id -> party -> veto count
+        self.forks: dict[str, dict[str, Any]] = {}
+        self.proposals: dict[str, list[dict[str, Any]]] = {}  # fork_id -> proposals
+        self.ratifications: dict[str, dict[str, dict]] = {}  # fork_id -> party -> ratification
+        self.vetoes: dict[str, dict[str, int]] = {}  # fork_id -> party -> veto count
 
     def trigger_fork(
         self,
@@ -72,8 +72,8 @@ class EscalationForkManager:
         original_mediator: str,
         original_pool: float,
         burn_tx_hash: str,
-        evidence_of_failure: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        evidence_of_failure: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Trigger an Escalation Fork after Observance Burn is verified.
 
@@ -138,9 +138,9 @@ class EscalationForkManager:
         fork_id: str,
         solver: str,
         proposal_content: str,
-        addresses_concerns: List[str],
-        supporting_evidence: Optional[List[str]] = None
-    ) -> Tuple[bool, Dict[str, Any]]:
+        addresses_concerns: list[str],
+        supporting_evidence: list[str] | None = None
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Submit a resolution proposal to an active fork.
 
@@ -203,8 +203,8 @@ class EscalationForkManager:
         proposal_id: str,
         ratifying_party: str,
         satisfaction_rating: int,
-        comments: Optional[str] = None
-    ) -> Tuple[bool, Dict[str, Any]]:
+        comments: str | None = None
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Ratify a proposal (both parties must ratify for resolution).
 
@@ -262,8 +262,8 @@ class EscalationForkManager:
     def _resolve_fork(
         self,
         fork_id: str,
-        winning_proposal: Dict[str, Any]
-    ) -> Tuple[bool, Dict[str, Any]]:
+        winning_proposal: dict[str, Any]
+    ) -> tuple[bool, dict[str, Any]]:
         """Resolve the fork after dual ratification."""
         fork = self.forks[fork_id]
 
@@ -287,8 +287,8 @@ class EscalationForkManager:
     def _calculate_distribution(
         self,
         fork_id: str,
-        winning_proposal: Dict[str, Any]
-    ) -> Dict[str, float]:
+        winning_proposal: dict[str, Any]
+    ) -> dict[str, float]:
         """
         Calculate effort-based bounty distribution.
 
@@ -353,8 +353,8 @@ class EscalationForkManager:
         proposal_id: str,
         vetoing_party: str,
         veto_reason: str,
-        evidence_refs: Optional[List[str]] = None
-    ) -> Tuple[bool, Dict[str, Any]]:
+        evidence_refs: list[str] | None = None
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Veto a proposal with documented reasoning.
 
@@ -409,7 +409,7 @@ class EscalationForkManager:
 
         return False, {"error": "Proposal not found"}
 
-    def check_timeout(self, fork_id: str) -> Tuple[bool, Optional[Dict[str, Any]]]:
+    def check_timeout(self, fork_id: str) -> tuple[bool, dict[str, Any] | None]:
         """
         Check if fork has timed out and process if so.
 
@@ -450,7 +450,7 @@ class EscalationForkManager:
             "timeout_reason": "No ratified proposal within solver window"
         }
 
-    def get_fork_status(self, fork_id: str) -> Optional[Dict[str, Any]]:
+    def get_fork_status(self, fork_id: str) -> dict[str, Any] | None:
         """Get current fork status with proposals and ratifications."""
         if fork_id not in self.forks:
             return None
@@ -475,7 +475,7 @@ class EscalationForkManager:
 
         return fork
 
-    def get_fork_audit_trail(self, fork_id: str) -> List[Dict[str, Any]]:
+    def get_fork_audit_trail(self, fork_id: str) -> list[dict[str, Any]]:
         """Get complete audit trail for a fork."""
         if fork_id not in self.forks:
             return []
@@ -566,7 +566,7 @@ class EscalationForkManager:
 
         return trail
 
-    def list_active_forks(self) -> List[Dict[str, Any]]:
+    def list_active_forks(self) -> list[dict[str, Any]]:
         """List all active forks."""
         return [
             self.get_fork_status(fork_id)

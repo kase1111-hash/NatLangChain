@@ -6,18 +6,18 @@ Core principle: All external communication must be authenticated,
 encrypted, and auditable.
 """
 
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple, Callable
-from enum import Enum
+import contextlib
 import hashlib
 import hmac
 import json
-import time
-import ssl
-import secrets
-import urllib.parse
 import logging
+import secrets
+import time
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from datetime import datetime
+from enum import Enum
+from typing import Any
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -105,17 +105,17 @@ class ChainIntent:
     hash: str
     author: str
     prose: str
-    desires: List[str]
-    constraints: List[str]
+    desires: list[str]
+    constraints: list[str]
     offered_fee: float
     timestamp: int
     status: IntentStatus
     branch: str
-    nonce: Optional[str] = None
-    signature: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    nonce: str | None = None
+    signature: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "hash": self.hash,
@@ -133,7 +133,7 @@ class ChainIntent:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'ChainIntent':
+    def from_dict(cls, data: dict[str, Any]) -> 'ChainIntent':
         """Create from dictionary."""
         return cls(
             hash=data.get("hash", ""),
@@ -158,16 +158,16 @@ class ChainSettlement:
     intent_hash_a: str
     intent_hash_b: str
     mediator_id: str
-    terms: Dict[str, Any]
+    terms: dict[str, Any]
     fee: float
     status: SettlementStatus
     party_a_accepted: bool = False
     party_b_accepted: bool = False
-    challenges: List[Dict[str, Any]] = field(default_factory=list)
-    created_at: Optional[str] = None
-    finalized_at: Optional[str] = None
+    challenges: list[dict[str, Any]] = field(default_factory=list)
+    created_at: str | None = None
+    finalized_at: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "id": self.id,
@@ -185,7 +185,7 @@ class ChainSettlement:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'ChainSettlement':
+    def from_dict(cls, data: dict[str, Any]) -> 'ChainSettlement':
         """Create from dictionary."""
         status_str = data.get("status", "proposed")
         try:
@@ -218,9 +218,9 @@ class ChainReputation:
     upheld_challenges_against: int = 0
     forfeited_fees: int = 0
     weight: float = 1.0
-    last_updated: Optional[int] = None
+    last_updated: int | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "mediatorId": self.mediator_id,
@@ -233,7 +233,7 @@ class ChainReputation:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'ChainReputation':
+    def from_dict(cls, data: dict[str, Any]) -> 'ChainReputation':
         """Create from dictionary."""
         return cls(
             mediator_id=data.get("mediatorId", data.get("mediator_id", "")),
@@ -255,7 +255,7 @@ class ChainDelegation:
     timestamp: int
     status: str = "active"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "delegatorId": self.delegator_id,
@@ -266,7 +266,7 @@ class ChainDelegation:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'ChainDelegation':
+    def from_dict(cls, data: dict[str, Any]) -> 'ChainDelegation':
         """Create from dictionary."""
         return cls(
             delegator_id=data.get("delegatorId", data.get("delegator_id", "")),
@@ -310,7 +310,7 @@ class HMACAuthenticator:
             secret_key: Shared secret for HMAC signing
         """
         self.secret_key = secret_key.encode('utf-8')
-        self._used_nonces: Dict[str, int] = {}  # nonce -> timestamp
+        self._used_nonces: dict[str, int] = {}  # nonce -> timestamp
         self._nonce_cleanup_interval = 3600  # Clean up nonces older than 1 hour
 
     def _compute_signature(
@@ -319,7 +319,7 @@ class HMACAuthenticator:
         path: str,
         timestamp: int,
         nonce: str,
-        body: Optional[str] = None
+        body: str | None = None
     ) -> str:
         """
         Compute HMAC signature for a request.
@@ -345,9 +345,9 @@ class HMACAuthenticator:
         self,
         method: str,
         path: str,
-        body: Optional[str] = None,
-        timestamp: Optional[int] = None
-    ) -> Dict[str, str]:
+        body: str | None = None,
+        timestamp: int | None = None
+    ) -> dict[str, str]:
         """
         Sign a request and return authentication headers.
 
@@ -376,11 +376,11 @@ class HMACAuthenticator:
         self,
         method: str,
         path: str,
-        body: Optional[str],
+        body: str | None,
         signature: str,
         timestamp: str,
         nonce: str
-    ) -> Tuple[bool, str]:
+    ) -> tuple[bool, str]:
         """
         Verify a request's authentication.
 
@@ -449,10 +449,10 @@ class ChainInterface:
     def __init__(
         self,
         endpoint: str = DEFAULT_CHAIN_ENDPOINT,
-        secret_key: Optional[str] = None,
+        secret_key: str | None = None,
         verify_ssl: bool = True,
         timeout: int = DEFAULT_TIMEOUT,
-        mediator_id: Optional[str] = None
+        mediator_id: str | None = None
     ):
         """
         Initialize chain interface.
@@ -481,10 +481,10 @@ class ChainInterface:
             self._setup_session()
 
         # Audit log
-        self.audit_log: List[Dict[str, Any]] = []
+        self.audit_log: list[dict[str, Any]] = []
 
         # Event callbacks
-        self._callbacks: Dict[str, List[Callable]] = {}
+        self._callbacks: dict[str, list[Callable]] = {}
 
     def _setup_session(self):
         """Set up requests session with retry logic."""
@@ -513,9 +513,9 @@ class ChainInterface:
         self,
         method: str,
         path: str,
-        body: Optional[Dict[str, Any]] = None,
-        params: Optional[Dict[str, Any]] = None
-    ) -> Tuple[bool, Any]:
+        body: dict[str, Any] | None = None,
+        params: dict[str, Any] | None = None
+    ) -> tuple[bool, Any]:
         """
         Make an authenticated HTTP request.
 
@@ -579,10 +579,8 @@ class ChainInterface:
                     "status_code": response.status_code,
                     "message": response.text
                 }
-                try:
+                with contextlib.suppress(Exception):
                     error_data.update(response.json())
-                except Exception:
-                    pass
                 return False, error_data
 
         except requests.exceptions.Timeout:
@@ -590,13 +588,13 @@ class ChainInterface:
             self.audit_log.append(request_log)
             return False, {"error": "Request timed out"}
         except requests.exceptions.SSLError as e:
-            request_log["error"] = f"ssl_error: {str(e)}"
+            request_log["error"] = f"ssl_error: {e!s}"
             self.audit_log.append(request_log)
-            return False, {"error": f"SSL error: {str(e)}"}
+            return False, {"error": f"SSL error: {e!s}"}
         except requests.exceptions.ConnectionError as e:
-            request_log["error"] = f"connection_error: {str(e)}"
+            request_log["error"] = f"connection_error: {e!s}"
             self.audit_log.append(request_log)
-            return False, {"error": f"Connection error: {str(e)}"}
+            return False, {"error": f"Connection error: {e!s}"}
         except Exception as e:
             request_log["error"] = str(e)
             self.audit_log.append(request_log)
@@ -608,10 +606,10 @@ class ChainInterface:
 
     def get_intents(
         self,
-        status: Optional[IntentStatus] = None,
-        since: Optional[int] = None,
-        limit: Optional[int] = None
-    ) -> Tuple[bool, List[ChainIntent]]:
+        status: IntentStatus | None = None,
+        since: int | None = None,
+        limit: int | None = None
+    ) -> tuple[bool, list[ChainIntent]]:
         """
         Fetch intents from the chain.
 
@@ -641,7 +639,7 @@ class ChainInterface:
 
         return False, result
 
-    def get_pending_intents(self) -> Tuple[bool, List[ChainIntent]]:
+    def get_pending_intents(self) -> tuple[bool, list[ChainIntent]]:
         """Get all pending intents."""
         return self.get_intents(status=IntentStatus.PENDING)
 
@@ -653,10 +651,10 @@ class ChainInterface:
         self,
         entry_type: EntryType,
         author: str,
-        content: Dict[str, Any],
-        metadata: Dict[str, Any],
-        signature: Optional[str] = None
-    ) -> Tuple[bool, Dict[str, Any]]:
+        content: dict[str, Any],
+        metadata: dict[str, Any],
+        signature: str | None = None
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Submit an entry to the chain.
 
@@ -692,9 +690,9 @@ class ChainInterface:
         self,
         intent_hash_a: str,
         intent_hash_b: str,
-        terms: Dict[str, Any],
+        terms: dict[str, Any],
         fee: float
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Propose a settlement between two intents.
 
@@ -730,7 +728,7 @@ class ChainInterface:
         settlement_id: str,
         party: str,
         party_identifier: str
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Submit acceptance of a settlement.
 
@@ -758,7 +756,7 @@ class ChainInterface:
     def claim_payout(
         self,
         settlement_id: str
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Claim payout for a finalized settlement.
 
@@ -788,7 +786,7 @@ class ChainInterface:
     def get_settlement_status(
         self,
         settlement_id: str
-    ) -> Tuple[bool, Optional[ChainSettlement]]:
+    ) -> tuple[bool, ChainSettlement | None]:
         """
         Get the status of a settlement.
 
@@ -811,7 +809,7 @@ class ChainInterface:
     def is_settlement_accepted(
         self,
         settlement_id: str
-    ) -> Tuple[bool, bool]:
+    ) -> tuple[bool, bool]:
         """
         Check if both parties have accepted a settlement.
 
@@ -835,8 +833,8 @@ class ChainInterface:
 
     def get_reputation(
         self,
-        mediator_id: Optional[str] = None
-    ) -> Tuple[bool, Optional[ChainReputation]]:
+        mediator_id: str | None = None
+    ) -> tuple[bool, ChainReputation | None]:
         """
         Get reputation for a mediator.
 
@@ -862,7 +860,7 @@ class ChainInterface:
         self,
         mediator_id: str,
         reputation: ChainReputation
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Update reputation for a mediator.
 
@@ -886,8 +884,8 @@ class ChainInterface:
 
     def get_delegations(
         self,
-        mediator_id: Optional[str] = None
-    ) -> Tuple[bool, List[ChainDelegation]]:
+        mediator_id: str | None = None
+    ) -> tuple[bool, list[ChainDelegation]]:
         """
         Get delegations for a mediator.
 
@@ -917,7 +915,7 @@ class ChainInterface:
     def bond_stake(
         self,
         amount: float
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Bond stake for this mediator.
 
@@ -939,7 +937,7 @@ class ChainInterface:
 
         return success, result
 
-    def unbond_stake(self) -> Tuple[bool, Dict[str, Any]]:
+    def unbond_stake(self) -> tuple[bool, dict[str, Any]]:
         """
         Request to unbond stake.
 
@@ -961,7 +959,7 @@ class ChainInterface:
     # Governance Operations
     # =========================================================================
 
-    def get_authorities(self) -> Tuple[bool, List[str]]:
+    def get_authorities(self) -> tuple[bool, list[str]]:
         """
         Get the current authority set.
 
@@ -980,8 +978,8 @@ class ChainInterface:
         title: str,
         description: str,
         proposal_type: str,
-        parameters: Dict[str, Any]
-    ) -> Tuple[bool, Dict[str, Any]]:
+        parameters: dict[str, Any]
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Submit a governance proposal.
 
@@ -1008,7 +1006,7 @@ class ChainInterface:
     # Health Check
     # =========================================================================
 
-    def health_check(self) -> Tuple[bool, Optional[ChainHealth]]:
+    def health_check(self) -> tuple[bool, ChainHealth | None]:
         """
         Check chain health.
 
@@ -1073,7 +1071,7 @@ class ChainInterface:
                 cb for cb in self._callbacks[event] if cb != callback
             ]
 
-    def _emit(self, event: str, data: Dict[str, Any]):
+    def _emit(self, event: str, data: dict[str, Any]):
         """Emit an event to registered callbacks."""
         if event in self._callbacks:
             for callback in self._callbacks[event]:
@@ -1086,7 +1084,7 @@ class ChainInterface:
     # Audit
     # =========================================================================
 
-    def get_audit_log(self, limit: int = 100) -> List[Dict[str, Any]]:
+    def get_audit_log(self, limit: int = 100) -> list[dict[str, Any]]:
         """Get recent audit log entries."""
         return self.audit_log[-limit:]
 
@@ -1108,8 +1106,8 @@ class MockChainInterface(ChainInterface):
 
     def __init__(
         self,
-        mediator_id: Optional[str] = None,
-        initial_intents: Optional[List[ChainIntent]] = None
+        mediator_id: str | None = None,
+        initial_intents: list[ChainIntent] | None = None
     ):
         """
         Initialize mock interface.
@@ -1125,12 +1123,12 @@ class MockChainInterface(ChainInterface):
         )
 
         # Mock data stores
-        self._intents: Dict[str, ChainIntent] = {}
-        self._settlements: Dict[str, ChainSettlement] = {}
-        self._reputations: Dict[str, ChainReputation] = {}
-        self._delegations: Dict[str, List[ChainDelegation]] = {}
-        self._entries: List[Dict[str, Any]] = []
-        self._stake: Dict[str, float] = {}
+        self._intents: dict[str, ChainIntent] = {}
+        self._settlements: dict[str, ChainSettlement] = {}
+        self._reputations: dict[str, ChainReputation] = {}
+        self._delegations: dict[str, list[ChainDelegation]] = {}
+        self._entries: list[dict[str, Any]] = []
+        self._stake: dict[str, float] = {}
 
         # Initialize with provided intents
         if initial_intents:
@@ -1141,9 +1139,9 @@ class MockChainInterface(ChainInterface):
         self,
         method: str,
         path: str,
-        body: Optional[Dict[str, Any]] = None,
-        params: Optional[Dict[str, Any]] = None
-    ) -> Tuple[bool, Any]:
+        body: dict[str, Any] | None = None,
+        params: dict[str, Any] | None = None
+    ) -> tuple[bool, Any]:
         """Override to use mock data instead of HTTP."""
         # Log the request
         self.audit_log.append({
@@ -1182,7 +1180,7 @@ class MockChainInterface(ChainInterface):
 
         return False, {"error": f"Unknown path: {path}"}
 
-    def _mock_get_intents(self, params: Dict[str, Any]) -> Tuple[bool, Any]:
+    def _mock_get_intents(self, params: dict[str, Any]) -> tuple[bool, Any]:
         """Mock get intents."""
         intents = list(self._intents.values())
 
@@ -1201,7 +1199,7 @@ class MockChainInterface(ChainInterface):
 
         return True, {"intents": [i.to_dict() for i in intents]}
 
-    def _mock_submit_entry(self, body: Dict[str, Any]) -> Tuple[bool, Any]:
+    def _mock_submit_entry(self, body: dict[str, Any]) -> tuple[bool, Any]:
         """Mock submit entry."""
         entry_id = f"entry_{secrets.token_hex(8)}"
 
@@ -1245,13 +1243,13 @@ class MockChainInterface(ChainInterface):
 
         return True, {"entryId": entry_id, "hash": entry_id}
 
-    def _mock_get_settlement(self, settlement_id: str) -> Tuple[bool, Any]:
+    def _mock_get_settlement(self, settlement_id: str) -> tuple[bool, Any]:
         """Mock get settlement status."""
         if settlement_id in self._settlements:
             return True, self._settlements[settlement_id].to_dict()
         return False, {"error": "Settlement not found"}
 
-    def _mock_get_reputation(self, mediator_id: str) -> Tuple[bool, Any]:
+    def _mock_get_reputation(self, mediator_id: str) -> tuple[bool, Any]:
         """Mock get reputation."""
         if mediator_id in self._reputations:
             return True, self._reputations[mediator_id].to_dict()
@@ -1264,7 +1262,7 @@ class MockChainInterface(ChainInterface):
         )
         return True, default_rep.to_dict()
 
-    def _mock_update_reputation(self, body: Dict[str, Any]) -> Tuple[bool, Any]:
+    def _mock_update_reputation(self, body: dict[str, Any]) -> tuple[bool, Any]:
         """Mock update reputation."""
         mediator_id = body.get("mediatorId")
         rep_data = body.get("reputation", {})
@@ -1272,12 +1270,12 @@ class MockChainInterface(ChainInterface):
         self._reputations[mediator_id] = ChainReputation.from_dict(rep_data)
         return True, {"success": True}
 
-    def _mock_get_delegations(self, mediator_id: str) -> Tuple[bool, Any]:
+    def _mock_get_delegations(self, mediator_id: str) -> tuple[bool, Any]:
         """Mock get delegations."""
         delegations = self._delegations.get(mediator_id, [])
         return True, {"delegations": [d.to_dict() for d in delegations]}
 
-    def _mock_bond_stake(self, body: Dict[str, Any]) -> Tuple[bool, Any]:
+    def _mock_bond_stake(self, body: dict[str, Any]) -> tuple[bool, Any]:
         """Mock bond stake."""
         mediator_id = body.get("mediatorId")
         amount = body.get("amount", 0)
@@ -1285,7 +1283,7 @@ class MockChainInterface(ChainInterface):
         self._stake[mediator_id] = self._stake.get(mediator_id, 0) + amount
         return True, {"success": True}
 
-    def _mock_unbond_stake(self, body: Dict[str, Any]) -> Tuple[bool, Any]:
+    def _mock_unbond_stake(self, body: dict[str, Any]) -> tuple[bool, Any]:
         """Mock unbond stake."""
         return True, {"success": True}
 
@@ -1320,7 +1318,7 @@ class MockChainInterface(ChainInterface):
             self._delegations[delegation.mediator_id] = []
         self._delegations[delegation.mediator_id].append(delegation)
 
-    def get_submitted_entries(self) -> List[Dict[str, Any]]:
+    def get_submitted_entries(self) -> list[dict[str, Any]]:
         """Get all submitted entries for verification."""
         return self._entries.copy()
 
@@ -1329,7 +1327,7 @@ class MockChainInterface(ChainInterface):
 # Module-level convenience functions
 # =============================================================================
 
-_default_interface: Optional[ChainInterface] = None
+_default_interface: ChainInterface | None = None
 
 
 def get_chain_interface() -> ChainInterface:
@@ -1342,8 +1340,8 @@ def get_chain_interface() -> ChainInterface:
 
 def configure_chain_interface(
     endpoint: str = DEFAULT_CHAIN_ENDPOINT,
-    secret_key: Optional[str] = None,
-    mediator_id: Optional[str] = None
+    secret_key: str | None = None,
+    mediator_id: str | None = None
 ) -> ChainInterface:
     """
     Configure and return the default chain interface.

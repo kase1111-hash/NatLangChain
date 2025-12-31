@@ -13,15 +13,14 @@ This module implements:
 - Integration with contract_matcher.py
 """
 
-import json
 import hashlib
-import secrets
-import re
-from typing import Dict, Any, Optional, List, Tuple
-from datetime import datetime, timedelta
-from dataclasses import dataclass, field
-from enum import Enum
+import json
 import os
+import secrets
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import Any
 
 try:
     from anthropic import Anthropic
@@ -32,11 +31,11 @@ except ImportError:
 # Import sanitization utilities from validator
 try:
     from validator import (
-        sanitize_prompt_input,
-        create_safe_prompt_section,
+        MAX_AUTHOR_LENGTH,
         MAX_CONTENT_LENGTH,
         MAX_INTENT_LENGTH,
-        MAX_AUTHOR_LENGTH,
+        create_safe_prompt_section,
+        sanitize_prompt_input,
     )
     SANITIZATION_AVAILABLE = True
 except ImportError:
@@ -114,12 +113,12 @@ class AlignmentLevel(Enum):
 class Intent:
     """Represents a party's negotiation intent."""
     party: str
-    objectives: List[str]
-    constraints: List[str]
-    priorities: Dict[str, int]  # term -> priority (1-10)
-    flexibility: Dict[str, str]  # term -> "rigid"/"flexible"/"negotiable"
-    batna: Optional[str] = None  # Best Alternative To Negotiated Agreement
-    reservation_point: Optional[Dict[str, Any]] = None  # Walk-away terms
+    objectives: list[str]
+    constraints: list[str]
+    priorities: dict[str, int]  # term -> priority (1-10)
+    flexibility: dict[str, str]  # term -> "rigid"/"flexible"/"negotiable"
+    batna: str | None = None  # Best Alternative To Negotiated Agreement
+    reservation_point: dict[str, Any] | None = None  # Walk-away terms
 
 
 @dataclass
@@ -130,7 +129,7 @@ class Clause:
     content: str
     proposed_by: str
     status: str = "proposed"  # proposed/accepted/rejected/modified
-    alternatives: List[str] = field(default_factory=list)
+    alternatives: list[str] = field(default_factory=list)
     created_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
 
 
@@ -141,12 +140,12 @@ class Offer:
     offer_type: OfferType
     from_party: str
     to_party: str
-    terms: Dict[str, Any]
-    clauses: List[str]  # clause_ids
+    terms: dict[str, Any]
+    clauses: list[str]  # clause_ids
     message: str
     created_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
-    expires_at: Optional[str] = None
-    response: Optional[str] = None  # accepted/rejected/countered
+    expires_at: str | None = None
+    response: str | None = None  # accepted/rejected/countered
 
 
 @dataclass
@@ -157,16 +156,16 @@ class NegotiationSession:
     counterparty: str
     subject: str
     phase: NegotiationPhase
-    initiator_intent: Optional[Intent] = None
-    counterparty_intent: Optional[Intent] = None
+    initiator_intent: Intent | None = None
+    counterparty_intent: Intent | None = None
     alignment_score: float = 0.0
-    clauses: Dict[str, Clause] = field(default_factory=dict)
-    offers: List[Offer] = field(default_factory=list)
-    current_terms: Dict[str, Any] = field(default_factory=dict)
-    agreed_terms: Optional[Dict[str, Any]] = None
+    clauses: dict[str, Clause] = field(default_factory=dict)
+    offers: list[Offer] = field(default_factory=list)
+    current_terms: dict[str, Any] = field(default_factory=dict)
+    agreed_terms: dict[str, Any] | None = None
     created_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
     updated_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
-    expires_at: Optional[str] = None
+    expires_at: str | None = None
     round_count: int = 0
     max_rounds: int = 10
 
@@ -195,7 +194,7 @@ class ProactiveAlignmentLayer:
         self,
         party: str,
         statement: str,
-        context: Optional[str] = None
+        context: str | None = None
     ) -> Intent:
         """
         Extract structured intent from natural language statement.
@@ -279,7 +278,7 @@ Return JSON:
         self,
         intent_a: Intent,
         intent_b: Intent
-    ) -> Tuple[float, Dict[str, Any]]:
+    ) -> tuple[float, dict[str, Any]]:
         """
         Compute alignment between two intents.
 
@@ -360,9 +359,9 @@ Return JSON:
 
     def suggest_alignment_strategy(
         self,
-        alignment_details: Dict[str, Any],
+        alignment_details: dict[str, Any],
         for_party: str
-    ) -> List[Dict[str, str]]:
+    ) -> list[dict[str, str]]:
         """
         Suggest strategies to improve alignment.
 
@@ -413,7 +412,7 @@ Return JSON:
 
         return strategies
 
-    def _parse_json(self, text: str) -> Dict[str, Any]:
+    def _parse_json(self, text: str) -> dict[str, Any]:
         """
         Parse JSON from LLM response.
 
@@ -488,8 +487,8 @@ class ClauseGenerator:
     def generate_clause(
         self,
         clause_type: ClauseType,
-        parameters: Dict[str, str],
-        context: Optional[str] = None,
+        parameters: dict[str, str],
+        context: str | None = None,
         style: str = "formal"
     ) -> Clause:
         """
@@ -570,7 +569,7 @@ Return JSON:
     def generate_full_contract(
         self,
         session: NegotiationSession,
-        agreed_terms: Dict[str, Any]
+        agreed_terms: dict[str, Any]
     ) -> str:
         """
         Generate a full contract from agreed terms.
@@ -628,7 +627,7 @@ Generate a professional contract document that:
     def _generate_basic_contract(
         self,
         session: NegotiationSession,
-        agreed_terms: Dict[str, Any]
+        agreed_terms: dict[str, Any]
     ) -> str:
         """Generate a basic contract without LLM."""
         lines = [
@@ -668,7 +667,7 @@ Generate a professional contract document that:
 
         return "\n".join(lines)
 
-    def _parse_json(self, text: str) -> Dict[str, Any]:
+    def _parse_json(self, text: str) -> dict[str, Any]:
         """
         Parse JSON from LLM response.
 
@@ -727,7 +726,7 @@ class CounterOfferDrafter:
         """Initialize counter-offer drafter."""
         self.client = client
         self.model = "claude-3-5-sonnet-20241022"
-        self.concession_history: Dict[str, List[Dict]] = {}  # session_id -> concessions
+        self.concession_history: dict[str, list[dict]] = {}  # session_id -> concessions
 
     def draft_counter_offer(
         self,
@@ -880,7 +879,7 @@ Return JSON:
         self,
         offer: Offer,
         party_intent: Intent
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Evaluate an offer against party's intent.
 
@@ -1001,7 +1000,7 @@ Return JSON:
             message="This is my final offer for your consideration."
         )
 
-    def _parse_json(self, text: str) -> Dict[str, Any]:
+    def _parse_json(self, text: str) -> dict[str, Any]:
         """
         Parse JSON from LLM response.
 
@@ -1056,7 +1055,7 @@ class AutomatedNegotiationEngine:
     SESSION_EXPIRY_HOURS = 72
     MAX_ROUNDS = 10
 
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: str | None = None):
         """
         Initialize negotiation engine.
 
@@ -1075,8 +1074,8 @@ class AutomatedNegotiationEngine:
         self.counter_drafter = CounterOfferDrafter(self.client)
 
         # Session storage
-        self.sessions: Dict[str, NegotiationSession] = {}
-        self.audit_trail: List[Dict[str, Any]] = []
+        self.sessions: dict[str, NegotiationSession] = {}
+        self.audit_trail: list[dict[str, Any]] = []
 
     # ===== Session Management =====
 
@@ -1086,8 +1085,8 @@ class AutomatedNegotiationEngine:
         counterparty: str,
         subject: str,
         initiator_statement: str,
-        initial_terms: Optional[Dict[str, Any]] = None
-    ) -> Tuple[bool, Dict[str, Any]]:
+        initial_terms: dict[str, Any] | None = None
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Initiate a new negotiation session.
 
@@ -1149,7 +1148,7 @@ class AutomatedNegotiationEngine:
         session_id: str,
         counterparty: str,
         counterparty_statement: str
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Counterparty joins a negotiation session.
 
@@ -1212,7 +1211,7 @@ class AutomatedNegotiationEngine:
         self,
         session_id: str,
         party: str
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Advance session to next phase.
 
@@ -1263,9 +1262,9 @@ class AutomatedNegotiationEngine:
         self,
         session_id: str,
         clause_type: ClauseType,
-        parameters: Dict[str, str],
+        parameters: dict[str, str],
         proposed_by: str
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Add a clause to the session.
 
@@ -1318,8 +1317,8 @@ class AutomatedNegotiationEngine:
         clause_id: str,
         party: str,
         response: str,
-        modified_content: Optional[str] = None
-    ) -> Tuple[bool, Dict[str, Any]]:
+        modified_content: str | None = None
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Respond to a proposed clause.
 
@@ -1374,10 +1373,10 @@ class AutomatedNegotiationEngine:
         self,
         session_id: str,
         from_party: str,
-        terms: Dict[str, Any],
+        terms: dict[str, Any],
         message: str,
         offer_type: OfferType = OfferType.INITIAL
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Make an offer in the negotiation.
 
@@ -1446,9 +1445,9 @@ class AutomatedNegotiationEngine:
         offer_id: str,
         party: str,
         response: str,
-        counter_terms: Optional[Dict[str, Any]] = None,
-        message: Optional[str] = None
-    ) -> Tuple[bool, Dict[str, Any]]:
+        counter_terms: dict[str, Any] | None = None,
+        message: str | None = None
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Respond to an offer.
 
@@ -1529,7 +1528,7 @@ class AutomatedNegotiationEngine:
         session_id: str,
         party: str,
         strategy: str = "balanced"
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Automatically draft a counter-offer.
 
@@ -1581,7 +1580,7 @@ class AutomatedNegotiationEngine:
         self,
         session_id: str,
         party: str
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Finalize an agreed negotiation into a contract.
 
@@ -1633,7 +1632,7 @@ class AutomatedNegotiationEngine:
 
     # ===== Session Queries =====
 
-    def get_session(self, session_id: str) -> Optional[Dict[str, Any]]:
+    def get_session(self, session_id: str) -> dict[str, Any] | None:
         """Get session details."""
         if session_id not in self.sessions:
             return None
@@ -1658,7 +1657,7 @@ class AutomatedNegotiationEngine:
             "expires_at": session.expires_at
         }
 
-    def get_session_offers(self, session_id: str) -> List[Dict[str, Any]]:
+    def get_session_offers(self, session_id: str) -> list[dict[str, Any]]:
         """Get all offers in a session."""
         if session_id not in self.sessions:
             return []
@@ -1679,7 +1678,7 @@ class AutomatedNegotiationEngine:
             for o in session.offers
         ]
 
-    def get_session_clauses(self, session_id: str) -> List[Dict[str, Any]]:
+    def get_session_clauses(self, session_id: str) -> list[dict[str, Any]]:
         """Get all clauses in a session."""
         if session_id not in self.sessions:
             return []
@@ -1702,7 +1701,7 @@ class AutomatedNegotiationEngine:
         self,
         session_id: str,
         for_party: str
-    ) -> List[Dict[str, str]]:
+    ) -> list[dict[str, str]]:
         """Get alignment strategies for a party."""
         if session_id not in self.sessions:
             return []
@@ -1724,7 +1723,7 @@ class AutomatedNegotiationEngine:
 
     # ===== Statistics =====
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """Get engine statistics."""
         phases = {}
         for session in self.sessions.values():
@@ -1740,11 +1739,11 @@ class AutomatedNegotiationEngine:
             "failed_sessions": phases.get("failed", 0)
         }
 
-    def get_audit_trail(self, limit: int = 100) -> List[Dict[str, Any]]:
+    def get_audit_trail(self, limit: int = 100) -> list[dict[str, Any]]:
         """Get audit trail."""
         return self.audit_trail[-limit:]
 
-    def _log_audit(self, action: str, details: Dict[str, Any]):
+    def _log_audit(self, action: str, details: dict[str, Any]):
         """Log audit trail entry."""
         self.audit_trail.append({
             "action": action,

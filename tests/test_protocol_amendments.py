@@ -2,21 +2,18 @@
 Tests for NCIP-014: Protocol Amendments & Constitutional Change
 """
 
-import pytest
 from datetime import datetime, timedelta
+
+import pytest
+
 from src.protocol_amendments import (
-    AmendmentManager,
-    AmendmentClass,
-    AmendmentStatus,
-    RatificationStage,
-    ConstitutionalArtifact,
-    ProhibitedAction,
     Amendment,
-    EmergencyAmendment,
-    VoteRecord,
+    AmendmentClass,
+    AmendmentManager,
+    AmendmentStatus,
+    ConstitutionalArtifact,
     PoUStatement,
-    SemanticCompatibilityResult,
-    ConstitutionVersion,
+    RatificationStage,
 )
 
 
@@ -37,7 +34,7 @@ class TestAmendmentClasses:
         """Test that Class E amendments require fork."""
         manager = AmendmentManager()
 
-        amendment, errors = manager.create_amendment(
+        amendment, _errors = manager.create_amendment(
             amendment_id="NCIP-014-E-2025-001",
             amendment_class=AmendmentClass.E,
             title="Core Principle Change",
@@ -188,7 +185,7 @@ class TestRatificationProcess:
 
         assert amendment.current_stage == RatificationStage.PROPOSAL_POSTING
 
-        success, msg = manager.propose_amendment(amendment.amendment_id)
+        success, _msg = manager.propose_amendment(amendment.amendment_id)
 
         assert success
         assert amendment.status == AmendmentStatus.PROPOSED
@@ -218,7 +215,7 @@ class TestRatificationProcess:
         # Simulate cooling period completion
         amendment.cooling_ends_at = datetime.utcnow() - timedelta(hours=1)
 
-        success, msg = manager.start_deliberation(amendment.amendment_id)
+        success, _msg = manager.start_deliberation(amendment.amendment_id)
 
         assert success
         assert amendment.status == AmendmentStatus.DELIBERATION
@@ -283,7 +280,7 @@ class TestRatificationProcess:
 
         # Stage 6: Activate
         amendment.effective_date = datetime.utcnow() - timedelta(days=1)
-        success, msg = manager.activate_amendment(amendment.amendment_id)
+        success, _msg = manager.activate_amendment(amendment.amendment_id)
 
         assert success
         assert amendment.status == AmendmentStatus.ACTIVATED
@@ -363,7 +360,7 @@ class TestVoting:
         )
 
         # Vote with trust score
-        success, msg = manager.cast_vote(
+        success, _msg = manager.cast_vote(
             amendment.amendment_id,
             voter_id="voter1",
             vote="approve",
@@ -579,7 +576,7 @@ class TestEmergencyAmendments:
             proposed_changes="Halt validators"
         )
 
-        success, msg = manager.ratify_emergency_amendment(emergency.amendment_id)
+        success, _msg = manager.ratify_emergency_amendment(emergency.amendment_id)
 
         assert success
         assert emergency.ratified
@@ -692,7 +689,7 @@ class TestProhibitedActions:
             proposed_changes="Test changes meeting minimum length requirement for validation"
         )
 
-        success, msg = manager.void_amendment(
+        success, _msg = manager.void_amendment(
             amendment.amendment_id,
             "Contains prohibited retroactive provisions"
         )
@@ -801,7 +798,7 @@ class TestEdgeCases:
         )
 
         # Try to start voting directly
-        success, msg = manager.start_voting(amendment.amendment_id)
+        success, _msg = manager.start_voting(amendment.amendment_id)
         assert not success
 
     def test_cannot_activate_before_effective_date(self):

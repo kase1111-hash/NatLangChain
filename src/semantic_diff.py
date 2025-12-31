@@ -6,20 +6,21 @@ Integrated version with correct data structures
 Implements NCIP-002 drift thresholds and mandatory validator responses.
 """
 
-import os
 import json
-from typing import Dict, List, Any, Optional
+import os
+from typing import Any, Optional
+
 from anthropic import Anthropic
 
 # Import NCIP-002 drift classification
 try:
     from drift_thresholds import (
-        SemanticDriftClassifier,
-        DriftLevel,
         DriftClassification,
+        DriftLevel,
+        SemanticDriftClassifier,
         TemporalFixityContext,
         classify_drift_score,
-        get_mandatory_response
+        get_mandatory_response,
     )
     NCIP_002_AVAILABLE = True
 except ImportError:
@@ -44,7 +45,7 @@ class SemanticDriftDetector:
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
+        api_key: str | None = None,
         validator_id: str = "default",
         enable_ncip_002: bool = True
     ):
@@ -82,7 +83,7 @@ class SemanticDriftDetector:
         self,
         on_chain_intent: str,
         execution_log: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Uses LLM to detect inconsistencies between intent and action.
 
@@ -160,7 +161,7 @@ Return JSON only:
                 "drift_analysis": {
                     "score": None,
                     "is_violating": None,
-                    "reason": f"Analysis failed: {str(e)}",
+                    "reason": f"Analysis failed: {e!s}",
                     "recommended_action": "ERROR"
                 }
             }
@@ -170,7 +171,7 @@ Return JSON only:
         entry_content: str,
         entry_intent: str,
         execution_log: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Check alignment between a blockchain entry and its execution.
 
@@ -206,9 +207,9 @@ Return JSON only:
         self,
         on_chain_intent: str,
         execution_log: str,
-        affected_terms: Optional[List[str]] = None,
-        entry_id: Optional[str] = None
-    ) -> Dict[str, Any]:
+        affected_terms: list[str] | None = None,
+        entry_id: str | None = None
+    ) -> dict[str, Any]:
         """
         NCIP-002 compliant drift check with mandatory responses.
 
@@ -266,8 +267,8 @@ Return JSON only:
 
     def aggregate_component_drift(
         self,
-        component_scores: Dict[str, float]
-    ) -> Dict[str, Any]:
+        component_scores: dict[str, float]
+    ) -> dict[str, Any]:
         """
         Aggregate drift scores from multiple components per NCIP-002.
 
@@ -337,7 +338,7 @@ Return JSON only:
         classification = self.classifier.classify(score)
         return classification.level.value
 
-    def get_drift_log(self) -> List[Dict[str, Any]]:
+    def get_drift_log(self) -> list[dict[str, Any]]:
         """
         Get the drift event log.
 

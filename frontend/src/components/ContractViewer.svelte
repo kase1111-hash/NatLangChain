@@ -1,7 +1,12 @@
 <script>
   import { onMount } from 'svelte';
   import { fly, fade, scale } from 'svelte/transition';
-  import { getOpenContracts, parseContract, findContractMatches, getPendingEntries } from '../lib/api.js';
+  import {
+    getOpenContracts,
+    parseContract,
+    findContractMatches,
+    getPendingEntries,
+  } from '../lib/api.js';
   import Tooltip from './Tooltip.svelte';
   import { ncipDefinitions } from '../lib/ncip-definitions.js';
 
@@ -26,7 +31,7 @@
     try {
       const [contractsData, pendingData] = await Promise.all([
         getOpenContracts().catch(() => ({ contracts: [] })),
-        getPendingEntries().catch(() => ({ entries: [] }))
+        getPendingEntries().catch(() => ({ entries: [] })),
       ]);
       contracts = contractsData.contracts || [];
       pendingEntries = pendingData.entries || [];
@@ -47,7 +52,7 @@
     try {
       parseResult = await parseContract(parseInput);
     } catch (e) {
-      error = 'Failed to parse contract: ' + e.message;
+      error = `Failed to parse contract: ${e.message}`;
     } finally {
       parsing = false;
     }
@@ -61,7 +66,7 @@
     try {
       matchResults = await findContractMatches(pendingEntries, 'web-matcher');
     } catch (e) {
-      error = 'Failed to find matches: ' + e.message;
+      error = `Failed to find matches: ${e.message}`;
     } finally {
       matching = false;
     }
@@ -76,24 +81,44 @@
     const colors = {
       offer: { bg: 'rgba(34, 197, 94, 0.15)', text: '#22c55e', border: 'rgba(34, 197, 94, 0.3)' },
       seek: { bg: 'rgba(59, 130, 246, 0.15)', text: '#3b82f6', border: 'rgba(59, 130, 246, 0.3)' },
-      proposal: { bg: 'rgba(168, 85, 247, 0.15)', text: '#a855f7', border: 'rgba(168, 85, 247, 0.3)' },
-      response: { bg: 'rgba(245, 158, 11, 0.15)', text: '#f59e0b', border: 'rgba(245, 158, 11, 0.3)' }
+      proposal: {
+        bg: 'rgba(168, 85, 247, 0.15)',
+        text: '#a855f7',
+        border: 'rgba(168, 85, 247, 0.3)',
+      },
+      response: {
+        bg: 'rgba(245, 158, 11, 0.15)',
+        text: '#f59e0b',
+        border: 'rgba(245, 158, 11, 0.3)',
+      },
     };
-    return colors[type] || { bg: 'rgba(113, 113, 122, 0.15)', text: '#71717a', border: 'rgba(113, 113, 122, 0.3)' };
+    return (
+      colors[type] || {
+        bg: 'rgba(113, 113, 122, 0.15)',
+        text: '#71717a',
+        border: 'rgba(113, 113, 122, 0.3)',
+      }
+    );
   }
 
   const icons = {
-    contract: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
-    parse: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2',
-    refresh: 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15',
-    match: 'M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1',
+    contract:
+      'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+    parse:
+      'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2',
+    refresh:
+      'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15',
+    match:
+      'M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1',
     user: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z',
-    users: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z',
+    users:
+      'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z',
     clock: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
     close: 'M6 18L18 6M6 6l12 12',
     check: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
     list: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4',
-    target: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z'
+    target:
+      'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z',
   };
 </script>
 
@@ -101,7 +126,14 @@
   <div class="contracts-header">
     <div class="header-content">
       <div class="header-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
           <path d={icons.contract} />
         </svg>
       </div>
@@ -111,7 +143,14 @@
       </div>
     </div>
     <button class="refresh-btn" on:click={loadData}>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
         <path d={icons.refresh} />
       </svg>
       <span>Refresh</span>
@@ -129,7 +168,14 @@
     </div>
   {:else if error}
     <div class="error-message" in:scale={{ duration: 200 }}>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
         <circle cx="12" cy="12" r="10" />
         <line x1="12" y1="8" x2="12" y2="12" />
         <line x1="12" y1="16" x2="12.01" y2="16" />
@@ -141,9 +187,20 @@
       <!-- Contract Parser -->
       <div class="panel parse-panel" in:fly={{ y: 10, duration: 300, delay: 100 }}>
         <div class="panel-header">
-          <Tooltip text={ncipDefinitions.contractParse.text} ncipRef={ncipDefinitions.contractParse.ncipRef} position="right">
+          <Tooltip
+            text={ncipDefinitions.contractParse.text}
+            ncipRef={ncipDefinitions.contractParse.ncipRef}
+            position="right"
+          >
             <h3>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
                 <path d={icons.parse} />
               </svg>
               Parse Contract
@@ -160,7 +217,11 @@ Example: 'I, Alice, agree to deliver 100 widgets to Bob by January 15, 2025, in 
           rows="6"
         ></textarea>
 
-        <Tooltip text={ncipDefinitions.contractParse.text} ncipRef={ncipDefinitions.contractParse.ncipRef} position="top">
+        <Tooltip
+          text={ncipDefinitions.contractParse.text}
+          ncipRef={ncipDefinitions.contractParse.ncipRef}
+          position="top"
+        >
           <button
             class="btn btn-primary"
             on:click={handleParse}
@@ -169,7 +230,14 @@ Example: 'I, Alice, agree to deliver 100 widgets to Bob by January 15, 2025, in 
             {#if parsing}
               <div class="btn-spinner"></div>
             {:else}
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
                 <path d={icons.parse} />
               </svg>
             {/if}
@@ -180,7 +248,14 @@ Example: 'I, Alice, agree to deliver 100 widgets to Bob by January 15, 2025, in 
         {#if parseResult}
           <div class="parse-result" in:fly={{ y: 10, duration: 200 }}>
             <div class="result-header">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
                 <path d={icons.check} />
               </svg>
               <h4>Parse Result</h4>
@@ -188,20 +263,44 @@ Example: 'I, Alice, agree to deliver 100 widgets to Bob by January 15, 2025, in 
             {#if parseResult.terms}
               <div class="terms-list">
                 <div class="term-item">
-                  <Tooltip text={ncipDefinitions.parties.text} ncipRef={ncipDefinitions.parties.ncipRef} position="right">
+                  <Tooltip
+                    text={ncipDefinitions.parties.text}
+                    ncipRef={ncipDefinitions.parties.ncipRef}
+                    position="right"
+                  >
                     <span class="term-label">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
                         <path d={icons.users} />
                       </svg>
                       Parties
                     </span>
                   </Tooltip>
-                  <span class="term-value">{parseResult.terms.parties?.join(', ') || 'None identified'}</span>
+                  <span class="term-value"
+                    >{parseResult.terms.parties?.join(', ') || 'None identified'}</span
+                  >
                 </div>
                 <div class="term-item">
-                  <Tooltip text={ncipDefinitions.obligations.text} ncipRef={ncipDefinitions.obligations.ncipRef} position="right">
+                  <Tooltip
+                    text={ncipDefinitions.obligations.text}
+                    ncipRef={ncipDefinitions.obligations.ncipRef}
+                    position="right"
+                  >
                     <span class="term-label">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
                         <path d={icons.list} />
                       </svg>
                       Obligations
@@ -214,9 +313,20 @@ Example: 'I, Alice, agree to deliver 100 widgets to Bob by January 15, 2025, in 
                   </ul>
                 </div>
                 <div class="term-item">
-                  <Tooltip text={ncipDefinitions.conditions.text} ncipRef={ncipDefinitions.conditions.ncipRef} position="right">
+                  <Tooltip
+                    text={ncipDefinitions.conditions.text}
+                    ncipRef={ncipDefinitions.conditions.ncipRef}
+                    position="right"
+                  >
                     <span class="term-label">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
                         <path d={icons.target} />
                       </svg>
                       Conditions
@@ -231,7 +341,14 @@ Example: 'I, Alice, agree to deliver 100 widgets to Bob by January 15, 2025, in 
                 {#if parseResult.terms.timeline}
                   <div class="term-item">
                     <span class="term-label">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
                         <path d={icons.clock} />
                       </svg>
                       Timeline
@@ -250,9 +367,20 @@ Example: 'I, Alice, agree to deliver 100 widgets to Bob by January 15, 2025, in 
       <!-- Open Contracts -->
       <div class="panel contracts-list-panel" in:fly={{ y: 10, duration: 300, delay: 150 }}>
         <div class="panel-header">
-          <Tooltip text={ncipDefinitions.agreement.text} ncipRef={ncipDefinitions.agreement.ncipRef} position="right">
+          <Tooltip
+            text={ncipDefinitions.agreement.text}
+            ncipRef={ncipDefinitions.agreement.ncipRef}
+            position="right"
+          >
             <h3>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
                 <path d={icons.contract} />
               </svg>
               Open Contracts
@@ -265,7 +393,14 @@ Example: 'I, Alice, agree to deliver 100 widgets to Bob by January 15, 2025, in 
         {#if contracts.length === 0}
           <div class="empty-state">
             <div class="empty-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
                 <path d={icons.contract} />
               </svg>
             </div>
@@ -278,25 +413,41 @@ Example: 'I, Alice, agree to deliver 100 widgets to Bob by January 15, 2025, in 
               <button
                 class="contract-card"
                 class:selected={selectedContract === contract}
-                on:click={() => selectedContract = contract}
+                on:click={() => (selectedContract = contract)}
                 in:fly={{ x: -10, duration: 200, delay: i * 30 }}
               >
                 <div class="contract-header">
                   <span
                     class="contract-type"
-                    style="background: {getContractTypeColor(contract.type).bg}; color: {getContractTypeColor(contract.type).text}; border-color: {getContractTypeColor(contract.type).border}"
+                    style="background: {getContractTypeColor(contract.type)
+                      .bg}; color: {getContractTypeColor(contract.type)
+                      .text}; border-color: {getContractTypeColor(contract.type).border}"
                   >
                     {contract.type || 'unknown'}
                   </span>
                   <span class="contract-time">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
                       <path d={icons.clock} />
                     </svg>
                     {formatTimestamp(contract.timestamp)}
                   </span>
                 </div>
                 <div class="contract-author">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
                     <path d={icons.user} />
                   </svg>
                   {contract.author}
@@ -314,9 +465,20 @@ Example: 'I, Alice, agree to deliver 100 widgets to Bob by January 15, 2025, in 
       <!-- Contract Matching -->
       <div class="panel matching-panel" in:fly={{ y: 10, duration: 300, delay: 200 }}>
         <div class="panel-header">
-          <Tooltip text={ncipDefinitions.contractMatching.text} ncipRef={ncipDefinitions.contractMatching.ncipRef} position="right">
+          <Tooltip
+            text={ncipDefinitions.contractMatching.text}
+            ncipRef={ncipDefinitions.contractMatching.ncipRef}
+            position="right"
+          >
             <h3>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
                 <path d={icons.match} />
               </svg>
               Contract Matching
@@ -325,14 +487,22 @@ Example: 'I, Alice, agree to deliver 100 widgets to Bob by January 15, 2025, in 
         </div>
         <p class="panel-desc">Find matching offers and seeks</p>
 
-        <Tooltip text={ncipDefinitions.pendingEntries.text} ncipRef={ncipDefinitions.pendingEntries.ncipRef} position="right">
+        <Tooltip
+          text={ncipDefinitions.pendingEntries.text}
+          ncipRef={ncipDefinitions.pendingEntries.ncipRef}
+          position="right"
+        >
           <div class="pending-info">
             <span class="pending-count">{pendingEntries.length}</span>
             <span>pending entries to match</span>
           </div>
         </Tooltip>
 
-        <Tooltip text={ncipDefinitions.contractMatching.text} ncipRef={ncipDefinitions.contractMatching.ncipRef} position="top">
+        <Tooltip
+          text={ncipDefinitions.contractMatching.text}
+          ncipRef={ncipDefinitions.contractMatching.ncipRef}
+          position="top"
+        >
           <button
             class="btn btn-primary"
             on:click={handleFindMatches}
@@ -341,7 +511,14 @@ Example: 'I, Alice, agree to deliver 100 widgets to Bob by January 15, 2025, in 
             {#if matching}
               <div class="btn-spinner"></div>
             {:else}
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
                 <path d={icons.match} />
               </svg>
             {/if}
@@ -352,7 +529,14 @@ Example: 'I, Alice, agree to deliver 100 widgets to Bob by January 15, 2025, in 
         {#if matchResults}
           <div class="match-results" in:fly={{ y: 10, duration: 200 }}>
             <div class="result-header">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
                 <path d={icons.match} />
               </svg>
               <h4>Match Results</h4>
@@ -361,7 +545,14 @@ Example: 'I, Alice, agree to deliver 100 widgets to Bob by January 15, 2025, in 
               {#each matchResults.matches as match, i}
                 <div class="match-item" in:fly={{ y: 10, duration: 200, delay: i * 50 }}>
                   <div class="match-score">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
                       <path d={icons.target} />
                     </svg>
                     Match Score: {(match.score * 100).toFixed(1)}%
@@ -372,7 +563,14 @@ Example: 'I, Alice, agree to deliver 100 widgets to Bob by January 15, 2025, in 
                       <p>{match.offer?.content?.slice(0, 80)}...</p>
                     </div>
                     <div class="match-connector">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
                         <path d={icons.match} />
                       </svg>
                     </div>
@@ -397,13 +595,27 @@ Example: 'I, Alice, agree to deliver 100 widgets to Bob by January 15, 2025, in 
         <div class="panel detail-panel" in:fly={{ y: 20, duration: 300 }}>
           <div class="detail-header">
             <h3>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
                 <path d={icons.contract} />
               </svg>
               Contract Details
             </h3>
-            <button class="close-btn" on:click={() => selectedContract = null}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <button class="close-btn" on:click={() => (selectedContract = null)}>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
                 <path d={icons.close} />
               </svg>
             </button>
@@ -412,7 +624,14 @@ Example: 'I, Alice, agree to deliver 100 widgets to Bob by January 15, 2025, in 
           <div class="detail-content">
             <div class="detail-row">
               <span class="detail-label">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
                   <path d={icons.user} />
                 </svg>
                 Author
@@ -423,14 +642,23 @@ Example: 'I, Alice, agree to deliver 100 widgets to Bob by January 15, 2025, in 
               <span class="detail-label">Type</span>
               <span
                 class="contract-type-badge"
-                style="background: {getContractTypeColor(selectedContract.type).bg}; color: {getContractTypeColor(selectedContract.type).text}; border-color: {getContractTypeColor(selectedContract.type).border}"
+                style="background: {getContractTypeColor(selectedContract.type)
+                  .bg}; color: {getContractTypeColor(selectedContract.type)
+                  .text}; border-color: {getContractTypeColor(selectedContract.type).border}"
               >
                 {selectedContract.type || 'unknown'}
               </span>
             </div>
             <div class="detail-row">
               <span class="detail-label">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
                   <path d={icons.target} />
                 </svg>
                 Intent
@@ -439,7 +667,14 @@ Example: 'I, Alice, agree to deliver 100 widgets to Bob by January 15, 2025, in 
             </div>
             <div class="detail-row">
               <span class="detail-label">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
                   <path d={icons.clock} />
                 </svg>
                 Created
@@ -580,7 +815,9 @@ Example: 'I, Alice, agree to deliver 100 widgets to Bob by January 15, 2025, in 
   }
 
   @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   .loading-container p {
@@ -729,7 +966,8 @@ Example: 'I, Alice, agree to deliver 100 widgets to Bob by January 15, 2025, in 
     animation: spin 0.8s linear infinite;
   }
 
-  .parse-result, .match-results {
+  .parse-result,
+  .match-results {
     margin-top: 20px;
     padding: 20px;
     background: rgba(255, 255, 255, 0.02);

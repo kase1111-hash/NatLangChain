@@ -12,24 +12,20 @@ Tests cover:
 - Emergency integration
 """
 
-import pytest
-from datetime import datetime, timedelta
-import sys
 import os
+import sys
+from datetime import datetime, timedelta
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from sunset_clauses import (
-    SunsetManager,
-    SunsetClause,
-    SunsetTriggerType,
+    DEFAULT_SUNSET_YEARS,
+    VALID_TRANSITIONS,
     EntryState,
     EntryType,
-    ManagedEntry,
-    ArchivedEntry,
+    SunsetManager,
+    SunsetTriggerType,
     TemporalContext,
-    VALID_TRANSITIONS,
-    DEFAULT_SUNSET_YEARS,
 )
 
 
@@ -66,7 +62,7 @@ class TestSunsetTriggerTypes:
         manager = SunsetManager()
         entry = manager.create_entry(EntryType.LICENSE, "Test license")
 
-        clause, errors = manager.declare_sunset(
+        clause, _errors = manager.declare_sunset(
             entry.entry_id,
             SunsetTriggerType.EVENT_BASED,
             trigger_event="Acquisition of Company X"
@@ -80,7 +76,7 @@ class TestSunsetTriggerTypes:
         manager = SunsetManager()
         entry = manager.create_entry(EntryType.CONTRACT, "Test contract")
 
-        clause, errors = manager.declare_sunset(
+        clause, _errors = manager.declare_sunset(
             entry.entry_id,
             SunsetTriggerType.CONDITION_FULFILLED,
             trigger_condition="All deliverables accepted"
@@ -94,7 +90,7 @@ class TestSunsetTriggerTypes:
         manager = SunsetManager()
         entry = manager.create_entry(EntryType.LICENSE, "Test license")
 
-        clause, errors = manager.declare_sunset(
+        clause, _errors = manager.declare_sunset(
             entry.entry_id,
             SunsetTriggerType.EXHAUSTION,
             max_uses=100
@@ -108,7 +104,7 @@ class TestSunsetTriggerTypes:
         manager = SunsetManager()
         entry = manager.create_entry(EntryType.DELEGATION, "Test delegation")
 
-        clause, errors = manager.declare_sunset(
+        clause, _errors = manager.declare_sunset(
             entry.entry_id,
             SunsetTriggerType.REVOCATION,
             revocation_terms="May be revoked with 30 days notice"
@@ -122,7 +118,7 @@ class TestSunsetTriggerTypes:
         manager = SunsetManager()
         entry = manager.create_entry(EntryType.CONTRACT, "Test contract")
 
-        clause, errors = manager.declare_sunset(
+        clause, _errors = manager.declare_sunset(
             entry.entry_id,
             SunsetTriggerType.CONSTITUTIONAL,
             amendment_id="AMEND-2025-001"
@@ -231,7 +227,7 @@ class TestStateMachine:
         entry = manager.create_entry(EntryType.CONTRACT, "Test")
 
         # Try DRAFT → ACTIVE (skipping RATIFIED)
-        success, msg = manager.transition_state(entry.entry_id, EntryState.ACTIVE)
+        success, _msg = manager.transition_state(entry.entry_id, EntryState.ACTIVE)
         assert success is False
 
     def test_archived_is_terminal(self):
@@ -607,7 +603,7 @@ class TestSunsetTriggering:
         manager.transition_state(entry.entry_id, EntryState.RATIFIED, context)
         manager.transition_state(entry.entry_id, EntryState.ACTIVE)
 
-        success, msg = manager.record_event_trigger(entry.entry_id, "Company X acquired")
+        success, _msg = manager.record_event_trigger(entry.entry_id, "Company X acquired")
         assert success is True
         assert entry.state == EntryState.SUNSET_PENDING
 
@@ -626,7 +622,7 @@ class TestSunsetTriggering:
         manager.transition_state(entry.entry_id, EntryState.RATIFIED, context)
         manager.transition_state(entry.entry_id, EntryState.ACTIVE)
 
-        success, msg = manager.process_revocation(entry.entry_id, "admin", "No longer needed")
+        success, _msg = manager.process_revocation(entry.entry_id, "admin", "No longer needed")
         assert success is True
         assert entry.state == EntryState.SUNSET_PENDING
 
@@ -643,7 +639,7 @@ class TestEmergencyIntegration:
         manager.transition_state(entry.entry_id, EntryState.RATIFIED, context)
         manager.transition_state(entry.entry_id, EntryState.ACTIVE)
 
-        success, msg = manager.pause_sunset_timer(entry.entry_id, "EMG-001")
+        success, _msg = manager.pause_sunset_timer(entry.entry_id, "EMG-001")
 
         assert success is True
         assert entry.emergency_paused is True
@@ -674,7 +670,7 @@ class TestEmergencyIntegration:
         manager.transition_state(entry.entry_id, EntryState.ACTIVE)
 
         manager.pause_sunset_timer(entry.entry_id, "EMG-001")
-        success, msg = manager.resume_sunset_timer(entry.entry_id)
+        success, _msg = manager.resume_sunset_timer(entry.entry_id)
 
         assert success is True
         assert entry.emergency_paused is False
@@ -732,7 +728,7 @@ class TestStatusReporting:
         manager = SunsetManager()
 
         entry1 = manager.create_entry(EntryType.CONTRACT, "Test 1")
-        entry2 = manager.create_entry(EntryType.CONTRACT, "Test 2")
+        manager.create_entry(EntryType.CONTRACT, "Test 2")
 
         context = TemporalContext("1.0", "en", "US")
         manager.transition_state(entry1.entry_id, EntryState.RATIFIED, context)

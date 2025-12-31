@@ -2,8 +2,9 @@
 Tests for integrated features (semantic search, drift detection, dialectic consensus)
 """
 
-import sys
 import os
+import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from blockchain import NatLangChain, NaturalLanguageEntry

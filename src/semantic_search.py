@@ -5,8 +5,9 @@ Integrated version with correct data structures
 """
 
 import logging
+from typing import Any
+
 import numpy as np
-from typing import List, Dict, Any, Optional
 
 # Configure module-level logger
 logger = logging.getLogger(__name__)
@@ -79,7 +80,7 @@ class SemanticSearchEngine:
                 model_name, str(e)
             )
             raise ModelLoadError(
-                f"Failed to load sentence transformer model '{model_name}': {str(e)}. "
+                f"Failed to load sentence transformer model '{model_name}': {e!s}. "
                 f"Check that the model name is correct and you have network access."
             ) from e
         except Exception as e:
@@ -88,14 +89,14 @@ class SemanticSearchEngine:
                 model_name, type(e).__name__, str(e)
             )
             raise ModelLoadError(
-                f"Unexpected error loading model '{model_name}': {type(e).__name__}: {str(e)}"
+                f"Unexpected error loading model '{model_name}': {type(e).__name__}: {e!s}"
             ) from e
 
         self._entries_cache = []
         self._embeddings_cache = None
         self._cache_valid = False
 
-    def _extract_all_entries(self, blockchain: NatLangChain) -> List[Dict[str, Any]]:
+    def _extract_all_entries(self, blockchain: NatLangChain) -> list[dict[str, Any]]:
         """
         Extract all entries from the blockchain with metadata.
 
@@ -148,7 +149,7 @@ class SemanticSearchEngine:
                     len(content_list), str(e)
                 )
                 raise EncodingError(
-                    f"Failed to encode entries: {str(e)}. "
+                    f"Failed to encode entries: {e!s}. "
                     f"Try reducing batch size or using a smaller model."
                 ) from e
             except Exception as e:
@@ -157,7 +158,7 @@ class SemanticSearchEngine:
                     type(e).__name__, str(e)
                 )
                 raise EncodingError(
-                    f"Encoding failed: {type(e).__name__}: {str(e)}"
+                    f"Encoding failed: {type(e).__name__}: {e!s}"
                 ) from e
         else:
             self._embeddings_cache = np.array([])
@@ -170,7 +171,7 @@ class SemanticSearchEngine:
         query: str,
         top_k: int = 5,
         min_score: float = 0.0
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Perform semantic search across all blockchain entries.
 
@@ -209,7 +210,7 @@ class SemanticSearchEngine:
                 "Failed to encode search query: %s: %s",
                 type(e).__name__, str(e)
             )
-            raise EncodingError(f"Failed to encode query: {str(e)}") from e
+            raise EncodingError(f"Failed to encode query: {e!s}") from e
 
         # Calculate cosine similarity with safe normalization
         # Handle potential division by zero
@@ -250,7 +251,7 @@ class SemanticSearchEngine:
         field: str = "content",
         top_k: int = 5,
         min_score: float = 0.0
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Perform semantic search on a specific field (content, intent, etc.).
 
@@ -304,7 +305,7 @@ class SemanticSearchEngine:
                 "Failed to encode during field search: %s: %s",
                 type(e).__name__, str(e)
             )
-            raise EncodingError(f"Encoding failed: {str(e)}") from e
+            raise EncodingError(f"Encoding failed: {e!s}") from e
 
         # Calculate cosine similarity with safe normalization
         embedding_norms = np.linalg.norm(corpus_embeddings, axis=1, keepdims=True)
@@ -341,7 +342,7 @@ class SemanticSearchEngine:
         entry_content: str,
         top_k: int = 5,
         exclude_exact: bool = True
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Find entries similar to a given entry.
 

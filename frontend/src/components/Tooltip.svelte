@@ -14,12 +14,13 @@
 
 <span
   class="tooltip-wrapper"
-  on:mouseenter={() => showTooltip = true}
-  on:mouseleave={() => showTooltip = false}
-  on:focus={() => showTooltip = true}
-  on:blur={() => showTooltip = false}
-  role="tooltip"
+  on:mouseenter={() => (showTooltip = true)}
+  on:mouseleave={() => (showTooltip = false)}
+  on:focus={() => (showTooltip = true)}
+  on:blur={() => (showTooltip = false)}
+  role="button"
   tabindex="0"
+  aria-describedby={showTooltip ? 'tooltip-content' : undefined}
 >
   <slot />
   {#if showTooltip && text}

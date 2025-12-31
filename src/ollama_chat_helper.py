@@ -4,13 +4,14 @@ A friendly AI assistant that helps users craft clear, well-structured contracts.
 This is a quality helper, not an enforcer - it asks questions and offers suggestions.
 """
 
-import os
 import json
 import logging
-import requests
-from typing import List, Dict, Any, Optional
+import os
 from dataclasses import dataclass, field
 from datetime import datetime
+from typing import Any
+
+import requests
 
 # Configure module-level logger
 logger = logging.getLogger(__name__)
@@ -28,7 +29,7 @@ class ChatMessage:
 class ConversationContext:
     """Context about the current user activity."""
     current_view: str = "dashboard"
-    selected_entries: List[str] = field(default_factory=list)
+    selected_entries: list[str] = field(default_factory=list)
     draft_content: str = ""
     draft_intent: str = ""
     is_contract: bool = False
@@ -103,8 +104,8 @@ If the user shares draft content, point out what's good and what needs clarifica
 
     def __init__(
         self,
-        ollama_url: Optional[str] = None,
-        model: Optional[str] = None
+        ollama_url: str | None = None,
+        model: str | None = None
     ):
         """
         Initialize the chat helper.
@@ -115,10 +116,10 @@ If the user shares draft content, point out what's good and what needs clarifica
         """
         self.ollama_url = ollama_url or os.getenv("OLLAMA_URL", self.DEFAULT_OLLAMA_URL)
         self.model = model or os.getenv("OLLAMA_MODEL", self.DEFAULT_MODEL)
-        self.conversation_history: List[ChatMessage] = []
+        self.conversation_history: list[ChatMessage] = []
         self.context = ConversationContext()
 
-    def set_context(self, context: Dict[str, Any]) -> None:
+    def set_context(self, context: dict[str, Any]) -> None:
         """
         Update the conversation context.
 
@@ -182,7 +183,7 @@ If the user shares draft content, point out what's good and what needs clarifica
             return "\n\nCurrent context:\n" + "\n".join(context_parts)
         return ""
 
-    def _build_messages(self, user_message: str) -> List[Dict[str, str]]:
+    def _build_messages(self, user_message: str) -> list[dict[str, str]]:
         """Build the message list for the Ollama API."""
         messages = []
 
@@ -199,7 +200,7 @@ If the user shares draft content, point out what's good and what needs clarifica
 
         return messages
 
-    def check_ollama_status(self) -> Dict[str, Any]:
+    def check_ollama_status(self) -> dict[str, Any]:
         """
         Check if Ollama is running and accessible.
 
@@ -250,7 +251,7 @@ If the user shares draft content, point out what's good and what needs clarifica
             "model_available": False
         }
 
-    def chat(self, user_message: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def chat(self, user_message: str, context: dict[str, Any] | None = None) -> dict[str, Any]:
         """
         Send a message and get a response.
 
@@ -362,7 +363,7 @@ If the user shares draft content, point out what's good and what needs clarifica
             return {
                 "success": False,
                 "response": None,
-                "error": f"Request failed: {str(e)}"
+                "error": f"Request failed: {e!s}"
             }
         except Exception as e:
             logger.exception(
@@ -372,10 +373,10 @@ If the user shares draft content, point out what's good and what needs clarifica
             return {
                 "success": False,
                 "response": None,
-                "error": f"Unexpected error: {type(e).__name__}: {str(e)}"
+                "error": f"Unexpected error: {type(e).__name__}: {e!s}"
             }
 
-    def get_suggestions(self, content: str, intent: str, contract_type: str = "") -> Dict[str, Any]:
+    def get_suggestions(self, content: str, intent: str, contract_type: str = "") -> dict[str, Any]:
         """
         Get specific suggestions for improving a contract or entry.
 
@@ -412,7 +413,7 @@ Be friendly and constructive."""
 
         return self.chat(prompt)
 
-    def get_starter_questions(self, contract_type: str = "") -> List[str]:
+    def get_starter_questions(self, contract_type: str = "") -> list[str]:
         """
         Get starter questions to help the user begin crafting their entry.
 
@@ -460,7 +461,7 @@ Be friendly and constructive."""
             return contract_questions[contract_type]
         return general_questions
 
-    def explain_concept(self, concept: str) -> Dict[str, Any]:
+    def explain_concept(self, concept: str) -> dict[str, Any]:
         """
         Explain a NatLangChain concept in simple terms.
 
@@ -481,7 +482,7 @@ If you're not sure about a specific concept, explain what it might mean in the c
 
         return self.chat(prompt)
 
-    def get_history(self) -> List[Dict[str, str]]:
+    def get_history(self) -> list[dict[str, str]]:
         """
         Get the conversation history.
 
@@ -495,7 +496,7 @@ If you're not sure about a specific concept, explain what it might mean in the c
 
 
 # Singleton instance for the API to use
-_chat_helper_instance: Optional[OllamaChatHelper] = None
+_chat_helper_instance: OllamaChatHelper | None = None
 
 
 def get_chat_helper() -> OllamaChatHelper:

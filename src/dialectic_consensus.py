@@ -4,9 +4,10 @@ Implements debate-based validation using Skeptic/Facilitator roles
 Integrated version with correct data structures
 """
 
-import os
 import json
-from typing import Dict, Any, Optional
+import os
+from typing import Any
+
 from anthropic import Anthropic
 
 
@@ -23,7 +24,7 @@ class DialecticConsensus:
     precision is critical.
     """
 
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: str | None = None):
         """
         Initialize the dialectic consensus system.
 
@@ -42,7 +43,7 @@ class DialecticConsensus:
         content: str,
         intent: str,
         author: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Validate an entry through dialectic debate.
 
@@ -88,7 +89,7 @@ class DialecticConsensus:
                 "decision": "ERROR"
             }
 
-    def _skeptic_review(self, content: str, intent: str) -> Dict[str, Any]:
+    def _skeptic_review(self, content: str, intent: str) -> dict[str, Any]:
         """
         The Skeptic: Critically examines for ambiguity and loopholes.
 
@@ -128,7 +129,7 @@ Return JSON:
 
         return self._call_llm(prompt, role="Skeptic")
 
-    def _facilitator_review(self, content: str, intent: str) -> Dict[str, Any]:
+    def _facilitator_review(self, content: str, intent: str) -> dict[str, Any]:
         """
         The Facilitator: Extracts core intent and spirit.
 
@@ -172,9 +173,9 @@ Return JSON:
         self,
         content: str,
         intent: str,
-        skeptic: Dict[str, Any],
-        facilitator: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        skeptic: dict[str, Any],
+        facilitator: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Reconcile Skeptic and Facilitator perspectives.
 
@@ -228,7 +229,7 @@ Return JSON:
 
         return result
 
-    def _call_llm(self, prompt: str, role: str) -> Dict[str, Any]:
+    def _call_llm(self, prompt: str, role: str) -> dict[str, Any]:
         """
         Make an API call to Claude for analysis.
 
@@ -264,19 +265,19 @@ Return JSON:
 
         except json.JSONDecodeError as e:
             return {
-                "error": f"JSON parsing error: {str(e)}",
+                "error": f"JSON parsing error: {e!s}",
                 "role": role,
                 "status": "ERROR"
             }
         except ValueError as e:
             return {
-                "error": f"Validation error: {str(e)}",
+                "error": f"Validation error: {e!s}",
                 "role": role,
                 "status": "ERROR"
             }
         except Exception as e:
             return {
-                "error": f"Unexpected error: {str(e)}",
+                "error": f"Unexpected error: {e!s}",
                 "role": role,
                 "status": "ERROR"
             }

@@ -15,12 +15,12 @@ Final Guarantee: Regulators can verify that rules were followed
 without being able to decide what was meant.
 """
 
+import hashlib
+import secrets
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Dict, List, Optional, Set, Tuple, Any
-import hashlib
-import secrets
+from typing import Any
 
 
 class RegulatoryRegime(Enum):
@@ -92,16 +92,16 @@ class ZKProof:
     commitment: str         # Cryptographic commitment
     challenge: str          # Challenge value
     response: str           # Response (proof)
-    public_inputs: List[str] = field(default_factory=list)
+    public_inputs: list[str] = field(default_factory=list)
 
     # Verification
     verified: bool = False
-    verified_at: Optional[datetime] = None
-    verifier_id: Optional[str] = None
+    verified_at: datetime | None = None
+    verifier_id: str | None = None
 
     # Metadata
     created_at: datetime = field(default_factory=datetime.utcnow)
-    expires_at: Optional[datetime] = None
+    expires_at: datetime | None = None
 
     def is_expired(self) -> bool:
         """Check if proof has expired."""
@@ -109,7 +109,7 @@ class ZKProof:
             return False
         return datetime.utcnow() > self.expires_at
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "proof_id": self.proof_id,
@@ -129,7 +129,7 @@ class ComplianceArtifact:
     artifact_type: str      # e.g., "t0_snapshot_hash", "chain_segment_hash", "pou_hash"
     hash_value: str
     timestamp: datetime = field(default_factory=datetime.utcnow)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -138,7 +138,7 @@ class WORMCertificate:
     Write-Once-Read-Many export certificate for retention proof.
     """
     certificate_id: str
-    entry_ids: List[str]
+    entry_ids: list[str]
     export_hash: str
     retention_start: datetime
     retention_period_years: int
@@ -170,8 +170,8 @@ class AccessLogEntry:
     access_type: str        # read, write, delete, etc.
     timestamp: datetime
     authorized: bool
-    authorization_proof: Optional[str] = None
-    boundary_daemon_signature: Optional[str] = None
+    authorization_proof: str | None = None
+    boundary_daemon_signature: str | None = None
 
 
 @dataclass
@@ -184,33 +184,33 @@ class ComplianceProof:
     """
     proof_id: str
     regime: RegulatoryRegime
-    claims: List[ComplianceClaimType]
+    claims: list[ComplianceClaimType]
 
     # Artifacts
-    artifacts: List[ComplianceArtifact] = field(default_factory=list)
+    artifacts: list[ComplianceArtifact] = field(default_factory=list)
 
     # Privacy mechanism
     privacy_method: ProofMechanism = ProofMechanism.ZERO_KNOWLEDGE
     disclosure_scope: DisclosureScope = DisclosureScope.REGULATOR_ONLY
 
     # ZK proofs for privacy claims
-    zk_proofs: List[ZKProof] = field(default_factory=list)
+    zk_proofs: list[ZKProof] = field(default_factory=list)
 
     # WORM certificate for retention
-    worm_certificate: Optional[WORMCertificate] = None
+    worm_certificate: WORMCertificate | None = None
 
     # Status
     status: ProofStatus = ProofStatus.PENDING
     created_at: datetime = field(default_factory=datetime.utcnow)
-    expires_at: Optional[datetime] = None
-    verified_at: Optional[datetime] = None
+    expires_at: datetime | None = None
+    verified_at: datetime | None = None
 
     # Scope control
-    entry_ids_covered: List[str] = field(default_factory=list)
-    scope_hash: Optional[str] = None  # Hash of covered scope for minimality verification
+    entry_ids_covered: list[str] = field(default_factory=list)
+    scope_hash: str | None = None  # Hash of covered scope for minimality verification
 
     # Validator verification
-    validator_signatures: List[Dict[str, str]] = field(default_factory=list)
+    validator_signatures: list[dict[str, str]] = field(default_factory=list)
 
     def is_minimal(self) -> bool:
         """Check if proof covers only necessary scope."""
@@ -219,7 +219,7 @@ class ComplianceProof:
         required_types = self._get_required_artifact_types()
         return artifact_types.issubset(required_types)
 
-    def _get_required_artifact_types(self) -> Set[str]:
+    def _get_required_artifact_types(self) -> set[str]:
         """Get required artifact types for claims."""
         type_map = {
             ComplianceClaimType.IMMUTABILITY: {"t0_snapshot_hash", "chain_segment_hash"},
@@ -243,12 +243,9 @@ class ComplianceProof:
     def is_non_semantic(self) -> bool:
         """Check if proof does not reveal semantic content."""
         # All artifacts should be hashes, not raw content
-        for artifact in self.artifacts:
-            if not artifact.hash_value:
-                return False
-        return True
+        return all(artifact.hash_value for artifact in self.artifacts)
 
-    def to_package(self) -> Dict[str, Any]:
+    def to_package(self) -> dict[str, Any]:
         """Generate compliance proof package per NCIP-009 Section 6."""
         return {
             "compliance_proof": {
@@ -287,7 +284,7 @@ class RegulatoryInterfaceModule:
     description: str
 
     # Supported claims for this regime
-    supported_claims: List[ComplianceClaimType] = field(default_factory=list)
+    supported_claims: list[ComplianceClaimType] = field(default_factory=list)
 
     # Retention requirements
     retention_years: int = 7  # Default SEC 17a-4 requirement
@@ -330,11 +327,11 @@ class RegulatoryInterfaceManager:
     DEFAULT_PROOF_VALIDITY_DAYS = 90
 
     def __init__(self):
-        self.rims: Dict[str, RegulatoryInterfaceModule] = {}
-        self.proofs: Dict[str, ComplianceProof] = {}
-        self.zk_proofs: Dict[str, ZKProof] = {}
-        self.worm_certificates: Dict[str, WORMCertificate] = {}
-        self.access_logs: Dict[str, List[AccessLogEntry]] = {}
+        self.rims: dict[str, RegulatoryInterfaceModule] = {}
+        self.proofs: dict[str, ComplianceProof] = {}
+        self.zk_proofs: dict[str, ZKProof] = {}
+        self.worm_certificates: dict[str, WORMCertificate] = {}
+        self.access_logs: dict[str, list[AccessLogEntry]] = {}
 
         self.rim_counter = 0
         self.proof_counter = 0
@@ -371,7 +368,7 @@ class RegulatoryInterfaceManager:
         self,
         regime: RegulatoryRegime,
         description: str,
-        supported_claims: List[ComplianceClaimType]
+        supported_claims: list[ComplianceClaimType]
     ) -> RegulatoryInterfaceModule:
         """Register a new Regulatory Interface Module."""
         self.rim_counter += 1
@@ -390,14 +387,14 @@ class RegulatoryInterfaceManager:
         self.rims[rim_id] = rim
         return rim
 
-    def get_rim(self, regime: RegulatoryRegime) -> Optional[RegulatoryInterfaceModule]:
+    def get_rim(self, regime: RegulatoryRegime) -> RegulatoryInterfaceModule | None:
         """Get RIM for a specific regime."""
         for rim in self.rims.values():
             if rim.regime == regime and rim.enabled:
                 return rim
         return None
 
-    def list_rims(self) -> List[RegulatoryInterfaceModule]:
+    def list_rims(self) -> list[RegulatoryInterfaceModule]:
         """List all registered RIMs."""
         return list(self.rims.values())
 
@@ -408,13 +405,13 @@ class RegulatoryInterfaceManager:
     def generate_compliance_proof(
         self,
         regime: RegulatoryRegime,
-        claims: List[ComplianceClaimType],
-        entry_ids: List[str],
-        entry_hashes: Dict[str, str],
-        pou_hashes: Optional[List[str]] = None,
+        claims: list[ComplianceClaimType],
+        entry_ids: list[str],
+        entry_hashes: dict[str, str],
+        pou_hashes: list[str] | None = None,
         disclosure_scope: DisclosureScope = DisclosureScope.REGULATOR_ONLY,
-        validity_days: Optional[int] = None
-    ) -> Tuple[Optional[ComplianceProof], List[str]]:
+        validity_days: int | None = None
+    ) -> tuple[ComplianceProof | None, list[str]]:
         """
         Generate a compliance proof per NCIP-009.
 
@@ -495,11 +492,11 @@ class RegulatoryInterfaceManager:
 
     def _generate_artifacts(
         self,
-        claims: List[ComplianceClaimType],
-        entry_ids: List[str],
-        entry_hashes: Dict[str, str],
-        pou_hashes: Optional[List[str]]
-    ) -> List[ComplianceArtifact]:
+        claims: list[ComplianceClaimType],
+        entry_ids: list[str],
+        entry_hashes: dict[str, str],
+        pou_hashes: list[str] | None
+    ) -> list[ComplianceArtifact]:
         """Generate artifacts for claims."""
         artifacts = []
         artifact_counter = 0
@@ -592,17 +589,17 @@ class RegulatoryInterfaceManager:
 
         return artifacts
 
-    def _compute_chain_hash(self, values: List[str]) -> str:
+    def _compute_chain_hash(self, values: list[str]) -> str:
         """Compute hash chain of values."""
         combined = "|".join(sorted(values))
         return hashlib.sha256(combined.encode()).hexdigest()
 
-    def _compute_retention_hash(self, entry_ids: List[str]) -> str:
+    def _compute_retention_hash(self, entry_ids: list[str]) -> str:
         """Compute retention proof hash."""
         content = f"RETENTION:{','.join(sorted(entry_ids))}:{datetime.utcnow().isoformat()}"
         return hashlib.sha256(content.encode()).hexdigest()
 
-    def _compute_access_log_hash(self, entry_ids: List[str]) -> str:
+    def _compute_access_log_hash(self, entry_ids: list[str]) -> str:
         """Compute access log hash for entries."""
         logs = []
         for entry_id in entry_ids:
@@ -612,12 +609,12 @@ class RegulatoryInterfaceManager:
         content = "|".join(sorted(logs)) if logs else f"NO_LOGS:{','.join(entry_ids)}"
         return hashlib.sha256(content.encode()).hexdigest()
 
-    def _compute_scope_hash(self, entry_ids: List[str]) -> str:
+    def _compute_scope_hash(self, entry_ids: list[str]) -> str:
         """Compute hash of proof scope for minimality verification."""
         content = f"SCOPE:{','.join(sorted(entry_ids))}"
         return hashlib.sha256(content.encode()).hexdigest()
 
-    def _compute_merkle_root(self, hashes: List[str]) -> str:
+    def _compute_merkle_root(self, hashes: list[str]) -> str:
         """Compute Merkle root of hashes."""
         if not hashes:
             return hashlib.sha256(b"EMPTY").hexdigest()
@@ -637,12 +634,12 @@ class RegulatoryInterfaceManager:
 
         return current_level[0]
 
-    def _compute_audit_trail_hash(self, entry_ids: List[str]) -> str:
+    def _compute_audit_trail_hash(self, entry_ids: list[str]) -> str:
         """Compute audit trail hash."""
         content = f"AUDIT:{','.join(sorted(entry_ids))}:{datetime.utcnow().isoformat()}"
         return hashlib.sha256(content.encode()).hexdigest()
 
-    def _generate_commitment(self, entry_ids: List[str]) -> str:
+    def _generate_commitment(self, entry_ids: list[str]) -> str:
         """Generate cryptographic commitment for ZK proof."""
         randomness = secrets.token_hex(32)
         content = f"COMMIT:{','.join(sorted(entry_ids))}:{randomness}"
@@ -655,8 +652,8 @@ class RegulatoryInterfaceManager:
     def _generate_zk_proof(
         self,
         claim_type: ComplianceClaimType,
-        entry_ids: List[str],
-        entry_hashes: Dict[str, str]
+        entry_ids: list[str],
+        entry_hashes: dict[str, str]
     ) -> ZKProof:
         """
         Generate a Zero-Knowledge Proof per NCIP-009 Section 4.
@@ -700,7 +697,7 @@ class RegulatoryInterfaceManager:
         self.zk_proofs[proof_id] = zk_proof
         return zk_proof
 
-    def verify_zk_proof(self, proof_id: str) -> Dict[str, Any]:
+    def verify_zk_proof(self, proof_id: str) -> dict[str, Any]:
         """
         Verify a Zero-Knowledge Proof.
 
@@ -747,7 +744,7 @@ class RegulatoryInterfaceManager:
 
     def _generate_worm_certificate(
         self,
-        entry_ids: List[str],
+        entry_ids: list[str],
         retention_years: int
     ) -> WORMCertificate:
         """Generate WORM (Write-Once-Read-Many) export certificate."""
@@ -776,7 +773,7 @@ class RegulatoryInterfaceManager:
         accessor_id: str,
         access_type: str,
         authorized: bool,
-        authorization_proof: Optional[str] = None
+        authorization_proof: str | None = None
     ) -> AccessLogEntry:
         """Record an access event for compliance proof."""
         log_id = f"LOG-{secrets.token_hex(8).upper()}"
@@ -808,7 +805,7 @@ class RegulatoryInterfaceManager:
         self,
         proof_id: str,
         validator_id: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Verify a compliance proof per NCIP-009 Section 7.
 
@@ -849,9 +846,8 @@ class RegulatoryInterfaceManager:
                 issues.append(f"ZK proof verification failed: {zk_result['reason']}")
 
         # Verify WORM certificate
-        if proof.worm_certificate:
-            if not proof.worm_certificate.is_within_retention:
-                issues.append("WORM certificate outside retention period")
+        if proof.worm_certificate and not proof.worm_certificate.is_within_retention:
+            issues.append("WORM certificate outside retention period")
 
         if issues:
             proof.status = ProofStatus.REJECTED
@@ -897,7 +893,7 @@ class RegulatoryInterfaceManager:
         proof_id: str,
         reason: str,
         validator_id: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Reject an overbroad proof per NCIP-009 Section 7.
 
@@ -929,8 +925,8 @@ class RegulatoryInterfaceManager:
         self,
         requester_id: str,
         regime: RegulatoryRegime,
-        entry_ids: List[str]
-    ) -> Dict[str, Any]:
+        entry_ids: list[str]
+    ) -> dict[str, Any]:
         """
         Check for abuse patterns per NCIP-009 Section 8.
 
@@ -982,7 +978,7 @@ class RegulatoryInterfaceManager:
     def prevent_semantic_leakage(
         self,
         proof_id: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Verify proof does not leak semantic content.
 
@@ -1027,7 +1023,7 @@ class RegulatoryInterfaceManager:
     # Proof Expiration
     # -------------------------------------------------------------------------
 
-    def check_proof_expiration(self, proof_id: str) -> Dict[str, Any]:
+    def check_proof_expiration(self, proof_id: str) -> dict[str, Any]:
         """
         Check proof expiration.
 
@@ -1062,7 +1058,7 @@ class RegulatoryInterfaceManager:
         self,
         proof_id: str,
         reason: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Revoke a compliance proof."""
         proof = self.proofs.get(proof_id)
         if not proof:
@@ -1081,15 +1077,15 @@ class RegulatoryInterfaceManager:
     # Reporting
     # -------------------------------------------------------------------------
 
-    def get_proof(self, proof_id: str) -> Optional[ComplianceProof]:
+    def get_proof(self, proof_id: str) -> ComplianceProof | None:
         """Get a compliance proof by ID."""
         return self.proofs.get(proof_id)
 
-    def get_proofs_by_regime(self, regime: RegulatoryRegime) -> List[ComplianceProof]:
+    def get_proofs_by_regime(self, regime: RegulatoryRegime) -> list[ComplianceProof]:
         """Get all proofs for a specific regime."""
         return [p for p in self.proofs.values() if p.regime == regime]
 
-    def get_status_summary(self) -> Dict[str, Any]:
+    def get_status_summary(self) -> dict[str, Any]:
         """Get summary of regulatory interface status."""
         status_counts = {}
         for proof in self.proofs.values():
@@ -1114,8 +1110,8 @@ class RegulatoryInterfaceManager:
     def generate_compliance_report(
         self,
         regime: RegulatoryRegime,
-        date_range: Optional[Tuple[datetime, datetime]] = None
-    ) -> Dict[str, Any]:
+        date_range: tuple[datetime, datetime] | None = None
+    ) -> dict[str, Any]:
         """Generate compliance report for a regime."""
         proofs = self.get_proofs_by_regime(regime)
 

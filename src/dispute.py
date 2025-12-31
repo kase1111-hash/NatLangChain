@@ -7,11 +7,11 @@ Integrates NCIP-005: Semantic Locking & Cooling Periods
 Integrates NCIP-010: Mediator Reputation, Bonding & Slashing
 """
 
-import json
 import hashlib
-from typing import Dict, Any, Optional, List, Tuple
-from datetime import datetime
+import json
 import os
+from datetime import datetime
+from typing import Any
 
 try:
     from anthropic import Anthropic
@@ -21,18 +21,18 @@ except ImportError:
 # Import NCIP-005 semantic locking
 try:
     from semantic_locking import (
-        SemanticLockManager,
-        SemanticLock,
+        CoolingPeriodStatus,
         DisputeLevel,
         DisputeTrigger,
-        LockAction,
         EscalationStage,
+        LockAction,
         ResolutionOutcome,
-        CoolingPeriodStatus,
-        get_ncip_005_config,
+        SemanticLock,
+        SemanticLockManager,
         get_cooling_period_hours,
+        get_ncip_005_config,
         is_action_allowed_during_cooling,
-        is_action_forbidden_during_lock
+        is_action_forbidden_during_lock,
     )
     NCIP_005_AVAILABLE = True
 except ImportError:
@@ -41,17 +41,17 @@ except ImportError:
 # Import NCIP-010 mediator reputation
 try:
     from mediator_reputation import (
-        MediatorReputationManager,
-        MediatorProfile,
-        MediatorStatus,
-        SlashingOffense,
-        CooldownReason,
-        ProposalStatus,
-        get_reputation_manager,
-        get_ncip_010_config,
-        MINIMUM_BOND,
+        CTS_WEIGHTS,
         DEFAULT_BOND,
-        CTS_WEIGHTS
+        MINIMUM_BOND,
+        CooldownReason,
+        MediatorProfile,
+        MediatorReputationManager,
+        MediatorStatus,
+        ProposalStatus,
+        SlashingOffense,
+        get_ncip_010_config,
+        get_reputation_manager,
     )
     NCIP_010_AVAILABLE = True
 except ImportError:
@@ -88,7 +88,7 @@ class DisputeManager:
     ESCALATION_ARBITRATOR = "external_arbitrator"
     ESCALATION_COURT = "legal_court"
 
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: str | None = None):
         """
         Initialize dispute manager.
 
@@ -100,17 +100,17 @@ class DisputeManager:
         self.model = "claude-3-5-sonnet-20241022"
 
         # Track frozen evidence (in production, this would be persisted)
-        self.frozen_entries: Dict[str, Dict] = {}
+        self.frozen_entries: dict[str, dict] = {}
 
     def create_dispute(
         self,
         claimant: str,
         respondent: str,
-        contested_refs: List[Dict[str, Any]],
+        contested_refs: list[dict[str, Any]],
         description: str,
         escalation_path: str = ESCALATION_MEDIATOR,
-        supporting_evidence: Optional[List[str]] = None
-    ) -> Dict[str, Any]:
+        supporting_evidence: list[str] | None = None
+    ) -> dict[str, Any]:
         """
         Create a new dispute declaration.
 
@@ -153,7 +153,7 @@ class DisputeManager:
     def _generate_dispute_id(
         self,
         claimant: str,
-        contested_refs: List[Dict]
+        contested_refs: list[dict]
     ) -> str:
         """Generate unique dispute ID."""
         data = {
@@ -164,7 +164,7 @@ class DisputeManager:
         hash_input = json.dumps(data, sort_keys=True)
         return f"DISPUTE-{hashlib.sha256(hash_input.encode()).hexdigest()[:12].upper()}"
 
-    def _freeze_entry(self, ref: Dict[str, Any], dispute_id: str) -> None:
+    def _freeze_entry(self, ref: dict[str, Any], dispute_id: str) -> None:
         """
         Mark an entry as frozen due to dispute.
 
@@ -179,7 +179,7 @@ class DisputeManager:
             "ref": ref
         }
 
-    def is_entry_frozen(self, block_index: int, entry_index: int) -> Tuple[bool, Optional[str]]:
+    def is_entry_frozen(self, block_index: int, entry_index: int) -> tuple[bool, str | None]:
         """
         Check if an entry is frozen due to dispute.
 
@@ -201,8 +201,8 @@ class DisputeManager:
         author: str,
         evidence_content: str,
         evidence_type: str = "document",
-        evidence_hash: Optional[str] = None
-    ) -> Dict[str, Any]:
+        evidence_hash: str | None = None
+    ) -> dict[str, Any]:
         """
         Add evidence to an existing dispute.
 
@@ -235,7 +235,7 @@ class DisputeManager:
         author: str,
         clarification_request: str,
         directed_to: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Request clarification from a party.
 
@@ -265,8 +265,8 @@ class DisputeManager:
         escalating_party: str,
         escalation_path: str,
         escalation_reason: str,
-        escalation_authority: Optional[str] = None
-    ) -> Dict[str, Any]:
+        escalation_authority: str | None = None
+    ) -> dict[str, Any]:
         """
         Escalate a dispute to higher authority.
 
@@ -298,9 +298,9 @@ class DisputeManager:
         resolution_authority: str,
         resolution_type: str,
         resolution_content: str,
-        findings: Optional[Dict[str, Any]] = None,
-        remedies: Optional[List[str]] = None
-    ) -> Dict[str, Any]:
+        findings: dict[str, Any] | None = None,
+        remedies: list[str] | None = None
+    ) -> dict[str, Any]:
         """
         Record the resolution of a dispute.
 
@@ -344,7 +344,7 @@ class DisputeManager:
         dispute_id: str,
         blockchain,
         include_frozen_entries: bool = True
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Generate a complete dispute package for external arbitration.
 
@@ -400,7 +400,7 @@ class DisputeManager:
 
         # Include frozen entries if requested
         if include_frozen_entries:
-            for ref_key, freeze_data in self.frozen_entries.items():
+            for _ref_key, freeze_data in self.frozen_entries.items():
                 if freeze_data.get("dispute_id") == dispute_id:
                     ref = freeze_data.get("ref", {})
                     block_idx = ref.get("block", 0)
@@ -424,7 +424,7 @@ class DisputeManager:
 
         return package
 
-    def analyze_dispute(self, dispute_description: str, contested_content: str) -> Optional[Dict[str, Any]]:
+    def analyze_dispute(self, dispute_description: str, contested_content: str) -> dict[str, Any] | None:
         """
         Use LLM to analyze a dispute and identify key issues.
 
@@ -489,7 +489,7 @@ Provide analysis in JSON format:
             print(f"Dispute analysis failed: {e}")
             return None
 
-    def validate_dispute_clarity(self, description: str) -> Tuple[bool, str]:
+    def validate_dispute_clarity(self, description: str) -> tuple[bool, str]:
         """
         Validate that dispute description is clear enough to proceed.
 
@@ -569,7 +569,7 @@ Return JSON:
         self,
         dispute_type: str,
         content: str,
-        dispute_id: Optional[str] = None
+        dispute_id: str | None = None
     ) -> str:
         """
         Format a dispute entry with proper tags.
@@ -591,7 +591,7 @@ Return JSON:
 
         return " ".join(parts)
 
-    def get_dispute_status(self, dispute_id: str, blockchain) -> Optional[Dict[str, Any]]:
+    def get_dispute_status(self, dispute_id: str, blockchain) -> dict[str, Any] | None:
         """
         Get current status of a dispute.
 
@@ -673,8 +673,8 @@ Return JSON:
         registry_version: str,
         prose_content: str,
         anchor_language: str = "en",
-        verified_pou_hashes: Optional[List[str]] = None
-    ) -> Dict[str, Any]:
+        verified_pou_hashes: list[str] | None = None
+    ) -> dict[str, Any]:
         """
         Create a dispute with NCIP-005 semantic locking.
 
@@ -729,7 +729,7 @@ Return JSON:
 
         try:
             # Initiate dispute with semantic lock
-            lock, dispute_entry = self._lock_manager.initiate_dispute(
+            lock, _dispute_entry = self._lock_manager.initiate_dispute(
                 contract_id=contract_id,
                 trigger=dispute_trigger,
                 claimed_divergence=claimed_divergence,
@@ -777,7 +777,7 @@ Return JSON:
         self,
         contract_id: str,
         action: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Check if an action is allowed given any active semantic lock.
 
@@ -827,7 +827,7 @@ Return JSON:
 
         return self._lock_manager.get_validator_response(lock.lock_id, lock_action)
 
-    def get_cooling_status(self, contract_id: str) -> Optional[Dict[str, Any]]:
+    def get_cooling_status(self, contract_id: str) -> dict[str, Any] | None:
         """
         Get the cooling period status for a contract.
 
@@ -862,8 +862,8 @@ Return JSON:
         self,
         contract_id: str,
         actor_id: str,
-        reason: Optional[str] = None
-    ) -> Dict[str, Any]:
+        reason: str | None = None
+    ) -> dict[str, Any]:
         """
         Advance to the next escalation stage per NCIP-005 Section 7.
 
@@ -908,8 +908,8 @@ Return JSON:
         outcome: str,
         resolution_authority: str,
         resolution_details: str,
-        findings: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        findings: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Resolve a dispute and release the semantic lock per NCIP-005.
 
@@ -967,7 +967,7 @@ Return JSON:
             "lock_id": lock.lock_id
         }
 
-    def get_lock_summary(self, contract_id: str) -> Optional[Dict[str, Any]]:
+    def get_lock_summary(self, contract_id: str) -> dict[str, Any] | None:
         """Get a summary of the semantic lock for a contract."""
         if not NCIP_005_AVAILABLE or not hasattr(self, '_lock_manager'):
             return None
@@ -994,9 +994,9 @@ Return JSON:
         self,
         mediator_id: str,
         stake_amount: float = DEFAULT_BOND,
-        supported_domains: Optional[List[str]] = None,
-        models_used: Optional[List[str]] = None
-    ) -> Dict[str, Any]:
+        supported_domains: list[str] | None = None,
+        models_used: list[str] | None = None
+    ) -> dict[str, Any]:
         """
         Register a mediator with required bond per NCIP-010.
 
@@ -1045,7 +1045,7 @@ Return JSON:
                 "ncip_010_enabled": True
             }
 
-    def get_mediator_reputation(self, mediator_id: str) -> Dict[str, Any]:
+    def get_mediator_reputation(self, mediator_id: str) -> dict[str, Any]:
         """
         Get a mediator's reputation summary per NCIP-010.
 
@@ -1068,10 +1068,10 @@ Return JSON:
         self,
         mediator_id: str,
         accepted: bool,
-        semantic_drift_score: Optional[float] = None,
-        latency_seconds: Optional[float] = None,
+        semantic_drift_score: float | None = None,
+        latency_seconds: float | None = None,
         coercion_detected: bool = False
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Record a mediation proposal outcome per NCIP-010.
 
@@ -1111,9 +1111,9 @@ Return JSON:
         mediator_id: str,
         offense: str,
         severity: float = 0.5,
-        evidence: Optional[Dict[str, Any]] = None,
-        affected_party_id: Optional[str] = None
-    ) -> Dict[str, Any]:
+        evidence: dict[str, Any] | None = None,
+        affected_party_id: str | None = None
+    ) -> dict[str, Any]:
         """
         Slash a mediator's bond for an offense per NCIP-010 Section 6.
 
@@ -1186,9 +1186,9 @@ Return JSON:
 
     def rank_mediator_proposals(
         self,
-        mediator_ids: List[str],
+        mediator_ids: list[str],
         include_cts: bool = True
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Rank mediator proposals by Composite Trust Score per NCIP-010 Section 8.
 
@@ -1212,9 +1212,9 @@ Return JSON:
 
     def sample_mediators_by_trust(
         self,
-        mediator_ids: List[str],
+        mediator_ids: list[str],
         sample_size: int = 3
-    ) -> List[str]:
+    ) -> list[str]:
         """
         Sample mediators proportional to trust for validator attention.
 
@@ -1233,7 +1233,7 @@ Return JSON:
         manager = get_reputation_manager()
         return manager.sample_proposals_by_trust(mediator_ids, sample_size)
 
-    def get_treasury_balance(self) -> Dict[str, Any]:
+    def get_treasury_balance(self) -> dict[str, Any]:
         """
         Get the treasury balance from mediator slashing.
 
@@ -1267,7 +1267,7 @@ Return JSON:
         self,
         amount: float,
         purpose: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Allocate treasury funds for defensive purposes per NCIP-010 Section 9.
 
@@ -1296,7 +1296,7 @@ Return JSON:
         """Check if NCIP-010 mediator reputation is available."""
         return NCIP_010_AVAILABLE
 
-    def get_ncip_010_status(self) -> Dict[str, Any]:
+    def get_ncip_010_status(self) -> dict[str, Any]:
         """Get NCIP-010 implementation status and configuration."""
         if not NCIP_010_AVAILABLE:
             return {

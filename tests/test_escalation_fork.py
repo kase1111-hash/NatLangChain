@@ -2,10 +2,9 @@
 Tests for the Escalation Fork Protocol implementation.
 """
 
-import unittest
-import sys
 import os
-from datetime import datetime, timedelta
+import sys
+import unittest
 
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
@@ -117,7 +116,7 @@ class TestProposalSubmission(unittest.TestCase):
         proposal_content = " ".join(["word"] * 600)
 
         # First proposal
-        success1, result1 = self.manager.submit_proposal(
+        _success1, result1 = self.manager.submit_proposal(
             fork_id=self.fork_id,
             solver="solver_1",
             proposal_content=proposal_content,
@@ -125,7 +124,7 @@ class TestProposalSubmission(unittest.TestCase):
         )
 
         # Second proposal from same solver
-        success2, result2 = self.manager.submit_proposal(
+        _success2, result2 = self.manager.submit_proposal(
             fork_id=self.fork_id,
             solver="solver_1",
             proposal_content=proposal_content + " additional content",
@@ -154,7 +153,7 @@ class TestRatification(unittest.TestCase):
 
         # Submit a proposal
         proposal_content = " ".join(["word"] * 600)
-        success, self.proposal_data = self.manager.submit_proposal(
+        _success, self.proposal_data = self.manager.submit_proposal(
             fork_id=self.fork_id,
             solver="solver_1",
             proposal_content=proposal_content,
@@ -216,7 +215,7 @@ class TestVeto(unittest.TestCase):
         self.fork_id = self.fork_data["fork_id"]
 
         proposal_content = " ".join(["word"] * 600)
-        success, self.proposal_data = self.manager.submit_proposal(
+        _success, self.proposal_data = self.manager.submit_proposal(
             fork_id=self.fork_id,
             solver="solver_1",
             proposal_content=proposal_content,
@@ -418,7 +417,7 @@ class TestEffortCalculation(unittest.TestCase):
             satisfaction_rating=85
         )
 
-        success, result = manager.ratify_proposal(
+        _success, result = manager.ratify_proposal(
             fork_id=fork_id,
             proposal_id=proposal["proposal_id"],
             ratifying_party="bob",

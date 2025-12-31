@@ -13,16 +13,14 @@ This module implements:
 - Historical pricing analysis
 """
 
-import json
-import hashlib
-import secrets
-from typing import Dict, Any, Optional, List, Tuple
-from datetime import datetime, timedelta
-from dataclasses import dataclass, field
-from enum import Enum
+import math
 import os
 import random
-import math
+import secrets
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import Any
 
 try:
     from anthropic import Anthropic
@@ -86,12 +84,12 @@ class PriceData:
     currency: str
     timestamp: str
     source: str
-    bid: Optional[float] = None
-    ask: Optional[float] = None
-    volume_24h: Optional[float] = None
-    change_24h: Optional[float] = None
-    change_7d: Optional[float] = None
-    market_cap: Optional[float] = None
+    bid: float | None = None
+    ask: float | None = None
+    volume_24h: float | None = None
+    change_24h: float | None = None
+    change_7d: float | None = None
+    market_cap: float | None = None
 
 
 @dataclass
@@ -100,7 +98,7 @@ class HistoricalPrice:
     asset: str
     price: float
     timestamp: str
-    volume: Optional[float] = None
+    volume: float | None = None
 
 
 @dataclass
@@ -110,9 +108,9 @@ class MarketAnalysis:
     condition: MarketCondition
     trend: TrendDirection
     volatility: float  # 0-1 scale
-    support_level: Optional[float] = None
-    resistance_level: Optional[float] = None
-    fair_value: Optional[float] = None
+    support_level: float | None = None
+    resistance_level: float | None = None
+    fair_value: float | None = None
     confidence: float = 0.5
     analysis_timestamp: str = field(default_factory=lambda: datetime.utcnow().isoformat())
 
@@ -124,8 +122,8 @@ class PriceSuggestion:
     asset_or_service: str
     suggested_price: float
     currency: str
-    price_range: Tuple[float, float]  # (min, max)
-    market_price: Optional[float] = None
+    price_range: tuple[float, float]  # (min, max)
+    market_price: float | None = None
     strategy: PricingStrategy = PricingStrategy.MARKET
     confidence: float = 0.5
     reasoning: str = ""
@@ -175,10 +173,10 @@ class MarketDataOracle:
 
     def __init__(self):
         """Initialize market data oracle."""
-        self.price_cache: Dict[str, PriceData] = {}
-        self.historical_data: Dict[str, List[HistoricalPrice]] = {}
-        self.last_update: Dict[str, datetime] = {}
-        self.subscriptions: List[str] = []
+        self.price_cache: dict[str, PriceData] = {}
+        self.historical_data: dict[str, list[HistoricalPrice]] = {}
+        self.last_update: dict[str, datetime] = {}
+        self.subscriptions: list[str] = []
 
         # Initialize with base prices
         self._initialize_prices()
@@ -226,7 +224,7 @@ class MarketDataOracle:
                 volume=random.uniform(1000000, 10000000)
             ))
 
-    def get_price(self, asset: str) -> Optional[PriceData]:
+    def get_price(self, asset: str) -> PriceData | None:
         """
         Get current price for an asset.
 
@@ -274,7 +272,7 @@ class MarketDataOracle:
         )
         self.last_update[asset] = datetime.utcnow()
 
-    def _get_price_24h_ago(self, asset: str) -> Optional[float]:
+    def _get_price_24h_ago(self, asset: str) -> float | None:
         """Get price from 24 hours ago."""
         if asset not in self.historical_data:
             return None
@@ -283,7 +281,7 @@ class MarketDataOracle:
             return hist[-24].price
         return hist[0].price if hist else None
 
-    def _get_price_7d_ago(self, asset: str) -> Optional[float]:
+    def _get_price_7d_ago(self, asset: str) -> float | None:
         """Get price from 7 days ago."""
         if asset not in self.historical_data:
             return None
@@ -292,7 +290,7 @@ class MarketDataOracle:
             return hist[-168].price
         return hist[0].price if hist else None
 
-    def get_prices(self, assets: List[str]) -> Dict[str, PriceData]:
+    def get_prices(self, assets: list[str]) -> dict[str, PriceData]:
         """Get prices for multiple assets."""
         return {
             asset: self.get_price(asset)
@@ -304,7 +302,7 @@ class MarketDataOracle:
         self,
         asset: str,
         hours: int = 24
-    ) -> List[HistoricalPrice]:
+    ) -> list[HistoricalPrice]:
         """
         Get historical prices for an asset.
 
@@ -357,7 +355,7 @@ class MarketDataOracle:
         self.last_update[asset] = datetime.utcnow()
         self._generate_historical_data(asset, price, volatility)
 
-    def get_available_assets(self) -> List[Dict[str, Any]]:
+    def get_available_assets(self) -> list[dict[str, Any]]:
         """Get list of available assets."""
         return [
             {
@@ -395,7 +393,7 @@ class MarketAnalyzer:
         self.oracle = oracle
         self.client = client
         self.model = "claude-3-5-sonnet-20241022"
-        self.analysis_cache: Dict[str, MarketAnalysis] = {}
+        self.analysis_cache: dict[str, MarketAnalysis] = {}
 
     def analyze_market(self, asset: str) -> MarketAnalysis:
         """
@@ -440,7 +438,7 @@ class MarketAnalyzer:
         self.analysis_cache[asset] = analysis
         return analysis
 
-    def _calculate_volatility(self, prices: List[float]) -> float:
+    def _calculate_volatility(self, prices: list[float]) -> float:
         """Calculate price volatility (0-1 scale)."""
         if len(prices) < 2:
             return 0.5
@@ -457,7 +455,7 @@ class MarketAnalyzer:
         normalized = min(std_dev * 10, 1.0)
         return normalized
 
-    def _determine_trend(self, prices: List[float]) -> TrendDirection:
+    def _determine_trend(self, prices: list[float]) -> TrendDirection:
         """Determine price trend direction."""
         if len(prices) < 10:
             return TrendDirection.STABLE
@@ -477,7 +475,7 @@ class MarketAnalyzer:
 
     def _assess_condition(
         self,
-        prices: List[float],
+        prices: list[float],
         volatility: float,
         trend: TrendDirection
     ) -> MarketCondition:
@@ -498,7 +496,7 @@ class MarketAnalyzer:
         else:
             return MarketCondition.NEUTRAL
 
-    def _find_support_resistance(self, prices: List[float]) -> Tuple[float, float]:
+    def _find_support_resistance(self, prices: list[float]) -> tuple[float, float]:
         """Find support and resistance levels."""
         if not prices:
             return (0.0, 0.0)
@@ -510,7 +508,7 @@ class MarketAnalyzer:
 
         return (support, resistance)
 
-    def _estimate_fair_value(self, prices: List[float]) -> float:
+    def _estimate_fair_value(self, prices: list[float]) -> float:
         """Estimate fair value using moving average."""
         if not prices:
             return 0.0
@@ -518,7 +516,7 @@ class MarketAnalyzer:
         # Simple moving average
         return sum(prices) / len(prices)
 
-    def get_market_summary(self, assets: List[str]) -> Dict[str, Any]:
+    def get_market_summary(self, assets: list[str]) -> dict[str, Any]:
         """
         Get market summary for multiple assets.
 
@@ -584,7 +582,7 @@ class DynamicPricingEngine:
         base_amount: float,
         currency: str = "USD",
         strategy: PricingStrategy = PricingStrategy.MARKET,
-        context: Optional[str] = None
+        context: str | None = None
     ) -> PriceSuggestion:
         """
         Generate a price suggestion for a negotiation.
@@ -640,7 +638,7 @@ class DynamicPricingEngine:
         asset_or_service: str,
         amount: float,
         currency: str
-    ) -> Optional[float]:
+    ) -> float | None:
         """Get market price for asset or service."""
         # Try direct price lookup
         price_data = self.oracle.get_price(asset_or_service.upper())
@@ -653,10 +651,10 @@ class DynamicPricingEngine:
     def _calculate_price(
         self,
         base_amount: float,
-        market_price: Optional[float],
-        analysis: Optional[MarketAnalysis],
+        market_price: float | None,
+        analysis: MarketAnalysis | None,
         strategy: PricingStrategy
-    ) -> Tuple[float, Tuple[float, float]]:
+    ) -> tuple[float, tuple[float, float]]:
         """Calculate suggested price and range."""
         if market_price is None:
             # No market price, use base amount with buffer
@@ -691,10 +689,10 @@ class DynamicPricingEngine:
         self,
         asset_or_service: str,
         suggested_price: float,
-        market_price: Optional[float],
+        market_price: float | None,
         strategy: PricingStrategy,
-        analysis: Optional[MarketAnalysis],
-        context: Optional[str]
+        analysis: MarketAnalysis | None,
+        context: str | None
     ) -> str:
         """Generate reasoning for price suggestion."""
         parts = []
@@ -721,7 +719,7 @@ class DynamicPricingEngine:
         base_price: float,
         asset: str,
         adjustment_type: str = "auto"
-    ) -> Tuple[float, str]:
+    ) -> tuple[float, str]:
         """
         Adjust a price based on current market conditions.
 
@@ -770,7 +768,7 @@ class DynamicPricingEngine:
         asset: str,
         round_number: int,
         max_rounds: int = 10
-    ) -> Tuple[float, str]:
+    ) -> tuple[float, str]:
         """
         Generate a counter-offer price based on market conditions.
 
@@ -835,13 +833,13 @@ class HistoricalPricingAnalyzer:
     def __init__(self, oracle: MarketDataOracle):
         """Initialize historical analyzer."""
         self.oracle = oracle
-        self.benchmark_cache: Dict[str, Dict[str, Any]] = {}
+        self.benchmark_cache: dict[str, dict[str, Any]] = {}
 
     def get_price_history(
         self,
         asset: str,
         period_hours: int = 168
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get price history with statistics.
 
@@ -878,7 +876,7 @@ class HistoricalPricingAnalyzer:
             ]
         }
 
-    def _calculate_std_dev(self, prices: List[float]) -> float:
+    def _calculate_std_dev(self, prices: list[float]) -> float:
         """Calculate standard deviation."""
         if len(prices) < 2:
             return 0.0
@@ -890,7 +888,7 @@ class HistoricalPricingAnalyzer:
         self,
         asset: str,
         benchmark_period_days: int = 30
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Calculate price benchmark against historical data.
 
@@ -943,7 +941,7 @@ class HistoricalPricingAnalyzer:
         asset: str,
         target_price: float,
         tolerance: float = 0.05
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Find historical periods with similar prices.
 
@@ -986,7 +984,7 @@ class MarketAwarePricingManager:
     Coordinates oracle, analysis, and pricing components.
     """
 
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: str | None = None):
         """
         Initialize pricing manager.
 
@@ -1005,11 +1003,11 @@ class MarketAwarePricingManager:
         self.pricing_engine = DynamicPricingEngine(self.oracle, self.analyzer, self.client)
         self.historical_analyzer = HistoricalPricingAnalyzer(self.oracle)
 
-        self.audit_trail: List[Dict[str, Any]] = []
+        self.audit_trail: list[dict[str, Any]] = []
 
     # ===== Price Data =====
 
-    def get_price(self, asset: str) -> Optional[Dict[str, Any]]:
+    def get_price(self, asset: str) -> dict[str, Any] | None:
         """Get current price for an asset."""
         price_data = self.oracle.get_price(asset)
         if not price_data:
@@ -1027,7 +1025,7 @@ class MarketAwarePricingManager:
             "source": price_data.source
         }
 
-    def get_prices(self, assets: List[str]) -> Dict[str, Any]:
+    def get_prices(self, assets: list[str]) -> dict[str, Any]:
         """Get prices for multiple assets."""
         result = {}
         for asset in assets:
@@ -1038,7 +1036,7 @@ class MarketAwarePricingManager:
 
     # ===== Market Analysis =====
 
-    def analyze_market(self, asset: str) -> Dict[str, Any]:
+    def analyze_market(self, asset: str) -> dict[str, Any]:
         """Get market analysis for an asset."""
         analysis = self.analyzer.analyze_market(asset)
 
@@ -1054,7 +1052,7 @@ class MarketAwarePricingManager:
             "timestamp": analysis.analysis_timestamp
         }
 
-    def get_market_summary(self, assets: List[str]) -> Dict[str, Any]:
+    def get_market_summary(self, assets: list[str]) -> dict[str, Any]:
         """Get market summary for multiple assets."""
         return self.analyzer.get_market_summary(assets)
 
@@ -1066,8 +1064,8 @@ class MarketAwarePricingManager:
         base_amount: float,
         currency: str = "USD",
         strategy: str = "market",
-        context: Optional[str] = None
-    ) -> Dict[str, Any]:
+        context: str | None = None
+    ) -> dict[str, Any]:
         """
         Get a price suggestion.
 
@@ -1121,7 +1119,7 @@ class MarketAwarePricingManager:
         base_price: float,
         asset: str,
         adjustment_type: str = "auto"
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Adjust a price based on market conditions.
 
@@ -1152,7 +1150,7 @@ class MarketAwarePricingManager:
         asset: str,
         round_number: int,
         max_rounds: int = 10
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Generate a market-aware counter-offer price.
 
@@ -1192,7 +1190,7 @@ class MarketAwarePricingManager:
         self,
         asset: str,
         period_hours: int = 168
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Get price history with statistics."""
         return self.historical_analyzer.get_price_history(asset, period_hours)
 
@@ -1200,7 +1198,7 @@ class MarketAwarePricingManager:
         self,
         asset: str,
         benchmark_days: int = 30
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Get price benchmark analysis."""
         return self.historical_analyzer.calculate_price_benchmark(asset, benchmark_days)
 
@@ -1209,7 +1207,7 @@ class MarketAwarePricingManager:
         asset: str,
         target_price: float,
         tolerance: float = 0.05
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Find historical periods with similar prices."""
         matches = self.historical_analyzer.find_similar_price_periods(
             asset, target_price, tolerance
@@ -1232,7 +1230,7 @@ class MarketAwarePricingManager:
         asset_class: str = "custom",
         currency: str = "USD",
         volatility: float = 0.02
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Add a custom asset for pricing."""
         try:
             ac = AssetClass(asset_class)
@@ -1249,13 +1247,13 @@ class MarketAwarePricingManager:
             "currency": currency
         }
 
-    def get_available_assets(self) -> List[Dict[str, Any]]:
+    def get_available_assets(self) -> list[dict[str, Any]]:
         """Get list of available assets."""
         return self.oracle.get_available_assets()
 
     # ===== Statistics =====
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """Get pricing manager statistics."""
         return {
             "available_assets": len(self.oracle.BASE_PRICES),
@@ -1265,11 +1263,11 @@ class MarketAwarePricingManager:
             "asset_classes": [c.value for c in AssetClass]
         }
 
-    def get_audit_trail(self, limit: int = 100) -> List[Dict[str, Any]]:
+    def get_audit_trail(self, limit: int = 100) -> list[dict[str, Any]]:
         """Get audit trail."""
         return self.audit_trail[-limit:]
 
-    def _log_audit(self, action: str, details: Dict[str, Any]):
+    def _log_audit(self, action: str, details: dict[str, Any]):
         """Log audit trail entry."""
         self.audit_trail.append({
             "action": action,

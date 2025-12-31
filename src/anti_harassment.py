@@ -14,12 +14,12 @@ This module provides:
 - Cooldown windows per contract
 """
 
-import json
 import hashlib
-from typing import Dict, Any, Optional, List, Tuple
+import json
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from dataclasses import dataclass, field
+from typing import Any
 
 
 class InitiationPath(Enum):
@@ -48,9 +48,9 @@ class StakeEscrow:
     stake_window_ends: str
     counterparty: str
     counterparty_stake: float = 0.0
-    counterparty_staked_at: Optional[str] = None
+    counterparty_staked_at: str | None = None
     status: str = "pending_match"  # pending_match, matched, fallback, resolved
-    resolution: Optional[str] = None
+    resolution: str | None = None
 
 
 @dataclass
@@ -67,7 +67,7 @@ class HarassmentProfile:
     harassment_score: float = 0.0
     last_updated: str = ""
     # Cooldowns per contract
-    contract_cooldowns: Dict[str, str] = field(default_factory=dict)
+    contract_cooldowns: dict[str, str] = field(default_factory=dict)
 
 
 class AntiHarassmentManager:
@@ -115,13 +115,13 @@ class AntiHarassmentManager:
         self.burn_manager = burn_manager
 
         # State tracking (in production, persisted to storage)
-        self.escrows: Dict[str, StakeEscrow] = {}
-        self.profiles: Dict[str, HarassmentProfile] = {}
-        self.voluntary_requests: Dict[str, Dict] = {}
-        self.counter_proposal_counts: Dict[str, Dict[str, int]] = {}  # dispute_id -> party -> count
+        self.escrows: dict[str, StakeEscrow] = {}
+        self.profiles: dict[str, HarassmentProfile] = {}
+        self.voluntary_requests: dict[str, dict] = {}
+        self.counter_proposal_counts: dict[str, dict[str, int]] = {}  # dispute_id -> party -> count
 
         # Audit trail
-        self.actions: List[Dict[str, Any]] = []
+        self.actions: list[dict[str, Any]] = []
 
     # ==================== DUAL INITIATION PATHS ====================
 
@@ -131,9 +131,9 @@ class AntiHarassmentManager:
         counterparty: str,
         contract_ref: str,
         stake_amount: float,
-        evidence_refs: List[Dict[str, Any]],
+        evidence_refs: list[dict[str, Any]],
         description: str
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Initiate a Breach/Drift Dispute with symmetric staking.
 
@@ -211,7 +211,7 @@ class AntiHarassmentManager:
         escrow_id: str,
         counterparty: str,
         stake_amount: float
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Match stake to enter symmetric dispute resolution.
 
@@ -269,7 +269,7 @@ class AntiHarassmentManager:
         self,
         escrow_id: str,
         counterparty: str
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Explicitly decline to match stake (immediate fallback resolution).
 
@@ -329,8 +329,8 @@ class AntiHarassmentManager:
         recipient: str,
         request_type: str,
         description: str,
-        burn_fee: Optional[float] = None
-    ) -> Tuple[bool, Dict[str, Any]]:
+        burn_fee: float | None = None
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Initiate a Voluntary Request (negotiation, amendment, reconciliation).
 
@@ -403,7 +403,7 @@ class AntiHarassmentManager:
         recipient: str,
         response: str,
         accept: bool
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Respond to a voluntary request (optional - ignoring is free).
 
@@ -453,7 +453,7 @@ class AntiHarassmentManager:
         dispute_ref: str,
         party: str,
         proposal_content: str
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Submit a counter-proposal with exponential fee enforcement.
 
@@ -530,7 +530,7 @@ class AntiHarassmentManager:
         self,
         dispute_ref: str,
         party: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get counter-proposal status for a party in a dispute.
 
@@ -567,7 +567,7 @@ class AntiHarassmentManager:
 
     # ==================== HARASSMENT SCORING ====================
 
-    def get_harassment_score(self, address: str) -> Dict[str, Any]:
+    def get_harassment_score(self, address: str) -> dict[str, Any]:
         """
         Get harassment score and profile for an address.
 
@@ -688,7 +688,7 @@ class AntiHarassmentManager:
 
     # ==================== COOLDOWN MANAGEMENT ====================
 
-    def _check_cooldown(self, initiator: str, contract_ref: str) -> Tuple[bool, str]:
+    def _check_cooldown(self, initiator: str, contract_ref: str) -> tuple[bool, str]:
         """Check if initiator is on cooldown for this contract."""
         profile = self._get_or_create_profile(initiator)
 
@@ -720,7 +720,7 @@ class AntiHarassmentManager:
 
     # ==================== STAKE WINDOW TIMEOUT ====================
 
-    def check_stake_timeouts(self) -> List[Dict[str, Any]]:
+    def check_stake_timeouts(self) -> list[dict[str, Any]]:
         """
         Check for stake window timeouts and resolve to fallback.
 
@@ -773,7 +773,7 @@ class AntiHarassmentManager:
         resolution: DisputeResolution,
         resolver: str,
         resolution_details: str
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Resolve a matched dispute.
 
@@ -841,7 +841,7 @@ class AntiHarassmentManager:
         hash_input = json.dumps(data, sort_keys=True)
         return f"VREQ-{hashlib.sha256(hash_input.encode()).hexdigest()[:12].upper()}"
 
-    def _record_action(self, action_type: str, details: Dict[str, Any]) -> None:
+    def _record_action(self, action_type: str, details: dict[str, Any]) -> None:
         """Record an action for audit trail."""
         action = {
             "action_type": action_type,
@@ -850,7 +850,7 @@ class AntiHarassmentManager:
         }
         self.actions.append(action)
 
-    def get_audit_trail(self, limit: int = 100) -> List[Dict[str, Any]]:
+    def get_audit_trail(self, limit: int = 100) -> list[dict[str, Any]]:
         """Get recent audit trail entries."""
         return sorted(
             self.actions[-limit:],
@@ -858,7 +858,7 @@ class AntiHarassmentManager:
             reverse=True
         )
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """Get anti-harassment system statistics."""
         active_escrows = sum(1 for e in self.escrows.values() if e.status == "pending_match")
         matched_escrows = sum(1 for e in self.escrows.values() if e.status == "matched")

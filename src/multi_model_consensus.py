@@ -4,10 +4,11 @@ Implements cross-model validation to eliminate hallucination risk
 Uses multiple LLM providers for robust consensus
 """
 
-import os
 import json
 import logging
-from typing import Dict, Any, Optional, List
+import os
+from typing import Any
+
 from anthropic import Anthropic
 
 # Configure module-level logger
@@ -26,7 +27,7 @@ class MultiModelConsensus:
     through majority voting or weighted consensus.
     """
 
-    def __init__(self, anthropic_api_key: Optional[str] = None):
+    def __init__(self, anthropic_api_key: str | None = None):
         """
         Initialize multi-model consensus.
 
@@ -65,7 +66,7 @@ class MultiModelConsensus:
         intent: str,
         author: str,
         consensus_threshold: float = 0.66
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Validate entry using multi-model consensus.
 
@@ -129,7 +130,7 @@ Return JSON:
         # Calculate consensus
         return self._calculate_consensus(validations, consensus_threshold)
 
-    def _query_model(self, model_name: str, prompt: str) -> Optional[Dict[str, Any]]:
+    def _query_model(self, model_name: str, prompt: str) -> dict[str, Any] | None:
         """
         Query a specific model.
 
@@ -210,9 +211,9 @@ Return JSON:
 
     def _calculate_consensus(
         self,
-        validations: List[Dict[str, Any]],
+        validations: list[dict[str, Any]],
         threshold: float
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Calculate consensus from multiple model validations.
 
@@ -282,7 +283,7 @@ Return JSON:
         contract1: str,
         contract2: str,
         min_models: int = 2
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Cross-verify contract matching using multiple models.
 
@@ -316,7 +317,7 @@ Return JSON:
 
         scores = []
 
-        for model_name in self.models.keys():
+        for model_name in self.models:
             try:
                 result = self._query_model(model_name, prompt)
                 if result:
@@ -379,7 +380,7 @@ class HallucimationDetector:
         self,
         prompt: str,
         expected_factual: bool = True
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Detect potential hallucination by checking model agreement.
 
@@ -392,7 +393,7 @@ class HallucimationDetector:
         """
         responses = []
 
-        for model_name in self.consensus.models.keys():
+        for model_name in self.consensus.models:
             try:
                 result = self.consensus._query_model(model_name, prompt)
                 if result:
@@ -414,10 +415,10 @@ class HallucimationDetector:
 
         # Check for significant disagreement
         # (Simple version - can be enhanced with semantic similarity)
-        unique_decisions = set(
+        unique_decisions = {
             str(r["response"].get("valid", "unknown"))
             for r in responses
-        )
+        }
 
         disagreement = len(unique_decisions) > 1
 

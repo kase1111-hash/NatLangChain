@@ -24,24 +24,24 @@ let derivedKey = null;
  * Convert ArrayBuffer to base64 string
  */
 function arrayBufferToBase64(buffer) {
-    const bytes = new Uint8Array(buffer);
-    let binary = '';
-    for (let i = 0; i < bytes.byteLength; i++) {
-        binary += String.fromCharCode(bytes[i]);
-    }
-    return btoa(binary);
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
 }
 
 /**
  * Convert base64 string to ArrayBuffer
  */
 function base64ToArrayBuffer(base64) {
-    const binary = atob(base64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-        bytes[i] = binary.charCodeAt(i);
-    }
-    return bytes.buffer;
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes.buffer;
 }
 
 /**
@@ -49,8 +49,8 @@ function base64ToArrayBuffer(base64) {
  * @returns {Promise<string>} Base64-encoded random key
  */
 export async function generateEncryptionKey() {
-    const key = crypto.getRandomValues(new Uint8Array(32));
-    return arrayBufferToBase64(key);
+  const key = crypto.getRandomValues(new Uint8Array(32));
+  return arrayBufferToBase64(key);
 }
 
 /**
@@ -60,27 +60,27 @@ export async function generateEncryptionKey() {
  * @returns {Promise<CryptoKey>} Derived AES-GCM key
  */
 async function deriveKey(passphrase, salt) {
-    const encoder = new TextEncoder();
-    const keyMaterial = await crypto.subtle.importKey(
-        'raw',
-        encoder.encode(passphrase),
-        'PBKDF2',
-        false,
-        ['deriveBits', 'deriveKey']
-    );
+  const encoder = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(passphrase),
+    'PBKDF2',
+    false,
+    ['deriveBits', 'deriveKey']
+  );
 
-    return crypto.subtle.deriveKey(
-        {
-            name: 'PBKDF2',
-            salt: salt,
-            iterations: PBKDF2_ITERATIONS,
-            hash: 'SHA-256'
-        },
-        keyMaterial,
-        { name: 'AES-GCM', length: 256 },
-        false,
-        ['encrypt', 'decrypt']
-    );
+  return crypto.subtle.deriveKey(
+    {
+      name: 'PBKDF2',
+      salt: salt,
+      iterations: PBKDF2_ITERATIONS,
+      hash: 'SHA-256',
+    },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
 }
 
 /**
@@ -88,22 +88,22 @@ async function deriveKey(passphrase, salt) {
  * @param {string} passphrase - Encryption passphrase
  */
 export async function initializeEncryption(passphrase) {
-    if (!passphrase) {
-        throw new Error('Passphrase is required');
-    }
+  if (!passphrase) {
+    throw new Error('Passphrase is required');
+  }
 
-    // Generate a fixed salt from the passphrase for consistent key derivation
-    // This allows the same passphrase to decrypt data across sessions
-    const encoder = new TextEncoder();
-    const passphraseBytes = encoder.encode(passphrase);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', passphraseBytes);
-    const salt = new Uint8Array(hashBuffer.slice(0, SALT_SIZE));
+  // Generate a fixed salt from the passphrase for consistent key derivation
+  // This allows the same passphrase to decrypt data across sessions
+  const encoder = new TextEncoder();
+  const passphraseBytes = encoder.encode(passphrase);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', passphraseBytes);
+  const salt = new Uint8Array(hashBuffer.slice(0, SALT_SIZE));
 
-    derivedKey = await deriveKey(passphrase, salt);
+  derivedKey = await deriveKey(passphrase, salt);
 
-    // Store a verification token in sessionStorage
-    const verificationToken = await encryptData('natlangchain_encryption_active');
-    sessionStorage.setItem('nlc_encryption_verified', verificationToken);
+  // Store a verification token in sessionStorage
+  const verificationToken = await encryptData('natlangchain_encryption_active');
+  sessionStorage.setItem('nlc_encryption_verified', verificationToken);
 }
 
 /**
@@ -111,15 +111,15 @@ export async function initializeEncryption(passphrase) {
  * @returns {boolean} True if encryption is ready
  */
 export function isEncryptionReady() {
-    return derivedKey !== null;
+  return derivedKey !== null;
 }
 
 /**
  * Clear the encryption key from memory
  */
 export function clearEncryption() {
-    derivedKey = null;
-    sessionStorage.removeItem('nlc_encryption_verified');
+  derivedKey = null;
+  sessionStorage.removeItem('nlc_encryption_verified');
 }
 
 /**
@@ -128,7 +128,7 @@ export function clearEncryption() {
  * @returns {boolean} True if data is encrypted
  */
 export function isEncrypted(data) {
-    return typeof data === 'string' && data.startsWith(ENCRYPTED_PREFIX);
+  return typeof data === 'string' && data.startsWith(ENCRYPTED_PREFIX);
 }
 
 /**
@@ -137,37 +137,36 @@ export function isEncrypted(data) {
  * @returns {Promise<string>} Encrypted data string
  */
 export async function encryptData(data) {
-    if (!derivedKey) {
-        throw new Error('Encryption not initialized. Call initializeEncryption first.');
-    }
+  if (!derivedKey) {
+    throw new Error('Encryption not initialized. Call initializeEncryption first.');
+  }
 
-    try {
-        // Convert data to string
-        const dataStr = typeof data === 'string' ? data : JSON.stringify(data);
-        const encoder = new TextEncoder();
-        const dataBytes = encoder.encode(dataStr);
+  try {
+    // Convert data to string
+    const dataStr = typeof data === 'string' ? data : JSON.stringify(data);
+    const encoder = new TextEncoder();
+    const dataBytes = encoder.encode(dataStr);
 
-        // Generate random IV
-        const iv = crypto.getRandomValues(new Uint8Array(IV_SIZE));
+    // Generate random IV
+    const iv = crypto.getRandomValues(new Uint8Array(IV_SIZE));
 
-        // Encrypt
-        const ciphertext = await crypto.subtle.encrypt(
-            { name: 'AES-GCM', iv: iv },
-            derivedKey,
-            dataBytes
-        );
+    // Encrypt
+    const ciphertext = await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv: iv },
+      derivedKey,
+      dataBytes
+    );
 
-        // Combine IV + ciphertext
-        const combined = new Uint8Array(iv.length + ciphertext.byteLength);
-        combined.set(iv, 0);
-        combined.set(new Uint8Array(ciphertext), iv.length);
+    // Combine IV + ciphertext
+    const combined = new Uint8Array(iv.length + ciphertext.byteLength);
+    combined.set(iv, 0);
+    combined.set(new Uint8Array(ciphertext), iv.length);
 
-        return ENCRYPTED_PREFIX + arrayBufferToBase64(combined.buffer);
-
-    } catch (error) {
-        console.error('Encryption failed:', error);
-        throw new Error('Encryption failed');
-    }
+    return ENCRYPTED_PREFIX + arrayBufferToBase64(combined.buffer);
+  } catch (error) {
+    console.error('Encryption failed:', error);
+    throw new Error('Encryption failed');
+  }
 }
 
 /**
@@ -177,48 +176,47 @@ export async function encryptData(data) {
  * @returns {Promise<any>} Decrypted data
  */
 export async function decryptData(encryptedData, parseJson = true) {
-    if (!derivedKey) {
-        throw new Error('Encryption not initialized. Call initializeEncryption first.');
-    }
+  if (!derivedKey) {
+    throw new Error('Encryption not initialized. Call initializeEncryption first.');
+  }
 
-    if (!isEncrypted(encryptedData)) {
-        throw new Error('Data is not encrypted');
-    }
+  if (!isEncrypted(encryptedData)) {
+    throw new Error('Data is not encrypted');
+  }
 
-    try {
-        // Remove prefix and decode
-        const encoded = encryptedData.slice(ENCRYPTED_PREFIX.length);
-        const combined = new Uint8Array(base64ToArrayBuffer(encoded));
+  try {
+    // Remove prefix and decode
+    const encoded = encryptedData.slice(ENCRYPTED_PREFIX.length);
+    const combined = new Uint8Array(base64ToArrayBuffer(encoded));
 
-        // Extract IV and ciphertext
-        const iv = combined.slice(0, IV_SIZE);
-        const ciphertext = combined.slice(IV_SIZE);
+    // Extract IV and ciphertext
+    const iv = combined.slice(0, IV_SIZE);
+    const ciphertext = combined.slice(IV_SIZE);
 
-        // Decrypt
-        const plaintext = await crypto.subtle.decrypt(
-            { name: 'AES-GCM', iv: iv },
-            derivedKey,
-            ciphertext
-        );
+    // Decrypt
+    const plaintext = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: iv },
+      derivedKey,
+      ciphertext
+    );
 
-        const decoder = new TextDecoder();
-        const dataStr = decoder.decode(plaintext);
+    const decoder = new TextDecoder();
+    const dataStr = decoder.decode(plaintext);
 
-        // Try to parse as JSON if requested
-        if (parseJson) {
-            try {
-                return JSON.parse(dataStr);
-            } catch {
-                return dataStr;
-            }
-        }
-
+    // Try to parse as JSON if requested
+    if (parseJson) {
+      try {
+        return JSON.parse(dataStr);
+      } catch {
         return dataStr;
-
-    } catch (error) {
-        console.error('Decryption failed:', error);
-        throw new Error('Decryption failed - incorrect key or corrupted data');
+      }
     }
+
+    return dataStr;
+  } catch (error) {
+    console.error('Decryption failed:', error);
+    throw new Error('Decryption failed - incorrect key or corrupted data');
+  }
 }
 
 /**
@@ -228,39 +226,39 @@ export async function decryptData(encryptedData, parseJson = true) {
  * @returns {Promise<Object>} Object with encrypted fields
  */
 export async function encryptSensitiveFields(obj, sensitiveFields = []) {
-    if (!obj || typeof obj !== 'object' || !isEncryptionReady()) {
-        return obj;
+  if (!obj || typeof obj !== 'object' || !isEncryptionReady()) {
+    return obj;
+  }
+
+  const defaultSensitiveFields = [
+    'wallet_address',
+    'private_key',
+    'api_key',
+    'password',
+    'secret',
+    'token',
+    'credentials',
+    'personal_info',
+    'financial_data',
+  ];
+
+  const fieldsToEncrypt = [...new Set([...defaultSensitiveFields, ...sensitiveFields])];
+  const result = { ...obj };
+
+  for (const key of Object.keys(result)) {
+    const keyLower = key.toLowerCase();
+    const shouldEncrypt = fieldsToEncrypt.some((field) => keyLower.includes(field.toLowerCase()));
+
+    if (shouldEncrypt && result[key] !== null && !isEncrypted(String(result[key]))) {
+      try {
+        result[key] = await encryptData(result[key]);
+      } catch (error) {
+        console.warn(`Failed to encrypt field ${key}:`, error);
+      }
     }
+  }
 
-    const defaultSensitiveFields = [
-        'wallet_address',
-        'private_key',
-        'api_key',
-        'password',
-        'secret',
-        'token',
-        'credentials',
-        'personal_info',
-        'financial_data'
-    ];
-
-    const fieldsToEncrypt = [...new Set([...defaultSensitiveFields, ...sensitiveFields])];
-    const result = { ...obj };
-
-    for (const key of Object.keys(result)) {
-        const keyLower = key.toLowerCase();
-        const shouldEncrypt = fieldsToEncrypt.some(field => keyLower.includes(field.toLowerCase()));
-
-        if (shouldEncrypt && result[key] != null && !isEncrypted(String(result[key]))) {
-            try {
-                result[key] = await encryptData(result[key]);
-            } catch (error) {
-                console.warn(`Failed to encrypt field ${key}:`, error);
-            }
-        }
-    }
-
-    return result;
+  return result;
 }
 
 /**
@@ -269,23 +267,23 @@ export async function encryptSensitiveFields(obj, sensitiveFields = []) {
  * @returns {Promise<Object>} Object with decrypted fields
  */
 export async function decryptSensitiveFields(obj) {
-    if (!obj || typeof obj !== 'object' || !isEncryptionReady()) {
-        return obj;
+  if (!obj || typeof obj !== 'object' || !isEncryptionReady()) {
+    return obj;
+  }
+
+  const result = { ...obj };
+
+  for (const key of Object.keys(result)) {
+    if (typeof result[key] === 'string' && isEncrypted(result[key])) {
+      try {
+        result[key] = await decryptData(result[key]);
+      } catch (error) {
+        console.warn(`Failed to decrypt field ${key}:`, error);
+      }
     }
+  }
 
-    const result = { ...obj };
-
-    for (const key of Object.keys(result)) {
-        if (typeof result[key] === 'string' && isEncrypted(result[key])) {
-            try {
-                result[key] = await decryptData(result[key]);
-            } catch (error) {
-                console.warn(`Failed to decrypt field ${key}:`, error);
-            }
-        }
-    }
-
-    return result;
+  return result;
 }
 
 /**
@@ -295,61 +293,61 @@ export async function decryptSensitiveFields(obj) {
  * @returns {Object} Object with get/set methods
  */
 export function createEncryptedStorage(key, defaultValue = null) {
-    return {
-        async get() {
-            try {
-                const stored = localStorage.getItem(key);
-                if (stored === null) {
-                    return defaultValue;
-                }
-
-                if (isEncrypted(stored) && isEncryptionReady()) {
-                    return await decryptData(stored);
-                }
-
-                // Return raw value if not encrypted or encryption not ready
-                try {
-                    return JSON.parse(stored);
-                } catch {
-                    return stored;
-                }
-            } catch (error) {
-                console.warn(`Failed to get encrypted storage ${key}:`, error);
-                return defaultValue;
-            }
-        },
-
-        async set(value) {
-            try {
-                if (isEncryptionReady()) {
-                    const encrypted = await encryptData(value);
-                    localStorage.setItem(key, encrypted);
-                } else {
-                    // Fall back to unencrypted if encryption not initialized
-                    localStorage.setItem(key, JSON.stringify(value));
-                }
-            } catch (error) {
-                console.error(`Failed to set encrypted storage ${key}:`, error);
-                throw error;
-            }
-        },
-
-        remove() {
-            localStorage.removeItem(key);
+  return {
+    async get() {
+      try {
+        const stored = localStorage.getItem(key);
+        if (stored === null) {
+          return defaultValue;
         }
-    };
+
+        if (isEncrypted(stored) && isEncryptionReady()) {
+          return await decryptData(stored);
+        }
+
+        // Return raw value if not encrypted or encryption not ready
+        try {
+          return JSON.parse(stored);
+        } catch {
+          return stored;
+        }
+      } catch (error) {
+        console.warn(`Failed to get encrypted storage ${key}:`, error);
+        return defaultValue;
+      }
+    },
+
+    async set(value) {
+      try {
+        if (isEncryptionReady()) {
+          const encrypted = await encryptData(value);
+          localStorage.setItem(key, encrypted);
+        } else {
+          // Fall back to unencrypted if encryption not initialized
+          localStorage.setItem(key, JSON.stringify(value));
+        }
+      } catch (error) {
+        console.error(`Failed to set encrypted storage ${key}:`, error);
+        throw error;
+      }
+    },
+
+    remove() {
+      localStorage.removeItem(key);
+    },
+  };
 }
 
 // Export for use in stores.js
 export default {
-    generateEncryptionKey,
-    initializeEncryption,
-    isEncryptionReady,
-    clearEncryption,
-    isEncrypted,
-    encryptData,
-    decryptData,
-    encryptSensitiveFields,
-    decryptSensitiveFields,
-    createEncryptedStorage
+  generateEncryptionKey,
+  initializeEncryption,
+  isEncryptionReady,
+  clearEncryption,
+  isEncrypted,
+  encryptData,
+  decryptData,
+  encryptSensitiveFields,
+  decryptSensitiveFields,
+  createEncryptedStorage,
 };

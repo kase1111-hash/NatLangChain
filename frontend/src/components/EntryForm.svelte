@@ -1,5 +1,5 @@
 <script>
-  import { fly, fade, scale } from 'svelte/transition';
+  import { fly, scale } from 'svelte/transition';
   import { submitEntry, validateEntry, mineBlock } from '../lib/api.js';
   import Tooltip from './Tooltip.svelte';
   import { ncipDefinitions } from '../lib/ncip-definitions.js';
@@ -30,7 +30,7 @@
     try {
       validationResult = await validateEntry(content, intent, author);
     } catch (e) {
-      error = 'Validation failed: ' + e.message;
+      error = `Validation failed: ${e.message}`;
     } finally {
       validating = false;
     }
@@ -55,7 +55,7 @@
 
       result = await submitEntry(content, author, intent, metadata);
     } catch (e) {
-      error = 'Submission failed: ' + e.message;
+      error = `Submission failed: ${e.message}`;
     } finally {
       submitting = false;
     }
@@ -69,7 +69,7 @@
       const mineResult = await mineBlock('web-miner');
       result = { ...result, mined: mineResult };
     } catch (e) {
-      error = 'Mining failed: ' + e.message;
+      error = `Mining failed: ${e.message}`;
     } finally {
       mining = false;
     }
@@ -88,20 +88,31 @@
 
   const icons = {
     user: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z',
-    target: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z',
-    document: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
-    contract: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4',
+    target:
+      'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z',
+    document:
+      'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+    contract:
+      'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4',
     check: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
     send: 'M12 19l9 2-9-18-9 18 9-2zm0 0v-8',
-    clear: 'M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16',
-    mining: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4'
+    clear:
+      'M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16',
+    mining: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4',
   };
 </script>
 
 <div class="entry-form" in:fly={{ y: 20, duration: 400 }}>
   <div class="form-header">
     <div class="header-icon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
         <path d="M12 4v16m8-8H4" />
       </svg>
     </div>
@@ -114,10 +125,21 @@
   <form on:submit|preventDefault={handleSubmit}>
     <div class="form-card">
       <div class="form-group" in:fly={{ y: 10, duration: 300, delay: 100 }}>
-        <Tooltip text={ncipDefinitions.author.text} ncipRef={ncipDefinitions.author.ncipRef} position="right">
+        <Tooltip
+          text={ncipDefinitions.author.text}
+          ncipRef={ncipDefinitions.author.ncipRef}
+          position="right"
+        >
           <label for="author">
             <span class="label-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
                 <path d={icons.user} />
               </svg>
             </span>
@@ -134,10 +156,21 @@
       </div>
 
       <div class="form-group" in:fly={{ y: 10, duration: 300, delay: 150 }}>
-        <Tooltip text={ncipDefinitions.intent.text} ncipRef={ncipDefinitions.intent.ncipRef} position="right">
+        <Tooltip
+          text={ncipDefinitions.intent.text}
+          ncipRef={ncipDefinitions.intent.ncipRef}
+          position="right"
+        >
           <label for="intent">
             <span class="label-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
                 <path d={icons.target} />
               </svg>
             </span>
@@ -154,10 +187,21 @@
       </div>
 
       <div class="form-group" in:fly={{ y: 10, duration: 300, delay: 200 }}>
-        <Tooltip text={ncipDefinitions.content.text} ncipRef={ncipDefinitions.content.ncipRef} position="right">
+        <Tooltip
+          text={ncipDefinitions.content.text}
+          ncipRef={ncipDefinitions.content.ncipRef}
+          position="right"
+        >
           <label for="content">
             <span class="label-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
                 <path d={icons.document} />
               </svg>
             </span>
@@ -175,19 +219,37 @@
       </div>
 
       <div class="form-group checkbox-group" in:fly={{ y: 10, duration: 300, delay: 250 }}>
-        <Tooltip text={ncipDefinitions.agreement.text} ncipRef={ncipDefinitions.agreement.ncipRef} position="right">
+        <Tooltip
+          text={ncipDefinitions.agreement.text}
+          ncipRef={ncipDefinitions.agreement.ncipRef}
+          position="right"
+        >
           <label class="checkbox-label">
             <div class="checkbox-wrapper">
               <input type="checkbox" bind:checked={isContract} />
               <div class="checkbox-custom">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="3"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
               </div>
             </div>
             <span class="checkbox-text">
               <span class="label-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
                   <path d={icons.contract} />
                 </svg>
               </span>
@@ -208,7 +270,14 @@
               <option value="response">Response</option>
             </select>
             <div class="select-arrow">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
                 <polyline points="6 9 12 15 18 9" />
               </svg>
             </div>
@@ -219,7 +288,14 @@
 
     {#if error}
       <div class="error-message" in:scale={{ duration: 200 }}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
           <circle cx="12" cy="12" r="10" />
           <line x1="12" y1="8" x2="12" y2="12" />
           <line x1="12" y1="16" x2="12.01" y2="16" />
@@ -229,7 +305,11 @@
     {/if}
 
     <div class="form-actions" in:fly={{ y: 10, duration: 300, delay: 300 }}>
-      <Tooltip text={ncipDefinitions.validateFirst.text} ncipRef={ncipDefinitions.validateFirst.ncipRef} position="top">
+      <Tooltip
+        text={ncipDefinitions.validateFirst.text}
+        ncipRef={ncipDefinitions.validateFirst.ncipRef}
+        position="top"
+      >
         <button
           type="button"
           class="btn btn-secondary"
@@ -239,7 +319,14 @@
           {#if validating}
             <div class="btn-spinner"></div>
           {:else}
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
               <path d={icons.check} />
             </svg>
           {/if}
@@ -247,7 +334,11 @@
         </button>
       </Tooltip>
 
-      <Tooltip text={ncipDefinitions.entry.text} ncipRef={ncipDefinitions.entry.ncipRef} position="top">
+      <Tooltip
+        text={ncipDefinitions.entry.text}
+        ncipRef={ncipDefinitions.entry.ncipRef}
+        position="top"
+      >
         <button
           type="submit"
           class="btn btn-primary"
@@ -256,7 +347,14 @@
           {#if submitting}
             <div class="btn-spinner"></div>
           {:else}
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
               <path d={icons.send} />
             </svg>
           {/if}
@@ -265,7 +363,14 @@
       </Tooltip>
 
       <button type="button" class="btn btn-ghost" on:click={clearForm}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
           <path d={icons.clear} />
         </svg>
         <span>Clear</span>
@@ -276,7 +381,14 @@
   {#if validationResult}
     <div class="result-section validation-result" in:fly={{ y: 20, duration: 300 }}>
       <div class="result-header">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
           <path d={icons.check} />
         </svg>
         <h3>Validation Result</h3>
@@ -305,24 +417,40 @@
   {#if result}
     <div class="result-section submission-result" in:fly={{ y: 20, duration: 300 }}>
       <div class="result-header success">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
           <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
         <h3>Entry Submitted</h3>
       </div>
       <div class="result-content">
-        <p class="success-message">Your entry has been added to the pending pool and awaits mining.</p>
+        <p class="success-message">
+          Your entry has been added to the pending pool and awaits mining.
+        </p>
 
-        <Tooltip text={ncipDefinitions.mining.text} ncipRef={ncipDefinitions.mining.ncipRef} position="top">
-          <button
-            class="btn btn-primary mine-btn"
-            on:click={handleMine}
-            disabled={mining}
-          >
+        <Tooltip
+          text={ncipDefinitions.mining.text}
+          ncipRef={ncipDefinitions.mining.ncipRef}
+          position="top"
+        >
+          <button class="btn btn-primary mine-btn" on:click={handleMine} disabled={mining}>
             {#if mining}
               <div class="btn-spinner"></div>
             {:else}
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
                 <path d={icons.mining} />
               </svg>
             {/if}
@@ -333,7 +461,14 @@
         {#if result.mined}
           <div class="mined-info" in:scale={{ duration: 200 }}>
             <div class="mined-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
                 <path d="M9 12l2 2 4-4" />
                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
               </svg>
@@ -441,7 +576,7 @@
     color: #ef4444;
   }
 
-  input[type="text"],
+  input[type='text'],
   textarea,
   select {
     width: 100%;
@@ -454,7 +589,7 @@
     transition: all 0.3s ease;
   }
 
-  input[type="text"]:focus,
+  input[type='text']:focus,
   textarea:focus,
   select:focus {
     outline: none;
@@ -667,7 +802,9 @@
   }
 
   @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   /* Result Sections */
@@ -739,8 +876,13 @@
   }
 
   @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
   }
 
   .result-item {

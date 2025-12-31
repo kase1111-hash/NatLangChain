@@ -12,25 +12,19 @@ Tests cover:
 - Validator behavior
 """
 
-import pytest
-from datetime import datetime, timedelta
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from emergency_overrides import (
     EmergencyManager,
-    EmergencyDeclaration,
-    EmergencyStatus,
     EmergencyScope,
-    ForceMajeureClass,
+    EmergencyStatus,
     ExecutionEffect,
-    ProhibitedEffect,
-    SemanticFallback,
-    OracleEvidence,
+    ForceMajeureClass,
     OracleType,
-    EmergencyDispute,
+    ProhibitedEffect,
 )
 
 
@@ -95,7 +89,7 @@ class TestEmergencyDeclaration:
         ]
 
         for fm_class in classes:
-            emergency, errors = manager.declare_emergency(
+            emergency, _errors = manager.declare_emergency(
                 declared_by="party_a",
                 scope=EmergencyScope.CONTRACT,
                 force_majeure_class=fm_class,
@@ -110,7 +104,7 @@ class TestEmergencyDeclaration:
         manager = EmergencyManager()
 
         for scope in [EmergencyScope.CONTRACT, EmergencyScope.JURISDICTION, EmergencyScope.SYSTEM]:
-            emergency, errors = manager.declare_emergency(
+            emergency, _errors = manager.declare_emergency(
                 declared_by="party_a",
                 scope=scope,
                 force_majeure_class=ForceMajeureClass.NATURAL_DISASTER,
@@ -414,7 +408,7 @@ class TestEmergencyDisputes:
             affected_refs=["CONTRACT-001"]
         )
 
-        dispute, _ = manager.dispute_emergency(
+        _dispute, _ = manager.dispute_emergency(
             emergency_id=emergency.emergency_id,
             disputed_by="party_b",
             dispute_reason="Dispute reason"
@@ -595,7 +589,7 @@ class TestAbusePrevention:
         manager = EmergencyManager()
 
         # First declaration
-        emergency1, _ = manager.declare_emergency(
+        _emergency1, _ = manager.declare_emergency(
             declared_by="party_a",
             scope=EmergencyScope.CONTRACT,
             force_majeure_class=ForceMajeureClass.NATURAL_DISASTER,
@@ -604,7 +598,7 @@ class TestAbusePrevention:
         )
 
         # Second declaration
-        emergency2, _ = manager.declare_emergency(
+        _emergency2, _ = manager.declare_emergency(
             declared_by="party_a",
             scope=EmergencyScope.CONTRACT,
             force_majeure_class=ForceMajeureClass.NATURAL_DISASTER,
@@ -721,7 +715,7 @@ class TestStatusReporting:
     def test_get_status_summary(self):
         """Test getting status summary."""
         manager = EmergencyManager()
-        emergency, _ = manager.declare_emergency(
+        _emergency, _ = manager.declare_emergency(
             declared_by="party_a",
             scope=EmergencyScope.CONTRACT,
             force_majeure_class=ForceMajeureClass.NATURAL_DISASTER,

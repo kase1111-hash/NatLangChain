@@ -9,11 +9,10 @@ Core Principle: If a human cannot reasonably understand the decision surface,
 ratification is invalid.
 """
 
+import math
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Dict, List, Optional, Tuple
-import math
 
 
 class RatificationContext(Enum):
@@ -70,13 +69,13 @@ class CognitiveBudget:
     """Tracks cognitive load for a ratification event."""
     context: RatificationContext
     max_units: int
-    current_units: List[SemanticUnit] = field(default_factory=list)
+    current_units: list[SemanticUnit] = field(default_factory=list)
 
     @property
     def remaining(self) -> int:
         """Calculate remaining semantic units."""
         used = sum(u.complexity_weight for u in self.current_units)
-        return max(0, self.max_units - int(math.ceil(used)))
+        return max(0, self.max_units - math.ceil(used))
 
     @property
     def is_exceeded(self) -> bool:
@@ -101,7 +100,7 @@ class RateLimitState:
     hour_window_start: datetime = field(default_factory=datetime.utcnow)
     day_window_start: datetime = field(default_factory=datetime.utcnow)
 
-    def reset_if_needed(self, now: Optional[datetime] = None) -> None:
+    def reset_if_needed(self, now: datetime | None = None) -> None:
         """Reset counters if time windows have elapsed."""
         now = now or datetime.utcnow()
 
@@ -124,8 +123,8 @@ class CoolingPeriod:
     started_at: datetime
     duration: timedelta
     can_be_waived: bool = False
-    waiver_reason: Optional[str] = None
-    validator_confidence: Optional[float] = None
+    waiver_reason: str | None = None
+    validator_confidence: float | None = None
 
     @property
     def ends_at(self) -> datetime:
@@ -147,8 +146,8 @@ class CoolingPeriod:
 @dataclass
 class InformationPresentation:
     """Tracks which information levels have been presented."""
-    levels_presented: Dict[InformationLevel, bool] = field(default_factory=dict)
-    presentation_order: List[InformationLevel] = field(default_factory=list)
+    levels_presented: dict[InformationLevel, bool] = field(default_factory=dict)
+    presentation_order: list[InformationLevel] = field(default_factory=list)
 
     def __post_init__(self):
         # Initialize all levels as not presented
@@ -176,7 +175,7 @@ class InformationPresentation:
         self.presentation_order.append(level)
         return True
 
-    def _get_next_required_level(self) -> Optional[InformationLevel]:
+    def _get_next_required_level(self) -> InformationLevel | None:
         """Get the next level that must be presented."""
         for level in InformationLevel:
             if level == InformationLevel.FULL_TEXT:
@@ -201,8 +200,8 @@ class PoUConfirmation:
     """Tracks Proof of Understanding confirmation state."""
     paraphrase_viewed: bool = False
     user_confirmed: bool = False
-    user_correction: Optional[str] = None
-    correction_drift: Optional[float] = None
+    user_correction: str | None = None
+    correction_drift: float | None = None
     max_allowed_drift: float = 0.20
 
     @property
@@ -229,8 +228,8 @@ class PoUConfirmation:
 @dataclass
 class UIValidation:
     """Validates UI compliance with NCIP-012 safeguards."""
-    violations: List[UIViolationType] = field(default_factory=list)
-    violation_details: Dict[UIViolationType, str] = field(default_factory=dict)
+    violations: list[UIViolationType] = field(default_factory=list)
+    violation_details: dict[UIViolationType, str] = field(default_factory=dict)
 
     def add_violation(self, violation_type: UIViolationType, detail: str = "") -> None:
         """Record a UI violation."""
@@ -259,13 +258,13 @@ class RatificationState:
     information: InformationPresentation
     pou_confirmation: PoUConfirmation
     ui_validation: UIValidation
-    cooling_period: Optional[CoolingPeriod] = None
+    cooling_period: CoolingPeriod | None = None
     created_at: datetime = field(default_factory=datetime.utcnow)
-    ratified_at: Optional[datetime] = None
+    ratified_at: datetime | None = None
     semantic_lock_active: bool = False
 
     @property
-    def can_ratify(self) -> Tuple[bool, List[str]]:
+    def can_ratify(self) -> tuple[bool, list[str]]:
         """Check if ratification is allowed. Returns (allowed, reasons)."""
         blockers = []
 
@@ -333,9 +332,9 @@ class CognitiveLoadManager:
     WAIVER_CONFIDENCE_THRESHOLD = 0.85
 
     def __init__(self):
-        self.rate_limit_states: Dict[str, RateLimitState] = {}
-        self.ratification_states: Dict[str, RatificationState] = {}
-        self.active_cooling_periods: Dict[str, List[CoolingPeriod]] = {}
+        self.rate_limit_states: dict[str, RateLimitState] = {}
+        self.ratification_states: dict[str, RatificationState] = {}
+        self.active_cooling_periods: dict[str, list[CoolingPeriod]] = {}
 
     # -------------------------------------------------------------------------
     # Cognitive Load Budget Management
@@ -350,7 +349,7 @@ class CognitiveLoadManager:
         self,
         budget: CognitiveBudget,
         unit: SemanticUnit
-    ) -> Tuple[bool, str]:
+    ) -> tuple[bool, str]:
         """
         Add a semantic unit to the budget.
         Returns (success, message).
@@ -363,14 +362,14 @@ class CognitiveLoadManager:
 
         return (True, f"Unit added. Remaining budget: {budget.remaining}")
 
-    def check_budget_compliance(self, budget: CognitiveBudget) -> Tuple[bool, str]:
+    def check_budget_compliance(self, budget: CognitiveBudget) -> tuple[bool, str]:
         """Check if a cognitive budget is within limits."""
         if budget.is_exceeded:
             return (False, f"Budget exceeded: {len(budget.current_units)} units "
                           f"exceed limit of {budget.max_units}")
         return (True, f"Budget compliant: {budget.utilization:.1%} utilized")
 
-    def request_segmentation(self, budget: CognitiveBudget) -> List[List[SemanticUnit]]:
+    def request_segmentation(self, budget: CognitiveBudget) -> list[list[SemanticUnit]]:
         """
         Request segmentation of an exceeded budget.
         Returns segments that each fit within the limit.
@@ -414,7 +413,7 @@ class CognitiveLoadManager:
         self,
         user_id: str,
         action_type: ActionType
-    ) -> Tuple[bool, str]:
+    ) -> tuple[bool, str]:
         """
         Check if an action is within rate limits.
         Returns (allowed, message).
@@ -452,7 +451,7 @@ class CognitiveLoadManager:
         elif action_type == ActionType.LICENSE_GRANT:
             state.license_grants_today += 1
 
-    def get_remaining_actions(self, user_id: str) -> Dict[ActionType, int]:
+    def get_remaining_actions(self, user_id: str) -> dict[ActionType, int]:
         """Get remaining allowed actions for a user."""
         state = self.get_rate_limit_state(user_id)
 
@@ -493,7 +492,7 @@ class CognitiveLoadManager:
         self,
         user_id: str,
         action_type: ActionType
-    ) -> Tuple[bool, Optional[CoolingPeriod]]:
+    ) -> tuple[bool, CoolingPeriod | None]:
         """
         Check if a cooling period is active for this action type.
         Returns (is_blocked, active_cooling_period).
@@ -512,7 +511,7 @@ class CognitiveLoadManager:
         cooling: CoolingPeriod,
         reason: str,
         validator_confidence: float
-    ) -> Tuple[bool, str]:
+    ) -> tuple[bool, str]:
         """
         Attempt to waive a cooling period.
         Returns (success, message).
@@ -553,7 +552,7 @@ class CognitiveLoadManager:
         self,
         presentation: InformationPresentation,
         level: InformationLevel
-    ) -> Tuple[bool, str]:
+    ) -> tuple[bool, str]:
         """
         Mark an information level as presented.
         Returns (success, message).
@@ -568,7 +567,7 @@ class CognitiveLoadManager:
     def validate_hierarchy_complete(
         self,
         presentation: InformationPresentation
-    ) -> Tuple[bool, List[InformationLevel]]:
+    ) -> tuple[bool, list[InformationLevel]]:
         """
         Validate that all required hierarchy levels are complete.
         Returns (complete, missing_levels).
@@ -597,9 +596,9 @@ class CognitiveLoadManager:
     def confirm_pou(
         self,
         pou: PoUConfirmation,
-        user_correction: Optional[str] = None,
-        correction_drift: Optional[float] = None
-    ) -> Tuple[bool, str]:
+        user_correction: str | None = None,
+        correction_drift: float | None = None
+    ) -> tuple[bool, str]:
         """
         Confirm PoU, optionally with user correction.
         Returns (valid, message).
@@ -630,8 +629,8 @@ class CognitiveLoadManager:
         self,
         validation: UIValidation,
         element_type: str,
-        properties: Dict
-    ) -> Tuple[bool, List[str]]:
+        properties: dict
+    ) -> tuple[bool, list[str]]:
         """
         Validate a UI element against NCIP-012 safeguards.
         Returns (compliant, violations).
@@ -648,23 +647,21 @@ class CognitiveLoadManager:
                 violations_found.append("Default accept button detected")
 
         # Check for countdown pressure (only allowed for emergency)
-        if element_type == "countdown":
-            if not properties.get("is_emergency", False):
-                validation.add_violation(
-                    UIViolationType.COUNTDOWN_PRESSURE,
-                    "Countdown pressure not allowed for non-emergency"
-                )
-                violations_found.append("Countdown pressure in non-emergency context")
+        if element_type == "countdown" and not properties.get("is_emergency", False):
+            validation.add_violation(
+                UIViolationType.COUNTDOWN_PRESSURE,
+                "Countdown pressure not allowed for non-emergency"
+            )
+            violations_found.append("Countdown pressure in non-emergency context")
 
         # Check for bundled decisions
-        if element_type == "decision_bundle":
-            if properties.get("decision_count", 1) > 1:
-                if not properties.get("decisions_related", True):
-                    validation.add_violation(
-                        UIViolationType.BUNDLED_DECISIONS,
-                        "Unrelated decisions cannot be bundled"
-                    )
-                    violations_found.append("Bundled unrelated decisions")
+        if element_type == "decision_bundle" and properties.get("decision_count", 1) > 1:
+            if not properties.get("decisions_related", True):
+                validation.add_violation(
+                    UIViolationType.BUNDLED_DECISIONS,
+                    "Unrelated decisions cannot be bundled"
+                )
+                violations_found.append("Bundled unrelated decisions")
 
         # Check for dark patterns
         if properties.get("has_confusing_language", False):
@@ -691,17 +688,16 @@ class CognitiveLoadManager:
                 violations_found.append("Missing lock visibility")
 
         # Check for auto-accept on final ratification
-        if element_type == "auto_accept":
-            if properties.get("is_final_ratification", False):
-                validation.add_violation(
-                    UIViolationType.AUTO_ACCEPT_FINAL,
-                    "Auto-accept not allowed for final ratification"
-                )
-                violations_found.append("Auto-accept on final ratification")
+        if element_type == "auto_accept" and properties.get("is_final_ratification", False):
+            validation.add_violation(
+                UIViolationType.AUTO_ACCEPT_FINAL,
+                "Auto-accept not allowed for final ratification"
+            )
+            violations_found.append("Auto-accept on final ratification")
 
         return (len(violations_found) == 0, violations_found)
 
-    def detect_dark_patterns(self, ui_properties: Dict) -> List[str]:
+    def detect_dark_patterns(self, ui_properties: dict) -> list[str]:
         """Detect dark patterns in UI properties."""
         patterns = []
 
@@ -749,7 +745,7 @@ class CognitiveLoadManager:
         self.ratification_states[ratification_id] = state
         return state
 
-    def get_ratification(self, ratification_id: str) -> Optional[RatificationState]:
+    def get_ratification(self, ratification_id: str) -> RatificationState | None:
         """Get an existing ratification state."""
         return self.ratification_states.get(ratification_id)
 
@@ -757,7 +753,7 @@ class CognitiveLoadManager:
         self,
         ratification_id: str,
         action_type: ActionType
-    ) -> Tuple[bool, List[str]]:
+    ) -> tuple[bool, list[str]]:
         """
         Attempt to complete a ratification.
         Returns (success, blockers).
@@ -779,7 +775,7 @@ class CognitiveLoadManager:
             blockers.append(f"Cooling period active: {cooling.remaining_time} remaining")
 
         # Check ratification state
-        can_ratify, state_blockers = state.can_ratify
+        _can_ratify, state_blockers = state.can_ratify
         blockers.extend(state_blockers)
 
         if blockers:
@@ -805,7 +801,7 @@ class CognitiveLoadManager:
         self,
         content: str,
         context: RatificationContext
-    ) -> Tuple[int, List[SemanticUnit]]:
+    ) -> tuple[int, list[SemanticUnit]]:
         """
         Validator function to measure semantic units in content.
         Returns (count, units).
@@ -840,8 +836,8 @@ class CognitiveLoadManager:
 
     def validator_detect_ux_violations(
         self,
-        ui_snapshot: Dict
-    ) -> List[UIViolationType]:
+        ui_snapshot: dict
+    ) -> list[UIViolationType]:
         """
         Validator function to detect UX violations.
         Returns list of violations found.
@@ -875,7 +871,7 @@ class CognitiveLoadManager:
         self,
         base_confidence: float,
         ratification_state: RatificationState
-    ) -> Tuple[float, List[str]]:
+    ) -> tuple[float, list[str]]:
         """
         Downgrade validator confidence for rushed or problematic ratifications.
         Returns (adjusted_confidence, reasons).

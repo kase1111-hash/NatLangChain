@@ -8,14 +8,10 @@ import traceback
 from datetime import datetime
 
 from mobile_deployment import (
-    MobileDeploymentManager,
-    DeviceType,
-    WalletType,
     ConnectionState,
-    EdgeAIRuntime,
-    MobileWalletManager,
-    OfflineFirstManager,
-    PortableArchitecture
+    DeviceType,
+    MobileDeploymentManager,
+    WalletType,
 )
 
 
@@ -331,8 +327,9 @@ def simulation_6_conflict_resolution():
         result.log(f"Registered device: {device_id[:8]}...")
 
         # Create some conflicts manually
-        from mobile_deployment import SyncConflict
         import uuid
+
+        from mobile_deployment import SyncConflict
 
         conflicts = []
         for i in range(3):

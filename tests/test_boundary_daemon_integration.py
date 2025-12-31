@@ -4,17 +4,16 @@ Integration tests for Boundary Daemon <-> NatLangChain Blockchain
 Tests the complete flow from daemon authorization to blockchain recording.
 """
 
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
+from blockchain import NatLangChain, NaturalLanguageEntry
 from boundary_daemon import (
     BoundaryDaemon,
     EnforcementMode,
-    DataClassification,
 )
-from blockchain import NatLangChain, NaturalLanguageEntry
 
 
 class TestBoundaryDaemonBlockchainIntegration:

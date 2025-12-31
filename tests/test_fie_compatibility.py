@@ -4,12 +4,14 @@ Tests delayed intent recording, trigger handling, execution recording, and revoc
 Per integration spec: FINITE-INTENT-EXECUTOR-INTEGRATION.md
 """
 
-import sys
 import os
+import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 import unittest
 from datetime import datetime
+
 from blockchain import NatLangChain, NaturalLanguageEntry
 
 

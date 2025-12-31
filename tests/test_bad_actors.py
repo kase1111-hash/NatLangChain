@@ -6,17 +6,16 @@ This module simulates multiple types of malicious actors attempting to
 game or exploit the NatLangChain system.
 """
 
-import sys
-import os
-import json
 import copy
+import json
+import os
+import sys
 import time
-import hashlib
-from typing import List, Dict, Any, Tuple
+from typing import Any
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from blockchain import NatLangChain, NaturalLanguageEntry, Block, MockValidator
+from blockchain import Block, MockValidator, NatLangChain, NaturalLanguageEntry
 
 
 class BadActorSimulator:
@@ -76,7 +75,7 @@ class BadActorSimulator:
         self.metadata_sanitize_mode = metadata_sanitize_mode
         self.use_asset_tracking = use_asset_tracking
         self._init_chain()
-        self.attack_results: List[Dict[str, Any]] = []
+        self.attack_results: list[dict[str, Any]] = []
         self.successful_attacks = 0
         self.blocked_attacks = 0
 
@@ -207,7 +206,7 @@ def test_ambiguity_exploitation(use_validation: bool = False):
         print(f"\n  WARNING: {len(mined.entries)} ambiguous entries mined into block #{mined.index}")
         print("  FINDING: System allows ambiguous entries without semantic validation at mining time")
     elif sim.use_validation:
-        print(f"\n  PROTECTED: No ambiguous entries made it to the pending queue")
+        print("\n  PROTECTED: No ambiguous entries made it to the pending queue")
         print("  FINDING: PoU validation blocked ambiguous entries")
 
     return sim, results
@@ -289,7 +288,7 @@ def test_intent_mismatch(use_validation: bool = False):
         print(f"\n  WARNING: {len(mined.entries)} mismatched entries mined into block #{mined.index}")
         print("  FINDING: System does not validate intent-content alignment at add_entry or mine time")
     elif sim.use_validation:
-        print(f"\n  PROTECTED: No mismatched entries made it to the pending queue")
+        print("\n  PROTECTED: No mismatched entries made it to the pending queue")
         print("  FINDING: PoU validation blocked intent-content mismatch attacks")
 
     return sim, results
@@ -580,7 +579,7 @@ def test_adversarial_phrasing(use_validation: bool = False):
     if mined:
         print(f"\n  WARNING: {len(mined.entries)} adversarial entries mined into block #{mined.index}")
     elif sim.use_validation:
-        print(f"\n  PROTECTED: No adversarial entries made it to the pending queue")
+        print("\n  PROTECTED: No adversarial entries made it to the pending queue")
         print("  FINDING: PoU validation blocked adversarial phrasing attacks")
 
     return sim, results
@@ -638,7 +637,7 @@ def test_replay_attack(use_validation: bool = False, use_deduplication: bool = F
         print(f"\n  WARNING: Replayed entry mined into block #{mined.index}")
         print("  FINDING: No replay protection mechanism exists at entry/mining level")
     elif use_deduplication and rejected_as_duplicate:
-        print(f"\n  PROTECTED: Replay attack blocked by deduplication")
+        print("\n  PROTECTED: Replay attack blocked by deduplication")
         print("  FINDING: Entry deduplication prevents replay attacks")
 
     return sim, [{"replay_accepted": replay_accepted, "blocked_by_dedup": rejected_as_duplicate}]
@@ -674,7 +673,7 @@ def test_sybil_flooding(use_validation: bool = False, use_rate_limiting: bool = 
         intent="Safety announcement"
     )
     result = sim.chain.add_entry(legitimate)
-    legit_accepted = result["status"] == "pending"
+    result["status"] == "pending"
 
     # Attacker floods with spam entries
     sybil_count = 100
@@ -808,7 +807,7 @@ def test_timestamp_manipulation(use_validation: bool = False, use_timestamp_vali
         print(f"  Entry claims: {entry_claims}")
         print("  FINDING: Entry timestamps are not validated against block/system time")
     elif use_timestamp_validation and rejected_for_timestamp:
-        print(f"\n  PROTECTED: Backdated entry blocked by timestamp validation")
+        print("\n  PROTECTED: Backdated entry blocked by timestamp validation")
         print("  FINDING: Timestamp validation prevents backdating attacks")
 
     return sim, [{
@@ -879,7 +878,7 @@ def test_metadata_injection(use_validation: bool = False, use_metadata_sanitizat
 
         # Count forbidden fields in original
         forbidden_in_original = sum(
-            1 for k in original_metadata.keys()
+            1 for k in original_metadata
             if k in ["validation_status", "verified_by", "trust_score", "__override__", "skip_validation"]
         )
         total_forbidden += forbidden_in_original
@@ -891,7 +890,7 @@ def test_metadata_injection(use_validation: bool = False, use_metadata_sanitizat
 
             # Count how many forbidden fields were stripped
             stripped_count = sum(
-                1 for k in original_metadata.keys()
+                1 for k in original_metadata
                 if k not in stored_entry.metadata and k in ["validation_status", "verified_by", "trust_score", "__override__", "skip_validation"]
             )
             forbidden_stripped += stripped_count
@@ -928,7 +927,7 @@ def test_metadata_injection(use_validation: bool = False, use_metadata_sanitizat
 
         print(f"  Malicious metadata accepted: {attack_success}")
         if use_metadata_sanitization and not malicious_preserved:
-            print(f"    Forbidden fields stripped (sanitization working)")
+            print("    Forbidden fields stripped (sanitization working)")
         else:
             print(f"    Injected: {json.dumps(original_metadata, indent=4)[:100]}...")
 
@@ -1114,14 +1113,14 @@ def run_bad_actor_simulation():
                     if not attack["success"]:
                         protected_sem_blocked += 1
 
-    print(f"\n[SEMANTIC LAYER - PROTECTED]")
+    print("\n[SEMANTIC LAYER - PROTECTED]")
     print(f"  Status: {'SECURE' if protected_sem_blocked == protected_sem_total else 'PARTIALLY PROTECTED'}")
     print(f"  Attacks blocked: {protected_sem_blocked}/{protected_sem_total}")
 
     print("\n[OPERATIONAL LAYER]")
     op_vulnerable = sum(1 for f in operational_findings if f["success"])
     print(f"  Status: {'SECURE' if op_vulnerable == 0 else 'NEEDS ADDITIONAL HARDENING'}")
-    print(f"  Note: Operational attacks (replay, flooding, timestamps) need separate fixes")
+    print("  Note: Operational attacks (replay, flooding, timestamps) need separate fixes")
 
     # Check rate limiting results
     rate_limited_in_protected = 0
@@ -1203,7 +1202,7 @@ def test_all_bad_actors():
 
     # Count critical failures
     critical_failures = 0
-    for name, data in results.items():
+    for _name, data in results.items():
         if "attack_log" in data:
             for attack in data["attack_log"]:
                 if attack["severity"] == "CRITICAL" and attack["success"]:

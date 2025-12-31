@@ -20,12 +20,12 @@ as configured for each deployment. All amounts are denominated in the
 configured staking currency.
 """
 
-import json
 import hashlib
-from typing import Dict, Any, Optional, List, Tuple
+import json
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from dataclasses import dataclass, field
+from typing import Any
 
 
 class InflowType(Enum):
@@ -66,8 +66,8 @@ class Inflow:
     amount: float
     source: str  # Address or dispute ID
     timestamp: str
-    tx_hash: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    tx_hash: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -81,9 +81,9 @@ class SubsidyRequest:
     subsidy_approved: float
     status: str
     created_at: str
-    processed_at: Optional[str] = None
-    denial_reason: Optional[str] = None
-    disbursement_tx: Optional[str] = None
+    processed_at: str | None = None
+    denial_reason: str | None = None
+    disbursement_tx: str | None = None
 
 
 class NatLangChainTreasury:
@@ -129,13 +129,13 @@ class NatLangChainTreasury:
         self.total_outflows = 0.0
 
         # State tracking
-        self.inflows: List[Inflow] = []
-        self.subsidy_requests: Dict[str, SubsidyRequest] = {}
-        self.dispute_subsidized: Dict[str, str] = {}  # dispute_id -> request_id
-        self.participant_subsidies: Dict[str, List[Dict]] = {}  # address -> [{amount, timestamp}]
+        self.inflows: list[Inflow] = []
+        self.subsidy_requests: dict[str, SubsidyRequest] = {}
+        self.dispute_subsidized: dict[str, str] = {}  # dispute_id -> request_id
+        self.participant_subsidies: dict[str, list[dict]] = {}  # address -> [{amount, timestamp}]
 
         # Audit trail
-        self.events: List[Dict[str, Any]] = []
+        self.events: list[dict[str, Any]] = []
 
     # ==================== PHASE 12A: TREASURY CONTRACT ====================
 
@@ -144,9 +144,9 @@ class NatLangChainTreasury:
         amount: float,
         inflow_type: InflowType,
         source: str,
-        tx_hash: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None
-    ) -> Tuple[bool, Dict[str, Any]]:
+        tx_hash: str | None = None,
+        metadata: dict[str, Any] | None = None
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Deposit funds into treasury.
 
@@ -200,7 +200,7 @@ class NatLangChainTreasury:
         dispute_id: str,
         amount: float,
         initiator: str
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """Deposit from a dispute timeout burn."""
         return self.deposit(
             amount=amount,
@@ -215,7 +215,7 @@ class NatLangChainTreasury:
         amount: float,
         party: str,
         counter_number: int
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """Deposit from counter-proposal fee burn."""
         return self.deposit(
             amount=amount,
@@ -233,7 +233,7 @@ class NatLangChainTreasury:
         amount: float,
         party: str,
         escalation_multiplier: float
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """Deposit from escalated stake (frivolous initiation penalty)."""
         return self.deposit(
             amount=amount,
@@ -245,7 +245,7 @@ class NatLangChainTreasury:
             }
         )
 
-    def get_balance(self) -> Dict[str, Any]:
+    def get_balance(self) -> dict[str, Any]:
         """Get current treasury balance and statistics."""
         available = self.balance * (1 - self.MIN_TREASURY_BALANCE_RATIO)
 
@@ -262,8 +262,8 @@ class NatLangChainTreasury:
     def get_inflow_history(
         self,
         limit: int = 50,
-        inflow_type: Optional[InflowType] = None
-    ) -> Dict[str, Any]:
+        inflow_type: InflowType | None = None
+    ) -> dict[str, Any]:
         """Get inflow history with optional filtering."""
         filtered = self.inflows
 
@@ -301,7 +301,7 @@ class NatLangChainTreasury:
         requester: str,
         stake_required: float,
         is_dispute_target: bool = True
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Request a defensive stake subsidy.
 
@@ -419,7 +419,7 @@ class NatLangChainTreasury:
         self,
         request_id: str,
         escrow_address: str
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Disburse an approved subsidy to the stake escrow.
 
@@ -485,8 +485,8 @@ class NatLangChainTreasury:
         requester: str,
         stake_required: float,
         reason: DenialReason,
-        details: Optional[Dict] = None
-    ) -> Tuple[bool, Dict[str, Any]]:
+        details: dict | None = None
+    ) -> tuple[bool, dict[str, Any]]:
         """Record a denied subsidy request."""
         request = SubsidyRequest(
             request_id=request_id,
@@ -532,7 +532,7 @@ class NatLangChainTreasury:
         }
         return messages.get(reason, "Subsidy request denied.")
 
-    def get_subsidy_request(self, request_id: str) -> Optional[Dict[str, Any]]:
+    def get_subsidy_request(self, request_id: str) -> dict[str, Any] | None:
         """Get details of a subsidy request."""
         if request_id not in self.subsidy_requests:
             return None
@@ -610,13 +610,13 @@ class NatLangChainTreasury:
 
         return removed
 
-    def is_dispute_subsidized(self, dispute_id: str) -> Tuple[bool, Optional[str]]:
+    def is_dispute_subsidized(self, dispute_id: str) -> tuple[bool, str | None]:
         """Check if a dispute has been subsidized."""
         if dispute_id in self.dispute_subsidized:
             return True, self.dispute_subsidized[dispute_id]
         return False, None
 
-    def get_participant_subsidy_status(self, address: str) -> Dict[str, Any]:
+    def get_participant_subsidy_status(self, address: str) -> dict[str, Any]:
         """Get subsidy status for a participant."""
         used = self._get_participant_usage(address)
         remaining = max(0, self.DEFAULT_MAX_PER_PARTICIPANT - used)
@@ -639,7 +639,7 @@ class NatLangChainTreasury:
 
     # ==================== STATISTICS & REPORTING ====================
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """Get comprehensive treasury statistics."""
         # Inflow breakdown
         inflow_by_type = {}
@@ -707,7 +707,7 @@ class NatLangChainTreasury:
             }
         }
 
-    def get_audit_trail(self, limit: int = 100) -> List[Dict[str, Any]]:
+    def get_audit_trail(self, limit: int = 100) -> list[dict[str, Any]]:
         """Get recent audit trail events."""
         return sorted(
             self.events[-limit:],
@@ -759,7 +759,7 @@ class NatLangChainTreasury:
         hash_input = json.dumps(data, sort_keys=True)
         return "0x" + hashlib.sha256(hash_input.encode()).hexdigest()
 
-    def _emit_event(self, event_type: str, data: Dict[str, Any]) -> None:
+    def _emit_event(self, event_type: str, data: dict[str, Any]) -> None:
         """Emit an event for audit trail."""
         event = {
             "event_type": event_type,
@@ -778,7 +778,7 @@ class NatLangChainTreasury:
         self,
         requester: str,
         stake_required: float
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Simulate a subsidy request without creating a record.
         Useful for UI to show potential subsidy before committing.

@@ -11,31 +11,24 @@ Tests cover:
 """
 
 import sys
-from pathlib import Path
 from datetime import datetime, timedelta
+from pathlib import Path
 
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from semantic_locking import (
-    SemanticLockManager,
-    SemanticLock,
-    LockedState,
+    COOLING_PERIODS,
     DisputeLevel,
     DisputeTrigger,
-    LockAction,
     EscalationStage,
+    LockAction,
     ResolutionOutcome,
-    CoolingPeriodStatus,
-    COOLING_PERIODS,
-    ALLOWED_DURING_COOLING,
-    FORBIDDEN_DURING_COOLING,
-    FORBIDDEN_DURING_LOCK,
-    NCIP_005_CONFIG,
-    get_ncip_005_config,
+    SemanticLockManager,
     get_cooling_period_hours,
+    get_ncip_005_config,
     is_action_allowed_during_cooling,
-    is_action_forbidden_during_lock
+    is_action_forbidden_during_lock,
 )
 
 
@@ -45,7 +38,7 @@ class TestSemanticLockActivation:
     def test_lock_activation_d3(self):
         """D3 trigger should activate lock with 24h cooling"""
         manager = SemanticLockManager()
-        lock, entry = manager.initiate_dispute(
+        lock, _entry = manager.initiate_dispute(
             contract_id="contract-001",
             trigger=DisputeTrigger.DRIFT_D3,
             claimed_divergence="Semantic drift detected in clause 3",
@@ -62,7 +55,7 @@ class TestSemanticLockActivation:
     def test_lock_activation_d4(self):
         """D4 trigger should activate lock with 72h cooling"""
         manager = SemanticLockManager()
-        lock, entry = manager.initiate_dispute(
+        lock, _entry = manager.initiate_dispute(
             contract_id="contract-002",
             trigger=DisputeTrigger.DRIFT_D4,
             claimed_divergence="Semantic break detected",
@@ -78,7 +71,7 @@ class TestSemanticLockActivation:
     def test_lock_freezes_semantic_state(self):
         """Lock should freeze registry version, prose, and PoUs"""
         manager = SemanticLockManager()
-        lock, entry = manager.initiate_dispute(
+        lock, _entry = manager.initiate_dispute(
             contract_id="contract-003",
             trigger=DisputeTrigger.POU_FAILURE,
             claimed_divergence="PoU verification failed",
@@ -194,7 +187,7 @@ class TestActionEnforcement:
             prose_content="Content"
         )
 
-        allowed, reason = manager.can_perform_action(lock.lock_id, LockAction.CLARIFICATION)
+        allowed, _reason = manager.can_perform_action(lock.lock_id, LockAction.CLARIFICATION)
         assert allowed is True
 
     def test_settlement_proposal_allowed_during_cooling(self):
@@ -209,7 +202,7 @@ class TestActionEnforcement:
             prose_content="Content"
         )
 
-        allowed, reason = manager.can_perform_action(lock.lock_id, LockAction.SETTLEMENT_PROPOSAL)
+        allowed, _reason = manager.can_perform_action(lock.lock_id, LockAction.SETTLEMENT_PROPOSAL)
         assert allowed is True
 
     def test_escalation_forbidden_during_cooling(self):
@@ -240,7 +233,7 @@ class TestActionEnforcement:
             prose_content="Content"
         )
 
-        allowed, reason = manager.can_perform_action(lock.lock_id, LockAction.ENFORCEMENT)
+        allowed, _reason = manager.can_perform_action(lock.lock_id, LockAction.ENFORCEMENT)
         assert allowed is False
 
     def test_contract_amendment_forbidden_during_lock(self):
@@ -271,7 +264,7 @@ class TestActionEnforcement:
             prose_content="Content"
         )
 
-        allowed, reason = manager.can_perform_action(lock.lock_id, LockAction.REGISTRY_UPGRADE)
+        allowed, _reason = manager.can_perform_action(lock.lock_id, LockAction.REGISTRY_UPGRADE)
         assert allowed is False
 
     def test_pou_regeneration_forbidden_during_lock(self):
@@ -286,7 +279,7 @@ class TestActionEnforcement:
             prose_content="Content"
         )
 
-        allowed, reason = manager.can_perform_action(lock.lock_id, LockAction.POU_REGENERATION)
+        allowed, _reason = manager.can_perform_action(lock.lock_id, LockAction.POU_REGENERATION)
         assert allowed is False
 
     def test_action_attempt_logging(self):
@@ -360,7 +353,7 @@ class TestEscalationPath:
             datetime.utcnow() - timedelta(hours=1)
         ).isoformat() + "Z"
 
-        success, message, new_stage = manager.advance_stage(lock.lock_id, "actor-1", "Testing")
+        success, _message, new_stage = manager.advance_stage(lock.lock_id, "actor-1", "Testing")
         assert success is True
         assert new_stage == EscalationStage.MUTUAL_SETTLEMENT
 
@@ -385,7 +378,7 @@ class TestResolutionOutcomes:
             datetime.utcnow() - timedelta(hours=25)
         ).isoformat() + "Z"
 
-        success, message = manager.resolve_dispute(
+        success, _message = manager.resolve_dispute(
             lock.lock_id,
             ResolutionOutcome.DISMISSED,
             "mediator-1",
@@ -704,7 +697,7 @@ def run_tests():
     print(f"Tests: {passed_tests}/{total_tests} passed")
 
     if failed_tests:
-        print(f"\nFailed tests:")
+        print("\nFailed tests:")
         for name, error in failed_tests:
             print(f"  - {name}: {error}")
         return 1

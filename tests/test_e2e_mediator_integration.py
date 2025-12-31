@@ -14,53 +14,35 @@ Uses MockChainInterface for unit testing and can optionally
 connect to a real mediator-node for integration testing.
 """
 
-import pytest
-import time
-import json
-from datetime import datetime, timedelta
-from typing import Dict, Any, List, Optional
-from unittest.mock import Mock, patch, MagicMock
+import os
 
 # Import the modules we're testing
 import sys
-import os
+import time
+
+import pytest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from chain_interface import (
-    ChainInterface,
-    MockChainInterface,
-    ChainIntent,
-    ChainSettlement,
-    ChainReputation,
-    ChainDelegation,
-    IntentStatus,
-    EntryType,
-    SettlementStatus,
-    HMACAuthenticator,
     HMAC_HEADER,
+    NONCE_HEADER,
     TIMESTAMP_HEADER,
-    NONCE_HEADER
+    ChainDelegation,
+    ChainIntent,
+    ChainReputation,
+    HMACAuthenticator,
+    IntentStatus,
+    MockChainInterface,
+    SettlementStatus,
 )
-
 from mediator_reputation import (
-    MediatorReputationManager,
-    MediatorProfile,
-    ReputationScores,
-    SlashingOffense,
-    MediatorStatus,
     MINIMUM_BOND,
-    DEFAULT_BOND
+    MediatorReputationManager,
+    MediatorStatus,
+    SlashingOffense,
 )
-
-from negotiation_engine import (
-    AutomatedNegotiationEngine,
-    NegotiationPhase,
-    Intent,
-    Offer,
-    OfferType,
-    ClauseType
-)
-
+from negotiation_engine import AutomatedNegotiationEngine, ClauseType
 
 # =============================================================================
 # Test Fixtures
@@ -341,7 +323,7 @@ class TestChainInterface:
     def test_settlement_acceptance_flow(self, mock_chain):
         """Test full settlement acceptance flow."""
         # 1. Propose settlement
-        success, result = mock_chain.propose_settlement(
+        success, _result = mock_chain.propose_settlement(
             intent_hash_a="0xalice123",
             intent_hash_b="0xbob456",
             terms={"amount": 500},
@@ -409,7 +391,7 @@ class TestChainInterface:
         )
 
         # Claim payout
-        success, result = mock_chain.claim_payout(settlement_id)
+        success, _result = mock_chain.claim_payout(settlement_id)
         assert success
 
         # Verify payout entry was created
@@ -551,7 +533,7 @@ class TestFullNegotiationFlow:
         assert both_accepted
 
         # Step 7: Claim payout
-        success, payout_result = mock_chain.claim_payout(settlement_id)
+        success, _payout_result = mock_chain.claim_payout(settlement_id)
         assert success
 
         # Step 8: Update mediator reputation
@@ -593,20 +575,13 @@ class TestFullNegotiationFlow:
         )
 
         entries = mock_chain.get_submitted_entries()
-        settlement_id = entries[0]["metadata"]["id"]
+        entries[0]["metadata"]["id"]
 
         # Simulate challenge before acceptance
         # In a real scenario, this would be a separate challenge entry
-        challenge_entry = {
-            "type": "challenge",
-            "settlementId": settlement_id,
-            "challenger": "user_bob",
-            "reason": "Terms do not match stated constraints",
-            "evidence": {"constraint_violated": "60 day deadline not addressed"}
-        }
 
         # Record the challenge outcome (mediator lost)
-        result = reputation_manager.record_appeal_outcome(
+        reputation_manager.record_appeal_outcome(
             mediator_id=mediator_id,
             appeal_survived=False
         )
@@ -924,7 +899,7 @@ class TestNegotiationEngineIntegration:
         assert join_data["alignment_score"] > 0
 
         # Step 4: Add clauses (currency-agnostic: uses configured staking currency)
-        success, clause_data = negotiation_engine.add_clause(
+        success, _clause_data = negotiation_engine.add_clause(
             session_id=session_id,
             clause_type=ClauseType.PAYMENT,
             parameters={
@@ -962,7 +937,7 @@ class TestNegotiationEngineIntegration:
 
         # Step 7: Post settlement to chain
         agreed_terms = response["agreed_terms"]
-        success, settlement_result = mock_chain.propose_settlement(
+        success, _settlement_result = mock_chain.propose_settlement(
             intent_hash_a=alice_intent.hash,
             intent_hash_b=bob_intent.hash,
             terms=agreed_terms,
@@ -1034,7 +1009,7 @@ class TestEdgeCases:
 
     def test_settlement_not_found(self, mock_chain):
         """Test handling of non-existent settlement."""
-        success, result = mock_chain.get_settlement_status("nonexistent_id")
+        success, _result = mock_chain.get_settlement_status("nonexistent_id")
         assert not success
 
     def test_duplicate_acceptance(self, mock_chain):

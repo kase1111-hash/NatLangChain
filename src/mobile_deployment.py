@@ -12,19 +12,13 @@ This module implements:
 - Offline-first capability with sync
 """
 
-import json
 import hashlib
 import secrets
-import base64
-from typing import Dict, Any, Optional, List, Tuple, Callable
-from datetime import datetime, timedelta
+from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from enum import Enum
-import os
-import threading
-import queue
-import time
-
+from typing import Any
 
 # ============================================================
 # Enums and Constants
@@ -93,7 +87,7 @@ class DeviceProfile:
     os_version: str = "1.0"
     app_version: str = "1.0"
     platform_version: str = "1.0"
-    capabilities: Dict[str, Any] = field(default_factory=dict)
+    capabilities: dict[str, Any] = field(default_factory=dict)
     memory_mb: int = 2048
     storage_mb: int = 1024
     cpu_cores: int = 4
@@ -102,7 +96,7 @@ class DeviceProfile:
     battery_optimization: bool = True
     is_active: bool = True
     registered_at: datetime = field(default_factory=datetime.utcnow)
-    last_sync: Optional[datetime] = None
+    last_sync: datetime | None = None
     last_seen: str = field(default_factory=lambda: datetime.utcnow().isoformat())
 
 
@@ -113,13 +107,13 @@ class WalletConnection:
     wallet_type: WalletType
     wallet_address: str
     chain_id: int = 1
-    connected_at: Optional[datetime] = None
+    connected_at: datetime | None = None
     state: ConnectionState = ConnectionState.ONLINE
-    device_id: Optional[str] = None
-    session_topic: Optional[str] = None  # WalletConnect session
+    device_id: str | None = None
+    session_topic: str | None = None  # WalletConnect session
     is_hardware: bool = False
-    permissions: List[str] = field(default_factory=list)
-    expires_at: Optional[str] = None
+    permissions: list[str] = field(default_factory=list)
+    expires_at: str | None = None
     signature_count: int = 0
 
 
@@ -128,13 +122,13 @@ class SyncOperation:
     """Sync operation for offline-first."""
     operation_id: str
     operation_type: str
-    data: Dict[str, Any]
+    data: dict[str, Any]
     status: SyncStatus
     created_at: str
-    synced_at: Optional[str] = None
+    synced_at: str | None = None
     retry_count: int = 0
     max_retries: int = 3
-    conflict_resolution: Optional[str] = None
+    conflict_resolution: str | None = None
 
 
 @dataclass
@@ -143,7 +137,7 @@ class LocalState:
     state_id: str
     entity_type: str
     entity_id: str
-    data: Dict[str, Any]
+    data: dict[str, Any]
     version: int
     last_modified: str
     is_dirty: bool = False
@@ -156,12 +150,12 @@ class SyncConflict:
     conflict_id: str
     resource_type: str
     resource_id: str
-    local_data: Dict[str, Any]
-    remote_data: Dict[str, Any]
+    local_data: dict[str, Any]
+    remote_data: dict[str, Any]
     conflict_type: str
     detected_at: datetime
     resolved: bool = False
-    resolution: Optional[str] = None
+    resolution: str | None = None
 
 
 @dataclass
@@ -169,13 +163,13 @@ class LoadedModel:
     """Loaded AI model configuration."""
     model_id: str
     model_type: str
-    model_path: Optional[str] = None
+    model_path: str | None = None
     model_size: ModelSize = ModelSize.SMALL
     is_quantized: bool = False
     loaded_at: datetime = field(default_factory=datetime.utcnow)
     inference_count: int = 0
     memory_mb: int = 100
-    optimizations: List[str] = field(default_factory=list)
+    optimizations: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -243,9 +237,9 @@ class EdgeAIRuntime:
 
     def __init__(self):
         """Initialize edge AI runtime."""
-        self.loaded_models: Dict[str, LoadedModel] = {}
-        self.inference_cache: Dict[str, Any] = {}
-        self.resource_usage: Dict[str, float] = {
+        self.loaded_models: dict[str, LoadedModel] = {}
+        self.inference_cache: dict[str, Any] = {}
+        self.resource_usage: dict[str, float] = {
             "memory_mb": 0,
             "cpu_percent": 0,
             "battery_impact": 0
@@ -289,8 +283,8 @@ class EdgeAIRuntime:
         size: ModelSize,
         device: DeviceProfile,
         model_type: str = "generic",
-        model_path: Optional[str] = None
-    ) -> Tuple[bool, Dict[str, Any]]:
+        model_path: str | None = None
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Load a model for on-device inference.
 
@@ -339,7 +333,7 @@ class EdgeAIRuntime:
             "optimizations": optimizations
         }
 
-    def _get_optimizations(self, device: DeviceProfile, size: ModelSize) -> List[str]:
+    def _get_optimizations(self, device: DeviceProfile, size: ModelSize) -> list[str]:
         """Get applicable optimizations for device."""
         optimizations = []
 
@@ -375,8 +369,8 @@ class EdgeAIRuntime:
         self,
         model_id: str,
         input_text: str,
-        max_tokens: Optional[int] = None
-    ) -> Tuple[bool, Dict[str, Any]]:
+        max_tokens: int | None = None
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Run on-device inference.
 
@@ -436,7 +430,7 @@ class EdgeAIRuntime:
         input_text: str,
         device: DeviceProfile,
         connection: ConnectionState
-    ) -> Tuple[bool, str]:
+    ) -> tuple[bool, str]:
         """
         Determine if should fallback to cloud inference.
 
@@ -466,7 +460,7 @@ class EdgeAIRuntime:
 
         return False, "edge_capable"
 
-    def get_resource_usage(self) -> Dict[str, Any]:
+    def get_resource_usage(self) -> dict[str, Any]:
         """Get current resource usage."""
         return {
             "memory_mb": self.resource_usage["memory_mb"],
@@ -477,7 +471,7 @@ class EdgeAIRuntime:
             "fallback_count": self.fallback_count
         }
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """Get edge AI statistics."""
         return {
             "models_loaded": len(self.loaded_models),
@@ -516,16 +510,16 @@ class MobileWalletManager:
 
     def __init__(self):
         """Initialize wallet manager."""
-        self.connections: Dict[str, WalletConnection] = {}
-        self.pending_requests: Dict[str, Dict[str, Any]] = {}
-        self.transaction_history: List[Dict[str, Any]] = []
-        self.session_topics: Dict[str, str] = {}  # topic -> connection_id
+        self.connections: dict[str, WalletConnection] = {}
+        self.pending_requests: dict[str, dict[str, Any]] = {}
+        self.transaction_history: list[dict[str, Any]] = []
+        self.session_topics: dict[str, str] = {}  # topic -> connection_id
 
     def initiate_wallet_connect(
         self,
         device_id: str,
-        required_chains: List[int] = None
-    ) -> Tuple[bool, Dict[str, Any]]:
+        required_chains: list[int] | None = None
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Initiate WalletConnect session.
 
@@ -569,7 +563,7 @@ class MobileWalletManager:
         wallet_address: str,
         chain_id: int,
         wallet_type: WalletType = WalletType.WALLET_CONNECT
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Complete WalletConnect handshake.
 
@@ -619,7 +613,7 @@ class MobileWalletManager:
         wallet_address: str,
         chain_id: int,
         is_hardware: bool = False
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Connect native mobile wallet.
 
@@ -660,7 +654,7 @@ class MobileWalletManager:
         connection_id: str,
         message: str,
         signature_type: str = "personal_sign"
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Request signature from connected wallet.
 
@@ -701,7 +695,7 @@ class MobileWalletManager:
         self,
         request_id: str,
         signature: str
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Submit signature response.
 
@@ -738,8 +732,8 @@ class MobileWalletManager:
         connection_id: str,
         to_address: str,
         value: str,
-        data: Optional[str] = None
-    ) -> Tuple[bool, Dict[str, Any]]:
+        data: str | None = None
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Request transaction signing.
 
@@ -779,7 +773,7 @@ class MobileWalletManager:
         self,
         request_id: str,
         tx_hash: str
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Submit transaction hash after signing.
 
@@ -810,7 +804,7 @@ class MobileWalletManager:
 
         return True, result
 
-    def disconnect_wallet(self, connection_id: str) -> Tuple[bool, Dict[str, Any]]:
+    def disconnect_wallet(self, connection_id: str) -> tuple[bool, dict[str, Any]]:
         """Disconnect a wallet."""
         if connection_id not in self.connections:
             return False, {"error": "Connection not found"}
@@ -828,7 +822,7 @@ class MobileWalletManager:
             "wallet_address": connection.wallet_address
         }
 
-    def get_connected_wallets(self) -> List[Dict[str, Any]]:
+    def get_connected_wallets(self) -> list[dict[str, Any]]:
         """Get all connected wallets."""
         return [
             {
@@ -860,13 +854,13 @@ class OfflineFirstManager:
 
     def __init__(self):
         """Initialize offline-first manager."""
-        self.local_state: Dict[str, LocalState] = {}
-        self.local_states: Dict[str, Dict[str, Any]] = {}  # Per-device states
-        self.sync_queue: Dict[str, List[SyncOperation]] = {}  # Per-device queues
-        self.conflicts: Dict[str, List[SyncConflict]] = {}  # Per-device conflicts
+        self.local_state: dict[str, LocalState] = {}
+        self.local_states: dict[str, dict[str, Any]] = {}  # Per-device states
+        self.sync_queue: dict[str, list[SyncOperation]] = {}  # Per-device queues
+        self.conflicts: dict[str, list[SyncConflict]] = {}  # Per-device conflicts
         self.connection_state = ConnectionState.ONLINE
-        self.last_sync: Optional[str] = None
-        self.conflict_handlers: Dict[str, Callable] = {}
+        self.last_sync: str | None = None
+        self.conflict_handlers: dict[str, Callable] = {}
         self.sync_in_progress = False
 
     def set_connection_state(self, state: ConnectionState):
@@ -882,8 +876,8 @@ class OfflineFirstManager:
         self,
         entity_type: str,
         entity_id: str,
-        data: Dict[str, Any]
-    ) -> Tuple[bool, Dict[str, Any]]:
+        data: dict[str, Any]
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Save data locally.
 
@@ -936,7 +930,7 @@ class OfflineFirstManager:
         self,
         entity_type: str,
         entity_id: str
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """
         Get data from local storage.
 
@@ -967,7 +961,7 @@ class OfflineFirstManager:
         self,
         entity_type: str,
         entity_id: str
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Delete data locally.
 
@@ -999,7 +993,7 @@ class OfflineFirstManager:
     def _queue_sync_operation(
         self,
         operation_type: str,
-        data: Dict[str, Any]
+        data: dict[str, Any]
     ):
         """Queue a sync operation."""
         operation = SyncOperation(
@@ -1054,8 +1048,8 @@ class OfflineFirstManager:
         self,
         state_id: str,
         resolution: str,
-        merged_data: Optional[Dict[str, Any]] = None
-    ) -> Tuple[bool, Dict[str, Any]]:
+        merged_data: dict[str, Any] | None = None
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Resolve a sync conflict.
 
@@ -1114,7 +1108,7 @@ class OfflineFirstManager:
             "new_status": state.sync_status.value
         }
 
-    def get_sync_status(self) -> Dict[str, Any]:
+    def get_sync_status(self) -> dict[str, Any]:
         """Get current sync status."""
         pending = sum(1 for op in self.sync_queue if op.status == SyncStatus.PENDING)
         conflicts = sum(1 for s in self.local_state.values() if s.sync_status == SyncStatus.CONFLICT)
@@ -1130,7 +1124,7 @@ class OfflineFirstManager:
             "total_local_entities": len(self.local_state)
         }
 
-    def get_pending_operations(self) -> List[Dict[str, Any]]:
+    def get_pending_operations(self) -> list[dict[str, Any]]:
         """Get pending sync operations."""
         return [
             {
@@ -1162,10 +1156,10 @@ class PortableArchitecture:
 
     def __init__(self):
         """Initialize portable architecture."""
-        self.registered_devices: Dict[str, DeviceProfile] = {}
-        self.device_states: Dict[str, Dict[str, Any]] = {}
-        self.api_endpoints: Dict[str, str] = {}
-        self.feature_flags: Dict[str, bool] = {
+        self.registered_devices: dict[str, DeviceProfile] = {}
+        self.device_states: dict[str, dict[str, Any]] = {}
+        self.api_endpoints: dict[str, str] = {}
+        self.feature_flags: dict[str, bool] = {
             "edge_ai": True,
             "wallet_connect": True,
             "offline_mode": True,
@@ -1175,7 +1169,7 @@ class PortableArchitecture:
         }
 
     @property
-    def devices(self) -> Dict[str, DeviceProfile]:
+    def devices(self) -> dict[str, DeviceProfile]:
         """Alias for registered_devices."""
         return self.registered_devices
 
@@ -1183,7 +1177,7 @@ class PortableArchitecture:
         self,
         device_type: DeviceType,
         device_name: str = "Unknown Device",
-        capabilities: Optional[Dict[str, Any]] = None,
+        capabilities: dict[str, Any] | None = None,
         os_version: str = "1.0",
         app_version: str = "1.0",
         memory_mb: int = 2048,
@@ -1235,13 +1229,13 @@ class PortableArchitecture:
         device_type: DeviceType,
         os_version: str,
         app_version: str,
-        capabilities: Dict[str, bool],
+        capabilities: dict[str, bool],
         memory_mb: int = 2048,
         storage_mb: int = 1024,
         cpu_cores: int = 4,
         has_gpu: bool = False,
         has_npu: bool = False
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Register a mobile device with full response.
 
@@ -1273,7 +1267,7 @@ class PortableArchitecture:
             "recommended_model_size": self._get_recommended_model_size(device)
         }
 
-    def _get_available_features(self, device: DeviceProfile) -> List[str]:
+    def _get_available_features(self, device: DeviceProfile) -> list[str]:
         """Get available features for device."""
         features = []
 
@@ -1311,8 +1305,8 @@ class PortableArchitecture:
     def update_device_state(
         self,
         device_id: str,
-        state: Dict[str, Any]
-    ) -> Tuple[bool, Dict[str, Any]]:
+        state: dict[str, Any]
+    ) -> tuple[bool, dict[str, Any]]:
         """Update device state."""
         if device_id not in self.registered_devices:
             return False, {"error": "Device not registered"}
@@ -1327,7 +1321,7 @@ class PortableArchitecture:
 
         return True, {"device_id": device_id, "state_updated": True}
 
-    def get_device_config(self, device_id: str) -> Optional[Dict[str, Any]]:
+    def get_device_config(self, device_id: str) -> dict[str, Any] | None:
         """Get configuration for device."""
         if device_id not in self.registered_devices:
             return None
@@ -1345,7 +1339,7 @@ class PortableArchitecture:
             "cache_size_mb": min(device.storage_mb // 10, 100)
         }
 
-    def set_api_endpoints(self, endpoints: Dict[str, str]):
+    def set_api_endpoints(self, endpoints: dict[str, str]):
         """Set API endpoints for mobile clients."""
         self.api_endpoints = endpoints
 
@@ -1353,7 +1347,7 @@ class PortableArchitecture:
         """Set a feature flag."""
         self.feature_flags[flag] = enabled
 
-    def get_registered_devices(self) -> List[Dict[str, Any]]:
+    def get_registered_devices(self) -> list[dict[str, Any]]:
         """Get all registered devices."""
         return [
             {
@@ -1385,7 +1379,7 @@ class MobileDeploymentManager:
         self.offline_manager = OfflineFirstManager()
         self.portable = PortableArchitecture()
 
-        self.audit_trail: List[Dict[str, Any]] = []
+        self.audit_trail: list[dict[str, Any]] = []
 
     # ===== Device Management =====
 
@@ -1393,7 +1387,7 @@ class MobileDeploymentManager:
         self,
         device_type: DeviceType,
         device_name: str = "Unknown Device",
-        capabilities: Optional[Dict[str, Any]] = None
+        capabilities: dict[str, Any] | None = None
     ) -> str:
         """
         Register a mobile device.
@@ -1420,7 +1414,7 @@ class MobileDeploymentManager:
 
         return device_id
 
-    def get_device_features(self, device_id: str) -> Optional[Dict[str, bool]]:
+    def get_device_features(self, device_id: str) -> dict[str, bool] | None:
         """Get feature flags for a device."""
         if device_id not in self.portable.devices:
             return None
@@ -1436,7 +1430,7 @@ class MobileDeploymentManager:
 
         return features
 
-    def get_device_config(self, device_id: str) -> Optional[Dict[str, Any]]:
+    def get_device_config(self, device_id: str) -> dict[str, Any] | None:
         """Get device configuration."""
         return self.portable.get_device_config(device_id)
 
@@ -1446,8 +1440,8 @@ class MobileDeploymentManager:
         self,
         model_id: str,
         model_type: str = "generic",
-        model_path: Optional[str] = None,
-        device_id: Optional[str] = None
+        model_path: str | None = None,
+        device_id: str | None = None
     ) -> bool:
         """
         Load an edge AI model.
@@ -1494,8 +1488,8 @@ class MobileDeploymentManager:
         self,
         model_id: str,
         input_data: Any,
-        device_id: Optional[str] = None
-    ) -> Dict[str, Any]:
+        device_id: str | None = None
+    ) -> dict[str, Any]:
         """
         Run inference on a loaded model.
 
@@ -1532,12 +1526,12 @@ class MobileDeploymentManager:
         self,
         model_id: str,
         input_text: str,
-        max_tokens: Optional[int] = None
-    ) -> Tuple[bool, Dict[str, Any]]:
+        max_tokens: int | None = None
+    ) -> tuple[bool, dict[str, Any]]:
         """Run edge AI inference (legacy method)."""
         return self.edge_ai.run_inference(model_id, input_text, max_tokens)
 
-    def get_edge_resource_usage(self) -> Dict[str, Any]:
+    def get_edge_resource_usage(self) -> dict[str, Any]:
         """Get edge AI resource usage."""
         return self.edge_ai.get_resource_usage()
 
@@ -1546,9 +1540,9 @@ class MobileDeploymentManager:
     def connect_wallet(
         self,
         wallet_type: WalletType,
-        device_id: Optional[str] = None,
-        wallet_address: Optional[str] = None
-    ) -> Optional[str]:
+        device_id: str | None = None,
+        wallet_address: str | None = None
+    ) -> str | None:
         """
         Connect a mobile wallet.
 
@@ -1602,7 +1596,7 @@ class MobileDeploymentManager:
         connection_id: str,
         message: str,
         sign_type: str = "personal"
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Sign a message with connected wallet.
 
@@ -1641,8 +1635,8 @@ class MobileDeploymentManager:
     def initiate_wallet_connect(
         self,
         device_id: str,
-        chains: Optional[List[int]] = None
-    ) -> Tuple[bool, Dict[str, Any]]:
+        chains: list[int] | None = None
+    ) -> tuple[bool, dict[str, Any]]:
         """Initiate WalletConnect session."""
         return self.wallet_manager.initiate_wallet_connect(device_id, chains)
 
@@ -1651,7 +1645,7 @@ class MobileDeploymentManager:
         connection_id: str,
         wallet_address: str,
         chain_id: int
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """Complete WalletConnect handshake."""
         success, result = self.wallet_manager.complete_wallet_connect(
             connection_id, wallet_address, chain_id
@@ -1671,7 +1665,7 @@ class MobileDeploymentManager:
         wallet_address: str,
         chain_id: int,
         is_hardware: bool = False
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """Connect native wallet."""
         try:
             wt = WalletType(wallet_type)
@@ -1686,7 +1680,7 @@ class MobileDeploymentManager:
         self,
         connection_id: str,
         message: str
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         """Request signature from wallet."""
         return self.wallet_manager.request_signature(connection_id, message)
 
@@ -1695,14 +1689,14 @@ class MobileDeploymentManager:
         connection_id: str,
         to_address: str,
         value: str,
-        data: Optional[str] = None
-    ) -> Tuple[bool, Dict[str, Any]]:
+        data: str | None = None
+    ) -> tuple[bool, dict[str, Any]]:
         """Request transaction signing."""
         return self.wallet_manager.request_transaction(
             connection_id, to_address, value, data
         )
 
-    def get_connected_wallets(self) -> List[Dict[str, Any]]:
+    def get_connected_wallets(self) -> list[dict[str, Any]]:
         """Get connected wallets."""
         return self.wallet_manager.get_connected_wallets()
 
@@ -1712,7 +1706,7 @@ class MobileDeploymentManager:
         self,
         device_id: str,
         state_type: str,
-        state_data: Dict[str, Any]
+        state_data: dict[str, Any]
     ) -> str:
         """
         Save state for offline access.
@@ -1748,7 +1742,7 @@ class MobileDeploymentManager:
     def get_offline_state(
         self,
         device_id: str,
-        state_type: Optional[str] = None
+        state_type: str | None = None
     ) -> Any:
         """
         Get offline state for a device.
@@ -1774,7 +1768,7 @@ class MobileDeploymentManager:
         device_id: str,
         operation_type: str,
         resource_type: str,
-        resource_data: Dict[str, Any]
+        resource_data: dict[str, Any]
     ) -> str:
         """
         Add an operation to the offline sync queue.
@@ -1813,7 +1807,7 @@ class MobileDeploymentManager:
         self,
         device_id: str,
         force: bool = False
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Synchronize device with server.
 
@@ -1847,7 +1841,7 @@ class MobileDeploymentManager:
             "timestamp": datetime.utcnow().isoformat()
         }
 
-    def get_sync_queue(self, device_id: str) -> List[Dict[str, Any]]:
+    def get_sync_queue(self, device_id: str) -> list[dict[str, Any]]:
         """Get pending sync operations for a device."""
         queue = self.offline_manager.sync_queue.get(device_id, [])
         return [
@@ -1860,7 +1854,7 @@ class MobileDeploymentManager:
             for op in queue
         ]
 
-    def get_conflicts(self, device_id: str) -> List[Dict[str, Any]]:
+    def get_conflicts(self, device_id: str) -> list[dict[str, Any]]:
         """Get sync conflicts for a device."""
         conflicts = self.offline_manager.conflicts.get(device_id, [])
         return [
@@ -1878,7 +1872,7 @@ class MobileDeploymentManager:
         self,
         conflict_id: str,
         resolution: str,
-        merged_data: Optional[Dict[str, Any]] = None
+        merged_data: dict[str, Any] | None = None
     ) -> bool:
         """
         Resolve a sync conflict.
@@ -1891,7 +1885,7 @@ class MobileDeploymentManager:
         Returns:
             True if resolved
         """
-        for device_id, conflicts in self.offline_manager.conflicts.items():
+        for _device_id, conflicts in self.offline_manager.conflicts.items():
             for conflict in conflicts:
                 if conflict.conflict_id == conflict_id:
                     conflict.resolved = True
@@ -1916,8 +1910,8 @@ class MobileDeploymentManager:
         self,
         entity_type: str,
         entity_id: str,
-        data: Dict[str, Any]
-    ) -> Tuple[bool, Dict[str, Any]]:
+        data: dict[str, Any]
+    ) -> tuple[bool, dict[str, Any]]:
         """Save data for offline use."""
         return self.offline_manager.save_local(entity_type, entity_id, data)
 
@@ -1925,11 +1919,11 @@ class MobileDeploymentManager:
         self,
         entity_type: str,
         entity_id: str
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Get offline data."""
         return self.offline_manager.get_local(entity_type, entity_id)
 
-    def get_sync_status(self) -> Dict[str, Any]:
+    def get_sync_status(self) -> dict[str, Any]:
         """Get sync status."""
         return self.offline_manager.get_sync_status()
 
@@ -1937,14 +1931,14 @@ class MobileDeploymentManager:
         self,
         state_id: str,
         resolution: str,
-        merged_data: Optional[Dict[str, Any]] = None
-    ) -> Tuple[bool, Dict[str, Any]]:
+        merged_data: dict[str, Any] | None = None
+    ) -> tuple[bool, dict[str, Any]]:
         """Resolve sync conflict."""
         return self.offline_manager.resolve_conflict(state_id, resolution, merged_data)
 
     # ===== Statistics =====
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """Get mobile deployment statistics."""
         total_synced = sum(
             len(self.offline_manager.sync_queue.get(d, []))
@@ -1969,11 +1963,11 @@ class MobileDeploymentManager:
             "feature_flags": self.portable.feature_flags
         }
 
-    def get_audit_trail(self, limit: int = 100) -> List[Dict[str, Any]]:
+    def get_audit_trail(self, limit: int = 100) -> list[dict[str, Any]]:
         """Get audit trail."""
         return self.audit_trail[-limit:]
 
-    def _log_audit(self, action: str, details: Dict[str, Any]):
+    def _log_audit(self, action: str, details: dict[str, Any]):
         """Log audit trail entry."""
         self.audit_trail.append({
             "action": action,

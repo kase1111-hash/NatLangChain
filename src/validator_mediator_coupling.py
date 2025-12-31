@@ -15,8 +15,7 @@ Neither may substitute for the other. Authority is orthogonal, not hierarchical.
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Dict, List, Optional, Set, Tuple, Any
-import hashlib
+from typing import Any
 
 
 class ActorRole(Enum):
@@ -97,7 +96,7 @@ class ValidatorWeight:
     appeal_survival_rate: float = 0.5
 
     # Computed overall weight
-    _weight: Optional[float] = None
+    _weight: float | None = None
 
     @property
     def weight(self) -> float:
@@ -136,7 +135,7 @@ class MediatorWeight:
     time_efficiency: float = 0.5
 
     # Computed overall weight
-    _weight: Optional[float] = None
+    _weight: float | None = None
 
     @property
     def weight(self) -> float:
@@ -208,19 +207,19 @@ class MediatorProposal:
 
     # Gate status
     gate_passed: bool = False
-    gate_score: Optional[float] = None
+    gate_score: float | None = None
     gate_threshold: float = 0.68
 
     # Validation scores from validators
-    consistency_scores: Dict[str, SemanticConsistencyScore] = field(default_factory=dict)
+    consistency_scores: dict[str, SemanticConsistencyScore] = field(default_factory=dict)
 
     # Competition status
     hidden: bool = False  # True if below gate
-    competition_rank: Optional[int] = None
+    competition_rank: int | None = None
 
     # Final selection
     selected: bool = False
-    selected_by: Optional[str] = None  # Human selector ID
+    selected_by: str | None = None  # Human selector ID
 
 
 @dataclass
@@ -230,7 +229,7 @@ class InfluenceGateResult:
     passed: bool
     gate_score: float
     threshold: float
-    validator_contributions: Dict[str, float] = field(default_factory=dict)
+    validator_contributions: dict[str, float] = field(default_factory=dict)
     message: str = ""
 
 
@@ -250,7 +249,7 @@ class WeightUpdate:
     reason: str
 
     created_at: datetime = field(default_factory=datetime.utcnow)
-    apply_after: Optional[datetime] = None
+    apply_after: datetime | None = None
     status: WeightUpdateStatus = WeightUpdateStatus.PENDING
 
     # Delay in epochs (default 3 per Section 11)
@@ -290,17 +289,17 @@ class ValidatorMediatorCoupling:
     DEFAULT_DELAY_EPOCHS = 3
 
     def __init__(self):
-        self.validator_weights: Dict[str, ValidatorWeight] = {}
-        self.mediator_weights: Dict[str, MediatorWeight] = {}
-        self.proposals: Dict[str, MediatorProposal] = {}
-        self.pending_updates: Dict[str, WeightUpdate] = {}
-        self.violations: List[ProtocolViolation] = []
+        self.validator_weights: dict[str, ValidatorWeight] = {}
+        self.mediator_weights: dict[str, MediatorWeight] = {}
+        self.proposals: dict[str, MediatorProposal] = {}
+        self.pending_updates: dict[str, WeightUpdate] = {}
+        self.violations: list[ProtocolViolation] = []
 
         self.gate_threshold = self.DEFAULT_GATE_THRESHOLD
         self.delay_epochs = self.DEFAULT_DELAY_EPOCHS
 
         # Dispute tracking
-        self.active_disputes: Set[str] = set()  # Contract IDs with active disputes
+        self.active_disputes: set[str] = set()  # Contract IDs with active disputes
 
         # Counters
         self.proposal_counter = 0
@@ -316,7 +315,7 @@ class ValidatorMediatorCoupling:
         actor_id: str,
         actor_role: ActorRole,
         action: str
-    ) -> Tuple[bool, Optional[ProtocolViolation]]:
+    ) -> tuple[bool, ProtocolViolation | None]:
         """
         Check if an actor has permission for an action.
 
@@ -440,12 +439,12 @@ class ValidatorMediatorCoupling:
         self.mediator_weights[mediator_id] = mw
         return mw
 
-    def get_validator_weight(self, validator_id: str) -> Optional[float]:
+    def get_validator_weight(self, validator_id: str) -> float | None:
         """Get a validator's current weight."""
         vw = self.validator_weights.get(validator_id)
         return vw.weight if vw else None
 
-    def get_mediator_weight(self, mediator_id: str) -> Optional[float]:
+    def get_mediator_weight(self, mediator_id: str) -> float | None:
         """Get a mediator's current weight."""
         mw = self.mediator_weights.get(mediator_id)
         return mw.weight if mw else None
@@ -457,7 +456,7 @@ class ValidatorMediatorCoupling:
         field_name: str,
         new_value: float,
         reason: str
-    ) -> Optional[WeightUpdate]:
+    ) -> WeightUpdate | None:
         """
         Schedule a weight update with delay.
 
@@ -497,7 +496,7 @@ class ValidatorMediatorCoupling:
         self.pending_updates[update.update_id] = update
         return update
 
-    def apply_pending_updates(self) -> List[WeightUpdate]:
+    def apply_pending_updates(self) -> list[WeightUpdate]:
         """Apply all pending updates that have passed their delay."""
         applied = []
         now = datetime.utcnow()
@@ -569,7 +568,7 @@ class ValidatorMediatorCoupling:
         mediator_id: str,
         proposal_type: str,
         content: str
-    ) -> Tuple[Optional[MediatorProposal], List[str]]:
+    ) -> tuple[MediatorProposal | None, list[str]]:
         """
         Submit a mediator proposal.
 
@@ -662,8 +661,8 @@ class ValidatorMediatorCoupling:
 
     def get_visible_proposals(
         self,
-        contract_id: Optional[str] = None
-    ) -> List[MediatorProposal]:
+        contract_id: str | None = None
+    ) -> list[MediatorProposal]:
         """
         Get all visible proposals (those that passed the gate).
 
@@ -672,7 +671,7 @@ class ValidatorMediatorCoupling:
         visible = [p for p in self.proposals.values() if not p.hidden]
 
         # Sort by MW (primary), then by time
-        def sort_key(p: MediatorProposal) -> Tuple[float, float]:
+        def sort_key(p: MediatorProposal) -> tuple[float, float]:
             mw = self.mediator_weights.get(p.mediator_id)
             weight = mw.weight if mw else 0.0
             return (-weight, p.submitted_at.timestamp())
@@ -689,7 +688,7 @@ class ValidatorMediatorCoupling:
         self,
         proposal_id: str,
         selector_id: str
-    ) -> Tuple[bool, str]:
+    ) -> tuple[bool, str]:
         """
         Human selects a proposal from visible options.
 
@@ -713,7 +712,7 @@ class ValidatorMediatorCoupling:
     def enter_dispute_phase(
         self,
         contract_id: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Enter dispute phase for a contract.
 
@@ -736,7 +735,7 @@ class ValidatorMediatorCoupling:
         self,
         contract_id: str,
         resolution_outcome: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Exit dispute phase after resolution.
 
@@ -759,7 +758,7 @@ class ValidatorMediatorCoupling:
         """Check if a contract is in active dispute."""
         return contract_id in self.active_disputes
 
-    def can_submit_proposal(self, contract_id: str) -> Tuple[bool, str]:
+    def can_submit_proposal(self, contract_id: str) -> tuple[bool, str]:
         """
         Check if new proposals can be submitted.
 
@@ -779,7 +778,7 @@ class ValidatorMediatorCoupling:
         mediator_id: str,
         appeal_upheld: bool,
         slashing_applied: bool
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Record appeal outcome and schedule weight updates.
 
@@ -832,7 +831,7 @@ class ValidatorMediatorCoupling:
         self,
         validator_id: str,
         mediator_id: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Detect potential collusion signals.
 
@@ -891,7 +890,7 @@ class ValidatorMediatorCoupling:
     # Machine-Readable Schema
     # -------------------------------------------------------------------------
 
-    def generate_coupling_schema(self) -> Dict[str, Any]:
+    def generate_coupling_schema(self) -> dict[str, Any]:
         """
         Generate machine-readable coupling schema per NCIP-011 Section 11.
         """
@@ -939,7 +938,7 @@ class ValidatorMediatorCoupling:
     # Status & Reporting
     # -------------------------------------------------------------------------
 
-    def get_status_summary(self) -> Dict[str, Any]:
+    def get_status_summary(self) -> dict[str, Any]:
         """Get summary of coupling system status."""
         return {
             "total_validators": len(self.validator_weights),

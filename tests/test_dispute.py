@@ -3,11 +3,13 @@ Tests for NatLangChain Dispute Protocol (MP-03)
 Tests dispute filing, evidence handling, escalation, and resolution
 """
 
-import sys
 import os
+import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 import unittest
+
 from blockchain import NatLangChain, NaturalLanguageEntry
 from dispute import DisputeManager
 

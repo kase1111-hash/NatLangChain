@@ -10,27 +10,23 @@ Tests cover:
 - Semantic authority preservation
 """
 
-import sys
 import os
+import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 import unittest
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from jurisdictional import (
-    JurisdictionalManager,
+    CourtRulingType,
+    DriftLevel,
     JurisdictionalBridge,
+    JurisdictionalManager,
     JurisdictionDeclaration,
     JurisdictionRole,
-    LegalTranslationArtifact,
     LTAViolation,
-    CourtRuling,
-    CourtRulingType,
-    JurisdictionConflict,
-    DriftLevel,
     validate_jurisdiction_code,
-    VALID_COUNTRY_CODES,
-    US_STATE_CODES
 )
 
 
@@ -41,7 +37,7 @@ class TestJurisdictionCodes(unittest.TestCase):
         """Test valid country codes are accepted."""
         valid_codes = ["US", "DE", "GB", "FR", "JP", "CN", "AU"]
         for code in valid_codes:
-            valid, msg = validate_jurisdiction_code(code)
+            valid, _msg = validate_jurisdiction_code(code)
             self.assertTrue(valid, f"Code {code} should be valid")
 
     def test_valid_us_subdivision(self):
@@ -50,7 +46,7 @@ class TestJurisdictionCodes(unittest.TestCase):
         self.assertTrue(valid)
         valid, msg = validate_jurisdiction_code("US-NY")
         self.assertTrue(valid)
-        valid, msg = validate_jurisdiction_code("US-TX")
+        valid, _msg = validate_jurisdiction_code("US-TX")
         self.assertTrue(valid)
 
     def test_invalid_country_code(self):
@@ -69,7 +65,7 @@ class TestJurisdictionCodes(unittest.TestCase):
         """Test codes are case insensitive."""
         valid, msg = validate_jurisdiction_code("us-ca")
         self.assertTrue(valid)
-        valid, msg = validate_jurisdiction_code("Us-Ca")
+        valid, _msg = validate_jurisdiction_code("Us-Ca")
         self.assertTrue(valid)
 
 
@@ -135,7 +131,7 @@ class TestJurisdictionalBridge(unittest.TestCase):
         self.assertTrue(success)
         self.assertEqual(len(self.bridge.jurisdictions), 1)
 
-        success, msg = self.bridge.add_jurisdiction("DE", JurisdictionRole.PROCEDURAL)
+        success, _msg = self.bridge.add_jurisdiction("DE", JurisdictionRole.PROCEDURAL)
         self.assertTrue(success)
         self.assertEqual(len(self.bridge.jurisdictions), 2)
 
@@ -187,7 +183,7 @@ class TestJurisdictionValidation(unittest.TestCase):
         bridge = self.manager.create_bridge("contract-001")
         bridge.add_jurisdiction("US-CA", JurisdictionRole.ENFORCEMENT)
 
-        valid, warnings = self.manager.validate_jurisdiction_declaration(bridge)
+        valid, _warnings = self.manager.validate_jurisdiction_declaration(bridge)
         self.assertTrue(valid)
 
     def test_warning_no_enforcement(self):
@@ -275,7 +271,7 @@ class TestLTAValidation(unittest.TestCase):
             temporal_fixity_timestamp=self.temporal_fixity
         )
 
-        valid, violations = self.manager.validate_lta(lta, self.original_prose)
+        _valid, _violations = self.manager.validate_lta(lta, self.original_prose)
         # Should have low drift, no major violations
         self.assertLess(lta.drift_score, 0.45)
 
@@ -294,7 +290,7 @@ class TestLTAValidation(unittest.TestCase):
             temporal_fixity_timestamp=self.temporal_fixity
         )
 
-        valid, violations = self.manager.validate_lta(lta, self.original_prose)
+        _valid, violations = self.manager.validate_lta(lta, self.original_prose)
         self.assertIn(LTAViolation.INTRODUCES_OBLIGATION, violations)
 
     def test_reject_lta_claiming_authority(self):
@@ -311,7 +307,7 @@ class TestLTAValidation(unittest.TestCase):
             temporal_fixity_timestamp=self.temporal_fixity
         )
 
-        valid, violations = self.manager.validate_lta(lta, self.original_prose)
+        _valid, violations = self.manager.validate_lta(lta, self.original_prose)
         self.assertIn(LTAViolation.CLAIMS_SEMANTIC_AUTHORITY, violations)
 
     def test_reject_high_drift_lta(self):
@@ -328,7 +324,7 @@ class TestLTAValidation(unittest.TestCase):
             temporal_fixity_timestamp=self.temporal_fixity
         )
 
-        valid, violations = self.manager.validate_lta(lta, self.original_prose)
+        _valid, _violations = self.manager.validate_lta(lta, self.original_prose)
         # High drift should be detected
         self.assertGreater(lta.drift_score, 0.25)
 

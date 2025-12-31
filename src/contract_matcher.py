@@ -4,11 +4,11 @@ Finds semantic matches between contracts using LLM-based similarity scoring
 Enables autonomous contract matching and proposal generation
 """
 
-import re
 import json
-from typing import List, Dict, Any, Optional, Tuple
-from anthropic import Anthropic
 import os
+from typing import Any
+
+from anthropic import Anthropic
 
 from blockchain import NatLangChain, NaturalLanguageEntry
 from contract_parser import ContractParser
@@ -22,7 +22,7 @@ class ContractMatcher:
     Miners earn fees for successful matches.
     """
 
-    def __init__(self, api_key: Optional[str] = None, match_threshold: int = 80):
+    def __init__(self, api_key: str | None = None, match_threshold: int = 80):
         """
         Initialize contract matcher.
 
@@ -42,9 +42,9 @@ class ContractMatcher:
     def find_matches(
         self,
         blockchain: NatLangChain,
-        pending_entries: List[NaturalLanguageEntry],
+        pending_entries: list[NaturalLanguageEntry],
         miner_id: str
-    ) -> List[NaturalLanguageEntry]:
+    ) -> list[NaturalLanguageEntry]:
         """
         Find matches for pending contract entries against open contracts.
 
@@ -101,7 +101,7 @@ class ContractMatcher:
 
         return proposals
 
-    def _get_open_contracts(self, blockchain: NatLangChain) -> List[Dict[str, Any]]:
+    def _get_open_contracts(self, blockchain: NatLangChain) -> list[dict[str, Any]]:
         """
         Get all open contracts from the blockchain.
 
@@ -141,11 +141,11 @@ class ContractMatcher:
         self,
         content1: str,
         intent1: str,
-        terms1: Dict[str, str],
+        terms1: dict[str, str],
         content2: str,
         intent2: str,
-        terms2: Dict[str, str]
-    ) -> Dict[str, Any]:
+        terms2: dict[str, str]
+    ) -> dict[str, Any]:
         """
         Compute semantic match score between two contracts.
 
@@ -216,9 +216,9 @@ Return JSON:
             return {
                 "score": 0,
                 "compatibility": "",
-                "conflicts": [f"JSON parsing error: {str(e)}"],
+                "conflicts": [f"JSON parsing error: {e!s}"],
                 "recommendation": "NO_MATCH",
-                "reasoning": f"Failed to parse API response: {str(e)}"
+                "reasoning": f"Failed to parse API response: {e!s}"
             }
         except ValueError as e:
             print(f"Match computation failed - validation error: {e}")
@@ -227,7 +227,7 @@ Return JSON:
                 "compatibility": "",
                 "conflicts": [str(e)],
                 "recommendation": "NO_MATCH",
-                "reasoning": f"API response validation failed: {str(e)}"
+                "reasoning": f"API response validation failed: {e!s}"
             }
         except Exception as e:
             print(f"Match computation failed - unexpected error: {e}")
@@ -236,7 +236,7 @@ Return JSON:
                 "compatibility": "",
                 "conflicts": [str(e)],
                 "recommendation": "NO_MATCH",
-                "reasoning": f"Unexpected error: {str(e)}"
+                "reasoning": f"Unexpected error: {e!s}"
             }
 
     def _extract_json_from_response(self, response_text: str) -> str:
@@ -273,8 +273,8 @@ Return JSON:
     def _generate_proposal(
         self,
         pending: NaturalLanguageEntry,
-        existing: Dict[str, Any],
-        match_result: Dict[str, Any],
+        existing: dict[str, Any],
+        match_result: dict[str, Any],
         miner_id: str
     ) -> NaturalLanguageEntry:
         """
@@ -375,11 +375,11 @@ Write in clear, contract-appropriate language."""
     def mediate_negotiation(
         self,
         original_proposal: str,
-        original_terms: Dict[str, str],
+        original_terms: dict[str, str],
         counter_response: str,
-        counter_terms: Dict[str, str],
+        counter_terms: dict[str, str],
         round_number: int
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Mediate between original proposal and counter-response.
 
@@ -451,7 +451,7 @@ Return JSON:
                 "differences": [],
                 "suggested_compromise": "",
                 "recommended_action": "TERMINATE",
-                "reasoning": f"JSON parsing error: {str(e)}",
+                "reasoning": f"JSON parsing error: {e!s}",
                 "revised_terms": {}
             }
         except ValueError as e:
@@ -461,7 +461,7 @@ Return JSON:
                 "differences": [],
                 "suggested_compromise": "",
                 "recommended_action": "TERMINATE",
-                "reasoning": f"Validation error: {str(e)}",
+                "reasoning": f"Validation error: {e!s}",
                 "revised_terms": {}
             }
         except Exception as e:
@@ -471,6 +471,6 @@ Return JSON:
                 "differences": [],
                 "suggested_compromise": "",
                 "recommended_action": "TERMINATE",
-                "reasoning": f"Unexpected error: {str(e)}",
+                "reasoning": f"Unexpected error: {e!s}",
                 "revised_terms": {}
             }

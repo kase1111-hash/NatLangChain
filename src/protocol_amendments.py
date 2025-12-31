@@ -7,12 +7,11 @@ ensuring changes are explicit, slow, human-ratified, non-coercive, and forward-o
 Core Principle: Past meaning is inviolable. Future meaning is negotiable.
 """
 
+import hashlib
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Dict, List, Optional, Set, Tuple, Any
-import hashlib
-import json
+from typing import Any
 
 
 class AmendmentClass(Enum):
@@ -104,8 +103,8 @@ class VoteRecord:
     pou_statement: str  # Required PoU per NCIP-014 Section 6
     pou_hash: str
     weight: float = 1.0
-    validator_trust_score: Optional[float] = None
-    mediator_reputation: Optional[float] = None
+    validator_trust_score: float | None = None
+    mediator_reputation: float | None = None
     timestamp: datetime = field(default_factory=datetime.utcnow)
 
     @property
@@ -150,13 +149,13 @@ class PoUStatement:
 class SemanticCompatibilityResult:
     """Result of semantic compatibility check for an amendment."""
     is_compatible: bool
-    drift_scores: Dict[str, float] = field(default_factory=dict)
+    drift_scores: dict[str, float] = field(default_factory=dict)
     max_drift: float = 0.0
-    affected_ncips: List[str] = field(default_factory=list)
-    cross_language_impacts: List[str] = field(default_factory=list)
+    affected_ncips: list[str] = field(default_factory=list)
+    cross_language_impacts: list[str] = field(default_factory=list)
     requires_migration: bool = False
-    migration_guidance: Optional[str] = None
-    violations: List[str] = field(default_factory=list)
+    migration_guidance: str | None = None
+    violations: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -170,30 +169,30 @@ class Amendment:
     title: str
     rationale: str
     scope_of_impact: str
-    affected_artifacts: List[ConstitutionalArtifact]
+    affected_artifacts: list[ConstitutionalArtifact]
     proposed_changes: str
-    migration_guidance: Optional[str] = None
-    effective_date: Optional[datetime] = None
+    migration_guidance: str | None = None
+    effective_date: datetime | None = None
     status: AmendmentStatus = AmendmentStatus.DRAFT
     current_stage: RatificationStage = RatificationStage.PROPOSAL_POSTING
     retroactive: bool = False  # MUST be False per NCIP-014
-    supersedes: List[str] = field(default_factory=list)
+    supersedes: list[str] = field(default_factory=list)
     fork_required: bool = False
 
     # Timeline tracking
-    proposed_at: Optional[datetime] = None
-    cooling_ends_at: Optional[datetime] = None
-    deliberation_ends_at: Optional[datetime] = None
-    ratified_at: Optional[datetime] = None
-    semantic_lock_at: Optional[datetime] = None
-    activated_at: Optional[datetime] = None
+    proposed_at: datetime | None = None
+    cooling_ends_at: datetime | None = None
+    deliberation_ends_at: datetime | None = None
+    ratified_at: datetime | None = None
+    semantic_lock_at: datetime | None = None
+    activated_at: datetime | None = None
 
     # Voting
-    votes: List[VoteRecord] = field(default_factory=list)
-    vote_tally: Dict[str, float] = field(default_factory=dict)
+    votes: list[VoteRecord] = field(default_factory=list)
+    vote_tally: dict[str, float] = field(default_factory=dict)
 
     # Compatibility
-    compatibility_result: Optional[SemanticCompatibilityResult] = None
+    compatibility_result: SemanticCompatibilityResult | None = None
 
     # Constitutional version
     constitution_version_before: str = ""
@@ -208,7 +207,7 @@ class Amendment:
         if self.amendment_class == AmendmentClass.E:
             self.fork_required = True
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "amendment_id": self.amendment_id,
@@ -246,7 +245,7 @@ class EmergencyAmendment:
     reason: str  # validator_halt, exploit_mitigation, network_safety_pause
     proposed_changes: str
     proposed_at: datetime = field(default_factory=datetime.utcnow)
-    expires_at: Optional[datetime] = None
+    expires_at: datetime | None = None
     max_duration: timedelta = field(default_factory=lambda: timedelta(days=7))
     is_semantic: bool = False  # MUST be False
     ratified: bool = False
@@ -277,8 +276,8 @@ class ConstitutionVersion:
     """Tracks constitution version for entries."""
     version: str
     effective_from: datetime
-    amendments_included: List[str] = field(default_factory=list)
-    previous_version: Optional[str] = None
+    amendments_included: list[str] = field(default_factory=list)
+    previous_version: str | None = None
 
     def increment(self, amendment_id: str) -> "ConstitutionVersion":
         """Create next version after amendment."""
@@ -332,14 +331,14 @@ class AmendmentManager:
     MAX_DRIFT_WITHOUT_MIGRATION = 0.45  # D3 threshold
 
     def __init__(self):
-        self.amendments: Dict[str, Amendment] = {}
-        self.emergency_amendments: Dict[str, EmergencyAmendment] = {}
+        self.amendments: dict[str, Amendment] = {}
+        self.emergency_amendments: dict[str, EmergencyAmendment] = {}
         self.current_constitution = ConstitutionVersion(
             version="3.0",
             effective_from=datetime.utcnow()
         )
-        self.constitution_history: List[ConstitutionVersion] = [self.current_constitution]
-        self.fork_registry: Dict[str, str] = {}  # fork_id -> constitution_version
+        self.constitution_history: list[ConstitutionVersion] = [self.current_constitution]
+        self.fork_registry: dict[str, str] = {}  # fork_id -> constitution_version
 
     # -------------------------------------------------------------------------
     # Amendment Creation
@@ -352,11 +351,11 @@ class AmendmentManager:
         title: str,
         rationale: str,
         scope_of_impact: str,
-        affected_artifacts: List[ConstitutionalArtifact],
+        affected_artifacts: list[ConstitutionalArtifact],
         proposed_changes: str,
-        migration_guidance: Optional[str] = None,
-        effective_date: Optional[datetime] = None
-    ) -> Tuple[Amendment, List[str]]:
+        migration_guidance: str | None = None,
+        effective_date: datetime | None = None
+    ) -> tuple[Amendment, list[str]]:
         """
         Create a new amendment proposal.
 
@@ -412,7 +411,7 @@ class AmendmentManager:
     def generate_amendment_id(
         self,
         amendment_class: AmendmentClass,
-        year: Optional[int] = None
+        year: int | None = None
     ) -> str:
         """Generate a unique amendment ID."""
         year = year or datetime.utcnow().year
@@ -427,7 +426,7 @@ class AmendmentManager:
     # Ratification Process
     # -------------------------------------------------------------------------
 
-    def propose_amendment(self, amendment_id: str) -> Tuple[bool, str]:
+    def propose_amendment(self, amendment_id: str) -> tuple[bool, str]:
         """
         Move amendment to proposed status and start cooling period.
         Stage 1 -> Stage 2.
@@ -447,7 +446,7 @@ class AmendmentManager:
 
         return (True, f"Amendment proposed. Cooling period ends at {amendment.cooling_ends_at}")
 
-    def start_deliberation(self, amendment_id: str) -> Tuple[bool, str]:
+    def start_deliberation(self, amendment_id: str) -> tuple[bool, str]:
         """
         Move from cooling to deliberation period.
         Stage 2 -> Stage 3.
@@ -471,7 +470,7 @@ class AmendmentManager:
 
         return (True, f"Deliberation started. Window ends at {amendment.deliberation_ends_at}")
 
-    def start_voting(self, amendment_id: str) -> Tuple[bool, str]:
+    def start_voting(self, amendment_id: str) -> tuple[bool, str]:
         """
         Move from deliberation to voting.
         Stage 3 -> Stage 4.
@@ -507,9 +506,9 @@ class AmendmentManager:
         vote: str,
         pou: PoUStatement,
         weight: float = 1.0,
-        validator_trust_score: Optional[float] = None,
-        mediator_reputation: Optional[float] = None
-    ) -> Tuple[bool, str]:
+        validator_trust_score: float | None = None,
+        mediator_reputation: float | None = None
+    ) -> tuple[bool, str]:
         """
         Cast a vote on an amendment. Requires valid PoU.
         """
@@ -562,7 +561,7 @@ class AmendmentManager:
 
         return (True, f"Vote recorded with weight {effective_weight:.2f}")
 
-    def tally_votes(self, amendment_id: str) -> Dict[str, Any]:
+    def tally_votes(self, amendment_id: str) -> dict[str, Any]:
         """Tally votes for an amendment."""
         amendment = self.amendments.get(amendment_id)
         if not amendment:
@@ -594,7 +593,7 @@ class AmendmentManager:
 
         return amendment.vote_tally
 
-    def finalize_ratification(self, amendment_id: str) -> Tuple[bool, str]:
+    def finalize_ratification(self, amendment_id: str) -> tuple[bool, str]:
         """
         Finalize ratification based on vote tally.
         Stage 4 -> Stage 5 (if approved) or REJECTED.
@@ -611,11 +610,10 @@ class AmendmentManager:
             return (False, tally["error"])
 
         # Check if class E (fork required)
-        if amendment.amendment_class == AmendmentClass.E:
-            if not tally["meets_threshold"]:
-                # Fork is constitutional right
-                fork_id = self._create_fork(amendment_id)
-                return (True, f"Consensus failed. Fork created: {fork_id}")
+        if amendment.amendment_class == AmendmentClass.E and not tally["meets_threshold"]:
+            # Fork is constitutional right
+            fork_id = self._create_fork(amendment_id)
+            return (True, f"Consensus failed. Fork created: {fork_id}")
 
         if not tally["meets_threshold"]:
             amendment.status = AmendmentStatus.REJECTED
@@ -630,7 +628,7 @@ class AmendmentManager:
 
         return (True, f"Amendment ratified. Semantic lock applied at {now}")
 
-    def activate_amendment(self, amendment_id: str) -> Tuple[bool, str]:
+    def activate_amendment(self, amendment_id: str) -> tuple[bool, str]:
         """
         Activate a ratified amendment at or after effective_date.
         Stage 5 -> Stage 6.
@@ -674,7 +672,7 @@ class AmendmentManager:
     def check_semantic_compatibility(
         self,
         amendment_id: str,
-        drift_scores: Optional[Dict[str, float]] = None
+        drift_scores: dict[str, float] | None = None
     ) -> SemanticCompatibilityResult:
         """
         Check semantic compatibility of an amendment.
@@ -734,11 +732,7 @@ class AmendmentManager:
 
         content = (amendment.proposed_changes + " " + amendment.rationale).lower()
 
-        for keyword in prohibited_keywords:
-            if keyword in content:
-                return True
-
-        return False
+        return any(keyword in content for keyword in prohibited_keywords)
 
     # -------------------------------------------------------------------------
     # Emergency Amendments
@@ -750,7 +744,7 @@ class AmendmentManager:
         reason: str,
         proposed_changes: str,
         max_duration_days: int = 7
-    ) -> Tuple[EmergencyAmendment, List[str]]:
+    ) -> tuple[EmergencyAmendment, list[str]]:
         """
         Create an emergency amendment with restricted scope.
         Per NCIP-014 Section 12.
@@ -780,7 +774,7 @@ class AmendmentManager:
         self.emergency_amendments[amendment_id] = emergency
         return emergency, []
 
-    def ratify_emergency_amendment(self, amendment_id: str) -> Tuple[bool, str]:
+    def ratify_emergency_amendment(self, amendment_id: str) -> tuple[bool, str]:
         """Ratify an emergency amendment to prevent auto-expiry."""
         emergency = self.emergency_amendments.get(amendment_id)
         if not emergency:
@@ -792,7 +786,7 @@ class AmendmentManager:
         emergency.ratified = True
         return (True, "Emergency amendment ratified")
 
-    def check_emergency_expirations(self) -> List[str]:
+    def check_emergency_expirations(self) -> list[str]:
         """Check and expire unratified emergency amendments."""
         expired = []
         for aid, emergency in self.emergency_amendments.items():
@@ -808,7 +802,7 @@ class AmendmentManager:
         """Get current constitution version."""
         return self.current_constitution.version
 
-    def get_version_at_time(self, timestamp: datetime) -> Optional[str]:
+    def get_version_at_time(self, timestamp: datetime) -> str | None:
         """Get constitution version that was active at a given time."""
         for version in reversed(self.constitution_history):
             if version.effective_from <= timestamp:
@@ -824,15 +818,15 @@ class AmendmentManager:
     # Query Methods
     # -------------------------------------------------------------------------
 
-    def get_amendment(self, amendment_id: str) -> Optional[Amendment]:
+    def get_amendment(self, amendment_id: str) -> Amendment | None:
         """Get an amendment by ID."""
         return self.amendments.get(amendment_id)
 
-    def get_amendments_by_status(self, status: AmendmentStatus) -> List[Amendment]:
+    def get_amendments_by_status(self, status: AmendmentStatus) -> list[Amendment]:
         """Get all amendments with a given status."""
         return [a for a in self.amendments.values() if a.status == status]
 
-    def get_pending_amendments(self) -> List[Amendment]:
+    def get_pending_amendments(self) -> list[Amendment]:
         """Get all amendments not yet activated or rejected."""
         active_statuses = [
             AmendmentStatus.DRAFT,
@@ -844,11 +838,11 @@ class AmendmentManager:
         ]
         return [a for a in self.amendments.values() if a.status in active_statuses]
 
-    def get_activated_amendments(self) -> List[Amendment]:
+    def get_activated_amendments(self) -> list[Amendment]:
         """Get all activated amendments."""
         return self.get_amendments_by_status(AmendmentStatus.ACTIVATED)
 
-    def get_forks(self) -> Dict[str, str]:
+    def get_forks(self) -> dict[str, str]:
         """Get all constitutional forks."""
         return self.fork_registry.copy()
 
@@ -859,7 +853,7 @@ class AmendmentManager:
     def validate_amendment_proposal(
         self,
         amendment: Amendment
-    ) -> Tuple[bool, List[str]]:
+    ) -> tuple[bool, list[str]]:
         """
         Validate an amendment proposal meets all requirements.
         """
@@ -893,7 +887,7 @@ class AmendmentManager:
 
         return (len(errors) == 0, errors)
 
-    def void_amendment(self, amendment_id: str, reason: str) -> Tuple[bool, str]:
+    def void_amendment(self, amendment_id: str, reason: str) -> tuple[bool, str]:
         """
         Void an amendment for constitutional violations.
         """
@@ -907,7 +901,7 @@ class AmendmentManager:
         amendment.status = AmendmentStatus.VOID
         return (True, f"Amendment voided: {reason}")
 
-    def get_status_summary(self) -> Dict[str, Any]:
+    def get_status_summary(self) -> dict[str, Any]:
         """Get summary of amendment system status."""
         return {
             "constitution_version": self.current_constitution.version,

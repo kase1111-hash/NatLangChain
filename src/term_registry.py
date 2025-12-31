@@ -10,12 +10,11 @@ This module provides:
 - Validator integration for term enforcement
 """
 
-import os
 import re
-from pathlib import Path
-from typing import Dict, List, Any, Optional, Set, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
+from pathlib import Path
+from typing import Any
 
 import yaml
 
@@ -42,10 +41,10 @@ class TermDefinition:
     term_class: TermClass
     definition: str
     introduced_in: str
-    governance: Dict[str, Any]
-    synonyms: List[str] = field(default_factory=list)
-    notes: Optional[str] = None
-    governed_by: Optional[str] = None  # For protocol-bound terms
+    governance: dict[str, Any]
+    synonyms: list[str] = field(default_factory=list)
+    notes: str | None = None
+    governed_by: str | None = None  # For protocol-bound terms
 
     @property
     def is_mutable(self) -> bool:
@@ -62,20 +61,20 @@ class TermDefinition:
 class TermLookupResult:
     """Result of looking up a term in the registry."""
     status: TermStatus
-    canonical_term: Optional[str] = None
-    definition: Optional[TermDefinition] = None
-    matched_as: Optional[str] = None  # The form that matched (synonym, etc.)
+    canonical_term: str | None = None
+    definition: TermDefinition | None = None
+    matched_as: str | None = None  # The form that matched (synonym, etc.)
 
 
 @dataclass
 class TermValidationResult:
     """Result of validating text against the term registry."""
-    unknown_terms: List[str] = field(default_factory=list)
-    deprecated_terms: List[str] = field(default_factory=list)
-    synonym_usage: List[Tuple[str, str]] = field(default_factory=list)  # (used, canonical)
-    core_terms_found: List[str] = field(default_factory=list)
-    protocol_terms_found: List[str] = field(default_factory=list)
-    extension_terms_found: List[str] = field(default_factory=list)
+    unknown_terms: list[str] = field(default_factory=list)
+    deprecated_terms: list[str] = field(default_factory=list)
+    synonym_usage: list[tuple[str, str]] = field(default_factory=list)  # (used, canonical)
+    core_terms_found: list[str] = field(default_factory=list)
+    protocol_terms_found: list[str] = field(default_factory=list)
+    extension_terms_found: list[str] = field(default_factory=list)
 
     @property
     def has_issues(self) -> bool:
@@ -101,7 +100,7 @@ class CanonicalTermRegistry:
     # Default path to registry file
     DEFAULT_REGISTRY_PATH = Path(__file__).parent.parent / "config" / "canonical_terms.yaml"
 
-    def __init__(self, registry_path: Optional[Path] = None):
+    def __init__(self, registry_path: Path | None = None):
         """
         Initialize the term registry.
 
@@ -109,12 +108,12 @@ class CanonicalTermRegistry:
             registry_path: Path to the YAML registry file. Uses default if not provided.
         """
         self.registry_path = registry_path or self.DEFAULT_REGISTRY_PATH
-        self._terms: Dict[str, TermDefinition] = {}
-        self._synonyms: Dict[str, str] = {}  # synonym -> canonical term
-        self._deprecated: Set[str] = set()
+        self._terms: dict[str, TermDefinition] = {}
+        self._synonyms: dict[str, str] = {}  # synonym -> canonical term
+        self._deprecated: set[str] = set()
         self._registry_version: str = ""
         self._last_updated: str = ""
-        self._authority: Dict[str, str] = {}
+        self._authority: dict[str, str] = {}
         self._loaded = False
 
     def load(self) -> None:
@@ -132,7 +131,7 @@ class CanonicalTermRegistry:
             )
 
         try:
-            with open(self.registry_path, 'r', encoding='utf-8') as f:
+            with open(self.registry_path, encoding='utf-8') as f:
                 data = yaml.safe_load(f)
         except yaml.YAMLError as e:
             raise ValueError(f"Invalid YAML in term registry: {e}")
@@ -163,7 +162,7 @@ class CanonicalTermRegistry:
 
         self._loaded = True
 
-    def _load_term(self, term_data: Dict[str, Any]) -> None:
+    def _load_term(self, term_data: dict[str, Any]) -> None:
         """Load a single term into the registry."""
         term_name = term_data.get("term")
         if not term_name:
@@ -244,7 +243,7 @@ class CanonicalTermRegistry:
             matched_as=term
         )
 
-    def get_canonical(self, term: str) -> Optional[str]:
+    def get_canonical(self, term: str) -> str | None:
         """
         Get the canonical form of a term.
 
@@ -257,7 +256,7 @@ class CanonicalTermRegistry:
         result = self.lookup(term)
         return result.canonical_term
 
-    def get_definition(self, term: str) -> Optional[TermDefinition]:
+    def get_definition(self, term: str) -> TermDefinition | None:
         """
         Get the full definition of a term.
 
@@ -285,29 +284,29 @@ class CanonicalTermRegistry:
         self._ensure_loaded()
         return term.lower().strip() in self._deprecated
 
-    def get_terms_by_class(self, term_class: TermClass) -> List[TermDefinition]:
+    def get_terms_by_class(self, term_class: TermClass) -> list[TermDefinition]:
         """Get all terms of a specific class."""
         self._ensure_loaded()
         return [t for t in self._terms.values() if t.term_class == term_class]
 
-    def get_core_terms(self) -> List[TermDefinition]:
+    def get_core_terms(self) -> list[TermDefinition]:
         """Get all core (immutable) terms."""
         return self.get_terms_by_class(TermClass.CORE)
 
-    def get_protocol_terms(self) -> List[TermDefinition]:
+    def get_protocol_terms(self) -> list[TermDefinition]:
         """Get all protocol-bound terms."""
         return self.get_terms_by_class(TermClass.PROTOCOL_BOUND)
 
-    def get_extension_terms(self) -> List[TermDefinition]:
+    def get_extension_terms(self) -> list[TermDefinition]:
         """Get all extension terms."""
         return self.get_terms_by_class(TermClass.EXTENSION)
 
-    def get_all_canonical_terms(self) -> List[str]:
+    def get_all_canonical_terms(self) -> list[str]:
         """Get list of all canonical term names."""
         self._ensure_loaded()
         return [t.term for t in self._terms.values()]
 
-    def get_all_synonyms(self) -> Dict[str, str]:
+    def get_all_synonyms(self) -> dict[str, str]:
         """Get mapping of all synonyms to canonical terms."""
         self._ensure_loaded()
         return dict(self._synonyms)
@@ -319,7 +318,7 @@ class CanonicalTermRegistry:
         return self._registry_version
 
     @property
-    def authority(self) -> Dict[str, str]:
+    def authority(self) -> dict[str, str]:
         """Get registry authority information."""
         self._ensure_loaded()
         return self._authority
@@ -345,9 +344,9 @@ class CanonicalTermRegistry:
 
         # Build set of all known terms and synonyms for matching
         all_terms = set()
-        for term in self._terms.keys():
+        for term in self._terms:
             all_terms.add(term)
-        for synonym in self._synonyms.keys():
+        for synonym in self._synonyms:
             all_terms.add(synonym)
         for deprecated in self._deprecated:
             all_terms.add(deprecated)
@@ -397,8 +396,8 @@ class CanonicalTermRegistry:
     def extract_unknown_terms(
         self,
         text: str,
-        candidate_terms: Optional[List[str]] = None
-    ) -> List[str]:
+        candidate_terms: list[str] | None = None
+    ) -> list[str]:
         """
         Extract terms from text that are not in the registry.
 
@@ -435,7 +434,7 @@ class CanonicalTermRegistry:
 
 
 # Singleton instance for global access
-_registry_instance: Optional[CanonicalTermRegistry] = None
+_registry_instance: CanonicalTermRegistry | None = None
 
 
 def get_registry() -> CanonicalTermRegistry:
@@ -482,7 +481,7 @@ def validate_entry_terms(content: str, intent: str) -> TermValidationResult:
     return combined
 
 
-def get_term_definition(term: str) -> Optional[str]:
+def get_term_definition(term: str) -> str | None:
     """
     Get the definition of a term.
 

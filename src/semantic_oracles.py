@@ -4,19 +4,18 @@ Verifies external events against contract spirit using LLM reasoning
 Enables intent-based OTC settlement and conditional contract execution
 """
 
-import os
 import json
-import re
-from typing import Dict, Any, Optional, List
+import os
 from datetime import datetime
+from typing import Any
+
 from anthropic import Anthropic
 
 # Import sanitization utilities from validator
 from validator import (
-    sanitize_prompt_input,
-    create_safe_prompt_section,
     MAX_CONTENT_LENGTH,
     MAX_INTENT_LENGTH,
+    create_safe_prompt_section,
 )
 
 
@@ -35,7 +34,7 @@ class SemanticOracle:
     triggers the spirit of the 'Geopolitical Contingency' written in the entry"
     """
 
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: str | None = None):
         """
         Initialize semantic oracle.
 
@@ -54,8 +53,8 @@ class SemanticOracle:
         contract_condition: str,
         contract_intent: str,
         event_description: str,
-        event_data: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        event_data: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Verify if an external event triggers a contract condition.
 
@@ -155,7 +154,7 @@ Return JSON:
         except json.JSONDecodeError as e:
             return {
                 "status": "error",
-                "error": f"JSON parsing error: {str(e)}",
+                "error": f"JSON parsing error: {e!s}",
                 "oracle_type": "semantic",
                 "result": {
                     "triggers_condition": None,
@@ -165,7 +164,7 @@ Return JSON:
         except ValueError as e:
             return {
                 "status": "error",
-                "error": f"Validation error: {str(e)}",
+                "error": f"Validation error: {e!s}",
                 "oracle_type": "semantic",
                 "result": {
                     "triggers_condition": None,
@@ -175,7 +174,7 @@ Return JSON:
         except Exception as e:
             return {
                 "status": "error",
-                "error": f"Unexpected error: {str(e)}",
+                "error": f"Unexpected error: {e!s}",
                 "oracle_type": "semantic",
                 "result": {
                     "triggers_condition": None,
@@ -219,7 +218,7 @@ Return JSON:
         contract_prose: str,
         contingency_type: str,
         current_situation: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Verify if a contingency clause has been triggered.
 
@@ -310,19 +309,19 @@ Return JSON:
         except json.JSONDecodeError as e:
             return {
                 "status": "error",
-                "error": f"JSON parsing error: {str(e)}",
+                "error": f"JSON parsing error: {e!s}",
                 "oracle_type": "contingency"
             }
         except ValueError as e:
             return {
                 "status": "error",
-                "error": f"Validation error: {str(e)}",
+                "error": f"Validation error: {e!s}",
                 "oracle_type": "contingency"
             }
         except Exception as e:
             return {
                 "status": "error",
-                "error": f"Unexpected error: {str(e)}",
+                "error": f"Unexpected error: {e!s}",
                 "oracle_type": "contingency"
             }
 
@@ -330,8 +329,8 @@ Return JSON:
         self,
         derivative_contract: str,
         market_event: str,
-        market_data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        market_data: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Verify OTC derivative settlement conditions.
 
@@ -426,19 +425,19 @@ Return JSON:
         except json.JSONDecodeError as e:
             return {
                 "status": "error",
-                "error": f"JSON parsing error: {str(e)}",
+                "error": f"JSON parsing error: {e!s}",
                 "oracle_type": "otc_settlement"
             }
         except ValueError as e:
             return {
                 "status": "error",
-                "error": f"Validation error: {str(e)}",
+                "error": f"Validation error: {e!s}",
                 "oracle_type": "otc_settlement"
             }
         except Exception as e:
             return {
                 "status": "error",
-                "error": f"Unexpected error: {str(e)}",
+                "error": f"Unexpected error: {e!s}",
                 "oracle_type": "otc_settlement"
             }
 
@@ -450,7 +449,7 @@ Return JSON:
         condition: str,
         event: str,
         num_oracles: int = 3
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Achieve consensus across multiple oracle evaluations.
 
@@ -468,7 +467,7 @@ Return JSON:
         num_oracles = min(num_oracles, self.MAX_ORACLES)
         evaluations = []
 
-        for i in range(num_oracles):
+        for _i in range(num_oracles):
             result = self.verify_event_trigger(
                 contract_condition=condition,
                 contract_intent="Evaluate condition semantically",
@@ -506,7 +505,7 @@ Return JSON:
             "no_trigger_votes": no_trigger_count,
             "average_confidence": round(avg_confidence, 3),
             "evaluations": evaluations,
-            "recommended_action": "EXECUTE" if consensus_decision else "HOLD" if consensus_decision == False else "REVIEW"
+            "recommended_action": "EXECUTE" if consensus_decision else "HOLD" if not consensus_decision else "REVIEW"
         }
 
 
@@ -542,7 +541,7 @@ class SemanticCircuitBreaker:
         stated_intent: str,
         proposed_action: str,
         agent_id: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Check if proposed agent action aligns with stated intent.
 

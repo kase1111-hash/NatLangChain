@@ -2,22 +2,20 @@
 Tests for NCIP-012: Human Ratification UX & Cognitive Load Limits
 """
 
-import pytest
 from datetime import datetime, timedelta
+
 from src.cognitive_load import (
-    CognitiveLoadManager,
-    RatificationContext,
     ActionType,
-    InformationLevel,
-    UIViolationType,
-    SemanticUnit,
     CognitiveBudget,
-    RateLimitState,
+    CognitiveLoadManager,
     CoolingPeriod,
+    InformationLevel,
     InformationPresentation,
     PoUConfirmation,
-    UIValidation,
-    RatificationState,
+    RateLimitState,
+    RatificationContext,
+    SemanticUnit,
+    UIViolationType,
 )
 
 
@@ -54,7 +52,7 @@ class TestCognitiveBudget:
         # Add units within budget
         for i in range(5):
             unit = SemanticUnit(id=f"unit_{i}", description=f"Concept {i}")
-            success, msg = manager.add_semantic_unit(budget, unit)
+            success, _msg = manager.add_semantic_unit(budget, unit)
             assert success
 
         assert budget.remaining == 2
@@ -228,7 +226,7 @@ class TestCoolingPeriods:
         cooling = manager.start_cooling_period("user1", ActionType.AGREEMENT)
 
         # Waive with high validator confidence
-        success, msg = manager.waive_cooling_period(
+        success, _msg = manager.waive_cooling_period(
             cooling,
             reason="Emergency: time-critical transaction",
             validator_confidence=0.90
@@ -355,7 +353,7 @@ class TestPoUConfirmation:
         pou = manager.create_pou_confirmation()
 
         manager.view_pou_paraphrase(pou)
-        success, msg = manager.confirm_pou(pou)
+        success, _msg = manager.confirm_pou(pou)
 
         assert success
         assert pou.is_valid
@@ -366,7 +364,7 @@ class TestPoUConfirmation:
         pou = manager.create_pou_confirmation()
 
         manager.view_pou_paraphrase(pou)
-        success, msg = manager.confirm_pou(
+        success, _msg = manager.confirm_pou(
             pou,
             user_correction="Minor clarification",
             correction_drift=0.15
@@ -415,7 +413,7 @@ class TestUIValidation:
         manager = CognitiveLoadManager()
         validation = manager.create_ui_validation()
 
-        success, violations = manager.validate_ui_element(
+        success, _violations = manager.validate_ui_element(
             validation,
             element_type="countdown",
             properties={"is_emergency": False}

@@ -11,27 +11,23 @@ Tests cover:
 - SCR index generation
 """
 
-import pytest
-from datetime import datetime, timedelta
-import sys
 import os
+import sys
+from datetime import datetime, timedelta
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from appeals import (
-    AppealsManager,
-    Appeal,
     AppealableItem,
-    NonAppealableItem,
-    AppealStatus,
     AppealOutcome,
+    AppealsManager,
+    AppealStatus,
     DriftLevel,
+    PrecedentEntry,
     PrecedentWeight,
-    SemanticCaseRecord,
     ReviewPanel,
     ReviewPanelMember,
-    AppealReference,
-    PrecedentEntry,
+    SemanticCaseRecord,
 )
 
 
@@ -40,22 +36,22 @@ class TestAppealableItems:
 
     def test_validator_rejection_is_appealable(self):
         manager = AppealsManager()
-        is_appealable, msg = manager.is_appealable("validator_rejection")
+        is_appealable, _msg = manager.is_appealable("validator_rejection")
         assert is_appealable is True
 
     def test_drift_classification_is_appealable(self):
         manager = AppealsManager()
-        is_appealable, msg = manager.is_appealable("drift_classification")
+        is_appealable, _msg = manager.is_appealable("drift_classification")
         assert is_appealable is True
 
     def test_pou_mismatch_is_appealable(self):
         manager = AppealsManager()
-        is_appealable, msg = manager.is_appealable("pou_mismatch")
+        is_appealable, _msg = manager.is_appealable("pou_mismatch")
         assert is_appealable is True
 
     def test_mediator_interpretation_is_appealable(self):
         manager = AppealsManager()
-        is_appealable, msg = manager.is_appealable("mediator_interpretation")
+        is_appealable, _msg = manager.is_appealable("mediator_interpretation")
         assert is_appealable is True
 
     def test_term_registry_mapping_not_appealable(self):
@@ -66,7 +62,7 @@ class TestAppealableItems:
 
     def test_settlement_outcome_not_appealable(self):
         manager = AppealsManager()
-        is_appealable, msg = manager.is_appealable("settlement_outcome")
+        is_appealable, _msg = manager.is_appealable("settlement_outcome")
         assert is_appealable is False
 
 
@@ -76,7 +72,7 @@ class TestAppealCreation:
     def test_create_valid_appeal(self):
         manager = AppealsManager()
 
-        appeal, warnings = manager.create_appeal(
+        appeal, _warnings = manager.create_appeal(
             appellant_id="user-001",
             appeal_type=AppealableItem.DRIFT_CLASSIFICATION,
             original_entry_id="ENTRY-8831",
@@ -233,7 +229,7 @@ class TestSemanticLock:
         manager.begin_review(appeal)
 
         # Resolve
-        scr, errors = manager.resolve_appeal(
+        _scr, _errors = manager.resolve_appeal(
             appeal,
             AppealOutcome.OVERTURNED,
             DriftLevel.D1,
@@ -270,7 +266,7 @@ class TestSemanticCaseRecord:
         ]
         manager.begin_review(appeal)
 
-        scr, errors = manager.resolve_appeal(
+        scr, _errors = manager.resolve_appeal(
             appeal,
             AppealOutcome.OVERTURNED,
             DriftLevel.D1,
@@ -587,7 +583,7 @@ class TestAppealLifecycle:
         panel.add_member(ReviewPanelMember("v3", "human", 0.95))
 
         # 4. Begin review
-        success, msg = manager.begin_review(appeal)
+        success, _msg = manager.begin_review(appeal)
         assert success is True
         assert appeal.status == AppealStatus.UNDER_REVIEW
 
@@ -599,7 +595,7 @@ class TestAppealLifecycle:
         assert appeal.status == AppealStatus.AWAITING_RATIFICATION
 
         # 6. Resolve with human ratification
-        scr, errors = manager.resolve_appeal(
+        scr, _errors = manager.resolve_appeal(
             appeal,
             AppealOutcome.OVERTURNED,
             DriftLevel.D1,

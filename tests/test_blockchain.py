@@ -2,11 +2,12 @@
 Tests for NatLangChain blockchain functionality
 """
 
-import sys
 import os
+import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from blockchain import NatLangChain, NaturalLanguageEntry, Block
+from blockchain import NatLangChain, NaturalLanguageEntry
 
 
 def test_genesis_block():

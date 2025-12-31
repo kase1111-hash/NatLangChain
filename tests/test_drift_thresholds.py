@@ -17,18 +17,15 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from drift_thresholds import (
+    DRIFT_MESSAGES,
+    DRIFT_THRESHOLDS,
     DriftLevel,
-    ValidatorAction,
-    DriftThreshold,
-    DriftClassification,
+    HumanOverrideRecord,
     SemanticDriftClassifier,
     TemporalFixityContext,
-    HumanOverrideRecord,
-    DRIFT_THRESHOLDS,
-    DRIFT_MESSAGES,
     classify_drift_score,
+    get_drift_config,
     get_mandatory_response,
-    get_drift_config
 )
 
 
@@ -578,7 +575,7 @@ def run_tests():
     print(f"Tests: {passed_tests}/{total_tests} passed")
 
     if failed_tests:
-        print(f"\nFailed tests:")
+        print("\nFailed tests:")
         for name, error in failed_tests:
             print(f"  - {name}: {error}")
         return 1

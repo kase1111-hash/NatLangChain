@@ -1,5 +1,5 @@
 <script>
-  import { fly, fade, scale } from 'svelte/transition';
+  import { fly, scale } from 'svelte/transition';
   import { searchEntries, semanticSearch } from '../lib/api.js';
   import Tooltip from './Tooltip.svelte';
   import { ncipDefinitions } from '../lib/ncip-definitions.js';
@@ -25,7 +25,7 @@
         results = await searchEntries(query, limit);
       }
     } catch (e) {
-      error = 'Search failed: ' + e.message;
+      error = `Search failed: ${e.message}`;
     } finally {
       searching = false;
     }
@@ -60,21 +60,31 @@
 
   const icons = {
     search: 'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z',
-    brain: 'M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z',
+    brain:
+      'M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z',
     text: 'M4 6h16M4 12h16m-7 6h7',
     clear: 'M6 18L18 6M6 6l12 12',
     block: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4',
     user: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z',
     clock: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
-    target: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z',
-    lightbulb: 'M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z'
+    target:
+      'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z',
+    lightbulb:
+      'M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z',
   };
 </script>
 
 <div class="search-panel" in:fly={{ y: 20, duration: 400 }}>
   <div class="search-header">
     <div class="header-icon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
         <path d={icons.search} />
       </svg>
     </div>
@@ -87,7 +97,14 @@
   <div class="search-container" in:fly={{ y: 10, duration: 300, delay: 100 }}>
     <div class="search-box">
       <div class="search-input-wrapper">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
           <path d={icons.search} />
         </svg>
         <input
@@ -99,21 +116,31 @@
         />
         {#if query}
           <button class="clear-input-btn" on:click={clearSearch}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
               <path d={icons.clear} />
             </svg>
           </button>
         {/if}
       </div>
-      <button
-        class="search-btn"
-        on:click={handleSearch}
-        disabled={searching || !query.trim()}
-      >
+      <button class="search-btn" on:click={handleSearch} disabled={searching || !query.trim()}>
         {#if searching}
           <div class="btn-spinner"></div>
         {:else}
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
             <path d={icons.search} />
           </svg>
         {/if}
@@ -123,22 +150,44 @@
 
     <div class="search-options">
       <div class="option-group">
-        <Tooltip text={ncipDefinitions.basicSearch.text} ncipRef={ncipDefinitions.basicSearch.ncipRef} position="bottom">
+        <Tooltip
+          text={ncipDefinitions.basicSearch.text}
+          ncipRef={ncipDefinitions.basicSearch.ncipRef}
+          position="bottom"
+        >
           <label class="radio-option" class:selected={searchType === 'basic'}>
             <input type="radio" bind:group={searchType} value="basic" />
             <div class="radio-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
                 <path d={icons.text} />
               </svg>
             </div>
             <span>Basic Search</span>
           </label>
         </Tooltip>
-        <Tooltip text={ncipDefinitions.semanticSearch.text} ncipRef={ncipDefinitions.semanticSearch.ncipRef} position="bottom">
+        <Tooltip
+          text={ncipDefinitions.semanticSearch.text}
+          ncipRef={ncipDefinitions.semanticSearch.ncipRef}
+          position="bottom"
+        >
           <label class="radio-option" class:selected={searchType === 'semantic'}>
             <input type="radio" bind:group={searchType} value="semantic" />
             <div class="radio-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
                 <path d={icons.brain} />
               </svg>
             </div>
@@ -156,7 +205,14 @@
             <option value={25}>25</option>
             <option value={50}>50</option>
           </select>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
             <polyline points="6 9 12 15 18 9" />
           </svg>
         </div>
@@ -166,7 +222,14 @@
 
   {#if error}
     <div class="error-message" in:scale={{ duration: 200 }}>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
         <circle cx="12" cy="12" r="10" />
         <line x1="12" y1="8" x2="12" y2="12" />
         <line x1="12" y1="16" x2="12.01" y2="16" />
@@ -179,8 +242,17 @@
     <div class="results-section" in:fly={{ y: 20, duration: 300 }}>
       <div class="results-header">
         <h3>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path
+              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+            />
           </svg>
           Results
         </h3>
@@ -202,14 +274,28 @@
                 <span class="result-number">#{i + 1}</span>
                 {#if result.score !== undefined}
                   <span class="result-score">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
                       <path d={icons.target} />
                     </svg>
                     {(result.score * 100).toFixed(1)}%
                   </span>
                 {/if}
                 <span class="result-block">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
                     <path d={icons.block} />
                   </svg>
                   Block #{result.block_index}
@@ -218,13 +304,27 @@
 
               <div class="result-meta">
                 <span class="result-author">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
                     <path d={icons.user} />
                   </svg>
                   {result.author}
                 </span>
                 <span class="result-time">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
                     <path d={icons.clock} />
                   </svg>
                   {formatTimestamp(result.timestamp)}
@@ -238,6 +338,7 @@
 
               <div class="result-content">
                 {#if searchType === 'basic'}
+                  <!-- eslint-disable-next-line svelte/no-at-html-tags -- Safe: highlightQuery only wraps text in <mark> tags -->
                   {@html highlightQuery(result.content, query)}
                 {:else}
                   {result.content}
@@ -247,7 +348,14 @@
               {#if result.metadata && Object.keys(result.metadata).length > 0}
                 <details class="result-metadata">
                   <summary>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
                       <polyline points="9 18 15 12 9 6" />
                     </svg>
                     Metadata
@@ -261,7 +369,14 @@
       {:else}
         <div class="no-results">
           <div class="no-results-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
               <path d={icons.search} />
             </svg>
           </div>
@@ -273,7 +388,14 @@
   {:else}
     <div class="search-tips" in:fly={{ y: 10, duration: 300, delay: 200 }}>
       <div class="tips-header">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
           <path d={icons.lightbulb} />
         </svg>
         <h3>Search Tips</h3>
@@ -300,13 +422,13 @@
       <div class="example-queries">
         <h4>Try these examples:</h4>
         <div class="example-btns">
-          <button class="example-btn" on:click={() => query = 'payment terms'}>
+          <button class="example-btn" on:click={() => (query = 'payment terms')}>
             payment terms
           </button>
-          <button class="example-btn" on:click={() => query = 'delivery agreement'}>
+          <button class="example-btn" on:click={() => (query = 'delivery agreement')}>
             delivery agreement
           </button>
-          <button class="example-btn" on:click={() => query = 'contract offer'}>
+          <button class="example-btn" on:click={() => (query = 'contract offer')}>
             contract offer
           </button>
         </div>
@@ -483,7 +605,9 @@
   }
 
   @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   .search-options {
@@ -741,7 +865,8 @@
     gap: 8px;
   }
 
-  .result-author, .result-time {
+  .result-author,
+  .result-time {
     display: flex;
     align-items: center;
     gap: 8px;
