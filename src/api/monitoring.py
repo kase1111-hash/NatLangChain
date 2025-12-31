@@ -7,6 +7,8 @@ This blueprint provides:
 - /health: Basic health check
 - /health/live: Kubernetes liveness probe
 - /health/ready: Kubernetes readiness probe
+- /cluster/instances: List active instances
+- /cluster/info: Cluster coordination info
 """
 
 import os
@@ -255,3 +257,101 @@ def _update_dynamic_metrics():
 
     except ImportError:
         pass
+
+
+# ============================================================
+# Cluster/Scaling Endpoints
+# ============================================================
+
+@monitoring_bp.route('/cluster/instances', methods=['GET'])
+def cluster_instances():
+    """
+    Get list of active API instances.
+
+    Returns all instances registered with the coordinator.
+    """
+    try:
+        from scaling import get_coordinator
+        coordinator = get_coordinator()
+        instances = coordinator.get_instances()
+
+        return jsonify({
+            "instance_count": len(instances),
+            "instances": [
+                {
+                    "instance_id": i.instance_id,
+                    "hostname": i.hostname,
+                    "port": i.port,
+                    "started_at": i.started_at,
+                    "last_heartbeat": i.last_heartbeat,
+                    "is_leader": i.is_leader,
+                    "healthy": i.is_healthy(),
+                }
+                for i in instances
+            ],
+        })
+    except ImportError:
+        return jsonify({
+            "instance_count": 1,
+            "instances": [{
+                "instance_id": "local",
+                "hostname": platform.node(),
+                "is_leader": True,
+            }],
+        })
+
+
+@monitoring_bp.route('/cluster/info', methods=['GET'])
+def cluster_info():
+    """
+    Get cluster coordination information.
+
+    Returns current instance info, leader status, and scaling config.
+    """
+    try:
+        from scaling import get_coordinator, get_lock_manager, get_cache
+
+        coordinator = get_coordinator()
+        lock_manager = get_lock_manager()
+        cache = get_cache()
+
+        return jsonify({
+            "instance": coordinator.get_info(),
+            "leader": {
+                "is_leader": coordinator.is_leader(),
+                "leader_info": _serialize_instance_info(coordinator.get_leader()),
+            },
+            "lock_manager": {
+                "type": lock_manager.__class__.__name__,
+            },
+            "cache": cache.get_stats(),
+            "scaling_config": {
+                "redis_url": bool(os.getenv("REDIS_URL")),
+                "storage_backend": os.getenv("STORAGE_BACKEND", "json"),
+            },
+        })
+    except ImportError:
+        return jsonify({
+            "instance": {
+                "instance_id": "local",
+                "hostname": platform.node(),
+                "is_leader": True,
+            },
+            "scaling_config": {
+                "redis_url": False,
+                "storage_backend": os.getenv("STORAGE_BACKEND", "json"),
+            },
+        })
+
+
+def _serialize_instance_info(info) -> dict | None:
+    """Serialize InstanceInfo to dict."""
+    if info is None:
+        return None
+    return {
+        "instance_id": info.instance_id,
+        "hostname": info.hostname,
+        "port": info.port,
+        "started_at": info.started_at,
+        "is_leader": info.is_leader,
+    }
