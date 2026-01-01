@@ -27,7 +27,7 @@ Usage:
     chain.add_entry(entry)
 """
 
-__version__ = "0.1.0"
+__version__ = "0.1.0-alpha"
 
 # =============================================================================
 # Core Components (always available)
