@@ -69,30 +69,71 @@ class EnforcementResult:
 class SystemCapabilityDetector:
     """
     Detects available security enforcement capabilities on the system.
+    Handles both bare-metal and containerized (Docker) environments.
     """
+
+    @staticmethod
+    def is_running_in_docker() -> bool:
+        """Detect if running inside a Docker container."""
+        # Check for .dockerenv file
+        if os.path.exists("/.dockerenv"):
+            return True
+        # Check cgroup for docker
+        try:
+            with open("/proc/1/cgroup", "r") as f:
+                return "docker" in f.read() or "containerd" in f.read()
+        except (FileNotFoundError, PermissionError):
+            pass
+        # Check for container environment variable
+        return os.getenv("container") == "docker"
+
+    @staticmethod
+    def has_capability(cap_name: str) -> bool:
+        """Check if the process has a specific Linux capability."""
+        try:
+            # Read effective capabilities from /proc
+            with open("/proc/self/status", "r") as f:
+                for line in f:
+                    if line.startswith("CapEff:"):
+                        cap_hex = int(line.split(":")[1].strip(), 16)
+                        # CAP_NET_ADMIN = 12, CAP_SYS_ADMIN = 21
+                        cap_map = {"NET_ADMIN": 12, "SYS_ADMIN": 21, "SYS_PTRACE": 19}
+                        if cap_name in cap_map:
+                            return bool(cap_hex & (1 << cap_map[cap_name]))
+            return False
+        except Exception:
+            return False
 
     @staticmethod
     def detect_all() -> dict[EnforcementCapability, bool]:
         """Detect all available capabilities."""
         capabilities = {}
+        in_docker = SystemCapabilityDetector.is_running_in_docker()
 
-        # Check for iptables
-        capabilities[EnforcementCapability.IPTABLES] = SystemCapabilityDetector._check_command("iptables --version")
+        # Check for iptables (needs NET_ADMIN capability in Docker)
+        iptables_available = SystemCapabilityDetector._check_command("iptables --version")
+        if in_docker:
+            # In Docker, also need NET_ADMIN capability
+            iptables_available = iptables_available and SystemCapabilityDetector.has_capability("NET_ADMIN")
+        capabilities[EnforcementCapability.IPTABLES] = iptables_available
 
         # Check for nftables
-        capabilities[EnforcementCapability.NFTABLES] = SystemCapabilityDetector._check_command("nft --version")
+        nftables_available = SystemCapabilityDetector._check_command("nft --version")
+        if in_docker:
+            nftables_available = nftables_available and SystemCapabilityDetector.has_capability("NET_ADMIN")
+        capabilities[EnforcementCapability.NFTABLES] = nftables_available
 
         # Check for seccomp (Linux only)
         capabilities[EnforcementCapability.SECCOMP] = SystemCapabilityDetector._check_seccomp()
 
-        # Check for namespaces
-        capabilities[EnforcementCapability.NAMESPACES] = SystemCapabilityDetector._check_namespaces()
+        # Check for namespaces (limited usefulness in Docker - already in namespace)
+        capabilities[EnforcementCapability.NAMESPACES] = SystemCapabilityDetector._check_namespaces() and not in_docker
 
         # Check for cgroups
         capabilities[EnforcementCapability.CGROUPS] = os.path.exists("/sys/fs/cgroup")
 
-        # Check for udev
-        capabilities[EnforcementCapability.UDEV] = os.path.exists("/etc/udev/rules.d")
+        # Check for udev (NOT available in Docker - no host udev access)
+        capabilities[EnforcementCapability.UDEV] = os.path.exists("/etc/udev/rules.d") and not in_docker
 
         # Check for AppArmor
         capabilities[EnforcementCapability.APPARMOR] = os.path.exists("/sys/kernel/security/apparmor")
@@ -101,6 +142,34 @@ class SystemCapabilityDetector:
         capabilities[EnforcementCapability.SELINUX] = os.path.exists("/sys/fs/selinux")
 
         return capabilities
+
+    @staticmethod
+    def get_environment_info() -> dict[str, Any]:
+        """Get information about the execution environment."""
+        in_docker = SystemCapabilityDetector.is_running_in_docker()
+        return {
+            "in_docker": in_docker,
+            "platform": platform.system(),
+            "has_net_admin": SystemCapabilityDetector.has_capability("NET_ADMIN"),
+            "has_sys_admin": SystemCapabilityDetector.has_capability("SYS_ADMIN"),
+            "is_root": os.geteuid() == 0 if hasattr(os, "geteuid") else False,
+            "limitations": SystemCapabilityDetector._get_limitations(in_docker)
+        }
+
+    @staticmethod
+    def _get_limitations(in_docker: bool) -> list[str]:
+        """Get list of limitations in current environment."""
+        limitations = []
+        if in_docker:
+            limitations.append("USB blocking not available (no host udev access)")
+            limitations.append("Nested namespaces limited (already in container namespace)")
+            if not SystemCapabilityDetector.has_capability("NET_ADMIN"):
+                limitations.append("Network blocking requires --cap-add=NET_ADMIN")
+        if platform.system() != "Linux":
+            limitations.append("Most enforcement features require Linux")
+        if hasattr(os, "geteuid") and os.geteuid() != 0:
+            limitations.append("Root privileges required for network/USB enforcement")
+        return limitations
 
     @staticmethod
     def _check_command(cmd: str) -> bool:
@@ -926,13 +995,16 @@ class SecurityEnforcementManager:
         return result
 
     def get_enforcement_status(self) -> dict[str, Any]:
-        """Get current enforcement status."""
+        """Get current enforcement status including Docker environment info."""
+        env_info = SystemCapabilityDetector.get_environment_info()
         return {
+            "environment": env_info,
             "capabilities": {k.value: v for k, v in self.capabilities.items()},
             "available_enforcement": self._get_available_enforcement(),
             "network_rules_active": len(self.network._rules_applied) > 0,
             "watchdog_active": self.watchdog is not None and self.watchdog._running,
-            "audit_log_integrity": self.audit_log.verify_integrity().success
+            "audit_log_integrity": self.audit_log.verify_integrity().success,
+            "limitations": env_info.get("limitations", [])
         }
 
 

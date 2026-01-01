@@ -1,5 +1,14 @@
 # NatLangChain Dockerfile
 # Multi-stage build for optimal image size
+#
+# Security Enforcement Modes:
+# - Standard: Run as non-root (default, detection-only security)
+# - Privileged: Run with capabilities (full enforcement features)
+#
+# For full security enforcement, run with:
+#   docker run --cap-add=NET_ADMIN --cap-add=SYS_ADMIN natlangchain
+#
+# Or use docker-compose.security.yml for pre-configured secure deployment
 
 # =============================================================================
 # Stage 1: Builder
@@ -27,7 +36,15 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # =============================================================================
 FROM python:3.11-slim as runtime
 
-# Security: Run as non-root user
+# Install security enforcement tools (optional, for full enforcement mode)
+# These are only useful when running with elevated capabilities
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    iptables \
+    iproute2 \
+    procps \
+    && rm -rf /var/lib/apt/lists/*
+
+# Security: Create non-root user
 RUN groupadd --gid 1000 natlang && \
     useradd --uid 1000 --gid 1000 --shell /bin/bash --create-home natlang
 
@@ -42,10 +59,12 @@ COPY --chown=natlang:natlang src/ ./src/
 COPY --chown=natlang:natlang config/ ./config/
 COPY --chown=natlang:natlang run_server.py .
 
-# Create data directory for persistence
-RUN mkdir -p /app/data && chown natlang:natlang /app/data
+# Create data and log directories for persistence
+RUN mkdir -p /app/data /var/log/natlangchain && \
+    chown -R natlang:natlang /app/data /var/log/natlangchain
 
-# Switch to non-root user
+# By default, run as non-root (detection-only mode)
+# For enforcement mode, override with USER root in docker-compose
 USER natlang
 
 # Environment configuration
