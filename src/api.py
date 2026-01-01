@@ -250,7 +250,14 @@ API_KEY_REQUIRED = os.getenv("NATLANGCHAIN_REQUIRE_AUTH", "true").lower() == "tr
 # Rate limiting configuration
 RATE_LIMIT_REQUESTS = int(os.getenv("RATE_LIMIT_REQUESTS", "100"))
 RATE_LIMIT_WINDOW = int(os.getenv("RATE_LIMIT_WINDOW", "60"))  # seconds
-rate_limit_store: dict[str, dict[str, Any]] = {}
+rate_limit_store: dict[str, dict[str, Any]] = {}  # Legacy in-memory store
+
+# Distributed rate limiter (Redis-backed when available)
+try:
+    from rate_limiter import RateLimiter, RateLimitConfig, get_rate_limiter
+    DISTRIBUTED_RATE_LIMIT_AVAILABLE = True
+except ImportError:
+    DISTRIBUTED_RATE_LIMIT_AVAILABLE = False
 
 # Bounded parameters - max values for iteration parameters
 MAX_VALIDATORS = 10
@@ -488,10 +495,33 @@ def check_rate_limit() -> dict[str, Any] | None:
     """
     Check if client has exceeded rate limit.
 
+    Uses distributed rate limiting (Redis) when available,
+    falls back to in-memory rate limiting otherwise.
+
     Returns:
         None if within limit, error dict if exceeded
     """
     client_ip = get_client_ip()
+
+    # Use distributed rate limiter if available
+    if DISTRIBUTED_RATE_LIMIT_AVAILABLE:
+        try:
+            limiter = get_rate_limiter()
+            result = limiter.check_limit(client_ip)
+
+            if result.exceeded:
+                return {
+                    "error": "Rate limit exceeded",
+                    "retry_after": result.retry_after,
+                    "limit": result.limit,
+                    "remaining": result.remaining,
+                }
+            return None
+        except Exception as e:
+            logger.warning(f"Distributed rate limiter failed, using fallback: {e}")
+            # Fall through to legacy implementation
+
+    # Legacy in-memory rate limiting
     current_time = time.time()
 
     if client_ip not in rate_limit_store:

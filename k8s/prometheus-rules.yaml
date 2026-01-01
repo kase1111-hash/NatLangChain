@@ -1,0 +1,339 @@
+---
+# Prometheus Alerting Rules for NatLangChain
+# Deploy with: kubectl apply -f prometheus-rules.yaml
+#
+# These rules define alerts for:
+# - API availability and latency
+# - Error rates and rate limiting
+# - Resource utilization
+# - Blockchain health
+# - LLM API issues
+#
+# Configure Alertmanager for notification routing:
+# - Critical: PagerDuty/OpsGenie
+# - Warning: Slack/Email
+# - Info: Slack only
+
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: natlangchain-alerts
+  namespace: natlangchain
+  labels:
+    app: natlangchain
+    prometheus: kube-prometheus
+spec:
+  groups:
+    # ==========================================================================
+    # API Availability & Latency Alerts
+    # ==========================================================================
+    - name: natlangchain.api.availability
+      interval: 30s
+      rules:
+        # API is down
+        - alert: NatLangChainAPIDown
+          expr: up{job="natlangchain"} == 0
+          for: 1m
+          labels:
+            severity: critical
+            team: platform
+          annotations:
+            summary: "NatLangChain API is down"
+            description: "NatLangChain API instance {{ $labels.instance }} has been down for more than 1 minute."
+            runbook_url: "https://docs.natlangchain.io/runbooks/api-down"
+
+        # High API latency (P95 > 5s)
+        - alert: NatLangChainHighLatency
+          expr: |
+            histogram_quantile(0.95,
+              sum(rate(http_request_duration_seconds_bucket{job="natlangchain"}[5m])) by (le, endpoint)
+            ) > 5
+          for: 5m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "NatLangChain API high latency"
+            description: "P95 latency for {{ $labels.endpoint }} is {{ $value | printf \"%.2f\" }}s (threshold: 5s)"
+            runbook_url: "https://docs.natlangchain.io/runbooks/high-latency"
+
+        # Critical latency (P99 > 30s)
+        - alert: NatLangChainCriticalLatency
+          expr: |
+            histogram_quantile(0.99,
+              sum(rate(http_request_duration_seconds_bucket{job="natlangchain"}[5m])) by (le, endpoint)
+            ) > 30
+          for: 2m
+          labels:
+            severity: critical
+            team: platform
+          annotations:
+            summary: "NatLangChain API critical latency"
+            description: "P99 latency for {{ $labels.endpoint }} is {{ $value | printf \"%.2f\" }}s (threshold: 30s)"
+
+        # Health check failures
+        - alert: NatLangChainHealthCheckFailing
+          expr: |
+            probe_success{job="natlangchain-blackbox"} == 0
+          for: 2m
+          labels:
+            severity: critical
+            team: platform
+          annotations:
+            summary: "NatLangChain health check failing"
+            description: "Health check at {{ $labels.instance }} has been failing for more than 2 minutes."
+
+    # ==========================================================================
+    # Error Rate Alerts
+    # ==========================================================================
+    - name: natlangchain.api.errors
+      interval: 30s
+      rules:
+        # High error rate (> 5%)
+        - alert: NatLangChainHighErrorRate
+          expr: |
+            sum(rate(http_requests_total{job="natlangchain", status=~"5.."}[5m])) /
+            sum(rate(http_requests_total{job="natlangchain"}[5m])) * 100 > 5
+          for: 5m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "NatLangChain high error rate"
+            description: "Error rate is {{ $value | printf \"%.2f\" }}% (threshold: 5%)"
+            runbook_url: "https://docs.natlangchain.io/runbooks/high-error-rate"
+
+        # Critical error rate (> 20%)
+        - alert: NatLangChainCriticalErrorRate
+          expr: |
+            sum(rate(http_requests_total{job="natlangchain", status=~"5.."}[5m])) /
+            sum(rate(http_requests_total{job="natlangchain"}[5m])) * 100 > 20
+          for: 2m
+          labels:
+            severity: critical
+            team: platform
+          annotations:
+            summary: "NatLangChain critical error rate"
+            description: "Error rate is {{ $value | printf \"%.2f\" }}% (threshold: 20%)"
+
+        # Rate limiting triggered frequently
+        - alert: NatLangChainRateLimitingActive
+          expr: |
+            sum(rate(http_requests_total{job="natlangchain", status="429"}[5m])) > 10
+          for: 5m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "NatLangChain rate limiting active"
+            description: "Rate limit responses: {{ $value | printf \"%.1f\" }}/s"
+
+    # ==========================================================================
+    # Blockchain Health Alerts
+    # ==========================================================================
+    - name: natlangchain.blockchain
+      interval: 60s
+      rules:
+        # Chain validation failing
+        - alert: NatLangChainChainInvalid
+          expr: natlangchain_chain_valid == 0
+          for: 1m
+          labels:
+            severity: critical
+            team: platform
+          annotations:
+            summary: "NatLangChain blockchain validation failing"
+            description: "Blockchain validation has been failing on {{ $labels.instance }}"
+            runbook_url: "https://docs.natlangchain.io/runbooks/chain-invalid"
+
+        # Pending entries queue growing
+        - alert: NatLangChainPendingEntriesHigh
+          expr: natlangchain_pending_entries > 1000
+          for: 10m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "NatLangChain pending entries queue growing"
+            description: "{{ $value }} entries pending (threshold: 1000)"
+
+        # No new blocks mined
+        - alert: NatLangChainNoNewBlocks
+          expr: |
+            increase(natlangchain_blocks_total[1h]) == 0
+          for: 2h
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "No new blocks mined"
+            description: "No new blocks have been mined in the last 2 hours"
+
+    # ==========================================================================
+    # LLM API Alerts
+    # ==========================================================================
+    - name: natlangchain.llm
+      interval: 30s
+      rules:
+        # LLM API failures
+        - alert: NatLangChainLLMAPIFailures
+          expr: |
+            sum(rate(natlangchain_llm_requests_total{status="error"}[5m])) /
+            sum(rate(natlangchain_llm_requests_total[5m])) * 100 > 10
+          for: 5m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "LLM API failure rate high"
+            description: "LLM API failure rate is {{ $value | printf \"%.2f\" }}%"
+
+        # LLM API timeouts
+        - alert: NatLangChainLLMTimeouts
+          expr: |
+            sum(rate(natlangchain_llm_requests_total{status="timeout"}[5m])) > 1
+          for: 5m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "LLM API timeouts occurring"
+            description: "{{ $value | printf \"%.1f\" }} LLM timeouts per second"
+
+        # Circuit breaker open
+        - alert: NatLangChainCircuitBreakerOpen
+          expr: natlangchain_circuit_breaker_state{state="open"} == 1
+          for: 1m
+          labels:
+            severity: critical
+            team: platform
+          annotations:
+            summary: "Circuit breaker {{ $labels.name }} is open"
+            description: "The LLM API circuit breaker is open, blocking requests"
+
+    # ==========================================================================
+    # Resource Utilization Alerts
+    # ==========================================================================
+    - name: natlangchain.resources
+      interval: 30s
+      rules:
+        # High CPU usage
+        - alert: NatLangChainHighCPU
+          expr: |
+            sum(rate(container_cpu_usage_seconds_total{container="natlangchain"}[5m])) by (pod) /
+            sum(container_spec_cpu_quota{container="natlangchain"} / 100000) by (pod) * 100 > 80
+          for: 10m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "NatLangChain high CPU usage"
+            description: "Pod {{ $labels.pod }} CPU usage is {{ $value | printf \"%.1f\" }}%"
+
+        # High memory usage
+        - alert: NatLangChainHighMemory
+          expr: |
+            container_memory_usage_bytes{container="natlangchain"} /
+            container_spec_memory_limit_bytes{container="natlangchain"} * 100 > 85
+          for: 10m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "NatLangChain high memory usage"
+            description: "Pod {{ $labels.pod }} memory usage is {{ $value | printf \"%.1f\" }}%"
+
+        # Pod restarts
+        - alert: NatLangChainPodRestarts
+          expr: |
+            increase(kube_pod_container_status_restarts_total{container="natlangchain"}[1h]) > 3
+          for: 5m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "NatLangChain pod restarting frequently"
+            description: "Pod {{ $labels.pod }} has restarted {{ $value }} times in the last hour"
+
+    # ==========================================================================
+    # Storage & Backup Alerts
+    # ==========================================================================
+    - name: natlangchain.storage
+      interval: 60s
+      rules:
+        # Storage write failures
+        - alert: NatLangChainStorageWriteFailure
+          expr: |
+            sum(rate(natlangchain_storage_operations_total{operation="write", status="error"}[5m])) > 0
+          for: 5m
+          labels:
+            severity: critical
+            team: platform
+          annotations:
+            summary: "NatLangChain storage write failures"
+            description: "Storage write operations are failing"
+
+        # Backup not running
+        - alert: NatLangChainBackupStale
+          expr: |
+            time() - natlangchain_last_backup_timestamp > 86400 * 2
+          for: 1h
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "NatLangChain backup is stale"
+            description: "Last backup was more than 48 hours ago"
+
+        # Disk space low
+        - alert: NatLangChainDiskSpaceLow
+          expr: |
+            (node_filesystem_avail_bytes{mountpoint="/data"} /
+             node_filesystem_size_bytes{mountpoint="/data"}) * 100 < 15
+          for: 30m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "NatLangChain disk space low"
+            description: "Only {{ $value | printf \"%.1f\" }}% disk space remaining"
+
+---
+# ServiceMonitor for Prometheus Operator
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: natlangchain
+  namespace: natlangchain
+  labels:
+    app: natlangchain
+spec:
+  selector:
+    matchLabels:
+      app: natlangchain
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+  namespaceSelector:
+    matchNames:
+      - natlangchain
+
+---
+# PodMonitor for detailed pod metrics
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: natlangchain-pods
+  namespace: natlangchain
+  labels:
+    app: natlangchain
+spec:
+  selector:
+    matchLabels:
+      app: natlangchain
+  podMetricsEndpoints:
+    - port: http
+      path: /metrics
+      interval: 30s

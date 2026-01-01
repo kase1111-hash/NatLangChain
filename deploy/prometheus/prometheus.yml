@@ -1,0 +1,89 @@
+# Prometheus Configuration for NatLangChain
+#
+# This configuration:
+# - Scrapes metrics from NatLangChain API instances
+# - Loads alerting rules
+# - Configures Alertmanager integration
+#
+# Metrics endpoint: http://api:5000/metrics
+
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+  external_labels:
+    cluster: 'natlangchain-production'
+    env: 'production'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # - alertmanager:9093
+
+# Load alerting rules
+rule_files:
+  - '/etc/prometheus/alerts/*.yml'
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          service: 'prometheus'
+
+  # NatLangChain API instances
+  - job_name: 'natlangchain'
+    dns_sd_configs:
+      - names:
+          - 'api'
+        type: 'A'
+        port: 5000
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+      - source_labels: [__address__]
+        regex: '(.+):(\d+)'
+        target_label: __address__
+        replacement: '${1}:5000'
+    metrics_path: /metrics
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # Redis metrics (if redis_exporter is deployed)
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+        labels:
+          service: 'redis'
+    metrics_path: /metrics
+    scrape_interval: 30s
+
+  # PostgreSQL metrics (if postgres_exporter is deployed)
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+        labels:
+          service: 'postgres'
+    metrics_path: /metrics
+    scrape_interval: 30s
+
+  # Nginx metrics (if nginx_exporter is deployed)
+  - job_name: 'nginx'
+    static_configs:
+      - targets: ['nginx-exporter:9113']
+        labels:
+          service: 'nginx'
+    metrics_path: /metrics
+    scrape_interval: 30s
+
+  # Node exporter for host metrics
+  - job_name: 'node'
+    static_configs:
+      - targets: ['node-exporter:9100']
+        labels:
+          service: 'node'
+    metrics_path: /metrics
+    scrape_interval: 30s
