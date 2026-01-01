@@ -107,6 +107,23 @@ except ImportError:
     GossipProtocol = None
     MessagePriority = None
 
+# Import block compression module
+try:
+    from .block_compression import (
+        BlockCompressor,
+        CompressionResult,
+        create_compressor_from_env,
+        compress_block_data,
+        decompress_block_data,
+        HEADER_ACCEPT_ENCODING,
+        HEADER_CONTENT_ENCODING,
+    )
+    HAS_BLOCK_COMPRESSION = True
+except ImportError:
+    HAS_BLOCK_COMPRESSION = False
+    BlockCompressor = None
+    create_compressor_from_env = None
+
 
 # =============================================================================
 # Constants
@@ -997,15 +1014,23 @@ class P2PNetwork:
         if HAS_GOSSIP_PROTOCOL:
             self._init_gossip_protocol()
 
+        # Block Compression (gzip for bandwidth reduction)
+        self.block_compressor: BlockCompressor | None = None
+        self._compression_enabled = False
+        if HAS_BLOCK_COMPRESSION:
+            self._init_compression()
+
         logger.info(f"P2P Network initialized: node_id={self.node_id}, role={role.value}")
         logger.info(f"Security hardening enabled: rate_limit={MAX_MESSAGES_PER_MINUTE}/min, max_peers={MAX_PEERS}")
         if self.nat_manager:
             logger.info("NAT traversal enabled with STUN/TURN support")
         if self.gossip_protocol:
             logger.info("Optimized gossip protocol enabled (Plumtree + adaptive fanout)")
+        if self.block_compressor:
+            logger.info("Block compression enabled (gzip)")
 
     def _setup_session(self):
-        """Set up HTTP session with retry logic."""
+        """Set up HTTP session with retry logic and compression support."""
         self.session = requests.Session()
         retry_strategy = Retry(
             total=MAX_RETRIES,
@@ -1018,7 +1043,8 @@ class P2PNetwork:
         self.session.headers.update({
             "Content-Type": "application/json",
             "X-Node-ID": self.node_id,
-            "X-Node-Role": self.role.value
+            "X-Node-Role": self.role.value,
+            "Accept-Encoding": "gzip, deflate"  # Request compressed responses
         })
 
     def _init_nat_traversal(self):
@@ -1302,6 +1328,78 @@ class P2PNetwork:
         if not self.gossip_protocol:
             return None
         return self.gossip_protocol.get_stats()
+
+    # =========================================================================
+    # Block Compression
+    # =========================================================================
+
+    def _init_compression(self):
+        """Initialize block compression for bandwidth reduction."""
+        if not HAS_BLOCK_COMPRESSION:
+            logger.warning("Block compression module not available")
+            return
+
+        try:
+            self.block_compressor = create_compressor_from_env()
+            if self.block_compressor and self.block_compressor.enabled:
+                self._compression_enabled = True
+                logger.info(
+                    f"Block compression initialized: level={self.block_compressor.compression_level}"
+                )
+            else:
+                logger.info("Block compression disabled by configuration")
+        except Exception as e:
+            logger.error(f"Block compression setup error: {e}")
+            self.block_compressor = None
+
+    def compress_payload(self, data: dict[str, Any]) -> tuple[bytes, dict[str, str]]:
+        """
+        Compress a payload for transmission.
+
+        Args:
+            data: Dictionary to compress
+
+        Returns:
+            Tuple of (compressed bytes, HTTP headers dict)
+        """
+        if not self._compression_enabled or not self.block_compressor:
+            # Return uncompressed JSON
+            import json
+            json_bytes = json.dumps(data, separators=(',', ':')).encode('utf-8')
+            return json_bytes, {"Content-Type": "application/json"}
+
+        result = self.block_compressor.compress(data)
+        headers = self.block_compressor.get_http_headers(result)
+
+        return result.data, headers
+
+    def decompress_response(self, response) -> dict[str, Any]:
+        """
+        Decompress a response from a peer.
+
+        Args:
+            response: HTTP response object
+
+        Returns:
+            Decompressed JSON data
+        """
+        content_encoding = response.headers.get('Content-Encoding', '')
+
+        if 'gzip' in content_encoding and self.block_compressor:
+            try:
+                data, _ = self.block_compressor.decompress_json(response.content)
+                return data
+            except Exception as e:
+                logger.warning(f"Decompression failed, trying raw JSON: {e}")
+                return response.json()
+        else:
+            return response.json()
+
+    def get_compression_stats(self) -> dict[str, Any] | None:
+        """Get block compression statistics."""
+        if not self.block_compressor:
+            return None
+        return self.block_compressor.get_stats()
 
     # =========================================================================
     # Lifecycle Management
@@ -2199,6 +2297,17 @@ class P2PNetwork:
                 "protocol": "basic_flooding",
                 "fanout": BROADCAST_FANOUT
             }
+
+        # Add block compression statistics
+        if self.block_compressor and self._compression_enabled:
+            compression_stats = self.block_compressor.get_stats()
+            stats_data["compression"] = {
+                "enabled": True,
+                "level": self.block_compressor.compression_level,
+                **compression_stats
+            }
+        else:
+            stats_data["compression"] = {"enabled": False}
 
         return stats_data
 
