@@ -373,13 +373,20 @@ class NetworkEnforcement:
         try:
             if self.use_nftables:
                 subprocess.run("nft delete table inet natlangchain_block 2>/dev/null", shell=True)
+                subprocess.run("nft delete table inet natlangchain_allowlist 2>/dev/null", shell=True)
             if self.use_iptables:
                 subprocess.run("iptables -D OUTPUT -j NATLANGCHAIN_BLOCK 2>/dev/null", shell=True)
                 subprocess.run("iptables -D OUTPUT -j NATLANGCHAIN_VPN 2>/dev/null", shell=True)
+                subprocess.run("iptables -D OUTPUT -j NATLANGCHAIN_ALLOWLIST 2>/dev/null", shell=True)
+                subprocess.run("iptables -D INPUT -j NATLANGCHAIN_INBOUND 2>/dev/null", shell=True)
                 subprocess.run("iptables -F NATLANGCHAIN_BLOCK 2>/dev/null", shell=True)
                 subprocess.run("iptables -F NATLANGCHAIN_VPN 2>/dev/null", shell=True)
+                subprocess.run("iptables -F NATLANGCHAIN_ALLOWLIST 2>/dev/null", shell=True)
+                subprocess.run("iptables -F NATLANGCHAIN_INBOUND 2>/dev/null", shell=True)
                 subprocess.run("iptables -X NATLANGCHAIN_BLOCK 2>/dev/null", shell=True)
                 subprocess.run("iptables -X NATLANGCHAIN_VPN 2>/dev/null", shell=True)
+                subprocess.run("iptables -X NATLANGCHAIN_ALLOWLIST 2>/dev/null", shell=True)
+                subprocess.run("iptables -X NATLANGCHAIN_INBOUND 2>/dev/null", shell=True)
 
             self._rules_applied.clear()
             return EnforcementResult(
@@ -391,6 +398,214 @@ class NetworkEnforcement:
             return EnforcementResult(
                 success=False,
                 action="clear_rules",
+                error=str(e)
+            )
+
+    # =========================================================================
+    # Extended Network Admin Features
+    # =========================================================================
+
+    def allowlist_only(self, allowed_ips: list[str], allowed_ports: list[int] | None = None) -> EnforcementResult:
+        """
+        Allowlist mode: Block everything EXCEPT specified IPs/ports.
+        This is stricter than blocklist - denies by default.
+        """
+        if not self.use_iptables:
+            return EnforcementResult(
+                success=False,
+                action="allowlist_only",
+                error="iptables not available"
+            )
+
+        try:
+            cmds = [
+                "iptables -N NATLANGCHAIN_ALLOWLIST 2>/dev/null || true",
+                "iptables -F NATLANGCHAIN_ALLOWLIST",
+                # Allow established connections
+                "iptables -A NATLANGCHAIN_ALLOWLIST -m state --state ESTABLISHED,RELATED -j ACCEPT",
+                # Allow loopback
+                "iptables -A NATLANGCHAIN_ALLOWLIST -o lo -j ACCEPT",
+            ]
+
+            # Add allowed IPs
+            for ip in allowed_ips:
+                if allowed_ports:
+                    for port in allowed_ports:
+                        cmds.append(f"iptables -A NATLANGCHAIN_ALLOWLIST -d {ip} -p tcp --dport {port} -j ACCEPT")
+                else:
+                    cmds.append(f"iptables -A NATLANGCHAIN_ALLOWLIST -d {ip} -j ACCEPT")
+
+            # Drop everything else
+            cmds.append("iptables -A NATLANGCHAIN_ALLOWLIST -j DROP")
+            cmds.append("iptables -I OUTPUT -j NATLANGCHAIN_ALLOWLIST")
+
+            for cmd in cmds:
+                subprocess.run(cmd, shell=True, capture_output=True, timeout=10)
+                self._rules_applied.append(cmd)
+
+            return EnforcementResult(
+                success=True,
+                action="allowlist_only",
+                details={"allowed_ips": allowed_ips, "allowed_ports": allowed_ports}
+            )
+        except Exception as e:
+            return EnforcementResult(
+                success=False,
+                action="allowlist_only",
+                error=str(e)
+            )
+
+    def block_inbound(self, except_ports: list[int] | None = None) -> EnforcementResult:
+        """
+        Block inbound traffic except specified ports.
+
+        Args:
+            except_ports: Ports to allow (e.g., [22, 443, 5000])
+        """
+        if not self.use_iptables:
+            return EnforcementResult(
+                success=False,
+                action="block_inbound",
+                error="iptables not available"
+            )
+
+        try:
+            cmds = [
+                "iptables -N NATLANGCHAIN_INBOUND 2>/dev/null || true",
+                "iptables -F NATLANGCHAIN_INBOUND",
+                # Allow established
+                "iptables -A NATLANGCHAIN_INBOUND -m state --state ESTABLISHED,RELATED -j ACCEPT",
+                # Allow loopback
+                "iptables -A NATLANGCHAIN_INBOUND -i lo -j ACCEPT",
+            ]
+
+            # Allow specified ports
+            if except_ports:
+                for port in except_ports:
+                    cmds.append(f"iptables -A NATLANGCHAIN_INBOUND -p tcp --dport {port} -j ACCEPT")
+
+            # Drop everything else
+            cmds.append("iptables -A NATLANGCHAIN_INBOUND -j DROP")
+            cmds.append("iptables -I INPUT -j NATLANGCHAIN_INBOUND")
+
+            for cmd in cmds:
+                subprocess.run(cmd, shell=True, capture_output=True, timeout=10)
+                self._rules_applied.append(cmd)
+
+            return EnforcementResult(
+                success=True,
+                action="block_inbound",
+                details={"allowed_ports": except_ports or []}
+            )
+        except Exception as e:
+            return EnforcementResult(
+                success=False,
+                action="block_inbound",
+                error=str(e)
+            )
+
+    def rate_limit_outbound(self, limit: str = "100/minute", burst: int = 50) -> EnforcementResult:
+        """
+        Apply rate limiting to outbound connections.
+
+        Args:
+            limit: Rate limit (e.g., "100/minute", "10/second")
+            burst: Burst allowance
+        """
+        if not self.use_iptables:
+            return EnforcementResult(
+                success=False,
+                action="rate_limit_outbound",
+                error="iptables not available"
+            )
+
+        try:
+            cmds = [
+                f"iptables -A OUTPUT -m limit --limit {limit} --limit-burst {burst} -j ACCEPT",
+                "iptables -A OUTPUT -j DROP",
+            ]
+
+            for cmd in cmds:
+                subprocess.run(cmd, shell=True, capture_output=True, timeout=10)
+                self._rules_applied.append(cmd)
+
+            return EnforcementResult(
+                success=True,
+                action="rate_limit_outbound",
+                details={"limit": limit, "burst": burst}
+            )
+        except Exception as e:
+            return EnforcementResult(
+                success=False,
+                action="rate_limit_outbound",
+                error=str(e)
+            )
+
+    def log_connections(self, prefix: str = "NATLANG") -> EnforcementResult:
+        """
+        Enable connection logging for audit purposes.
+
+        Logs new connections to kernel log (view with dmesg or /var/log/kern.log)
+        """
+        if not self.use_iptables:
+            return EnforcementResult(
+                success=False,
+                action="log_connections",
+                error="iptables not available"
+            )
+
+        try:
+            cmds = [
+                f"iptables -A OUTPUT -m state --state NEW -j LOG --log-prefix '{prefix}_OUT: '",
+                f"iptables -A INPUT -m state --state NEW -j LOG --log-prefix '{prefix}_IN: '",
+            ]
+
+            for cmd in cmds:
+                subprocess.run(cmd, shell=True, capture_output=True, timeout=10)
+                self._rules_applied.append(cmd)
+
+            return EnforcementResult(
+                success=True,
+                action="log_connections",
+                details={"prefix": prefix, "log_location": "/var/log/kern.log or dmesg"}
+            )
+        except Exception as e:
+            return EnforcementResult(
+                success=False,
+                action="log_connections",
+                error=str(e)
+            )
+
+    def get_active_rules(self) -> EnforcementResult:
+        """Get list of currently active iptables rules."""
+        if not self.use_iptables:
+            return EnforcementResult(
+                success=False,
+                action="get_active_rules",
+                error="iptables not available"
+            )
+
+        try:
+            result = subprocess.run(
+                "iptables -L -n -v --line-numbers",
+                shell=True,
+                capture_output=True,
+                timeout=10,
+                text=True
+            )
+
+            return EnforcementResult(
+                success=True,
+                action="get_active_rules",
+                details={
+                    "rules": result.stdout,
+                    "natlangchain_rules_applied": len(self._rules_applied)
+                }
+            )
+        except Exception as e:
+            return EnforcementResult(
+                success=False,
+                action="get_active_rules",
                 error=str(e)
             )
 
