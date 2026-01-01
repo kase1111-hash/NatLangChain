@@ -1,0 +1,36 @@
+apiVersion: v2
+name: natlangchain
+description: A Helm chart for NatLangChain - Natural Language Blockchain Platform
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+
+keywords:
+  - blockchain
+  - nlp
+  - natural-language
+  - api
+
+home: https://github.com/kase1111-hash/NatLangChain
+sources:
+  - https://github.com/kase1111-hash/NatLangChain
+
+maintainers:
+  - name: kase1111-hash
+    url: https://github.com/kase1111-hash
+
+dependencies:
+  - name: redis
+    version: "18.x.x"
+    repository: https://charts.bitnami.com/bitnami
+    condition: redis.enabled
+  - name: postgresql
+    version: "13.x.x"
+    repository: https://charts.bitnami.com/bitnami
+    condition: postgresql.enabled
+
+annotations:
+  artifacthub.io/license: MIT
+  artifacthub.io/signKey: |
+    fingerprint: ""
+    url: ""

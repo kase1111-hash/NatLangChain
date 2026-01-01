@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "natlangchain.fullname" . }}
+  labels:
+    {{- include "natlangchain.labels" . | nindent 4 }}
+data:
+  # Flask settings
+  FLASK_ENV: {{ .Values.config.flaskEnv | quote }}
+  FLASK_DEBUG: {{ .Values.config.flaskDebug | quote }}
+
+  # API settings
+  API_RATE_LIMIT: {{ .Values.config.apiRateLimit | quote }}
+  API_TIMEOUT: {{ .Values.config.apiTimeout | quote }}
+
+  # Blockchain settings
+  MINING_DIFFICULTY: {{ .Values.config.miningDifficulty | quote }}
+  CHAIN_VALIDATION_INTERVAL: {{ .Values.config.chainValidationInterval | quote }}
+
+  # Security settings
+  BOUNDARY_MODE: {{ .Values.config.boundaryMode | quote }}
+  ENABLE_RBAC: {{ .Values.config.enableRbac | quote }}
+  JWT_ACCESS_TOKEN_EXPIRES: {{ .Values.config.jwtAccessTokenExpires | quote }}
+
+  # Tracing
+  ENABLE_TRACING: {{ .Values.config.enableTracing | quote }}
+  {{- if .Values.config.otlpEndpoint }}
+  OTLP_ENDPOINT: {{ .Values.config.otlpEndpoint | quote }}
+  {{- end }}
+  TRACING_SAMPLE_RATE: {{ .Values.config.tracingSampleRate | quote }}
+
+  # Logging
+  LOG_LEVEL: {{ .Values.config.logLevel | quote }}
+  LOG_FORMAT: {{ .Values.config.logFormat | quote }}
+
+  # Metrics
+  METRICS_ENABLED: {{ .Values.metrics.enabled | quote }}
