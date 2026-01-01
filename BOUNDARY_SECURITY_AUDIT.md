@@ -484,13 +484,38 @@ def validate_url_for_ssrf(url: str) -> tuple[bool, str | None]:
 - `/api/v1/peers/connect` - Line 7669
 - `/api/v1/peers/register` - Line 7607
 
+#### 4. X-Forwarded-For IP Spoofing (FIXED)
+
+**Problem**: The `get_client_ip()` function trusted X-Forwarded-For headers from any source, allowing attackers to spoof their IP address to bypass rate limiting or logging.
+
+**Solution**: Added trusted proxy configuration in `src/api.py` and `src/api/utils.py`:
+
+```python
+# Only trust X-Forwarded-For from configured proxies
+TRUSTED_PROXIES = set(os.getenv("NATLANGCHAIN_TRUSTED_PROXIES", "").split(","))
+
+def get_client_ip():
+    # Only trust header if request came from trusted proxy
+    if TRUSTED_PROXIES and remote_addr in TRUSTED_PROXIES:
+        # Use rightmost untrusted IP (harder to spoof)
+        ...
+    # Otherwise use direct connection address (secure default)
+    return remote_addr
+```
+
+**Key Security Improvements**:
+- X-Forwarded-For is **NOT trusted by default** (secure default)
+- Must explicitly configure `NATLANGCHAIN_TRUSTED_PROXIES` env var
+- Uses rightmost untrusted IP (harder to spoof than leftmost)
+- Validates request actually came from a trusted proxy before trusting header
+
 ### Files Modified
 
 | File | Changes |
 |------|---------|
 | `src/security_enforcement.py` | Added input validation functions, fixed all command injection vulnerabilities |
-| `src/api/utils.py` | Added SSRF protection utilities |
-| `src/api.py` | Integrated SSRF validation in P2P endpoints |
+| `src/api/utils.py` | Added SSRF protection utilities, fixed X-Forwarded-For spoofing |
+| `src/api.py` | Integrated SSRF validation in P2P endpoints, fixed X-Forwarded-For spoofing |
 
 ### Security Testing Recommendations
 
@@ -523,5 +548,17 @@ def validate_url_for_ssrf(url: str) -> tuple[bool, str | None]:
 | High Issues Found (External) | 8 |
 | Medium Issues Found (External) | 4 |
 | **Critical Issues Fixed (NatLangChain)** | **1** (Command Injection) |
-| **High Issues Fixed (NatLangChain)** | **2** (Input Validation, SSRF) |
+| **High Issues Fixed (NatLangChain)** | **3** (Input Validation, SSRF, X-Forwarded-For Spoofing) |
 | Recommendation | DO NOT use alone for security |
+
+### Remaining External Issues (Boundary-SIEM)
+
+These issues exist in the external Boundary-SIEM repository and cannot be fixed in NatLangChain:
+
+| Issue | Severity | Status |
+|-------|----------|--------|
+| No audit logging for SIEM itself | CRITICAL | External - cannot fix |
+| UDP CEF has no TLS | HIGH | External - cannot fix |
+| No encryption at rest (ZSTD ≠ encryption) | HIGH | Partial - NatLangChain supports optional encryption |
+| Strict mode disabled by default | MEDIUM | External - cannot fix |
+| Auto-purge without backup mandate | MEDIUM | External - cannot fix |
