@@ -1,0 +1,101 @@
+{
+  "timestamp": "2026-01-01 05:27:38",
+  "platform": "linux",
+  "python_version": "3.11.14 (main, Oct 10 2025, 08:54:04) [GCC 13.3.0]",
+  "results": {
+    "raw_entry": {
+      "name": "Raw Entry Submission",
+      "total_transactions": 1000,
+      "total_time_seconds": 0.0036783750011295524,
+      "tps": 271859.1768628595,
+      "avg_latency_ms": 0.0036783750011295524,
+      "p50_latency_ms": 0.0032284999917919777,
+      "p95_latency_ms": 0.005605200013292233,
+      "p99_latency_ms": 0.008060430002387872
+    },
+    "validated_entry": {
+      "name": "Validated Entry Submission",
+      "total_transactions": 500,
+      "total_time_seconds": 0.020283032999543593,
+      "tps": 24651.145615709986,
+      "avg_latency_ms": 0.040566065999087186,
+      "p50_latency_ms": 0.03143499998259358,
+      "p95_latency_ms": 0.10162505001289898,
+      "p99_latency_ms": 0.12421515997175447
+    },
+    "mining": {
+      "name": "Block Mining (Effective Entry TPS)",
+      "total_transactions": 1000,
+      "total_time_seconds": 0.0627129460000329,
+      "tps": 15945.670930520078,
+      "avg_latency_ms": 0.0627129460000333,
+      "p50_latency_ms": 0.02350836999994499,
+      "p95_latency_ms": 0.23087610000004588,
+      "p99_latency_ms": 0.23087610000004588
+    },
+    "full_lifecycle": {
+      "name": "Full Lifecycle (Submit\u2192Mine\u2192Verify)",
+      "total_transactions": 50,
+      "total_time_seconds": 0.007132404999993014,
+      "tps": 7010.258110700244,
+      "avg_latency_ms": 0.14264809999986028,
+      "p50_latency_ms": 0.1074004999850331,
+      "p95_latency_ms": 0.35290360002022664,
+      "p99_latency_ms": 0.4878941900045673
+    },
+    "concurrent": {
+      "name": "Concurrent Submission (Aggregate)",
+      "total_transactions": 400,
+      "total_time_seconds": 0.007281415000022662,
+      "tps": 54934.377452563145,
+      "avg_latency_ms": 0.007797454999547426,
+      "p50_latency_ms": 0.007079500022655338,
+      "p95_latency_ms": 0.010513499975672845,
+      "p99_latency_ms": 0.022895880028954665
+    },
+    "batch_processing": {
+      "10": {
+        "batch_size": 10,
+        "submit_time_ms": 0.1302999999666099,
+        "mine_time_ms": 0.6175050000365445,
+        "total_time_ms": 0.7478050000031544,
+        "tps": 13372.47009575734
+      },
+      "25": {
+        "batch_size": 25,
+        "submit_time_ms": 0.25234600002477237,
+        "mine_time_ms": 0.2900239999803489,
+        "total_time_ms": 0.5423700000051213,
+        "tps": 46093.99487391253
+      },
+      "50": {
+        "batch_size": 50,
+        "submit_time_ms": 0.4916810000281657,
+        "mine_time_ms": 0.9697049999886076,
+        "total_time_ms": 1.4613860000167733,
+        "tps": 34214.09538576811
+      },
+      "100": {
+        "batch_size": 100,
+        "submit_time_ms": 0.9763350000184801,
+        "mine_time_ms": 4.594341999961671,
+        "total_time_ms": 5.570676999980151,
+        "tps": 17951.139511473437
+      },
+      "250": {
+        "batch_size": 250,
+        "submit_time_ms": 2.4436339999738266,
+        "mine_time_ms": 5.459289999976136,
+        "total_time_ms": 7.902923999949962,
+        "tps": 31633.861087564917
+      },
+      "500": {
+        "batch_size": 500,
+        "submit_time_ms": 4.89608599997382,
+        "mine_time_ms": 9.554189999960272,
+        "total_time_ms": 14.450275999934092,
+        "tps": 34601.41522572168
+      }
+    }
+  }
+}
