@@ -338,6 +338,9 @@ class NetworkEnforcement:
         Block ALL outbound network traffic (AIRGAP mode).
 
         This ACTUALLY blocks network, unlike the advisory-only boundary daemon.
+
+        SECURITY: Uses list-based subprocess calls to prevent shell injection.
+        All commands use explicit argument lists instead of shell=True.
         """
         if not (self.use_iptables or self.use_nftables):
             return EnforcementResult(
@@ -348,38 +351,54 @@ class NetworkEnforcement:
 
         try:
             if self.use_nftables:
-                # Use nftables
+                # Use nftables with list-based commands
+                # Note: nftables semicolons are passed directly in args (no shell escaping needed)
                 cmds = [
-                    "nft add table inet natlangchain_block",
-                    "nft add chain inet natlangchain_block output { type filter hook output priority 0 \\; policy drop \\; }",
-                    "nft add rule inet natlangchain_block output ct state established,related accept",
-                    "nft add rule inet natlangchain_block output oif lo accept",
+                    ["nft", "add", "table", "inet", "natlangchain_block"],
+                    ["nft", "add", "chain", "inet", "natlangchain_block", "output",
+                     "{", "type", "filter", "hook", "output", "priority", "0", ";", "policy", "drop", ";", "}"],
+                    ["nft", "add", "rule", "inet", "natlangchain_block", "output",
+                     "ct", "state", "established,related", "accept"],
+                    ["nft", "add", "rule", "inet", "natlangchain_block", "output",
+                     "oif", "lo", "accept"],
                 ]
+                # Track which commands are idempotent (can fail if already exists)
+                idempotent_indices = {0, 1}  # table and chain creation
             else:
-                # Use iptables
+                # Use iptables with list-based commands
+                # SECURITY: No shell=True needed - all args are explicit
                 cmds = [
-                    "iptables -N NATLANGCHAIN_BLOCK 2>/dev/null || true",
-                    "iptables -F NATLANGCHAIN_BLOCK",
-                    "iptables -A NATLANGCHAIN_BLOCK -m state --state ESTABLISHED,RELATED -j ACCEPT",
-                    "iptables -A NATLANGCHAIN_BLOCK -o lo -j ACCEPT",
-                    "iptables -A NATLANGCHAIN_BLOCK -j DROP",
-                    "iptables -I OUTPUT -j NATLANGCHAIN_BLOCK",
+                    ["iptables", "-N", "NATLANGCHAIN_BLOCK"],  # May fail if exists - OK
+                    ["iptables", "-F", "NATLANGCHAIN_BLOCK"],
+                    ["iptables", "-A", "NATLANGCHAIN_BLOCK", "-m", "state",
+                     "--state", "ESTABLISHED,RELATED", "-j", "ACCEPT"],
+                    ["iptables", "-A", "NATLANGCHAIN_BLOCK", "-o", "lo", "-j", "ACCEPT"],
+                    ["iptables", "-A", "NATLANGCHAIN_BLOCK", "-j", "DROP"],
+                    ["iptables", "-I", "OUTPUT", "-j", "NATLANGCHAIN_BLOCK"],
                 ]
+                # First command (chain creation) may fail if chain already exists
+                idempotent_indices = {0}
 
-            for cmd in cmds:
+            for idx, cmd in enumerate(cmds):
                 result = subprocess.run(
                     cmd,
-                    shell=True,
                     capture_output=True,
                     timeout=10
                 )
-                if result.returncode != 0 and "already exists" not in result.stderr.decode():
-                    return EnforcementResult(
-                        success=False,
-                        action="block_all_outbound",
-                        error=f"Command failed: {cmd} - {result.stderr.decode()}"
-                    )
-                self._rules_applied.append(cmd)
+                stderr_text = result.stderr.decode() if result.stderr else ""
+                # Allow failures for idempotent commands (already exists is OK)
+                is_idempotent = idx in idempotent_indices
+                is_already_exists = "already exists" in stderr_text or "File exists" in stderr_text
+
+                if result.returncode != 0 and not (is_idempotent and is_already_exists):
+                    # For chain creation, any failure is acceptable (chain may exist)
+                    if not (is_idempotent and idx == 0):
+                        return EnforcementResult(
+                            success=False,
+                            action="block_all_outbound",
+                            error=f"Command failed: {' '.join(cmd)} - {stderr_text}"
+                        )
+                self._rules_applied.append(" ".join(cmd))
 
             return EnforcementResult(
                 success=True,
