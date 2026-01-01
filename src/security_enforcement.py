@@ -43,6 +43,101 @@ try:
 except ImportError:
     CTYPES_AVAILABLE = False
 
+# Import for input validation
+import ipaddress
+import re
+import shlex
+
+
+# =============================================================================
+# Input Validation Functions (SECURITY FIX)
+# =============================================================================
+
+def validate_ip_address(ip: str) -> tuple[bool, str | None]:
+    """
+    Validate an IP address to prevent command injection.
+
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    if not ip or not isinstance(ip, str):
+        return False, "IP address is required"
+
+    # Remove any whitespace
+    ip = ip.strip()
+
+    # Check for dangerous characters that could enable command injection
+    dangerous_chars = [';', '|', '&', '$', '`', '(', ')', '{', '}', '[', ']',
+                       '<', '>', '!', '\n', '\r', '\\', '"', "'"]
+    for char in dangerous_chars:
+        if char in ip:
+            return False, f"Invalid character in IP address: {char}"
+
+    # Validate as proper IPv4 or IPv6
+    try:
+        addr = ipaddress.ip_address(ip)
+        return True, None
+    except ValueError:
+        pass
+
+    # Also allow CIDR notation for networks
+    try:
+        network = ipaddress.ip_network(ip, strict=False)
+        return True, None
+    except ValueError:
+        return False, f"Invalid IP address format: {ip}"
+
+
+def validate_port(port: int | str) -> tuple[bool, str | None]:
+    """
+    Validate a port number to prevent injection.
+
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    if port is None:
+        return True, None  # Port is optional
+
+    try:
+        port_int = int(port)
+        if 1 <= port_int <= 65535:
+            return True, None
+        return False, f"Port must be between 1 and 65535, got: {port_int}"
+    except (ValueError, TypeError):
+        return False, f"Port must be a valid integer, got: {port}"
+
+
+def validate_interface_name(interface: str) -> tuple[bool, str | None]:
+    """
+    Validate a network interface name to prevent injection.
+
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    if not interface or not isinstance(interface, str):
+        return False, "Interface name is required"
+
+    # Interface names should be alphanumeric with limited special chars
+    if not re.match(r'^[a-zA-Z0-9_-]{1,15}$', interface):
+        return False, f"Invalid interface name: {interface}"
+
+    return True, None
+
+
+def sanitize_log_prefix(prefix: str) -> str:
+    """
+    Sanitize a log prefix to prevent injection.
+
+    Returns:
+        Sanitized prefix string
+    """
+    if not prefix or not isinstance(prefix, str):
+        return "NATLANG"
+
+    # Only allow alphanumeric and underscore
+    sanitized = re.sub(r'[^a-zA-Z0-9_]', '', prefix)
+    return sanitized[:20] if sanitized else "NATLANG"
+
 
 class EnforcementCapability(Enum):
     """Available enforcement capabilities on this system."""
@@ -293,7 +388,11 @@ class NetworkEnforcement:
             )
 
     def block_destination(self, ip: str, port: int | None = None) -> EnforcementResult:
-        """Block a specific destination IP/port."""
+        """
+        Block a specific destination IP/port.
+
+        SECURITY: Input is validated to prevent command injection.
+        """
         if not self.use_iptables:
             return EnforcementResult(
                 success=False,
@@ -301,13 +400,33 @@ class NetworkEnforcement:
                 error="iptables not available"
             )
 
-        try:
-            if port:
-                cmd = f"iptables -A OUTPUT -d {ip} -p tcp --dport {port} -j DROP"
-            else:
-                cmd = f"iptables -A OUTPUT -d {ip} -j DROP"
+        # SECURITY FIX: Validate IP address
+        ip_valid, ip_error = validate_ip_address(ip)
+        if not ip_valid:
+            return EnforcementResult(
+                success=False,
+                action="block_destination",
+                error=f"Invalid IP address: {ip_error}"
+            )
 
-            result = subprocess.run(cmd, shell=True, capture_output=True, timeout=10)
+        # SECURITY FIX: Validate port
+        port_valid, port_error = validate_port(port)
+        if not port_valid:
+            return EnforcementResult(
+                success=False,
+                action="block_destination",
+                error=f"Invalid port: {port_error}"
+            )
+
+        try:
+            # SECURITY FIX: Use list-based args instead of shell=True
+            if port:
+                cmd_args = ["iptables", "-A", "OUTPUT", "-d", ip,
+                           "-p", "tcp", "--dport", str(int(port)), "-j", "DROP"]
+            else:
+                cmd_args = ["iptables", "-A", "OUTPUT", "-d", ip, "-j", "DROP"]
+
+            result = subprocess.run(cmd_args, capture_output=True, timeout=10)
             if result.returncode != 0:
                 return EnforcementResult(
                     success=False,
@@ -315,13 +434,19 @@ class NetworkEnforcement:
                     error=result.stderr.decode()
                 )
 
-            self._rules_applied.append(cmd)
+            self._rules_applied.append(" ".join(cmd_args))
             return EnforcementResult(
                 success=True,
                 action="block_destination",
                 details={"ip": ip, "port": port}
             )
 
+        except subprocess.TimeoutExpired:
+            return EnforcementResult(
+                success=False,
+                action="block_destination",
+                error="Command timed out"
+            )
         except Exception as e:
             return EnforcementResult(
                 success=False,
@@ -332,6 +457,8 @@ class NetworkEnforcement:
     def allow_only_vpn(self, vpn_interface: str = "tun0") -> EnforcementResult:
         """
         TRUSTED mode: Only allow traffic through VPN interface.
+
+        SECURITY: Interface name is validated to prevent command injection.
         """
         if not self.use_iptables:
             return EnforcementResult(
@@ -340,20 +467,37 @@ class NetworkEnforcement:
                 error="iptables not available"
             )
 
+        # SECURITY FIX: Validate interface name
+        iface_valid, iface_error = validate_interface_name(vpn_interface)
+        if not iface_valid:
+            return EnforcementResult(
+                success=False,
+                action="allow_only_vpn",
+                error=f"Invalid interface name: {iface_error}"
+            )
+
         try:
+            # SECURITY FIX: Use list-based subprocess calls
+            # First, create the chain (may already exist)
+            subprocess.run(["iptables", "-N", "NATLANGCHAIN_VPN"],
+                          capture_output=True, timeout=10)
+            # Flush existing rules
+            subprocess.run(["iptables", "-F", "NATLANGCHAIN_VPN"],
+                          capture_output=True, timeout=10)
+
+            # Add VPN rules using list-based args
             cmds = [
-                "iptables -N NATLANGCHAIN_VPN 2>/dev/null || true",
-                "iptables -F NATLANGCHAIN_VPN",
-                f"iptables -A NATLANGCHAIN_VPN -o {vpn_interface} -j ACCEPT",
-                "iptables -A NATLANGCHAIN_VPN -o lo -j ACCEPT",
-                "iptables -A NATLANGCHAIN_VPN -m state --state ESTABLISHED,RELATED -j ACCEPT",
-                "iptables -A NATLANGCHAIN_VPN -j DROP",
-                "iptables -I OUTPUT -j NATLANGCHAIN_VPN",
+                ["iptables", "-A", "NATLANGCHAIN_VPN", "-o", vpn_interface, "-j", "ACCEPT"],
+                ["iptables", "-A", "NATLANGCHAIN_VPN", "-o", "lo", "-j", "ACCEPT"],
+                ["iptables", "-A", "NATLANGCHAIN_VPN", "-m", "state",
+                 "--state", "ESTABLISHED,RELATED", "-j", "ACCEPT"],
+                ["iptables", "-A", "NATLANGCHAIN_VPN", "-j", "DROP"],
+                ["iptables", "-I", "OUTPUT", "-j", "NATLANGCHAIN_VPN"],
             ]
 
-            for cmd in cmds:
-                result = subprocess.run(cmd, shell=True, capture_output=True, timeout=10)
-                self._rules_applied.append(cmd)
+            for cmd_args in cmds:
+                subprocess.run(cmd_args, capture_output=True, timeout=10)
+                self._rules_applied.append(" ".join(cmd_args))
 
             return EnforcementResult(
                 success=True,
@@ -361,6 +505,12 @@ class NetworkEnforcement:
                 details={"vpn_interface": vpn_interface}
             )
 
+        except subprocess.TimeoutExpired:
+            return EnforcementResult(
+                success=False,
+                action="allow_only_vpn",
+                error="Command timed out"
+            )
         except Exception as e:
             return EnforcementResult(
                 success=False,
@@ -371,22 +521,40 @@ class NetworkEnforcement:
     def clear_rules(self) -> EnforcementResult:
         """Remove all NatLangChain firewall rules."""
         try:
+            # SECURITY FIX: Use list-based subprocess calls
             if self.use_nftables:
-                subprocess.run("nft delete table inet natlangchain_block 2>/dev/null", shell=True)
-                subprocess.run("nft delete table inet natlangchain_allowlist 2>/dev/null", shell=True)
+                subprocess.run(["nft", "delete", "table", "inet", "natlangchain_block"],
+                              capture_output=True, timeout=10)
+                subprocess.run(["nft", "delete", "table", "inet", "natlangchain_allowlist"],
+                              capture_output=True, timeout=10)
             if self.use_iptables:
-                subprocess.run("iptables -D OUTPUT -j NATLANGCHAIN_BLOCK 2>/dev/null", shell=True)
-                subprocess.run("iptables -D OUTPUT -j NATLANGCHAIN_VPN 2>/dev/null", shell=True)
-                subprocess.run("iptables -D OUTPUT -j NATLANGCHAIN_ALLOWLIST 2>/dev/null", shell=True)
-                subprocess.run("iptables -D INPUT -j NATLANGCHAIN_INBOUND 2>/dev/null", shell=True)
-                subprocess.run("iptables -F NATLANGCHAIN_BLOCK 2>/dev/null", shell=True)
-                subprocess.run("iptables -F NATLANGCHAIN_VPN 2>/dev/null", shell=True)
-                subprocess.run("iptables -F NATLANGCHAIN_ALLOWLIST 2>/dev/null", shell=True)
-                subprocess.run("iptables -F NATLANGCHAIN_INBOUND 2>/dev/null", shell=True)
-                subprocess.run("iptables -X NATLANGCHAIN_BLOCK 2>/dev/null", shell=True)
-                subprocess.run("iptables -X NATLANGCHAIN_VPN 2>/dev/null", shell=True)
-                subprocess.run("iptables -X NATLANGCHAIN_ALLOWLIST 2>/dev/null", shell=True)
-                subprocess.run("iptables -X NATLANGCHAIN_INBOUND 2>/dev/null", shell=True)
+                # Delete chain references from main chains
+                subprocess.run(["iptables", "-D", "OUTPUT", "-j", "NATLANGCHAIN_BLOCK"],
+                              capture_output=True, timeout=10)
+                subprocess.run(["iptables", "-D", "OUTPUT", "-j", "NATLANGCHAIN_VPN"],
+                              capture_output=True, timeout=10)
+                subprocess.run(["iptables", "-D", "OUTPUT", "-j", "NATLANGCHAIN_ALLOWLIST"],
+                              capture_output=True, timeout=10)
+                subprocess.run(["iptables", "-D", "INPUT", "-j", "NATLANGCHAIN_INBOUND"],
+                              capture_output=True, timeout=10)
+                # Flush chains
+                subprocess.run(["iptables", "-F", "NATLANGCHAIN_BLOCK"],
+                              capture_output=True, timeout=10)
+                subprocess.run(["iptables", "-F", "NATLANGCHAIN_VPN"],
+                              capture_output=True, timeout=10)
+                subprocess.run(["iptables", "-F", "NATLANGCHAIN_ALLOWLIST"],
+                              capture_output=True, timeout=10)
+                subprocess.run(["iptables", "-F", "NATLANGCHAIN_INBOUND"],
+                              capture_output=True, timeout=10)
+                # Delete chains
+                subprocess.run(["iptables", "-X", "NATLANGCHAIN_BLOCK"],
+                              capture_output=True, timeout=10)
+                subprocess.run(["iptables", "-X", "NATLANGCHAIN_VPN"],
+                              capture_output=True, timeout=10)
+                subprocess.run(["iptables", "-X", "NATLANGCHAIN_ALLOWLIST"],
+                              capture_output=True, timeout=10)
+                subprocess.run(["iptables", "-X", "NATLANGCHAIN_INBOUND"],
+                              capture_output=True, timeout=10)
 
             self._rules_applied.clear()
             return EnforcementResult(
@@ -409,6 +577,8 @@ class NetworkEnforcement:
         """
         Allowlist mode: Block everything EXCEPT specified IPs/ports.
         This is stricter than blocklist - denies by default.
+
+        SECURITY: All IPs and ports are validated before use.
         """
         if not self.use_iptables:
             return EnforcementResult(
@@ -417,31 +587,68 @@ class NetworkEnforcement:
                 error="iptables not available"
             )
 
+        # SECURITY FIX: Validate all IP addresses
+        for ip in allowed_ips:
+            ip_valid, ip_error = validate_ip_address(ip)
+            if not ip_valid:
+                return EnforcementResult(
+                    success=False,
+                    action="allowlist_only",
+                    error=f"Invalid IP address: {ip_error}"
+                )
+
+        # SECURITY FIX: Validate all ports
+        if allowed_ports:
+            for port in allowed_ports:
+                port_valid, port_error = validate_port(port)
+                if not port_valid:
+                    return EnforcementResult(
+                        success=False,
+                        action="allowlist_only",
+                        error=f"Invalid port: {port_error}"
+                    )
+
         try:
-            cmds = [
-                "iptables -N NATLANGCHAIN_ALLOWLIST 2>/dev/null || true",
-                "iptables -F NATLANGCHAIN_ALLOWLIST",
-                # Allow established connections
-                "iptables -A NATLANGCHAIN_ALLOWLIST -m state --state ESTABLISHED,RELATED -j ACCEPT",
-                # Allow loopback
-                "iptables -A NATLANGCHAIN_ALLOWLIST -o lo -j ACCEPT",
+            # SECURITY FIX: Use list-based subprocess calls
+            # Create chain (may already exist, suppress error)
+            subprocess.run(["iptables", "-N", "NATLANGCHAIN_ALLOWLIST"],
+                          capture_output=True, timeout=10)
+            # Flush existing rules
+            subprocess.run(["iptables", "-F", "NATLANGCHAIN_ALLOWLIST"],
+                          capture_output=True, timeout=10)
+
+            # Base commands using list-based args
+            base_cmds = [
+                ["iptables", "-A", "NATLANGCHAIN_ALLOWLIST", "-m", "state",
+                 "--state", "ESTABLISHED,RELATED", "-j", "ACCEPT"],
+                ["iptables", "-A", "NATLANGCHAIN_ALLOWLIST", "-o", "lo", "-j", "ACCEPT"],
             ]
 
-            # Add allowed IPs
+            for cmd_args in base_cmds:
+                subprocess.run(cmd_args, capture_output=True, timeout=10)
+                self._rules_applied.append(" ".join(cmd_args))
+
+            # Add allowed IPs using list-based args
             for ip in allowed_ips:
                 if allowed_ports:
                     for port in allowed_ports:
-                        cmds.append(f"iptables -A NATLANGCHAIN_ALLOWLIST -d {ip} -p tcp --dport {port} -j ACCEPT")
+                        cmd_args = ["iptables", "-A", "NATLANGCHAIN_ALLOWLIST",
+                                   "-d", ip, "-p", "tcp", "--dport", str(int(port)), "-j", "ACCEPT"]
+                        subprocess.run(cmd_args, capture_output=True, timeout=10)
+                        self._rules_applied.append(" ".join(cmd_args))
                 else:
-                    cmds.append(f"iptables -A NATLANGCHAIN_ALLOWLIST -d {ip} -j ACCEPT")
+                    cmd_args = ["iptables", "-A", "NATLANGCHAIN_ALLOWLIST", "-d", ip, "-j", "ACCEPT"]
+                    subprocess.run(cmd_args, capture_output=True, timeout=10)
+                    self._rules_applied.append(" ".join(cmd_args))
 
-            # Drop everything else
-            cmds.append("iptables -A NATLANGCHAIN_ALLOWLIST -j DROP")
-            cmds.append("iptables -I OUTPUT -j NATLANGCHAIN_ALLOWLIST")
-
-            for cmd in cmds:
-                subprocess.run(cmd, shell=True, capture_output=True, timeout=10)
-                self._rules_applied.append(cmd)
+            # Drop everything else and insert chain
+            final_cmds = [
+                ["iptables", "-A", "NATLANGCHAIN_ALLOWLIST", "-j", "DROP"],
+                ["iptables", "-I", "OUTPUT", "-j", "NATLANGCHAIN_ALLOWLIST"],
+            ]
+            for cmd_args in final_cmds:
+                subprocess.run(cmd_args, capture_output=True, timeout=10)
+                self._rules_applied.append(" ".join(cmd_args))
 
             return EnforcementResult(
                 success=True,
@@ -461,6 +668,8 @@ class NetworkEnforcement:
 
         Args:
             except_ports: Ports to allow (e.g., [22, 443, 5000])
+
+        SECURITY: All ports are validated before use.
         """
         if not self.use_iptables:
             return EnforcementResult(
@@ -469,28 +678,53 @@ class NetworkEnforcement:
                 error="iptables not available"
             )
 
+        # SECURITY FIX: Validate all ports
+        if except_ports:
+            for port in except_ports:
+                port_valid, port_error = validate_port(port)
+                if not port_valid:
+                    return EnforcementResult(
+                        success=False,
+                        action="block_inbound",
+                        error=f"Invalid port: {port_error}"
+                    )
+
         try:
-            cmds = [
-                "iptables -N NATLANGCHAIN_INBOUND 2>/dev/null || true",
-                "iptables -F NATLANGCHAIN_INBOUND",
-                # Allow established
-                "iptables -A NATLANGCHAIN_INBOUND -m state --state ESTABLISHED,RELATED -j ACCEPT",
-                # Allow loopback
-                "iptables -A NATLANGCHAIN_INBOUND -i lo -j ACCEPT",
+            # SECURITY FIX: Use list-based subprocess calls
+            # Create chain (may already exist)
+            subprocess.run(["iptables", "-N", "NATLANGCHAIN_INBOUND"],
+                          capture_output=True, timeout=10)
+            # Flush existing rules
+            subprocess.run(["iptables", "-F", "NATLANGCHAIN_INBOUND"],
+                          capture_output=True, timeout=10)
+
+            # Base rules using list-based args
+            base_cmds = [
+                ["iptables", "-A", "NATLANGCHAIN_INBOUND", "-m", "state",
+                 "--state", "ESTABLISHED,RELATED", "-j", "ACCEPT"],
+                ["iptables", "-A", "NATLANGCHAIN_INBOUND", "-i", "lo", "-j", "ACCEPT"],
             ]
 
-            # Allow specified ports
+            for cmd_args in base_cmds:
+                subprocess.run(cmd_args, capture_output=True, timeout=10)
+                self._rules_applied.append(" ".join(cmd_args))
+
+            # Allow specified ports using list-based args
             if except_ports:
                 for port in except_ports:
-                    cmds.append(f"iptables -A NATLANGCHAIN_INBOUND -p tcp --dport {port} -j ACCEPT")
+                    cmd_args = ["iptables", "-A", "NATLANGCHAIN_INBOUND",
+                               "-p", "tcp", "--dport", str(int(port)), "-j", "ACCEPT"]
+                    subprocess.run(cmd_args, capture_output=True, timeout=10)
+                    self._rules_applied.append(" ".join(cmd_args))
 
-            # Drop everything else
-            cmds.append("iptables -A NATLANGCHAIN_INBOUND -j DROP")
-            cmds.append("iptables -I INPUT -j NATLANGCHAIN_INBOUND")
-
-            for cmd in cmds:
-                subprocess.run(cmd, shell=True, capture_output=True, timeout=10)
-                self._rules_applied.append(cmd)
+            # Drop everything else and insert chain
+            final_cmds = [
+                ["iptables", "-A", "NATLANGCHAIN_INBOUND", "-j", "DROP"],
+                ["iptables", "-I", "INPUT", "-j", "NATLANGCHAIN_INBOUND"],
+            ]
+            for cmd_args in final_cmds:
+                subprocess.run(cmd_args, capture_output=True, timeout=10)
+                self._rules_applied.append(" ".join(cmd_args))
 
             return EnforcementResult(
                 success=True,
@@ -511,6 +745,8 @@ class NetworkEnforcement:
         Args:
             limit: Rate limit (e.g., "100/minute", "10/second")
             burst: Burst allowance
+
+        SECURITY: Limit and burst values are validated before use.
         """
         if not self.use_iptables:
             return EnforcementResult(
@@ -519,20 +755,55 @@ class NetworkEnforcement:
                 error="iptables not available"
             )
 
+        # SECURITY FIX: Validate limit format (number/unit)
+        if not isinstance(limit, str):
+            return EnforcementResult(
+                success=False,
+                action="rate_limit_outbound",
+                error="Limit must be a string"
+            )
+
+        # Valid format: number/unit (e.g., "100/minute", "10/second", "5/hour")
+        limit_pattern = r'^(\d+)/(second|minute|hour|day)$'
+        if not re.match(limit_pattern, limit):
+            return EnforcementResult(
+                success=False,
+                action="rate_limit_outbound",
+                error=f"Invalid limit format: {limit}. Expected format: number/unit (e.g., '100/minute')"
+            )
+
+        # SECURITY FIX: Validate burst is a positive integer
         try:
+            burst_int = int(burst)
+            if burst_int < 1 or burst_int > 10000:
+                return EnforcementResult(
+                    success=False,
+                    action="rate_limit_outbound",
+                    error=f"Burst must be between 1 and 10000, got: {burst_int}"
+                )
+        except (ValueError, TypeError):
+            return EnforcementResult(
+                success=False,
+                action="rate_limit_outbound",
+                error=f"Burst must be a valid integer, got: {burst}"
+            )
+
+        try:
+            # SECURITY FIX: Use list-based subprocess calls
             cmds = [
-                f"iptables -A OUTPUT -m limit --limit {limit} --limit-burst {burst} -j ACCEPT",
-                "iptables -A OUTPUT -j DROP",
+                ["iptables", "-A", "OUTPUT", "-m", "limit",
+                 "--limit", limit, "--limit-burst", str(burst_int), "-j", "ACCEPT"],
+                ["iptables", "-A", "OUTPUT", "-j", "DROP"],
             ]
 
-            for cmd in cmds:
-                subprocess.run(cmd, shell=True, capture_output=True, timeout=10)
-                self._rules_applied.append(cmd)
+            for cmd_args in cmds:
+                subprocess.run(cmd_args, capture_output=True, timeout=10)
+                self._rules_applied.append(" ".join(cmd_args))
 
             return EnforcementResult(
                 success=True,
                 action="rate_limit_outbound",
-                details={"limit": limit, "burst": burst}
+                details={"limit": limit, "burst": burst_int}
             )
         except Exception as e:
             return EnforcementResult(
@@ -546,6 +817,8 @@ class NetworkEnforcement:
         Enable connection logging for audit purposes.
 
         Logs new connections to kernel log (view with dmesg or /var/log/kern.log)
+
+        SECURITY: Prefix is sanitized before use.
         """
         if not self.use_iptables:
             return EnforcementResult(
@@ -554,20 +827,26 @@ class NetworkEnforcement:
                 error="iptables not available"
             )
 
+        # SECURITY FIX: Sanitize the log prefix
+        safe_prefix = sanitize_log_prefix(prefix)
+
         try:
+            # SECURITY FIX: Use list-based subprocess calls
             cmds = [
-                f"iptables -A OUTPUT -m state --state NEW -j LOG --log-prefix '{prefix}_OUT: '",
-                f"iptables -A INPUT -m state --state NEW -j LOG --log-prefix '{prefix}_IN: '",
+                ["iptables", "-A", "OUTPUT", "-m", "state", "--state", "NEW",
+                 "-j", "LOG", "--log-prefix", f"{safe_prefix}_OUT: "],
+                ["iptables", "-A", "INPUT", "-m", "state", "--state", "NEW",
+                 "-j", "LOG", "--log-prefix", f"{safe_prefix}_IN: "],
             ]
 
-            for cmd in cmds:
-                subprocess.run(cmd, shell=True, capture_output=True, timeout=10)
-                self._rules_applied.append(cmd)
+            for cmd_args in cmds:
+                subprocess.run(cmd_args, capture_output=True, timeout=10)
+                self._rules_applied.append(" ".join(cmd_args))
 
             return EnforcementResult(
                 success=True,
                 action="log_connections",
-                details={"prefix": prefix, "log_location": "/var/log/kern.log or dmesg"}
+                details={"prefix": safe_prefix, "log_location": "/var/log/kern.log or dmesg"}
             )
         except Exception as e:
             return EnforcementResult(
@@ -586,9 +865,9 @@ class NetworkEnforcement:
             )
 
         try:
+            # SECURITY FIX: Use list-based subprocess call
             result = subprocess.run(
-                "iptables -L -n -v --line-numbers",
-                shell=True,
+                ["iptables", "-L", "-n", "-v", "--line-numbers"],
                 capture_output=True,
                 timeout=10,
                 text=True
