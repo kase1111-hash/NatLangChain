@@ -7771,6 +7771,122 @@ def network_stats():
     return jsonify(p2p_network.get_network_stats())
 
 
+# =============================================================================
+# Governance Help API Endpoints
+# =============================================================================
+
+# Try to import governance help system
+try:
+    from governance_help import get_help_system
+    GOVERNANCE_HELP_AVAILABLE = True
+except ImportError:
+    GOVERNANCE_HELP_AVAILABLE = False
+    get_help_system = None
+
+
+@app.route('/api/help/overview', methods=['GET'])
+def help_overview():
+    """Get help system overview."""
+    if not GOVERNANCE_HELP_AVAILABLE:
+        return jsonify({"error": "Governance help not available"}), 503
+    return jsonify(get_help_system().get_help_overview())
+
+
+@app.route('/api/help/ncips', methods=['GET'])
+def list_ncips():
+    """Get list of all NCIPs."""
+    if not GOVERNANCE_HELP_AVAILABLE:
+        return jsonify({"error": "Governance help not available"}), 503
+    return jsonify(get_help_system().get_ncip_list())
+
+
+@app.route('/api/help/ncips/by-category', methods=['GET'])
+def ncips_by_category():
+    """Get NCIPs organized by category."""
+    if not GOVERNANCE_HELP_AVAILABLE:
+        return jsonify({"error": "Governance help not available"}), 503
+    return jsonify(get_help_system().get_ncips_by_category())
+
+
+@app.route('/api/help/ncips/<ncip_id>', methods=['GET'])
+def get_ncip(ncip_id):
+    """Get a specific NCIP."""
+    if not GOVERNANCE_HELP_AVAILABLE:
+        return jsonify({"error": "Governance help not available"}), 503
+    ncip = get_help_system().get_ncip(ncip_id)
+    if not ncip:
+        return jsonify({"error": f"NCIP {ncip_id} not found"}), 404
+    return jsonify(ncip)
+
+
+@app.route('/api/help/ncips/<ncip_id>/full', methods=['GET'])
+def get_ncip_full(ncip_id):
+    """Get full markdown content of an NCIP."""
+    if not GOVERNANCE_HELP_AVAILABLE:
+        return jsonify({"error": "Governance help not available"}), 503
+    content = get_help_system().get_ncip_full_text(ncip_id)
+    if not content:
+        return jsonify({"error": f"NCIP {ncip_id} content not found"}), 404
+    return jsonify({"id": ncip_id, "content": content})
+
+
+@app.route('/api/help/mps', methods=['GET'])
+def list_mps():
+    """Get list of all Mediator Protocol specs."""
+    if not GOVERNANCE_HELP_AVAILABLE:
+        return jsonify({"error": "Governance help not available"}), 503
+    return jsonify(get_help_system().get_mp_list())
+
+
+@app.route('/api/help/mps/<mp_id>', methods=['GET'])
+def get_mp(mp_id):
+    """Get a specific MP spec."""
+    if not GOVERNANCE_HELP_AVAILABLE:
+        return jsonify({"error": "Governance help not available"}), 503
+    mp = get_help_system().get_mp(mp_id)
+    if not mp:
+        return jsonify({"error": f"MP {mp_id} not found"}), 404
+    return jsonify(mp)
+
+
+@app.route('/api/help/concepts', methods=['GET'])
+def list_concepts():
+    """Get all core concepts."""
+    if not GOVERNANCE_HELP_AVAILABLE:
+        return jsonify({"error": "Governance help not available"}), 503
+    return jsonify(get_help_system().get_core_concepts())
+
+
+@app.route('/api/help/concepts/<concept_id>', methods=['GET'])
+def get_concept(concept_id):
+    """Get a specific concept."""
+    if not GOVERNANCE_HELP_AVAILABLE:
+        return jsonify({"error": "Governance help not available"}), 503
+    concept = get_help_system().get_concept(concept_id)
+    if not concept:
+        return jsonify({"error": f"Concept {concept_id} not found"}), 404
+    return jsonify(concept)
+
+
+@app.route('/api/help/philosophy', methods=['GET'])
+def get_philosophy():
+    """Get design philosophy."""
+    if not GOVERNANCE_HELP_AVAILABLE:
+        return jsonify({"error": "Governance help not available"}), 503
+    return jsonify(get_help_system().get_design_philosophy())
+
+
+@app.route('/api/help/search', methods=['GET'])
+def search_governance():
+    """Search governance documentation."""
+    if not GOVERNANCE_HELP_AVAILABLE:
+        return jsonify({"error": "Governance help not available"}), 503
+    query = request.args.get('q', '')
+    if not query:
+        return jsonify([])
+    return jsonify(get_help_system().search_governance(query))
+
+
 @app.errorhandler(404)
 def not_found(error):
     """Handle 404 errors."""

@@ -9,6 +9,7 @@
   import Dashboard from './components/Dashboard.svelte';
   import ChatHelper from './components/ChatHelper.svelte';
   import Settings from './components/Settings.svelte';
+  import HelpCenter from './components/HelpCenter.svelte';
   import DebugWindow from './components/DebugWindow.svelte';
   import { settings, debug } from './lib/stores.js';
 
@@ -99,6 +100,8 @@
               <ContractViewer />
             {:else if currentView === 'search'}
               <SearchPanel />
+            {:else if currentView === 'help'}
+              <HelpCenter />
             {:else if currentView === 'settings'}
               <Settings />
             {/if}
