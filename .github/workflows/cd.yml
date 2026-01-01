@@ -1,0 +1,293 @@
+# NatLangChain CD Pipeline
+#
+# Continuous Deployment for staging and production environments.
+#
+# Triggers:
+# - Push to main: Deploy to staging
+# - Release published: Deploy to production
+#
+# Prerequisites:
+# - Docker registry credentials (DOCKER_USERNAME, DOCKER_PASSWORD)
+# - Kubernetes credentials (KUBE_CONFIG_STAGING, KUBE_CONFIG_PRODUCTION)
+# - Or cloud provider credentials (AWS_*, GCP_*, etc.)
+
+name: CD
+
+on:
+  push:
+    branches: [main, master]
+  release:
+    types: [published]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # ===========================================================================
+  # Build and Push Docker Image
+  # ===========================================================================
+  build-and-push:
+    name: Build & Push Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+      image-digest: ${{ steps.build.outputs.digest }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix=
+
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          format: spdx-json
+          output-file: sbom.spdx.json
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.spdx.json
+
+  # ===========================================================================
+  # Deploy to Staging (on push to main)
+  # ===========================================================================
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.event_name == 'push'
+    environment:
+      name: staging
+      url: https://staging.natlangchain.io
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.28.0'
+
+      - name: Configure kubectl
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBE_CONFIG_STAGING }}" | base64 -d > ~/.kube/config
+        if: ${{ secrets.KUBE_CONFIG_STAGING != '' }}
+
+      - name: Deploy to Kubernetes
+        if: ${{ secrets.KUBE_CONFIG_STAGING != '' }}
+        run: |
+          # Update image tag in deployment
+          kubectl set image deployment/natlangchain \
+            natlangchain=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            -n natlangchain-staging
+
+          # Wait for rollout
+          kubectl rollout status deployment/natlangchain \
+            -n natlangchain-staging \
+            --timeout=300s
+
+      - name: Verify deployment
+        if: ${{ secrets.KUBE_CONFIG_STAGING != '' }}
+        run: |
+          # Wait for pods to be ready
+          kubectl wait --for=condition=ready pod \
+            -l app=natlangchain \
+            -n natlangchain-staging \
+            --timeout=120s
+
+          # Check health endpoint
+          STAGING_URL=$(kubectl get ingress natlangchain -n natlangchain-staging -o jsonpath='{.spec.rules[0].host}')
+          curl -sf "https://${STAGING_URL}/health" || exit 1
+
+      - name: Run smoke tests
+        if: ${{ secrets.KUBE_CONFIG_STAGING != '' }}
+        run: |
+          STAGING_URL=$(kubectl get ingress natlangchain -n natlangchain-staging -o jsonpath='{.spec.rules[0].host}')
+
+          # Health checks
+          curl -sf "https://${STAGING_URL}/health"
+          curl -sf "https://${STAGING_URL}/health/live"
+          curl -sf "https://${STAGING_URL}/health/ready"
+
+          # API check
+          curl -sf "https://${STAGING_URL}/chain" | jq .
+
+      - name: Notify on success
+        if: success()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: success
+          text: "Staging deployment successful! :rocket:"
+          fields: repo,commit,author,action
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        continue-on-error: true
+
+      - name: Notify on failure
+        if: failure()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          text: "Staging deployment failed! :x:"
+          fields: repo,commit,author,action
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        continue-on-error: true
+
+  # ===========================================================================
+  # Deploy to Production (on release)
+  # ===========================================================================
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.event_name == 'release'
+    environment:
+      name: production
+      url: https://api.natlangchain.io
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.28.0'
+
+      - name: Configure kubectl
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBE_CONFIG_PRODUCTION }}" | base64 -d > ~/.kube/config
+        if: ${{ secrets.KUBE_CONFIG_PRODUCTION != '' }}
+
+      - name: Create backup before deployment
+        if: ${{ secrets.KUBE_CONFIG_PRODUCTION != '' }}
+        run: |
+          # Trigger backup job
+          kubectl create job --from=cronjob/natlangchain-backup \
+            pre-deploy-backup-${{ github.sha }} \
+            -n natlangchain || true
+
+          # Wait for backup to complete
+          kubectl wait --for=condition=complete job/pre-deploy-backup-${{ github.sha }} \
+            -n natlangchain \
+            --timeout=300s || true
+
+      - name: Deploy to Kubernetes
+        if: ${{ secrets.KUBE_CONFIG_PRODUCTION != '' }}
+        run: |
+          # Update image tag
+          kubectl set image deployment/natlangchain \
+            natlangchain=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.release.tag_name }} \
+            -n natlangchain
+
+          # Wait for rollout
+          kubectl rollout status deployment/natlangchain \
+            -n natlangchain \
+            --timeout=300s
+
+      - name: Verify deployment
+        if: ${{ secrets.KUBE_CONFIG_PRODUCTION != '' }}
+        run: |
+          # Wait for pods to be ready
+          kubectl wait --for=condition=ready pod \
+            -l app=natlangchain \
+            -n natlangchain \
+            --timeout=120s
+
+          # Health checks
+          curl -sf "https://api.natlangchain.io/health"
+          curl -sf "https://api.natlangchain.io/health/live"
+          curl -sf "https://api.natlangchain.io/health/ready"
+
+      - name: Run production smoke tests
+        if: ${{ secrets.KUBE_CONFIG_PRODUCTION != '' }}
+        run: |
+          # Verify chain is valid
+          curl -sf "https://api.natlangchain.io/chain/validate" | jq -e '.valid == true'
+
+          # Check metrics endpoint
+          curl -sf "https://api.natlangchain.io/metrics" | head -5
+
+      - name: Update release notes
+        uses: softprops/action-gh-release@v1
+        with:
+          append_body: true
+          body: |
+
+            ---
+            **Deployment Status**: ✅ Deployed to production
+            **Image**: `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.release.tag_name }}`
+            **Deployed at**: ${{ github.event.release.published_at }}
+
+      - name: Notify on success
+        if: success()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: success
+          text: "Production deployment of ${{ github.event.release.tag_name }} successful! :tada:"
+          fields: repo,commit,author,action
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        continue-on-error: true
+
+      - name: Notify on failure
+        if: failure()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          text: "Production deployment FAILED! :fire: Rolling back..."
+          fields: repo,commit,author,action
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        continue-on-error: true
+
+      - name: Rollback on failure
+        if: failure() && secrets.KUBE_CONFIG_PRODUCTION != ''
+        run: |
+          kubectl rollout undo deployment/natlangchain -n natlangchain
+          kubectl rollout status deployment/natlangchain -n natlangchain --timeout=300s

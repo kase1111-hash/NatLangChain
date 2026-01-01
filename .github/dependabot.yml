@@ -1,0 +1,126 @@
+# Dependabot Configuration
+#
+# Automated dependency updates for security and freshness.
+# https://docs.github.com/en/code-security/dependabot
+
+version: 2
+
+registries:
+  # Add private registries here if needed
+  # python-index:
+  #   type: python-index
+  #   url: https://pypi.example.com/simple
+  #   username: ${{ secrets.PYPI_USERNAME }}
+  #   password: ${{ secrets.PYPI_PASSWORD }}
+
+updates:
+  # ==========================================================================
+  # Python Dependencies (pip)
+  # ==========================================================================
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "kase1111-hash"
+    labels:
+      - "dependencies"
+      - "python"
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      # Group minor/patch updates together
+      python-minor:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+      # Security updates separately
+      python-security:
+        applies-to: security-updates
+        patterns:
+          - "*"
+    ignore:
+      # Ignore major version updates for stability-critical packages
+      # Uncomment if needed:
+      # - dependency-name: "flask"
+      #   update-types: ["version-update:semver-major"]
+
+  # ==========================================================================
+  # GitHub Actions
+  # ==========================================================================
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "kase1111-hash"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "chore(actions)"
+    groups:
+      actions-minor:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # ==========================================================================
+  # Docker Base Images
+  # ==========================================================================
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 3
+    reviewers:
+      - "kase1111-hash"
+    labels:
+      - "dependencies"
+      - "docker"
+    commit-message:
+      prefix: "chore(docker)"
+
+  # ==========================================================================
+  # npm (if frontend exists)
+  # ==========================================================================
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "kase1111-hash"
+    labels:
+      - "dependencies"
+      - "javascript"
+    commit-message:
+      prefix: "chore(npm)"
+    groups:
+      npm-minor:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    # Skip if directory doesn't exist
+    allow:
+      - dependency-type: "all"
