@@ -385,13 +385,143 @@ For complete security, you need:
 
 ---
 
+## NatLangChain Internal Security Audit (2026-01-01)
+
+Following the Boundary Daemon audit, a comprehensive security audit was performed on NatLangChain itself. The following vulnerabilities were identified and **FIXED**:
+
+### CRITICAL Issues Fixed
+
+#### 1. Command Injection in security_enforcement.py (FIXED)
+
+**Problem**: Multiple methods used `shell=True` with user-controllable input, allowing arbitrary command execution.
+
+**Vulnerable Code (Before)**:
+```python
+# VULNERABLE - user input in f-string passed to shell
+cmd = f"iptables -A OUTPUT -d {ip} -p tcp --dport {port} -j DROP"
+subprocess.run(cmd, shell=True, ...)
+```
+
+**Fixed Code**:
+```python
+# SECURE - validated input, list-based subprocess call
+ip_valid, ip_error = validate_ip_address(ip)
+if not ip_valid:
+    return EnforcementResult(success=False, error=f"Invalid IP: {ip_error}")
+
+cmd_args = ["iptables", "-A", "OUTPUT", "-d", ip, "-p", "tcp", "--dport", str(int(port)), "-j", "DROP"]
+subprocess.run(cmd_args, capture_output=True, timeout=10)
+```
+
+**Methods Fixed**:
+- `block_destination()` - Line 390
+- `allow_only_vpn()` - Line 457
+- `clear_rules()` - Line 521
+- `allowlist_only()` - Line 558
+- `block_inbound()` - Line 647
+- `rate_limit_outbound()` - Line 723
+- `log_connections()` - Line 797
+- `get_active_rules()` - Line 840
+
+### HIGH Issues Fixed
+
+#### 2. Input Validation for Network Commands (FIXED)
+
+**Problem**: IP addresses, ports, and interface names were not validated before use in firewall commands.
+
+**Solution**: Added validation functions in `src/security_enforcement.py`:
+
+```python
+def validate_ip_address(ip: str) -> tuple[bool, str | None]:
+    """Validate IP address format and check for injection characters."""
+
+def validate_port(port: int | str) -> tuple[bool, str | None]:
+    """Validate port number is in valid range (1-65535)."""
+
+def validate_interface_name(interface: str) -> tuple[bool, str | None]:
+    """Validate interface name matches safe pattern."""
+
+def sanitize_log_prefix(prefix: str) -> str:
+    """Sanitize log prefix to alphanumeric only."""
+```
+
+#### 3. SSRF Protection for P2P Endpoints (FIXED)
+
+**Problem**: The `/api/v1/peers/connect` and `/api/v1/peers/register` endpoints accepted user-provided URLs without validation, allowing SSRF attacks to:
+- Scan internal networks
+- Access cloud metadata services (169.254.169.254)
+- Reach internal services
+
+**Solution**: Added SSRF protection in `src/api/utils.py`:
+
+```python
+def validate_url_for_ssrf(url: str) -> tuple[bool, str | None]:
+    """
+    Validate URL to prevent SSRF attacks by:
+    - Blocking internal/private IP ranges
+    - Blocking localhost and loopback addresses
+    - Blocking cloud metadata services
+    - Restricting to http/https schemes
+    """
+```
+
+**Blocked IP Ranges**:
+- 10.0.0.0/8 (Private Class A)
+- 172.16.0.0/12 (Private Class B)
+- 192.168.0.0/16 (Private Class C)
+- 127.0.0.0/8 (Localhost)
+- 169.254.0.0/16 (Link-local/AWS metadata)
+- And more...
+
+**Blocked Hosts**:
+- localhost
+- metadata.google.internal
+- instance-data.ec2.internal
+- metadata.azure.com
+- kubernetes.default
+
+**API Endpoints Protected**:
+- `/api/v1/peers/connect` - Line 7669
+- `/api/v1/peers/register` - Line 7607
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `src/security_enforcement.py` | Added input validation functions, fixed all command injection vulnerabilities |
+| `src/api/utils.py` | Added SSRF protection utilities |
+| `src/api.py` | Integrated SSRF validation in P2P endpoints |
+
+### Security Testing Recommendations
+
+1. **Input Validation Testing**:
+   - Test with malformed IP addresses containing shell metacharacters
+   - Test with negative/overflow port numbers
+   - Test with interface names containing special characters
+
+2. **SSRF Testing**:
+   - Test with localhost URLs
+   - Test with private IP ranges
+   - Test with cloud metadata service URLs
+   - Test with DNS rebinding attacks
+
+3. **Regression Testing**:
+   - Verify legitimate P2P connections still work
+   - Verify firewall rules are applied correctly
+   - Verify audit logging captures security events
+
+---
+
 ## Audit Metadata
 
 | Field | Value |
 |-------|-------|
-| Audit Date | 2026-01-01 |
-| Repositories Analyzed | boundary-daemon-, Boundary-SIEM |
-| Critical Issues Found | 9 |
-| High Issues Found | 8 |
-| Medium Issues Found | 4 |
+| Initial Audit Date | 2026-01-01 |
+| Security Fix Date | 2026-01-01 |
+| Repositories Analyzed | boundary-daemon-, Boundary-SIEM, NatLangChain |
+| Critical Issues Found (External) | 9 |
+| High Issues Found (External) | 8 |
+| Medium Issues Found (External) | 4 |
+| **Critical Issues Fixed (NatLangChain)** | **1** (Command Injection) |
+| **High Issues Fixed (NatLangChain)** | **2** (Input Validation, SSRF) |
 | Recommendation | DO NOT use alone for security |

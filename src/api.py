@@ -225,6 +225,17 @@ except ImportError:
     get_adaptive_cache = None
     make_cache_key = None
 
+# SSRF protection utilities
+try:
+    from api.utils import is_safe_peer_endpoint, validate_url_for_ssrf
+    SSRF_PROTECTION_AVAILABLE = True
+except ImportError:
+    SSRF_PROTECTION_AVAILABLE = False
+    def is_safe_peer_endpoint(endpoint):
+        return True, None
+    def validate_url_for_ssrf(url):
+        return True, None
+
 
 # Load environment variables
 load_dotenv()
@@ -7606,6 +7617,8 @@ def register_peer():
         "chain_height": 100,
         ...
     }
+
+    SECURITY: Endpoint URLs are validated to prevent SSRF attacks.
     """
     if not P2P_AVAILABLE or p2p_network is None:
         return jsonify({"error": "P2P not available"}), 503
@@ -7619,6 +7632,13 @@ def register_peer():
 
     if not peer_id or not endpoint:
         return jsonify({"error": "node_id and endpoint required"}), 400
+
+    # SECURITY FIX: Validate endpoint to prevent SSRF attacks
+    # This endpoint is stored and could be used later to connect back to the peer
+    is_safe, ssrf_error = is_safe_peer_endpoint(endpoint)
+    if not is_safe:
+        logger.warning(f"SSRF attempt blocked in peer registration: {endpoint} - {ssrf_error}")
+        return jsonify({"error": f"Invalid endpoint: {ssrf_error}"}), 400
 
     from p2p_network import NodeRole, PeerInfo, PeerStatus
 
@@ -7664,6 +7684,8 @@ def connect_peer():
     {
         "endpoint": "http://peer:5000"
     }
+
+    SECURITY: Endpoint URLs are validated to prevent SSRF attacks.
     """
     if not P2P_AVAILABLE:
         return jsonify({"error": "P2P not available"}), 503
@@ -7676,6 +7698,12 @@ def connect_peer():
 
     if not endpoint:
         return jsonify({"error": "endpoint required"}), 400
+
+    # SECURITY FIX: Validate endpoint to prevent SSRF attacks
+    is_safe, ssrf_error = is_safe_peer_endpoint(endpoint)
+    if not is_safe:
+        logger.warning(f"SSRF attempt blocked: {endpoint} - {ssrf_error}")
+        return jsonify({"error": f"Invalid endpoint: {ssrf_error}"}), 400
 
     success, peer = p2p_network.connect_to_peer(endpoint)
 
