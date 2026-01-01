@@ -1,0 +1,311 @@
+# NatLangChain Alerting Rules
+#
+# Severity levels:
+#   - critical: Immediate attention required (pages on-call)
+#   - warning: Should be investigated soon
+#   - info: Informational, no immediate action
+
+groups:
+  # ===========================================================================
+  # API Availability & Health
+  # ===========================================================================
+  - name: natlangchain.availability
+    interval: 30s
+    rules:
+      - alert: NatLangChainDown
+        expr: up{job="natlangchain"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "NatLangChain API is down"
+          description: "NatLangChain API instance {{ $labels.instance }} has been down for more than 1 minute."
+          runbook_url: "https://docs.natlangchain.io/runbooks/api-down"
+
+      - alert: NatLangChainHighLatencyP95
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_seconds_bucket{job="natlangchain"}[5m])) by (le, endpoint)
+          ) > 5
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High API latency detected"
+          description: "P95 latency for {{ $labels.endpoint }} is {{ $value | printf \"%.2f\" }}s"
+
+      - alert: NatLangChainHighLatencyP99
+        expr: |
+          histogram_quantile(0.99,
+            sum(rate(http_request_duration_seconds_bucket{job="natlangchain"}[5m])) by (le, endpoint)
+          ) > 30
+        for: 2m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Critical API latency"
+          description: "P99 latency for {{ $labels.endpoint }} is {{ $value | printf \"%.2f\" }}s"
+
+  # ===========================================================================
+  # Error Rates
+  # ===========================================================================
+  - name: natlangchain.errors
+    interval: 30s
+    rules:
+      - alert: NatLangChainHighErrorRate
+        expr: |
+          (
+            sum(rate(http_requests_total{job="natlangchain", status=~"5.."}[5m]))
+            /
+            sum(rate(http_requests_total{job="natlangchain"}[5m]))
+          ) * 100 > 5
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High error rate"
+          description: "Error rate is {{ $value | printf \"%.2f\" }}% (threshold: 5%)"
+
+      - alert: NatLangChainCriticalErrorRate
+        expr: |
+          (
+            sum(rate(http_requests_total{job="natlangchain", status=~"5.."}[5m]))
+            /
+            sum(rate(http_requests_total{job="natlangchain"}[5m]))
+          ) * 100 > 20
+        for: 2m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Critical error rate"
+          description: "Error rate is {{ $value | printf \"%.2f\" }}% (threshold: 20%)"
+
+      - alert: NatLangChainRateLimitingActive
+        expr: |
+          sum(rate(http_requests_total{job="natlangchain", status="429"}[5m])) > 10
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Rate limiting is active"
+          description: "{{ $value | printf \"%.1f\" }} rate limit responses per second"
+
+  # ===========================================================================
+  # Blockchain Health
+  # ===========================================================================
+  - name: natlangchain.blockchain
+    interval: 60s
+    rules:
+      - alert: NatLangChainChainInvalid
+        expr: natlangchain_chain_valid == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Blockchain validation failing"
+          description: "Blockchain validation has failed on {{ $labels.instance }}"
+          runbook_url: "https://docs.natlangchain.io/runbooks/chain-invalid"
+
+      - alert: NatLangChainPendingEntriesHigh
+        expr: natlangchain_pending_entries > 1000
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High pending entries"
+          description: "{{ $value }} entries pending (threshold: 1000)"
+
+      - alert: NatLangChainNoNewBlocks
+        expr: |
+          increase(natlangchain_blocks_total[1h]) == 0
+        for: 2h
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "No new blocks mined"
+          description: "No blocks have been mined in the last 2 hours"
+
+  # ===========================================================================
+  # Security Events
+  # ===========================================================================
+  - name: natlangchain.security
+    interval: 30s
+    rules:
+      - alert: NatLangChainSecurityViolations
+        expr: |
+          sum(increase(natlangchain_security_violations_total[5m])) > 10
+        for: 5m
+        labels:
+          severity: warning
+          team: security
+        annotations:
+          summary: "Security violations detected"
+          description: "{{ $value }} security violations in the last 5 minutes"
+
+      - alert: NatLangChainBoundaryLockdown
+        expr: natlangchain_boundary_mode{mode="lockdown"} == 1
+        for: 1m
+        labels:
+          severity: critical
+          team: security
+        annotations:
+          summary: "System in LOCKDOWN mode"
+          description: "NatLangChain is in emergency lockdown mode"
+
+      - alert: NatLangChainAuthFailures
+        expr: |
+          sum(rate(natlangchain_auth_failures_total[5m])) > 5
+        for: 5m
+        labels:
+          severity: warning
+          team: security
+        annotations:
+          summary: "High authentication failures"
+          description: "{{ $value | printf \"%.1f\" }} auth failures per second"
+
+  # ===========================================================================
+  # Resource Utilization
+  # ===========================================================================
+  - name: natlangchain.resources
+    interval: 30s
+    rules:
+      - alert: NatLangChainHighMemory
+        expr: |
+          process_resident_memory_bytes{job="natlangchain"} / 1024 / 1024 > 500
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is {{ $value | printf \"%.0f\" }}MB"
+
+      - alert: NatLangChainHighCPU
+        expr: |
+          rate(process_cpu_seconds_total{job="natlangchain"}[5m]) * 100 > 80
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage is {{ $value | printf \"%.1f\" }}%"
+
+  # ===========================================================================
+  # LLM API Health
+  # ===========================================================================
+  - name: natlangchain.llm
+    interval: 30s
+    rules:
+      - alert: NatLangChainLLMHighLatency
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(natlangchain_llm_request_duration_seconds_bucket[5m])) by (le, provider)
+          ) > 30
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "LLM API high latency"
+          description: "{{ $labels.provider }} P95 latency is {{ $value | printf \"%.1f\" }}s"
+
+      - alert: NatLangChainLLMErrors
+        expr: |
+          (
+            sum(rate(natlangchain_llm_requests_total{status="error"}[5m])) by (provider)
+            /
+            sum(rate(natlangchain_llm_requests_total[5m])) by (provider)
+          ) * 100 > 10
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "LLM API errors"
+          description: "{{ $labels.provider }} error rate is {{ $value | printf \"%.1f\" }}%"
+
+      - alert: NatLangChainCircuitBreakerOpen
+        expr: natlangchain_circuit_breaker_state{state="open"} == 1
+        for: 1m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Circuit breaker open"
+          description: "Circuit breaker {{ $labels.name }} is open"
+
+  # ===========================================================================
+  # Backup Health
+  # ===========================================================================
+  - name: natlangchain.backup
+    interval: 60s
+    rules:
+      - alert: NatLangChainBackupStale
+        expr: |
+          time() - natlangchain_last_backup_timestamp > 86400 * 2
+        for: 1h
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Backup is stale"
+          description: "Last backup was more than 48 hours ago"
+
+      - alert: NatLangChainBackupFailed
+        expr: natlangchain_last_backup_success == 0
+        for: 30m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Backup failed"
+          description: "The last backup attempt failed"
+
+  # ===========================================================================
+  # Infrastructure (Node Exporter)
+  # ===========================================================================
+  - name: infrastructure
+    interval: 30s
+    rules:
+      - alert: HostHighCPU
+        expr: |
+          100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Host high CPU"
+          description: "{{ $labels.instance }} CPU is {{ $value | printf \"%.1f\" }}%"
+
+      - alert: HostHighMemory
+        expr: |
+          (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Host high memory"
+          description: "{{ $labels.instance }} memory is {{ $value | printf \"%.1f\" }}% used"
+
+      - alert: HostDiskSpaceLow
+        expr: |
+          (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 15
+        for: 30m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Disk space low"
+          description: "{{ $labels.instance }} has {{ $value | printf \"%.1f\" }}% disk space remaining"

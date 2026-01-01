@@ -1,0 +1,17 @@
+# Grafana Dashboard Provisioning
+#
+# Automatically loads dashboards from the dashboards directory
+
+apiVersion: 1
+
+providers:
+  - name: 'NatLangChain Dashboards'
+    orgId: 1
+    folder: 'NatLangChain'
+    folderUid: 'natlangchain'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards

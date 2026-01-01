@@ -1,0 +1,23 @@
+# PodMonitor for detailed pod-level metrics
+#
+# Useful when Service discovery isn't available or for sidecars.
+
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: natlangchain-pods
+  namespace: natlangchain
+  labels:
+    app: natlangchain
+spec:
+  selector:
+    matchLabels:
+      app: natlangchain
+  podMetricsEndpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s
+  namespaceSelector:
+    matchNames:
+      - natlangchain
