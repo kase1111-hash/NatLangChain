@@ -1,0 +1,265 @@
+# NatLangChain Release Workflow
+#
+# Automates semantic versioning and release creation.
+#
+# Triggers:
+# - Manual dispatch with version type selection
+# - Automatically on merge to main with conventional commits
+#
+# Features:
+# - Semantic versioning (major.minor.patch)
+# - Automatic changelog generation
+# - GitHub Release creation
+# - Release notes from conventional commits
+
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: 'Version bump type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      prerelease:
+        description: 'Create as prerelease'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  # ===========================================================================
+  # Determine Version
+  # ===========================================================================
+  version:
+    name: Determine Version
+    runs-on: ubuntu-latest
+    outputs:
+      new_version: ${{ steps.version.outputs.new_version }}
+      current_version: ${{ steps.version.outputs.current_version }}
+      changelog: ${{ steps.changelog.outputs.changelog }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get current version
+        id: current
+        run: |
+          # Try to get version from git tags
+          CURRENT_VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "current_version=${CURRENT_VERSION}" >> $GITHUB_OUTPUT
+          echo "Current version: ${CURRENT_VERSION}"
+
+      - name: Calculate new version
+        id: version
+        run: |
+          CURRENT="${{ steps.current.outputs.current_version }}"
+          # Remove 'v' prefix if present
+          CURRENT="${CURRENT#v}"
+
+          # Split version
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+
+          # Default to 0 if empty
+          MAJOR=${MAJOR:-0}
+          MINOR=${MINOR:-0}
+          PATCH=${PATCH:-0}
+
+          # Bump based on input
+          case "${{ inputs.version_type }}" in
+            major)
+              MAJOR=$((MAJOR + 1))
+              MINOR=0
+              PATCH=0
+              ;;
+            minor)
+              MINOR=$((MINOR + 1))
+              PATCH=0
+              ;;
+            patch)
+              PATCH=$((PATCH + 1))
+              ;;
+          esac
+
+          NEW_VERSION="v${MAJOR}.${MINOR}.${PATCH}"
+
+          if [ "${{ inputs.prerelease }}" == "true" ]; then
+            NEW_VERSION="${NEW_VERSION}-rc.$(date +%Y%m%d%H%M%S)"
+          fi
+
+          echo "new_version=${NEW_VERSION}" >> $GITHUB_OUTPUT
+          echo "current_version=v${CURRENT}" >> $GITHUB_OUTPUT
+          echo "New version: ${NEW_VERSION}"
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          CURRENT="${{ steps.current.outputs.current_version }}"
+
+          # Generate changelog from commits since last tag
+          if git rev-parse "$CURRENT" >/dev/null 2>&1; then
+            CHANGELOG=$(git log ${CURRENT}..HEAD --pretty=format:"- %s (%h)" --no-merges | head -50)
+          else
+            CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges | head -50)
+          fi
+
+          # Escape for GitHub Actions
+          CHANGELOG="${CHANGELOG//'%'/'%25'}"
+          CHANGELOG="${CHANGELOG//$'\n'/'%0A'}"
+          CHANGELOG="${CHANGELOG//$'\r'/'%0D'}"
+
+          echo "changelog=${CHANGELOG}" >> $GITHUB_OUTPUT
+
+  # ===========================================================================
+  # Run Tests Before Release
+  # ===========================================================================
+  test:
+    name: Pre-release Tests
+    runs-on: ubuntu-latest
+    needs: version
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov
+
+      - name: Run tests
+        run: |
+          pytest tests/ -v --tb=short
+
+  # ===========================================================================
+  # Create Release
+  # ===========================================================================
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: [version, test]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Update version in files
+        run: |
+          NEW_VERSION="${{ needs.version.outputs.new_version }}"
+          VERSION_NUM="${NEW_VERSION#v}"
+
+          # Update version in pyproject.toml if exists
+          if [ -f "pyproject.toml" ]; then
+            sed -i "s/^version = .*/version = \"${VERSION_NUM}\"/" pyproject.toml
+          fi
+
+          # Update version in setup.py if exists
+          if [ -f "setup.py" ]; then
+            sed -i "s/version=['\"][^'\"]*['\"]/version='${VERSION_NUM}'/" setup.py
+          fi
+
+          # Update __version__ in src/__init__.py if exists
+          if [ -f "src/__init__.py" ]; then
+            sed -i "s/__version__ = ['\"][^'\"]*['\"]/__version__ = '${VERSION_NUM}'/" src/__init__.py
+          fi
+
+      - name: Commit version bump
+        run: |
+          git add -A
+          git diff --staged --quiet || git commit -m "chore: bump version to ${{ needs.version.outputs.new_version }}"
+
+      - name: Create and push tag
+        run: |
+          git tag -a "${{ needs.version.outputs.new_version }}" -m "Release ${{ needs.version.outputs.new_version }}"
+          git push origin HEAD:${{ github.ref_name }}
+          git push origin "${{ needs.version.outputs.new_version }}"
+
+      - name: Generate release notes
+        id: notes
+        run: |
+          cat << 'EOF' > release_notes.md
+          ## What's Changed
+
+          ${{ needs.version.outputs.changelog }}
+
+          ## Installation
+
+          ```bash
+          pip install natlangchain==${{ needs.version.outputs.new_version }}
+          ```
+
+          Or using Docker:
+
+          ```bash
+          docker pull ghcr.io/${{ github.repository }}:${{ needs.version.outputs.new_version }}
+          ```
+
+          ## Full Changelog
+
+          https://github.com/${{ github.repository }}/compare/${{ needs.version.outputs.current_version }}...${{ needs.version.outputs.new_version }}
+          EOF
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.version.outputs.new_version }}
+          name: Release ${{ needs.version.outputs.new_version }}
+          body_path: release_notes.md
+          draft: false
+          prerelease: ${{ inputs.prerelease }}
+          generate_release_notes: true
+
+      - name: Notify success
+        run: |
+          echo "::notice::Successfully created release ${{ needs.version.outputs.new_version }}"
+
+  # ===========================================================================
+  # Post-Release Notifications
+  # ===========================================================================
+  notify:
+    name: Notify
+    runs-on: ubuntu-latest
+    needs: [version, release]
+    if: always() && needs.release.result == 'success'
+
+    steps:
+      - name: Send Slack notification
+        if: ${{ secrets.SLACK_WEBHOOK_URL != '' }}
+        uses: 8398a7/action-slack@v3
+        with:
+          status: success
+          text: |
+            :rocket: NatLangChain ${{ needs.version.outputs.new_version }} has been released!
+            https://github.com/${{ github.repository }}/releases/tag/${{ needs.version.outputs.new_version }}
+          fields: repo,author
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        continue-on-error: true
