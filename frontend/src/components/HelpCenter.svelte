@@ -1,7 +1,6 @@
 <script>
   import { onMount } from 'svelte';
   import { fade, fly, slide } from 'svelte/transition';
-  import Tooltip from './Tooltip.svelte';
 
   // Tab state
   let activeTab = 'overview';
@@ -19,7 +18,8 @@
   let concepts = {};
   let philosophy = null;
   let loading = true;
-  let error = null;
+  // Error state available for future error handling expansion
+  const _error = null;
 
   // Fetch governance data
   async function fetchGovernanceData() {
@@ -53,127 +53,127 @@
   // Embedded fallback data for when API is not available
   function loadEmbeddedData() {
     helpOverview = {
-      title: "NatLangChain Governance",
-      subtitle: "Comprehensive governance framework for semantic contracts",
+      title: 'NatLangChain Governance',
+      subtitle: 'Comprehensive governance framework for semantic contracts',
       stats: { ncip_count: 15, mp_count: 4, concept_count: 12 },
       highlights: [
-        { title: "15 NCIPs", description: "NatLangChain Improvement Proposals define protocol governance" },
-        { title: "4 Mediator Protocols", description: "Specifications for mediation, disputes, and settlement" },
-        { title: "Human-Centered", description: "Automation assists, humans decide" },
-        { title: "Semantic Validation", description: "Multi-LLM consensus for meaning, not just syntax" }
+        { title: '15 NCIPs', description: 'NatLangChain Improvement Proposals define protocol governance' },
+        { title: '4 Mediator Protocols', description: 'Specifications for mediation, disputes, and settlement' },
+        { title: 'Human-Centered', description: 'Automation assists, humans decide' },
+        { title: 'Semantic Validation', description: 'Multi-LLM consensus for meaning, not just syntax' }
       ]
     };
 
     ncipsByCategory = {
       foundation: {
-        title: "Foundation & Terminology",
-        description: "Core concepts, terms, and semantic governance",
+        title: 'Foundation & Terminology',
+        description: 'Core concepts, terms, and semantic governance',
         ncips: [
-          { id: "NCIP-000", title: "Terminology & Semantics Governance", summary: "Establishes canonical vocabulary" },
-          { id: "NCIP-001", title: "Canonical Term Registry", summary: "Official registry of defined terms" }
+          { id: 'NCIP-000', title: 'Terminology & Semantics Governance', summary: 'Establishes canonical vocabulary' },
+          { id: 'NCIP-001', title: 'Canonical Term Registry', summary: 'Official registry of defined terms' }
         ]
       },
       semantic_integrity: {
-        title: "Semantic Integrity",
-        description: "Drift detection, thresholds, and multilingual support",
+        title: 'Semantic Integrity',
+        description: 'Drift detection, thresholds, and multilingual support',
         ncips: [
-          { id: "NCIP-002", title: "Semantic Drift Thresholds", summary: "D0-D4 drift bands and responses" },
-          { id: "NCIP-003", title: "Multilingual Alignment", summary: "Cross-language semantic preservation" },
-          { id: "NCIP-004", title: "Proof of Understanding", summary: "Semantic verification of comprehension" }
+          { id: 'NCIP-002', title: 'Semantic Drift Thresholds', summary: 'D0-D4 drift bands and responses' },
+          { id: 'NCIP-003', title: 'Multilingual Alignment', summary: 'Cross-language semantic preservation' },
+          { id: 'NCIP-004', title: 'Proof of Understanding', summary: 'Semantic verification of comprehension' }
         ]
       },
       dispute_resolution: {
-        title: "Dispute Resolution",
-        description: "Escalation, locking, appeals, and precedent",
+        title: 'Dispute Resolution',
+        description: 'Escalation, locking, appeals, and precedent',
         ncips: [
-          { id: "NCIP-005", title: "Dispute Escalation", summary: "Cooling periods and semantic locks" },
-          { id: "NCIP-008", title: "Appeals & Precedent", summary: "Case law encoding" }
+          { id: 'NCIP-005', title: 'Dispute Escalation', summary: 'Cooling periods and semantic locks' },
+          { id: 'NCIP-008', title: 'Appeals & Precedent', summary: 'Case law encoding' }
         ]
       },
       trust_reputation: {
-        title: "Trust & Reputation",
-        description: "Validator scoring, mediator dynamics",
+        title: 'Trust & Reputation',
+        description: 'Validator scoring, mediator dynamics',
         ncips: [
-          { id: "NCIP-007", title: "Validator Trust Scoring", summary: "Reliability weighting" },
-          { id: "NCIP-010", title: "Mediator Reputation", summary: "Slashing and market dynamics" },
-          { id: "NCIP-011", title: "Validator-Mediator Coupling", summary: "Role separation" }
+          { id: 'NCIP-007', title: 'Validator Trust Scoring', summary: 'Reliability weighting' },
+          { id: 'NCIP-010', title: 'Mediator Reputation', summary: 'Slashing and market dynamics' },
+          { id: 'NCIP-011', title: 'Validator-Mediator Coupling', summary: 'Role separation' }
         ]
       },
       jurisdiction_compliance: {
-        title: "Jurisdiction & Compliance",
-        description: "Legal bridging and regulatory interfaces",
+        title: 'Jurisdiction & Compliance',
+        description: 'Legal bridging and regulatory interfaces',
         ncips: [
-          { id: "NCIP-006", title: "Jurisdictional Interpretation", summary: "Legal system bridging" },
-          { id: "NCIP-009", title: "Regulatory Interface", summary: "Compliance modules" }
+          { id: 'NCIP-006', title: 'Jurisdictional Interpretation', summary: 'Legal system bridging' },
+          { id: 'NCIP-009', title: 'Regulatory Interface', summary: 'Compliance modules' }
         ]
       },
       human_experience: {
-        title: "Human Experience",
-        description: "UX, cognitive load, emergency handling",
+        title: 'Human Experience',
+        description: 'UX, cognitive load, emergency handling',
         ncips: [
-          { id: "NCIP-012", title: "Human Ratification UX", summary: "Cognitive load limits" },
-          { id: "NCIP-013", title: "Emergency Overrides", summary: "Force majeure handling" }
+          { id: 'NCIP-012', title: 'Human Ratification UX', summary: 'Cognitive load limits' },
+          { id: 'NCIP-013', title: 'Emergency Overrides', summary: 'Force majeure handling' }
         ]
       },
       protocol_evolution: {
-        title: "Protocol Evolution",
-        description: "Amendments, sunset, historical semantics",
+        title: 'Protocol Evolution',
+        description: 'Amendments, sunset, historical semantics',
         ncips: [
-          { id: "NCIP-014", title: "Protocol Amendments", summary: "Constitutional change process" },
-          { id: "NCIP-015", title: "Sunset Clauses", summary: "Archival and historical semantics" }
+          { id: 'NCIP-014', title: 'Protocol Amendments', summary: 'Constitutional change process' },
+          { id: 'NCIP-015', title: 'Sunset Clauses', summary: 'Archival and historical semantics' }
         ]
       }
     };
 
     mpList = [
-      { id: "MP-02", title: "Proof-of-Effort Receipts", summary: "Work recording and verification" },
-      { id: "MP-03", title: "Dispute & Escalation", summary: "Evidence freezing and escalation" },
-      { id: "MP-04", title: "Licensing & Delegation", summary: "Rights and authority delegation" },
-      { id: "MP-05", title: "Settlement & Capitalization", summary: "Economic finality" }
+      { id: 'MP-02', title: 'Proof-of-Effort Receipts', summary: 'Work recording and verification' },
+      { id: 'MP-03', title: 'Dispute & Escalation', summary: 'Evidence freezing and escalation' },
+      { id: 'MP-04', title: 'Licensing & Delegation', summary: 'Rights and authority delegation' },
+      { id: 'MP-05', title: 'Settlement & Capitalization', summary: 'Economic finality' }
     ];
 
     concepts = {
-      entry: { term: "Entry", definition: "A discrete, timestamped record containing prose, metadata, and signatures." },
-      intent: { term: "Intent", definition: "A human-authored expression of desired outcome or commitment." },
-      agreement: { term: "Agreement", definition: "Mutually ratified intents establishing shared understanding." },
-      ratification: { term: "Ratification", definition: "An explicit act of consent confirming understanding." },
-      semantic_drift: { term: "Semantic Drift", definition: "Divergence between original meaning and subsequent interpretation." },
-      proof_of_understanding: { term: "Proof of Understanding", definition: "Evidence of semantic comprehension." },
-      semantic_lock: { term: "Semantic Lock", definition: "A binding freeze of interpretive meaning at a specific time." },
-      cooling_period: { term: "Cooling Period", definition: "Mandatory delay preventing immediate escalation." },
-      mediator: { term: "Mediator", definition: "Entity that helps surface alignment between parties." },
-      validator: { term: "Validator", definition: "Entity that measures semantic validity and drift." },
-      temporal_fixity: { term: "Temporal Fixity", definition: "Binding of meaning to a specific point in time." },
-      settlement: { term: "Settlement", definition: "Final resolution with binding obligations." }
+      entry: { term: 'Entry', definition: 'A discrete, timestamped record containing prose, metadata, and signatures.' },
+      intent: { term: 'Intent', definition: 'A human-authored expression of desired outcome or commitment.' },
+      agreement: { term: 'Agreement', definition: 'Mutually ratified intents establishing shared understanding.' },
+      ratification: { term: 'Ratification', definition: 'An explicit act of consent confirming understanding.' },
+      semantic_drift: { term: 'Semantic Drift', definition: 'Divergence between original meaning and subsequent interpretation.' },
+      proof_of_understanding: { term: 'Proof of Understanding', definition: 'Evidence of semantic comprehension.' },
+      semantic_lock: { term: 'Semantic Lock', definition: 'A binding freeze of interpretive meaning at a specific time.' },
+      cooling_period: { term: 'Cooling Period', definition: 'Mandatory delay preventing immediate escalation.' },
+      mediator: { term: 'Mediator', definition: 'Entity that helps surface alignment between parties.' },
+      validator: { term: 'Validator', definition: 'Entity that measures semantic validity and drift.' },
+      temporal_fixity: { term: 'Temporal Fixity', definition: 'Binding of meaning to a specific point in time.' },
+      settlement: { term: 'Settlement', definition: 'Final resolution with binding obligations.' }
     };
 
     philosophy = {
-      title: "NatLangChain Design Philosophy",
-      subtitle: "Why Non-Determinism is a Feature",
+      title: 'NatLangChain Design Philosophy',
+      subtitle: 'Why Non-Determinism is a Feature',
       principles: [
-        { name: "Human-Centered Recording", summary: "The blockchain provides immutability. Humans provide judgment." },
-        { name: "Semantic, Not Syntactic", summary: "Meaning matters, not exact text matching." },
-        { name: "Multiple Valid Interpretations", summary: "Disagreement is valuable information." },
-        { name: "The Refusal Doctrine", summary: "What we explicitly refuse to automate." },
-        { name: "Temporal Context", summary: "Meaning is bound to time." },
-        { name: "Decentralized Validation", summary: "Multiple LLM providers prevent centralization." }
+        { name: 'Human-Centered Recording', summary: 'The blockchain provides immutability. Humans provide judgment.' },
+        { name: 'Semantic, Not Syntactic', summary: 'Meaning matters, not exact text matching.' },
+        { name: 'Multiple Valid Interpretations', summary: 'Disagreement is valuable information.' },
+        { name: 'The Refusal Doctrine', summary: 'What we explicitly refuse to automate.' },
+        { name: 'Temporal Context', summary: 'Meaning is bound to time.' },
+        { name: 'Decentralized Validation', summary: 'Multiple LLM providers prevent centralization.' }
       ],
       refusal_doctrine: {
         will_not_automate: [
-          "Consent - Only humans can consent",
-          "Agreement - Only humans can agree",
-          "Authority - Only humans can delegate",
-          "Value Finality - Only humans can close",
-          "Dispute Resolution - Only humans judge",
-          "Moral Judgment - No automated ethics"
+          'Consent - Only humans can consent',
+          'Agreement - Only humans can agree',
+          'Authority - Only humans can delegate',
+          'Value Finality - Only humans can close',
+          'Dispute Resolution - Only humans judge',
+          'Moral Judgment - No automated ethics'
         ],
         will_automate: [
-          "Possibility Expansion",
-          "Consistency Checking",
-          "Evidence Collection",
-          "Provenance",
-          "Risk Surfacing",
-          "Mediation Support"
+          'Possibility Expansion',
+          'Consistency Checking',
+          'Evidence Collection',
+          'Provenance',
+          'Risk Surfacing',
+          'Mediation Support'
         ]
       }
     };
