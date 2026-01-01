@@ -1,0 +1,164 @@
+# Alertmanager Configuration for NatLangChain
+#
+# Routes alerts to appropriate channels based on severity and team.
+#
+# Configure your notification channels below:
+# - Slack webhooks
+# - PagerDuty integration
+# - Email SMTP settings
+
+global:
+  # Slack webhook for notifications
+  # slack_api_url: 'https://hooks.slack.com/services/XXX/YYY/ZZZ'
+
+  # SMTP configuration for email alerts
+  # smtp_smarthost: 'smtp.gmail.com:587'
+  # smtp_from: 'alertmanager@natlangchain.io'
+  # smtp_auth_username: 'alertmanager@natlangchain.io'
+  # smtp_auth_password: 'your-app-password'
+
+  # Default settings
+  resolve_timeout: 5m
+
+# Alert templates
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# Routing tree
+route:
+  # Default receiver
+  receiver: 'default-receiver'
+
+  # Group alerts by these labels
+  group_by: ['alertname', 'severity', 'team']
+
+  # Wait before sending first notification
+  group_wait: 30s
+
+  # Wait before sending updated notification
+  group_interval: 5m
+
+  # Wait before resending notification
+  repeat_interval: 4h
+
+  # Child routes for specific routing
+  routes:
+    # Critical alerts -> PagerDuty (immediate)
+    - match:
+        severity: critical
+      receiver: 'critical-alerts'
+      group_wait: 10s
+      repeat_interval: 1h
+
+    # Security alerts -> Security team
+    - match:
+        team: security
+      receiver: 'security-alerts'
+      group_wait: 10s
+
+    # Warning alerts -> Slack
+    - match:
+        severity: warning
+      receiver: 'warning-alerts'
+      repeat_interval: 4h
+
+    # Info alerts -> Slack (less frequent)
+    - match:
+        severity: info
+      receiver: 'info-alerts'
+      repeat_interval: 24h
+
+# Receivers (notification channels)
+receivers:
+  # Default receiver (Slack or email)
+  - name: 'default-receiver'
+    # Slack configuration (uncomment and configure)
+    # slack_configs:
+    #   - channel: '#natlangchain-alerts'
+    #     send_resolved: true
+    #     title: '{{ template "slack.default.title" . }}'
+    #     text: '{{ template "slack.default.text" . }}'
+
+    # Webhook for custom integrations
+    webhook_configs:
+      - url: 'http://localhost:5001/alertmanager/webhook'
+        send_resolved: true
+
+  # Critical alerts (PagerDuty + Slack)
+  - name: 'critical-alerts'
+    # PagerDuty configuration (uncomment and configure)
+    # pagerduty_configs:
+    #   - service_key: 'your-pagerduty-service-key'
+    #     severity: critical
+
+    # Slack for visibility
+    # slack_configs:
+    #   - channel: '#natlangchain-critical'
+    #     send_resolved: true
+    #     color: '{{ if eq .Status "firing" }}danger{{ else }}good{{ end }}'
+    #     title: ':rotating_light: {{ .CommonLabels.alertname }}'
+    #     text: |
+    #       *Status:* {{ .Status | toUpper }}
+    #       *Severity:* {{ .CommonLabels.severity }}
+    #       *Description:* {{ .CommonAnnotations.description }}
+    #       *Runbook:* {{ .CommonAnnotations.runbook_url }}
+
+    webhook_configs:
+      - url: 'http://localhost:5001/alertmanager/critical'
+        send_resolved: true
+
+  # Warning alerts (Slack only)
+  - name: 'warning-alerts'
+    # slack_configs:
+    #   - channel: '#natlangchain-warnings'
+    #     send_resolved: true
+    #     color: 'warning'
+    #     title: ':warning: {{ .CommonLabels.alertname }}'
+
+    webhook_configs:
+      - url: 'http://localhost:5001/alertmanager/warning'
+        send_resolved: true
+
+  # Security alerts
+  - name: 'security-alerts'
+    # slack_configs:
+    #   - channel: '#security-alerts'
+    #     send_resolved: true
+    #     color: 'danger'
+    #     title: ':lock: Security Alert: {{ .CommonLabels.alertname }}'
+
+    webhook_configs:
+      - url: 'http://localhost:5001/alertmanager/security'
+        send_resolved: true
+
+  # Info alerts
+  - name: 'info-alerts'
+    # slack_configs:
+    #   - channel: '#natlangchain-info'
+    #     send_resolved: false
+
+    webhook_configs:
+      - url: 'http://localhost:5001/alertmanager/info'
+        send_resolved: false
+
+# Inhibition rules (prevent duplicate alerts)
+inhibit_rules:
+  # If API is down, don't alert on high latency
+  - source_match:
+      alertname: 'NatLangChainDown'
+    target_match_re:
+      alertname: 'NatLangChain.*Latency.*'
+    equal: ['instance']
+
+  # If chain is invalid, suppress pending entries alert
+  - source_match:
+      alertname: 'NatLangChainChainInvalid'
+    target_match:
+      alertname: 'NatLangChainPendingEntriesHigh'
+
+  # Critical severity inhibits warning for same alert
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'instance']

@@ -1,0 +1,56 @@
+# ServiceMonitor for NatLangChain API
+#
+# Configures Prometheus to scrape metrics from NatLangChain instances.
+# Requires Prometheus Operator to be installed.
+
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: natlangchain-api
+  namespace: natlangchain
+  labels:
+    app: natlangchain
+    release: prometheus  # Match your Prometheus Operator release
+spec:
+  selector:
+    matchLabels:
+      app: natlangchain
+      component: api
+  namespaceSelector:
+    matchNames:
+      - natlangchain
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s
+      honorLabels: true
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_pod_name]
+          targetLabel: pod
+        - sourceLabels: [__meta_kubernetes_namespace]
+          targetLabel: namespace
+      metricRelabelings:
+        # Drop high-cardinality metrics if needed
+        - sourceLabels: [__name__]
+          regex: 'go_gc_.*'
+          action: drop
+---
+# ServiceMonitor for health endpoints
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: natlangchain-health
+  namespace: natlangchain
+  labels:
+    app: natlangchain
+    component: health
+spec:
+  selector:
+    matchLabels:
+      app: natlangchain
+  endpoints:
+    - port: http
+      path: /health
+      interval: 30s
+      scrapeTimeout: 10s

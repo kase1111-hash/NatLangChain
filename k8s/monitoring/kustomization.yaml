@@ -1,0 +1,28 @@
+# Kustomization for NatLangChain Monitoring Stack
+#
+# Deploys Prometheus Operator-based monitoring:
+# - ServiceMonitor for NatLangChain
+# - PrometheusRule for alerts
+# - Grafana dashboards via ConfigMap
+#
+# Prerequisites:
+# - Prometheus Operator installed (kube-prometheus-stack)
+#
+# Usage:
+#   kubectl apply -k k8s/monitoring/
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: natlangchain
+
+resources:
+  - namespace.yaml
+  - servicemonitor.yaml
+  - prometheusrule.yaml
+  - grafana-dashboards.yaml
+  - podmonitor.yaml
+
+commonLabels:
+  app.kubernetes.io/name: natlangchain
+  app.kubernetes.io/component: monitoring
