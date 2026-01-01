@@ -328,3 +328,11 @@ export async function checkNetworkAllowed() {
 export async function getEnforcementStatus() {
   return fetchAPI('/boundary/enforcement');
 }
+
+// ============================================================
+// Dreaming Status (lightweight status polling)
+// ============================================================
+
+export async function getDreamingStatus() {
+  return fetchAPI('/boundary/dreaming');
+}

@@ -834,3 +834,30 @@ def get_enforcement_status():
         return jsonify({"error": "Boundary protection not initialized"}), 503
 
     return jsonify(protection.enforcement.get_enforcement_status())
+
+
+# =============================================================================
+# Dreaming Status
+# =============================================================================
+
+@boundary_bp.route('/dreaming', methods=['GET'])
+def get_dreaming_status():
+    """
+    Get the current dreaming status.
+
+    This endpoint is lightweight and designed to be polled every 5 seconds.
+    No authentication required for status checks.
+
+    Returns:
+        Current system activity status
+    """
+    try:
+        from dreaming import get_dream_status
+        return jsonify(get_dream_status())
+    except ImportError:
+        return jsonify({
+            "message": "Dreaming module not available",
+            "state": "idle",
+            "duration": 0,
+            "timestamp": None
+        })

@@ -1,5 +1,5 @@
 <script>
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { fade, fly } from 'svelte/transition';
   import Navigation from './components/Navigation.svelte';
   import ChainExplorer from './components/ChainExplorer.svelte';
@@ -13,14 +13,36 @@
   import SecurityPanel from './components/SecurityPanel.svelte';
   import DebugWindow from './components/DebugWindow.svelte';
   import { settings, debug } from './lib/stores.js';
+  import { getDreamingStatus } from './lib/api.js';
 
   let currentView = 'dashboard';
   let mounted = false;
   let chatOpen = false;
 
+  // Dreaming status (polls every 5 seconds)
+  let dreamingStatus = { message: 'Initializing...', state: 'idle' };
+  let dreamingInterval;
+
+  async function updateDreamingStatus() {
+    try {
+      dreamingStatus = await getDreamingStatus();
+    } catch (e) {
+      // Silently fail - dreaming is non-critical
+      dreamingStatus = { message: 'Dreaming quietly...', state: 'idle' };
+    }
+  }
+
   onMount(() => {
     mounted = true;
     debug.info('App', 'Application initialized');
+
+    // Start dreaming status polling (every 5 seconds)
+    updateDreamingStatus();
+    dreamingInterval = setInterval(updateDreamingStatus, 5000);
+  });
+
+  onDestroy(() => {
+    if (dreamingInterval) clearInterval(dreamingInterval);
   });
 
   function handleNavigate(event) {
@@ -114,7 +136,13 @@
 
       <footer in:fly={{ y: 20, duration: 600, delay: 300 }}>
         <div class="footer-content">
-          <p>NatLangChain &mdash; Where Natural Language Meets Blockchain</p>
+          <div class="dreaming-status" class:active={dreamingStatus.state === 'active'}>
+            <span class="dreaming-indicator" class:pulse={dreamingStatus.state === 'active'}></span>
+            <span class="dreaming-message">{dreamingStatus.message}</span>
+            {#if dreamingStatus.state === 'active' && dreamingStatus.duration}
+              <span class="dreaming-duration">({dreamingStatus.duration}s)</span>
+            {/if}
+          </div>
           <div class="footer-links">
             <span class="version">v1.0.0</span>
           </div>
@@ -415,6 +443,58 @@
     padding: 4px 10px;
     background: rgba(255, 255, 255, 0.03);
     border-radius: 6px;
+  }
+
+  /* Dreaming status line */
+  .dreaming-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #52525b;
+    font-size: 0.8rem;
+    font-style: italic;
+    transition: color 0.3s ease;
+  }
+
+  .dreaming-status.active {
+    color: #a78bfa;
+  }
+
+  .dreaming-indicator {
+    width: 6px;
+    height: 6px;
+    background: #52525b;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+  }
+
+  .dreaming-indicator.pulse {
+    background: #a78bfa;
+    animation: dreamPulse 1.5s ease-in-out infinite;
+    box-shadow: 0 0 8px rgba(167, 139, 250, 0.5);
+  }
+
+  @keyframes dreamPulse {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.6;
+      transform: scale(1.2);
+    }
+  }
+
+  .dreaming-message {
+    max-width: 400px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .dreaming-duration {
+    color: #71717a;
+    font-size: 0.7rem;
   }
 
   @media (max-width: 768px) {
