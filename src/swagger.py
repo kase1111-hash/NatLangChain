@@ -54,7 +54,7 @@ All errors follow this format:
 }
 ```
         """,
-        "version": "1.0.0",
+        "version": "0.1.0-alpha",
         "contact": {
             "name": "NatLangChain",
             "url": "https://github.com/kase1111-hash/NatLangChain"

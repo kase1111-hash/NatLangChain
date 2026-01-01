@@ -7,7 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+_No unreleased changes._
+
+---
+
+## [0.1.0-alpha] - 2026-01-01
+
 ### Added
+
+#### Boundary Protection System (`src/boundary_*.py`)
+- **Boundary Daemon**: Six security modes (Open, Restricted, Trusted, Airgap, Coldroom, Lockdown)
+- **Boundary SIEM Integration**: Security event monitoring and alerting
+- **Input/Output Protection**: Prompt injection and RAG poisoning detection
+- **Tripwire System**: Automatic security escalation on threshold violations
+- **Human Override Ceremony**: Multi-step verification for security downgrades
+- **Agent Attestation**: Cryptographic verification of AI agent capabilities
+- **Dreaming Status Tracker**: Lightweight system activity monitoring
+
+#### Security Panel GUI (`frontend/src/components/SecurityPanel.svelte`)
+- Complete security management dashboard
+- Five tabs: Overview, Violations, SIEM Alerts, Security Check, History
+- Mode change interface with emergency lockdown button
+- Real-time security statistics display
+- Input security testing interface
+
+#### Centralized Error Handling
+- `BoundaryException` hierarchy for structured error handling
+- Consistent logging across all boundary protection modules
+- Graceful degradation on security check failures
+
+#### Comprehensive Security Tests (`tests/test_exploit_backdoor.py`)
+- 28 exploit and backdoor security tests
+- Prompt injection attack prevention
+- Data exfiltration prevention
+- Privilege escalation prevention
+- Encoded payload detection
 
 #### Helm Chart & Kubernetes (`charts/natlangchain/`)
 - Complete Helm chart for Kubernetes deployment
@@ -143,7 +177,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| 0.1.0-alpha | 2026-01-01 | Boundary protection, Security Panel GUI, SIEM integration |
 | 0.1.0 | 2024-01-15 | Initial release |
 
-[Unreleased]: https://github.com/kase1111-hash/NatLangChain/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/kase1111-hash/NatLangChain/compare/v0.1.0-alpha...HEAD
+[0.1.0-alpha]: https://github.com/kase1111-hash/NatLangChain/compare/v0.1.0...v0.1.0-alpha
 [0.1.0]: https://github.com/kase1111-hash/NatLangChain/releases/tag/v0.1.0

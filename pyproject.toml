@@ -7,7 +7,7 @@ build-backend = "hatchling.build"
 # =============================================================================
 [project]
 name = "natlangchain"
-version = "0.1.0"
+version = "0.1.0-alpha"
 description = "A prose-first, intent-native blockchain protocol using natural language as the primary substrate"
 readme = "README.md"
 license = "CC-BY-SA-4.0"
@@ -24,7 +24,7 @@ keywords = [
     "proof-of-understanding",
 ]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
