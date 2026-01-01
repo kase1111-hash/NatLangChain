@@ -219,3 +219,112 @@ export async function clearChatHistory() {
     method: 'POST',
   });
 }
+
+// ============================================================
+// Boundary Protection Operations
+// ============================================================
+
+export async function getBoundaryStatus() {
+  return fetchAPI('/boundary/status');
+}
+
+export async function getBoundaryStats() {
+  return fetchAPI('/boundary/stats');
+}
+
+export async function getBoundaryMode() {
+  return fetchAPI('/boundary/mode');
+}
+
+export async function setBoundaryMode(mode, reason, triggeredBy = null) {
+  return fetchAPI('/boundary/mode', {
+    method: 'PUT',
+    body: JSON.stringify({ mode, reason, triggered_by: triggeredBy }),
+  });
+}
+
+export async function triggerLockdown(reason) {
+  return fetchAPI('/boundary/mode/lockdown', {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+  });
+}
+
+export async function getModeHistory(limit = 50) {
+  const params = new URLSearchParams({ limit: limit.toString() });
+  return fetchAPI(`/boundary/mode/history?${params}`);
+}
+
+export async function requestOverride(toMode, reason, requestedBy, validityMinutes = 5) {
+  return fetchAPI('/boundary/override/request', {
+    method: 'POST',
+    body: JSON.stringify({
+      to_mode: toMode,
+      reason,
+      requested_by: requestedBy,
+      validity_minutes: validityMinutes,
+    }),
+  });
+}
+
+export async function confirmOverride(requestId, confirmationCode, confirmedBy) {
+  return fetchAPI('/boundary/override/confirm', {
+    method: 'POST',
+    body: JSON.stringify({
+      request_id: requestId,
+      confirmation_code: confirmationCode,
+      confirmed_by: confirmedBy,
+    }),
+  });
+}
+
+export async function checkInput(text, context = 'user_input') {
+  return fetchAPI('/boundary/check/input', {
+    method: 'POST',
+    body: JSON.stringify({ text, context }),
+  });
+}
+
+export async function checkDocument(content, documentId, source) {
+  return fetchAPI('/boundary/check/document', {
+    method: 'POST',
+    body: JSON.stringify({ content, document_id: documentId, source }),
+  });
+}
+
+export async function getBoundaryViolations(limit = 100, severity = null) {
+  const params = new URLSearchParams({ limit: limit.toString() });
+  if (severity) params.append('severity', severity);
+  return fetchAPI(`/boundary/violations?${params}`);
+}
+
+export async function getBoundaryAuditLog(limit = 100, eventType = null) {
+  const params = new URLSearchParams({ limit: limit.toString() });
+  if (eventType) params.append('event_type', eventType);
+  return fetchAPI(`/boundary/audit?${params}`);
+}
+
+export async function getSiemAlerts(status = null, limit = 100) {
+  const params = new URLSearchParams({ limit: limit.toString() });
+  if (status) params.append('status', status);
+  return fetchAPI(`/boundary/siem/alerts?${params}`);
+}
+
+export async function acknowledgeSiemAlert(alertId, note = null) {
+  return fetchAPI(`/boundary/siem/alerts/${alertId}/acknowledge`, {
+    method: 'POST',
+    body: JSON.stringify({ note }),
+  });
+}
+
+export async function checkToolAllowed(toolName) {
+  return fetchAPI(`/boundary/policy/tool/${toolName}`);
+}
+
+export async function checkNetworkAllowed() {
+  return fetchAPI('/boundary/policy/network');
+}
+
+export async function getEnforcementStatus() {
+  return fetchAPI('/boundary/enforcement');
+}

@@ -12,12 +12,28 @@ Implements the BOUNDARY-DAEMON-INTEGRATION.md specification:
 
 import hashlib
 import json
+import logging
 import re
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import Any
+
+try:
+    from boundary_exceptions import (
+        PolicyError,
+        PolicyViolationError,
+        PolicyConfigurationError,
+    )
+except ImportError:
+    from .boundary_exceptions import (
+        PolicyError,
+        PolicyViolationError,
+        PolicyConfigurationError,
+    )
+
+logger = logging.getLogger(__name__)
 
 
 class EnforcementMode(Enum):
@@ -505,6 +521,16 @@ class BoundaryDaemon:
 
         except Exception as e:
             # FAIL-SAFE: Any exception during authorization = BLOCK
+            logger.error(
+                f"Authorization failed (fail-safe block): {e}",
+                extra={
+                    "request_id": request.get("request_id", "unknown"),
+                    "source": request.get("source", "unknown"),
+                    "destination": request.get("destination", "unknown"),
+                    "error": str(e),
+                },
+                exc_info=True
+            )
             return self._block_request(
                 request_id=request.get("request_id", "unknown"),
                 violation_type=ViolationType.POLICY_NOT_FOUND,
@@ -629,6 +655,22 @@ class BoundaryDaemon:
             result=result
         )
         self.audit_log.append(record)
+
+        # Log to logger for monitoring
+        log_level = logging.WARNING if event_type == "authorization_denied" else logging.INFO
+        logger.log(
+            log_level,
+            f"Boundary audit: {event_type}",
+            extra={
+                "audit_id": record.audit_id,
+                "event_type": event_type,
+                "source": source,
+                "destination": destination,
+                "authorized": authorization.get("authorized", False),
+                "result_status": result.get("status", "unknown")
+            }
+        )
+
         return record
 
     def inspect_data(self, data: str, context: dict[str, Any] | None = None) -> dict[str, Any]:

@@ -13,6 +13,7 @@ All endpoints are protected by API key authentication.
 """
 
 import json
+import logging
 
 from flask import Blueprint, jsonify, request
 
@@ -22,8 +23,45 @@ from api.utils import (
     validate_json_schema,
 )
 
+logger = logging.getLogger(__name__)
+
 # Create the blueprint
 boundary_bp = Blueprint('boundary', __name__, url_prefix='/boundary')
+
+
+def _error_response(
+    message: str,
+    status_code: int = 400,
+    error_type: str = "request_error",
+    details: dict = None
+):
+    """
+    Create a structured error response.
+
+    Args:
+        message: Human-readable error message
+        status_code: HTTP status code
+        error_type: Error classification
+        details: Additional error context
+    """
+    response = {
+        "error": message,
+        "error_type": error_type,
+        "status": status_code
+    }
+    if details:
+        response["details"] = details
+
+    logger.warning(
+        f"API error response: {message}",
+        extra={
+            "status_code": status_code,
+            "error_type": error_type,
+            "details": details
+        }
+    )
+
+    return jsonify(response), status_code
 
 
 def _get_protection():
@@ -123,49 +161,80 @@ def set_mode():
     """
     protection = _get_protection()
     if not protection:
-        return jsonify({"error": "Boundary protection not initialized"}), 503
+        return _error_response(
+            "Boundary protection not initialized",
+            status_code=503,
+            error_type="service_unavailable"
+        )
 
     data = request.get_json()
     if not data:
-        return jsonify({"error": "No data provided"}), 400
+        return _error_response("No data provided", error_type="validation_error")
 
     mode_str = data.get("mode")
     reason = data.get("reason", "API request")
     triggered_by = data.get("triggered_by")
 
     if not mode_str:
-        return jsonify({"error": "Mode is required"}), 400
+        return _error_response("Mode is required", error_type="validation_error")
 
     # Validate mode
     valid_modes = ["open", "restricted", "trusted", "airgap", "coldroom", "lockdown"]
     if mode_str.lower() not in valid_modes:
-        return jsonify({
-            "error": f"Invalid mode. Valid modes: {valid_modes}"
-        }), 400
+        return _error_response(
+            f"Invalid mode. Valid modes: {valid_modes}",
+            error_type="validation_error",
+            details={"provided_mode": mode_str, "valid_modes": valid_modes}
+        )
 
     try:
         from boundary_modes import BoundaryMode
         new_mode = BoundaryMode(mode_str.lower())
     except ValueError:
-        return jsonify({"error": f"Invalid mode: {mode_str}"}), 400
+        return _error_response(
+            f"Invalid mode: {mode_str}",
+            error_type="validation_error"
+        )
 
-    transition = protection.set_mode(new_mode, reason, triggered_by)
+    try:
+        transition = protection.set_mode(new_mode, reason, triggered_by)
 
-    if transition.success:
-        return jsonify({
-            "success": True,
-            "transition_id": transition.transition_id,
-            "from_mode": transition.from_mode.value,
-            "to_mode": transition.to_mode.value,
-            "actions_taken": transition.actions_taken
-        })
-    else:
-        return jsonify({
-            "success": False,
-            "error": transition.error,
-            "from_mode": transition.from_mode.value,
-            "to_mode": transition.to_mode.value
-        }), 400
+        if transition.success:
+            logger.info(
+                f"API mode change: {transition.from_mode.value} -> {transition.to_mode.value}",
+                extra={
+                    "transition_id": transition.transition_id,
+                    "triggered_by": triggered_by,
+                    "reason": reason
+                }
+            )
+            return jsonify({
+                "success": True,
+                "transition_id": transition.transition_id,
+                "from_mode": transition.from_mode.value,
+                "to_mode": transition.to_mode.value,
+                "actions_taken": transition.actions_taken
+            })
+        else:
+            return _error_response(
+                transition.error,
+                error_type="mode_transition_failed",
+                details={
+                    "from_mode": transition.from_mode.value,
+                    "to_mode": transition.to_mode.value
+                }
+            )
+    except Exception as e:
+        logger.error(
+            f"Mode transition failed unexpectedly: {e}",
+            extra={"mode": mode_str, "reason": reason},
+            exc_info=True
+        )
+        return _error_response(
+            "Internal error during mode transition",
+            status_code=500,
+            error_type="internal_error"
+        )
 
 
 @boundary_bp.route('/mode/lockdown', methods=['POST'])
@@ -184,19 +253,40 @@ def trigger_lockdown():
     """
     protection = _get_protection()
     if not protection:
-        return jsonify({"error": "Boundary protection not initialized"}), 503
+        return _error_response(
+            "Boundary protection not initialized",
+            status_code=503,
+            error_type="service_unavailable"
+        )
 
     data = request.get_json() or {}
     reason = data.get("reason", "Manual lockdown via API")
 
-    transition = protection.trigger_lockdown(reason)
+    try:
+        logger.warning(
+            f"LOCKDOWN triggered via API",
+            extra={"reason": reason}
+        )
 
-    return jsonify({
-        "success": transition.success,
-        "transition_id": transition.transition_id,
-        "actions_taken": transition.actions_taken,
-        "error": transition.error
-    })
+        transition = protection.trigger_lockdown(reason)
+
+        return jsonify({
+            "success": transition.success,
+            "transition_id": transition.transition_id,
+            "actions_taken": transition.actions_taken,
+            "error": transition.error
+        })
+    except Exception as e:
+        logger.error(
+            f"Lockdown trigger failed: {e}",
+            extra={"reason": reason},
+            exc_info=True
+        )
+        return _error_response(
+            "Failed to trigger lockdown",
+            status_code=500,
+            error_type="internal_error"
+        )
 
 
 @boundary_bp.route('/mode/history', methods=['GET'])
@@ -352,20 +442,51 @@ def check_input():
     """
     protection = _get_protection()
     if not protection:
-        return jsonify({"error": "Boundary protection not initialized"}), 503
+        return _error_response(
+            "Boundary protection not initialized",
+            status_code=503,
+            error_type="service_unavailable"
+        )
 
     data = request.get_json()
     if not data:
-        return jsonify({"error": "No data provided"}), 400
+        return _error_response("No data provided", error_type="validation_error")
 
     text = data.get("text")
     context = data.get("context", "user_input")
 
     if not text:
-        return jsonify({"error": "text is required"}), 400
+        return _error_response("text is required", error_type="validation_error")
 
-    result = protection.check_input(text, context)
-    return jsonify(result.to_dict())
+    try:
+        result = protection.check_input(text, context)
+
+        # Log if threat detected
+        result_dict = result.to_dict()
+        if result_dict.get("blocked", False) or result_dict.get("threat_detected", False):
+            logger.warning(
+                f"Threat detected in input check",
+                extra={
+                    "context": context,
+                    "text_length": len(text),
+                    "risk_level": result_dict.get("risk_level"),
+                    "threat_category": result_dict.get("threat_category")
+                }
+            )
+
+        return jsonify(result_dict)
+    except Exception as e:
+        logger.error(
+            f"Input check failed: {e}",
+            extra={"context": context, "text_length": len(text)},
+            exc_info=True
+        )
+        # Fail-safe: return as blocked when check fails
+        return jsonify({
+            "blocked": True,
+            "error": "Security check failed - treating as blocked for safety",
+            "risk_level": "high"
+        })
 
 
 @boundary_bp.route('/check/document', methods=['POST'])
