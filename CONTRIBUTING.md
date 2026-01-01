@@ -100,4 +100,4 @@ By contributing, you agree that your contributions will be licensed under the pr
 
 **Questions?** Open an issue or consult the [FAQ](FAQ.md).
 
-**Last Updated:** December 23, 2025
+**Last Updated:** January 1, 2026

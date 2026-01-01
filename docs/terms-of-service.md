@@ -1,6 +1,6 @@
 Terms of Service
 
-Effective Date: Draft — December 2025
+Effective Date: Draft — January 2026
 
 These Terms of Service ("Terms") govern your access to and use of NatLangChain, a decentralized, prose-first intent ledger and associated reference implementations, interfaces, and services (collectively, the "System").
 
@@ -208,4 +208,4 @@ NatLangChain records intent. It does not watch people, judge them, or act on the
 
 That boundary defines the System.
 
-Last updated: Draft — December 2025
+Last updated: Draft — January 2026

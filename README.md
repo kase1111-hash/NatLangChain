@@ -1,4 +1,4 @@
-NatLangChain — Summary (December 18, 2025)
+NatLangChain — Summary (January 1, 2026)
 NatLangChain is a prose-first, intent-native blockchain protocol whose sole purpose is to record explicit human intent in natural language and let the system find alignment.
 “Post intent. Let the system find alignment.”
 That is the entire mechanism.
@@ -51,7 +51,7 @@ Infinite fearless alignments.
 
 NatLangChain: A Natural Language-Native Distributed Ledger
 Prior Art Publication
-Date: December 15, 2025
+Date: January 1, 2026
 License: Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)
 
 ## Implementation Status

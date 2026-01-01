@@ -52,4 +52,4 @@ This Code of Conduct is adapted from the [Contributor Covenant](https://www.cont
 
 ---
 
-**Last Updated:** December 23, 2025
+**Last Updated:** January 1, 2026

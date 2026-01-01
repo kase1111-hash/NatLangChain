@@ -1,5 +1,5 @@
 # NatLangChain Technical Specification
-## Updated: December 24, 2025
+## Updated: January 1, 2026
 
 ---
 
