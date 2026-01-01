@@ -43,6 +43,7 @@ dependencies = [
     "sentence-transformers>=2.2.0",
     "numpy>=1.20.0",
     "cryptography>=41.0.0",
+    "requests>=2.28.0",  # For Ollama/llama.cpp HTTP clients
 ]
 
 [project.optional-dependencies]
@@ -59,6 +60,44 @@ dev = [
     "types-requests>=2.31.0",
     "types-Flask>=1.1.0",
 ]
+
+# =============================================================================
+# LLM Provider Dependencies (Multi-Provider Consensus)
+# =============================================================================
+# These address the centralization risk: "Unlike PoW/PoS where anyone can
+# participate, LLM validation requires API access" - by supporting 6+ providers
+# including local options, any node can participate without cloud dependency.
+
+# OpenAI GPT-4/GPT-4o (cloud) - Breadth specialist
+openai = [
+    "openai>=1.0.0",
+]
+
+# Google Gemini (cloud) - Balanced capabilities
+gemini = [
+    "google-generativeai>=0.3.0",
+]
+
+# xAI Grok (cloud) - Logic specialist (uses OpenAI-compatible API)
+grok = [
+    "openai>=1.0.0",
+]
+
+# All cloud LLM providers
+llm-cloud = [
+    "openai>=1.0.0",
+    "google-generativeai>=0.3.0",
+]
+
+# All LLM providers (cloud + local support via requests)
+llm-all = [
+    "openai>=1.0.0",
+    "google-generativeai>=0.3.0",
+]
+
+# =============================================================================
+# Infrastructure Dependencies
+# =============================================================================
 
 # Redis support (distributed locking, caching, coordination)
 redis = [
@@ -77,12 +116,14 @@ production = [
     "gunicorn>=21.0.0",
 ]
 
-# All optional features
+# All optional features (including all LLM providers)
 all = [
     "fido2>=1.1.0",  # Hardware security key support
     "redis>=4.0.0",
     "psycopg2-binary>=2.9.0",
     "gunicorn>=21.0.0",
+    "openai>=1.0.0",
+    "google-generativeai>=0.3.0",
 ]
 
 [project.scripts]
