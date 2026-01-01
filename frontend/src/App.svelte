@@ -136,13 +136,17 @@
 
       <footer in:fly={{ y: 20, duration: 600, delay: 300 }}>
         <div class="footer-content">
-          <div class="dreaming-status" class:active={dreamingStatus.state === 'active'}>
-            <span class="dreaming-indicator" class:pulse={dreamingStatus.state === 'active'}></span>
-            <span class="dreaming-message">{dreamingStatus.message}</span>
-            {#if dreamingStatus.state === 'active' && dreamingStatus.duration}
-              <span class="dreaming-duration">({dreamingStatus.duration}s)</span>
-            {/if}
-          </div>
+          {#if dreamingStatus.message}
+            <div class="dreaming-status" class:active={dreamingStatus.state === 'active'} in:fade={{ duration: 200 }} out:fade={{ duration: 200 }}>
+              <span class="dreaming-indicator" class:pulse={dreamingStatus.state === 'active'}></span>
+              <span class="dreaming-message">{dreamingStatus.message}</span>
+              {#if dreamingStatus.state === 'active' && dreamingStatus.duration}
+                <span class="dreaming-duration">({dreamingStatus.duration}s)</span>
+              {/if}
+            </div>
+          {:else}
+            <div class="footer-spacer"></div>
+          {/if}
           <div class="footer-links">
             <span class="version">v1.0.0</span>
           </div>

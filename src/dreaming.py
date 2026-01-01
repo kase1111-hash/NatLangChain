@@ -98,16 +98,18 @@ class DreamingTracker:
         Get current dreaming status.
 
         Returns a dict with:
-        - message: Current status message
+        - message: Current status message (empty string when idle)
         - state: 'active', 'completed', or 'idle'
         - duration: How long the current activity has been running
         - timestamp: ISO timestamp
+
+        When idle, message is empty - only shows status during actual activity.
         """
         now = time.time()
 
         with self._lock:
             if self._current and not self._current.completed:
-                # Active operation
+                # Active operation - show what's happening
                 duration = now - self._current.started_at
                 return {
                     "message": self._current.message,
@@ -117,7 +119,7 @@ class DreamingTracker:
                 }
 
             if self._last_completed and (now - self._last_completed.completed_at) < 5:
-                # Recently completed (within 5 seconds)
+                # Recently completed (within 5 seconds) - show success
                 return {
                     "message": f"✓ {self._last_completed.message}",
                     "state": "completed",
@@ -125,15 +127,11 @@ class DreamingTracker:
                     "timestamp": datetime.utcnow().isoformat() + "Z"
                 }
 
-            # Idle - cycle through idle messages
-            self._idle_index = (self._idle_index + 1) % len(self._idle_messages)
-            uptime = round(now - self._startup_time)
-
+            # Idle - return empty message (nothing to show)
             return {
-                "message": self._idle_messages[self._idle_index],
+                "message": "",
                 "state": "idle",
                 "duration": 0,
-                "uptime": uptime,
                 "timestamp": datetime.utcnow().isoformat() + "Z"
             }
 
