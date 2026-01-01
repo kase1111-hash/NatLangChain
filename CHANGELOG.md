@@ -129,7 +129,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Zero-knowledge privacy features
 - Docker and docker-compose configuration
 - GitHub Actions CI/CD pipeline
-- Comprehensive test suite (950+ tests)
+- Comprehensive test suite (1300+ tests)
 
 ### Security
 - API key authentication

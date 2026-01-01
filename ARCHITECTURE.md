@@ -59,7 +59,7 @@ NatLangChain transforms professional relationships by using natural language as 
 
 ```
 NatLangChain/
-├── src/                    # Python source code (43 modules)
+├── src/                    # Python source code (78 modules)
 │   ├── api/               # NEW: Modular API blueprints
 │   │   ├── __init__.py    # Blueprint registration
 │   │   ├── core.py        # Core chain operations
@@ -72,7 +72,7 @@ NatLangChain/
 │   ├── validator.py       # LLM-powered validation
 │   └── ...                # Feature modules
 │
-├── tests/                 # Test suite (30+ test files)
+├── tests/                 # Test suite (46 test files)
 ├── frontend/             # Svelte + Tauri desktop app
 ├── docs/                 # Documentation (NCIP framework)
 ├── specs/               # Integration specifications

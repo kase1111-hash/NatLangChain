@@ -3,7 +3,7 @@ Consolidated NCIP Index
 Document: NCIP-000+
 Status: Canonical
 Applies To: All NatLangChain validators, mediators, agents, governance processes
-Last Updated: December 23, 2025
+Last Updated: January 1, 2026
 
 NCIP Registry (001–015)
 NCIP	Title	Scope	Depends On
@@ -142,4 +142,4 @@ NCIP-012 (Human Ratification UX & Cognitive Load Limits) — Cognitive load meas
 
 NCIP-013 (Emergency Overrides, Force Majeure & Semantic Fallbacks) — Formal override protocol not yet specified
 
-Last reviewed: December 23, 2025
+Last reviewed: January 1, 2026

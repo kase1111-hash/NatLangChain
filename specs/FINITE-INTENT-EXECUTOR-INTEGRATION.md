@@ -1,7 +1,7 @@
 # Finite-Intent-Executor ↔ NatLangChain Integration Specification
 
 ## Version: 1.0
-## Date: December 19, 2025
+## Date: January 1, 2026
 ## Status: Draft
 
 ---

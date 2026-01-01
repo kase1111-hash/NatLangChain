@@ -1,7 +1,7 @@
 # Mediator Node ↔ NatLangChain Integration Specification
 
 ## Version: 1.0
-## Date: December 19, 2025
+## Date: January 1, 2026
 ## Status: Draft
 
 > **Currency-Agnostic Design:** NatLangChain does not have its own native cryptocurrency. All stake amounts and fees are denominated in the configured staking currency (e.g., ETH, USDC, DAI) for each deployment.

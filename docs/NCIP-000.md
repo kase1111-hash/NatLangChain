@@ -24,7 +24,7 @@ This document exists to prevent that outcome.
 All terminology defined or constrained by this NCIP derives its authority from:
 
 NatLangChain Technical Specification v3.0
-Last Updated: December 20, 2025
+Last Updated: January 1, 2026
 Maintained By: kase1111-hash
 
 In the event of conflict:
