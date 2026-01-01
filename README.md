@@ -219,6 +219,7 @@ NatLangChain reframes distributed trust around linguistic participation. By addr
 | Mobile | 21 | Edge inference, offline sync |
 | Monitoring | 8 | Prometheus metrics, health |
 | P2P Network | 16 | Peer discovery, sync |
+| Boundary Protection | 18 | Security modes, SIEM, input protection |
 | Help/Docs | 11 | NCIPs, concepts |
 
 ### Production Readiness
@@ -234,6 +235,8 @@ NatLangChain reframes distributed trust around linguistic participation. By addr
 | Backup/restore | Automated backups |
 | TLS/HTTPS | Configurable |
 | Circuit breakers | LLM API protection |
+| Boundary Protection | Six security modes, SIEM integration |
+| Input Security | Prompt injection & RAG poisoning detection |
 
 ### Deployment Options
 

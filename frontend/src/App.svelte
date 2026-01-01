@@ -148,7 +148,7 @@
             <div class="footer-spacer"></div>
           {/if}
           <div class="footer-links">
-            <span class="version">v1.0.0</span>
+            <span class="version">v0.1.0-alpha</span>
           </div>
         </div>
       </footer>

@@ -7575,7 +7575,7 @@ def get_node_info():
             "role": "full_node",
             "chain_height": len(blockchain.chain) - 1,
             "chain_tip_hash": blockchain.chain[-1].hash if blockchain.chain else "",
-            "version": "1.0.0",
+            "version": "0.1.0-alpha",
             "p2p_enabled": False
         })
 

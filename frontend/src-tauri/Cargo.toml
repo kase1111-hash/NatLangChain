@@ -1,6 +1,6 @@
 [package]
 name = "natlangchain"
-version = "1.0.0"
+version = "0.1.0-alpha"
 description = "NatLangChain - Natural Language Blockchain Explorer"
 authors = ["NatLangChain Team"]
 license = "MIT"
