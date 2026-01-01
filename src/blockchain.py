@@ -75,6 +75,24 @@ TRANSFER_INTENT_KEYWORDS = {
     "grant", "grants", "granting", "granted",
 }
 
+# Entry quality defaults (addresses chain bloat)
+DEFAULT_MAX_ENTRY_SIZE = 10000  # ~2500 words, sufficient for detailed contracts
+DEFAULT_MIN_ENTRY_SIZE = 20    # Minimum meaningful content
+DEFAULT_QUALITY_STRICT_MODE = False  # If True, warnings become rejections
+
+# Import entry quality analyzer (for chain bloat prevention)
+try:
+    from src.entry_quality import (
+        EntryQualityAnalyzer,
+        QualityDecision,
+        QualityResult,
+        check_entry_quality,
+        format_quality_feedback,
+    )
+    ENTRY_QUALITY_AVAILABLE = True
+except ImportError:
+    ENTRY_QUALITY_AVAILABLE = False
+
 
 class AssetRegistry:
     """
@@ -836,7 +854,11 @@ class NatLangChain:
         metadata_sanitize_mode: str = DEFAULT_SANITIZE_MODE,
         forbidden_metadata_fields: set | None = None,
         enable_asset_tracking: bool = True,
-        asset_registry: AssetRegistry | None = None
+        asset_registry: AssetRegistry | None = None,
+        enable_quality_checks: bool = True,
+        max_entry_size: int = DEFAULT_MAX_ENTRY_SIZE,
+        min_entry_size: int = DEFAULT_MIN_ENTRY_SIZE,
+        quality_strict_mode: bool = DEFAULT_QUALITY_STRICT_MODE
     ):
         """
         Initialize the blockchain with genesis block.
@@ -873,6 +895,11 @@ class NatLangChain:
                                   Default is True to prevent double-spending attacks.
             asset_registry: Optional pre-configured AssetRegistry instance.
                            If None and enable_asset_tracking is True, a new registry is created.
+            enable_quality_checks: If True, analyze entry quality before acceptance.
+                                  Default is True to prevent chain bloat.
+            max_entry_size: Maximum entry size in characters (default 10000).
+            min_entry_size: Minimum entry size in characters (default 20).
+            quality_strict_mode: If True, quality warnings become rejections.
         """
         self.chain: list[Block] = []
         self.pending_entries: list[NaturalLanguageEntry] = []
@@ -909,6 +936,19 @@ class NatLangChain:
         self._asset_registry = asset_registry if asset_registry else (
             AssetRegistry() if enable_asset_tracking else None
         )
+
+        # Entry quality analyzer for chain bloat prevention
+        self.enable_quality_checks = enable_quality_checks
+        self.max_entry_size = max_entry_size
+        self.min_entry_size = min_entry_size
+        self.quality_strict_mode = quality_strict_mode
+        self._quality_analyzer = None
+        if enable_quality_checks and ENTRY_QUALITY_AVAILABLE:
+            self._quality_analyzer = EntryQualityAnalyzer(
+                max_size=max_entry_size,
+                min_size=min_entry_size,
+                strict_mode=quality_strict_mode,
+            )
 
         self.create_genesis_block()
 
@@ -1013,6 +1053,53 @@ class NatLangChain:
                     "message": sanitize_result["message"]
                 }
 
+        # Check entry quality (chain bloat prevention)
+        # This runs before validation to save LLM calls on rejected entries
+        quality_info = None
+        if self._quality_analyzer is not None:
+            quality_result = self._quality_analyzer.analyze(entry.content, entry.intent)
+
+            if quality_result.decision == QualityDecision.REJECT:
+                return {
+                    "status": "rejected",
+                    "message": quality_result.summary,
+                    "reason": "quality_check_failed",
+                    "quality_score": quality_result.score,
+                    "quality_issues": [
+                        {"issue": i.issue.value, "severity": i.severity,
+                         "message": i.message, "suggestion": i.suggestion}
+                        for i in quality_result.issues
+                    ],
+                    "quality_metrics": quality_result.metrics,
+                    "entry": entry.to_dict()
+                }
+
+            if quality_result.decision == QualityDecision.NEEDS_REVISION:
+                return {
+                    "status": "needs_revision",
+                    "message": quality_result.summary,
+                    "reason": "quality_needs_improvement",
+                    "quality_score": quality_result.score,
+                    "quality_issues": [
+                        {"issue": i.issue.value, "severity": i.severity,
+                         "message": i.message, "suggestion": i.suggestion}
+                        for i in quality_result.issues
+                    ],
+                    "quality_metrics": quality_result.metrics,
+                    "entry": entry.to_dict()
+                }
+
+            # Track quality info for successful entries (includes suggestions)
+            if quality_result.has_suggestions:
+                quality_info = {
+                    "score": quality_result.score,
+                    "suggestions": [
+                        {"message": i.message, "suggestion": i.suggestion}
+                        for i in quality_result.issues
+                    ],
+                    "metrics": quality_result.metrics,
+                }
+
         # Check for duplicate entries (replay attack prevention)
         if self.enable_deduplication:
             duplicate_check = self._check_duplicate(entry)
@@ -1098,6 +1185,9 @@ class NatLangChain:
                 "from": asset_transfer_info["from_owner"],
                 "to": asset_transfer_info["to_recipient"]
             }
+        # Include quality suggestions if any (helps users write better contracts)
+        if quality_info:
+            response["quality_suggestions"] = quality_info
         return response
 
     def _check_duplicate(self, entry: NaturalLanguageEntry) -> dict[str, Any]:
