@@ -1,0 +1,104 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: natlangchain
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: NatLangChain Natural Language Blockchain Platform
+
+  # Source repositories
+  sourceRepos:
+    - 'https://github.com/kase1111-hash/NatLangChain.git'
+    - 'https://charts.bitnami.com/bitnami'  # For Redis/PostgreSQL dependencies
+
+  # Destination clusters and namespaces
+  destinations:
+    # Staging
+    - namespace: natlangchain-staging
+      server: https://kubernetes.default.svc
+    # Production
+    - namespace: natlangchain
+      server: https://kubernetes.default.svc
+    # Monitoring
+    - namespace: natlangchain-monitoring
+      server: https://kubernetes.default.svc
+
+  # Cluster resource whitelist
+  clusterResourceWhitelist:
+    - group: ''
+      kind: Namespace
+    - group: 'rbac.authorization.k8s.io'
+      kind: ClusterRole
+    - group: 'rbac.authorization.k8s.io'
+      kind: ClusterRoleBinding
+
+  # Namespace resource blacklist (prevent dangerous operations)
+  namespaceResourceBlacklist:
+    - group: ''
+      kind: ResourceQuota
+    - group: ''
+      kind: LimitRange
+
+  # Namespace resource whitelist
+  namespaceResourceWhitelist:
+    - group: ''
+      kind: '*'
+    - group: 'apps'
+      kind: '*'
+    - group: 'batch'
+      kind: '*'
+    - group: 'networking.k8s.io'
+      kind: '*'
+    - group: 'autoscaling'
+      kind: '*'
+    - group: 'policy'
+      kind: '*'
+    - group: 'monitoring.coreos.com'
+      kind: '*'
+
+  # Roles for project members
+  roles:
+    - name: developer
+      description: Developer access to staging
+      policies:
+        - p, proj:natlangchain:developer, applications, get, natlangchain/*, allow
+        - p, proj:natlangchain:developer, applications, sync, natlangchain/*-staging, allow
+        - p, proj:natlangchain:developer, logs, get, natlangchain/*, allow
+      groups:
+        - natlangchain-developers
+
+    - name: operator
+      description: Operator access to all environments
+      policies:
+        - p, proj:natlangchain:operator, applications, *, natlangchain/*, allow
+        - p, proj:natlangchain:operator, logs, get, natlangchain/*, allow
+        - p, proj:natlangchain:operator, exec, create, natlangchain/*, allow
+      groups:
+        - natlangchain-operators
+
+    - name: admin
+      description: Full admin access
+      policies:
+        - p, proj:natlangchain:admin, *, *, natlangchain/*, allow
+      groups:
+        - natlangchain-admins
+
+  # Sync windows (optional - restrict when syncs can happen)
+  # syncWindows:
+  #   - kind: deny
+  #     schedule: '0 22 * * *'  # No syncs between 10 PM - 6 AM
+  #     duration: 8h
+  #     applications:
+  #       - '*-production'
+  #     namespaces:
+  #       - natlangchain
+
+  # Orphaned resources monitoring
+  orphanedResources:
+    warn: true
+    ignore:
+      - group: ''
+        kind: ConfigMap
+        name: kube-root-ca.crt

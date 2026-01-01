@@ -1,0 +1,164 @@
+# Production Environment Values
+# These override the default values.yaml in the Helm chart
+
+# Production replicas
+replicaCount: 3
+
+image:
+  repository: ghcr.io/kase1111-hash/natlangchain
+  # Production uses semantic versioned tags
+  tag: ""  # Will be set by CI/CD or ArgoCD image updater
+  pullPolicy: IfNotPresent
+
+# Production ingress
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    # Enable HSTS
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "Strict-Transport-Security: max-age=31536000; includeSubDomains";
+  hosts:
+    - host: api.natlangchain.io
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: natlangchain-tls
+      hosts:
+        - api.natlangchain.io
+
+# Production resource limits
+resources:
+  limits:
+    cpu: 2000m
+    memory: 2Gi
+  requests:
+    cpu: 500m
+    memory: 1Gi
+
+# Production autoscaling
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 10
+          periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 15
+
+# Strict PDB for production
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2
+
+# Pod anti-affinity for distribution
+affinity:
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchExpressions:
+            - key: app.kubernetes.io/name
+              operator: In
+              values:
+                - natlangchain
+        topologyKey: kubernetes.io/hostname
+
+# Production configuration
+config:
+  flaskEnv: production
+  flaskDebug: false
+  boundaryMode: elevated
+  enableRbac: true
+  logLevel: INFO
+  logFormat: json
+  enableTracing: true
+  tracingSampleRate: 0.1  # Sample 10% in production
+
+# External Redis for production (use managed service)
+redis:
+  enabled: false
+  external:
+    enabled: true
+    host: ""  # Set via sealed secret or external secret
+    port: 6379
+    existingSecret: natlangchain-redis-credentials
+    existingSecretPasswordKey: password
+
+# External PostgreSQL for production
+postgresql:
+  enabled: false
+  external:
+    enabled: true
+    host: ""  # Set via sealed secret or external secret
+    port: 5432
+    database: natlangchain
+    username: natlangchain
+    existingSecret: natlangchain-postgresql-credentials
+    existingSecretPasswordKey: password
+
+# Production persistence
+persistence:
+  enabled: true
+  storageClass: "premium-rwo"  # Use premium storage
+  size: 50Gi
+
+# Full monitoring for production
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 15s
+    scrapeTimeout: 10s
+  prometheusRule:
+    enabled: true
+    additionalRules:
+      - alert: NatLangChainSLOBreach
+        expr: |
+          (
+            sum(rate(http_requests_total{job="natlangchain", status=~"5.."}[5m]))
+            / sum(rate(http_requests_total{job="natlangchain"}[5m]))
+          ) > 0.001
+        for: 5m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "SLO breach - error rate > 0.1%"
+          description: "Production error rate has exceeded SLO threshold"
+
+# Enable network policies
+networkPolicy:
+  enabled: true
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+      ports:
+        - protocol: TCP
+          port: 5000
+
+# Enable database migrations hook
+migrations:
+  enabled: true
+  hookEnabled: true

@@ -1,0 +1,73 @@
+# ArgoCD Image Updater Annotations
+#
+# Add these annotations to Application resources to enable automatic image updates.
+# Requires ArgoCD Image Updater to be installed: https://argocd-image-updater.readthedocs.io/
+#
+# The annotations below should be added to the Application metadata.
+
+# Staging - Always use latest from main branch
+# ---
+# apiVersion: argoproj.io/v1alpha1
+# kind: Application
+# metadata:
+#   name: natlangchain-staging
+#   annotations:
+#     argocd-image-updater.argoproj.io/image-list: natlangchain=ghcr.io/kase1111-hash/natlangchain
+#     argocd-image-updater.argoproj.io/natlangchain.update-strategy: latest
+#     argocd-image-updater.argoproj.io/natlangchain.allow-tags: regexp:^main-.*
+#     argocd-image-updater.argoproj.io/write-back-method: git
+#     argocd-image-updater.argoproj.io/git-branch: main
+
+# Production - Only semver releases
+# ---
+# apiVersion: argoproj.io/v1alpha1
+# kind: Application
+# metadata:
+#   name: natlangchain-production
+#   annotations:
+#     argocd-image-updater.argoproj.io/image-list: natlangchain=ghcr.io/kase1111-hash/natlangchain
+#     argocd-image-updater.argoproj.io/natlangchain.update-strategy: semver
+#     argocd-image-updater.argoproj.io/natlangchain.allow-tags: regexp:^v[0-9]+\.[0-9]+\.[0-9]+$
+#     argocd-image-updater.argoproj.io/write-back-method: git
+#     argocd-image-updater.argoproj.io/git-branch: main
+
+---
+# ConfigMap for Image Updater configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-image-updater-config
+  namespace: argocd
+data:
+  registries.conf: |
+    registries:
+      - name: GitHub Container Registry
+        prefix: ghcr.io
+        api_url: https://ghcr.io
+        credentials: secret:argocd/ghcr-credentials#token
+        default: true
+
+  log.level: info
+  git.commit-signing-enabled: "false"
+
+  # Application-specific configurations
+  applications: |
+    - name: natlangchain-staging
+      image:
+        name: ghcr.io/kase1111-hash/natlangchain
+        update-strategy: latest
+        allow-tags: regexp:^(main|sha)-.*
+      write-back:
+        method: git
+        git:
+          branch: main
+
+    - name: natlangchain-production
+      image:
+        name: ghcr.io/kase1111-hash/natlangchain
+        update-strategy: semver
+        allow-tags: regexp:^v[0-9]+\.[0-9]+\.[0-9]+$
+      write-back:
+        method: git
+        git:
+          branch: main
