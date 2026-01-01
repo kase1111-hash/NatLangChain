@@ -8,6 +8,7 @@ Blueprints:
 - search: Semantic search and drift detection
 - mobile: Mobile deployment
 - monitoring: Metrics and health endpoints
+- boundary: Boundary protection (modes, SIEM, agent security)
 
 Future blueprints (to be extracted from api.py):
 - contracts: Contract parsing, matching, and management
@@ -29,6 +30,7 @@ from api.core import core_bp
 from api.mobile import mobile_bp
 from api.monitoring import monitoring_bp
 from api.search import search_bp
+from api.boundary import boundary_bp
 
 # List of all blueprints for registration
 # Tuple format: (blueprint, url_prefix)
@@ -37,6 +39,7 @@ ALL_BLUEPRINTS = [
     (search_bp, ''),      # Search routes at root (e.g., /search/semantic)
     (mobile_bp, ''),      # Mobile routes (blueprint has /mobile prefix)
     (monitoring_bp, ''),  # Monitoring routes (/metrics, /health/*)
+    (boundary_bp, ''),    # Boundary protection routes (/boundary/*)
 ]
 
 
@@ -86,6 +89,15 @@ def init_managers(api_key: str = None):
         print("Semantic search engine initialized")
     except Exception as e:
         print(f"Warning: Could not initialize semantic search: {e}")
+
+    # Initialize boundary protection system
+    try:
+        from boundary_protection import init_protection, ProtectionConfig
+        config = ProtectionConfig.from_env()
+        managers.boundary_protection = init_protection(config)
+        print(f"Boundary protection initialized in {config.initial_mode.value} mode")
+    except Exception as e:
+        print(f"Warning: Could not initialize boundary protection: {e}")
 
     # Initialize LLM-based features if API key available
     if api_key and api_key != "your_api_key_here":
