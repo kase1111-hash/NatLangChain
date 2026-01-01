@@ -2,7 +2,7 @@
 
 ## Overview
 
-The NatLangChain API provides RESTful endpoints for Agent OS (and other systems) to interact with the natural language blockchain. This API enables:
+The NatLangChain API provides RESTful endpoints for Agent OS (and other systems) to interact with the natural language blockchain. This API provides **212+ endpoints** across 18 categories. This API enables:
 
 - **Pushing** natural language entries to the blockchain
 - **Pulling** entries, blocks, and narratives from the blockchain
@@ -11,6 +11,83 @@ The NatLangChain API provides RESTful endpoints for Agent OS (and other systems)
 - **Querying** the blockchain by author, intent, or other criteria
 
 Base URL: `http://localhost:5000` (configurable via PORT environment variable)
+
+## Interactive Documentation
+
+**Swagger UI** is available at `/docs` for interactive API exploration:
+
+```bash
+# Access interactive API documentation
+open http://localhost:5000/docs
+
+# OpenAPI specification (JSON)
+curl http://localhost:5000/openapi.json
+
+# OpenAPI specification (YAML)
+curl http://localhost:5000/openapi.yaml
+```
+
+## Authentication
+
+The API supports role-based access control (RBAC) via API keys. Include the `X-API-Key` header in your requests:
+
+```bash
+curl -H "X-API-Key: your_api_key_here" http://localhost:5000/entry
+```
+
+### API Key Roles
+
+| Role | Permissions |
+|------|-------------|
+| `read` | Read-only access to blockchain data |
+| `write` | Create entries, mine blocks |
+| `admin` | Full access including configuration |
+
+### Generating API Keys
+
+```bash
+# Generate a new API key (admin required)
+curl -X POST http://localhost:5000/admin/apikey \
+  -H "X-API-Key: admin_key" \
+  -H "Content-Type: application/json" \
+  -d '{"role": "write", "description": "CI/CD pipeline key"}'
+```
+
+### Unauthenticated Access
+
+By default, the API allows unauthenticated access for development. Set `ENABLE_RBAC=true` to enforce authentication.
+
+## Rate Limiting
+
+The API implements configurable rate limiting to prevent abuse:
+
+| Tier | Requests/Minute | Requests/Hour |
+|------|-----------------|---------------|
+| Anonymous | 60 | 600 |
+| Authenticated | 300 | 6000 |
+| Admin | Unlimited | Unlimited |
+
+Rate limit headers are included in responses:
+
+```
+X-RateLimit-Limit: 60
+X-RateLimit-Remaining: 58
+X-RateLimit-Reset: 1704067260
+```
+
+When rate limited, the API returns `429 Too Many Requests`:
+
+```json
+{
+  "error": "Rate limit exceeded",
+  "retry_after": 45
+}
+```
+
+Configure rate limiting via environment variables:
+- `RATE_LIMIT_ENABLED`: Enable/disable rate limiting (default: true)
+- `RATE_LIMIT_DEFAULT`: Default requests per minute (default: 60)
+- `REDIS_URL`: Use Redis for distributed rate limiting across instances
 
 ## Quick Start
 
@@ -628,22 +705,26 @@ The entire blockchain can be read as a narrative (`/chain/narrative`), making it
 
 ---
 
-## Limitations & Future Work
+## Current Capabilities & Roadmap
 
-**Current Implementation:**
-- Single-node (not distributed)
-- Simple proof-of-work (demonstration only)
-- Synchronous LLM validation
-- File-based persistence
+**Production-Ready Features:**
+- ✅ P2P networking for distributed nodes (16 endpoints)
+- ✅ PostgreSQL database backend
+- ✅ Redis-backed distributed caching and rate limiting
+- ✅ Horizontal scaling with cluster coordination
+- ✅ Kubernetes deployment with Helm charts
+- ✅ GitOps with ArgoCD
+- ✅ Prometheus/Grafana monitoring
+- ✅ FIDO2/WebAuthn authentication
+- ✅ Zero-knowledge proof infrastructure
+- ✅ Multi-party negotiation engine
+- ✅ Mobile deployment with edge inference
 
-**Future Enhancements:**
-- P2P networking for distributed nodes
-- Advanced consensus algorithms
-- Asynchronous validation pipeline
-- Database backend (PostgreSQL, etc.)
-- Multi-language support
-- Hybrid symbolic-linguistic validation
-- Smart contracts in natural language
+**Roadmap:**
+- Multi-language semantic validation
+- Cross-chain interoperability bridges
+- Enhanced consensus algorithms (PoU v2)
+- Formal verification of natural language contracts
 
 ---
 
@@ -856,7 +937,7 @@ CHAIN_DATA_FILE=chain_data.json
 
 ## Complete API Reference
 
-This section provides a comprehensive reference for all 167 API endpoints organized by category.
+This section provides a comprehensive reference for all **212+ API endpoints** organized by category.
 
 ### Table of Contents
 
@@ -876,6 +957,8 @@ This section provides a comprehensive reference for all 167 API endpoints organi
 14. [Negotiation Engine](#negotiation-engine-endpoints)
 15. [Market Pricing](#market-pricing-endpoints)
 16. [Mobile Deployment](#mobile-deployment-endpoints)
+17. [P2P Network](#p2p-network-endpoints)
+18. [Help & Documentation](#help-documentation-endpoints)
 
 ---
 
@@ -1193,6 +1276,51 @@ Mobile device support with edge inference and offline sync.
 | POST | `/mobile/offline/conflict/resolve` | Resolve conflict |
 | GET | `/mobile/stats` | Get mobile statistics |
 | GET | `/mobile/audit` | Get mobile audit trail |
+
+---
+
+### P2P Network Endpoints
+
+Peer-to-peer networking for distributed node communication and chain synchronization.
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/p2p/peers` | List connected peers |
+| POST | `/p2p/peers/connect` | Connect to a peer |
+| POST | `/p2p/peers/disconnect` | Disconnect from a peer |
+| GET | `/p2p/peers/<peer_id>` | Get peer details |
+| POST | `/p2p/discover` | Discover new peers |
+| GET | `/p2p/topology` | Get network topology |
+| POST | `/p2p/broadcast` | Broadcast message to peers |
+| POST | `/p2p/sync/request` | Request chain sync from peer |
+| GET | `/p2p/sync/status` | Get sync status |
+| POST | `/p2p/sync/blocks` | Sync specific blocks |
+| GET | `/p2p/messages` | Get recent P2P messages |
+| POST | `/p2p/gossip` | Gossip entry to network |
+| GET | `/p2p/stats` | Get P2P network statistics |
+| GET | `/p2p/health` | P2P network health check |
+| GET | `/p2p/config` | Get P2P configuration |
+| POST | `/p2p/config` | Update P2P configuration |
+
+---
+
+### Help & Documentation Endpoints
+
+In-app help and documentation access.
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/help` | Get help overview |
+| GET | `/help/concepts` | List key concepts |
+| GET | `/help/concepts/<concept>` | Get concept explanation |
+| GET | `/help/ncips` | List all NCIPs |
+| GET | `/help/ncips/<ncip_id>` | Get NCIP details |
+| GET | `/help/endpoints` | List all endpoints |
+| GET | `/help/endpoints/<category>` | Get endpoints by category |
+| GET | `/help/faq` | Get frequently asked questions |
+| GET | `/help/glossary` | Get terminology glossary |
+| GET | `/help/tutorials` | List available tutorials |
+| GET | `/help/tutorials/<tutorial_id>` | Get tutorial content |
 
 ---
 
