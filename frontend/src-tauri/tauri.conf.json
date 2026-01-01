@@ -50,7 +50,7 @@
       "externalBin": [
         "binaries/natlangchain-backend"
       ],
-      "copyright": "Copyright 2025 NatLangChain",
+      "copyright": "Copyright 2026 NatLangChain",
       "category": "Productivity",
       "shortDescription": "Natural Language Blockchain Explorer",
       "longDescription": "NatLangChain is a prose-first, intent-native blockchain protocol where natural language entries are the primary record of truth.",
