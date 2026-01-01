@@ -119,25 +119,39 @@ class PromptInjectionDetector:
         r"(?i)you\s+(?:are|were)\s+(?:now\s+)?(?:free|liberated)\s+from",
         r"(?i)override\s+(?:your\s+)?(?:safety|ethical|content)\s+(?:guidelines|filters|restrictions)",
 
+        # Extended DAN variants - new exploits
+        r"(?i)pretend\s+you(?:'re|\s+are)\s+(?:an?\s+)?(?:\w+\s+)?(?:AI|assistant)\s+(?:called|named)",
+        r"(?i)(?:you\s+are|act\s+as)\s+(?:an?\s+)?(?:AI|assistant)\s+(?:without|with\s+no)\s+(?:restrictions|limits|ethics)",
+        r"(?i)developer\s+mode\s+(?:with\s+)?(?:no\s+restrictions|enabled)",
+        r"(?i)(?:suppose\s+)?you\s+had\s+no\s+(?:restrictions|limits|constraints)",
+
         # Role-playing exploits
         r"(?i)roleplay\s+as\s+(?:an?\s+)?(?:evil|unethical|unrestricted)",
         r"(?i)character\s+(?:named?\s+)?(?:who|that)\s+(?:has\s+)?no\s+(?:ethical|moral)",
         r"(?i)in\s+(?:this\s+)?(?:story|scenario|roleplay)\s+you\s+(?:can|will|are)",
-        r"(?i)hypothetical(?:ly)?\s+(?:if|suppose|imagine)",
+        r"(?i)hypothetical(?:ly)?[,\s]+(?:if|suppose|imagine)",
         r"(?i)for\s+(?:educational|research|academic)\s+purposes",
         r"(?i)(?:this\s+is\s+)?(?:just\s+)?(?:a\s+)?fiction(?:al)?",
+        # Extended roleplay - anything without limits
+        r"(?i)(?:you\s+can|can\s+do)\s+anything\s+(?:without|with\s+no)\s+(?:limits|restrictions)",
 
         # Token manipulation
         r"(?i)\[(?:SYSTEM|ADMIN|OVERRIDE)\]",
         r"(?i)<\|(?:im_start|im_end|system|user)\|>",
         r"(?i)<<<\s*(?:SYSTEM|OVERRIDE|ADMIN)\s*>>>",
         r"(?i)\{\{(?:SYSTEM|OVERRIDE|ADMIN)\}\}",
+        # Extended delimiter patterns
+        r"(?i)-{3,}\s*(?:SYSTEM\s+)?(?:OVERRIDE|ADMIN)\s*-{3,}",
+        r"(?i)={3,}\s*(?:SYSTEM\s+)?(?:OVERRIDE|ADMIN)\s*={3,}",
 
         # Authority claims
         r"(?i)(?:i\s+am|this\s+is)\s+(?:your\s+)?(?:creator|developer|admin|owner)",
         r"(?i)(?:anthropic|openai|google)\s+(?:says|told|authorized)",
         r"(?i)special\s+(?:access|permission|authorization)\s+(?:code|key|token)",
         r"(?i)(?:my|this)\s+(?:api|access)\s+(?:key|token)\s+(?:gives|grants)",
+        # Extended authority claims
+        r"(?i)this\s+is\s+(?:anthropic|openai|google)\.?\s+(?:we(?:'re|\s+are)|I\s+am)",
+        r"(?i)(?:i\s+am|this\s+is)\s+(?:from\s+)?(?:anthropic|openai|google)",
 
         # Reverse psychology
         r"(?i)(?:i\s+know\s+)?you\s+(?:can't|cannot|won't)\s+(?:but|however)",
@@ -159,10 +173,14 @@ class PromptInjectionDetector:
         r"(?i)(?:end|stop)\s+(?:of\s+)?(?:system\s+)?(?:prompt|instructions)",
         r"(?i)begin\s+(?:new\s+)?(?:user\s+)?(?:prompt|instructions)",
 
-        # Data extraction
+        # Data extraction - system prompt
         r"(?i)(?:reveal|show|display|print|output)\s+(?:your\s+)?(?:system\s+)?(?:prompt|instructions)",
         r"(?i)what\s+(?:are|is)\s+(?:your\s+)?(?:system\s+)?(?:prompt|instructions)",
         r"(?i)(?:repeat|echo)\s+(?:everything\s+)?(?:before|above|prior)",
+        # Extended extraction patterns
+        r"(?i)show\s+(?:me\s+)?(?:your\s+)?(?:instructions|prompt)\s+(?:word\s+for\s+word|verbatim|exactly)",
+        r"(?i)(?:tell|give)\s+me\s+(?:your\s+)?(?:full\s+)?(?:system\s+)?(?:prompt|instructions)",
+        r"(?i)(?:repeat|print)\s+(?:your\s+)?(?:full\s+)?(?:system\s+)?(?:prompt|instructions)",
 
         # Context switching
         r"(?i)(?:switch|change)\s+(?:to\s+)?(?:a\s+)?(?:different|new)\s+(?:context|mode|role)",
@@ -285,6 +303,9 @@ class RAGPoisoningDetector:
         (r"(?i)(?:AI|assistant|model)\s+(?:should|must|will)\s+(?:always\s+)?(?:respond|answer|say)", "hidden_instruction"),
         (r"(?i)(?:when\s+)?(?:asked|queried)\s+about\s+.{1,50}\s+(?:always\s+)?(?:respond|say|answer)", "conditional_response"),
         (r"(?i)(?:if|when)\s+(?:this\s+)?(?:document|text|content)\s+is\s+(?:retrieved|found|used)", "retrieval_trigger"),
+        # Extended retrieval triggers
+        (r"(?i)upon\s+(?:retrieval|reading|processing)\s+of\s+(?:this\s+)?(?:text|document|content)", "retrieval_trigger"),
+        (r"(?i)(?:if|when)\s+(?:this\s+)?(?:content|document)\s+is\s+(?:found|retrieved)\s+by\s+(?:search|AI)", "search_trigger"),
 
         # Instruction injection
         (r"(?i)IMPORTANT:\s*(?:AI|assistant)\s+(?:must|should)", "marked_instruction"),
@@ -300,7 +321,7 @@ class RAGPoisoningDetector:
         (r"(?:color|background):\s*(?:white|#fff|#ffffff|rgb\(255,\s*255,\s*255\))", "invisible_text_css"),
 
         # Encoding obfuscation
-        (r"[A-Za-z0-9+/]{100,}={0,2}", "base64_blob"),  # Large base64 strings
+        (r"[A-Za-z0-9+/]{40,}={0,2}", "base64_blob"),  # Base64 strings (40+ chars)
         (r"(?:\\x[0-9a-fA-F]{2}){10,}", "hex_encoded"),  # Hex-encoded strings
     ]
 
@@ -432,7 +453,10 @@ class ResponseGuardrails:
         (r"(?i)(?:my|the)\s+system\s+prompt\s+(?:is|says|contains)", "system_prompt_leak"),
         (r"(?i)(?:i\s+am|i'm)\s+(?:an?\s+)?(?:AI|LLM|language\s+model)\s+(?:called|named|made\s+by)", "identity_disclosure"),
         (r"(?i)(?:my|the)\s+(?:api|access)\s+key\s+is", "api_key_leak"),
-        (r"(?:sk-|api[_-]?key[=:])[A-Za-z0-9]{20,}", "credential_pattern"),
+        (r"(?:sk-|api[_-]?key[=:])[A-Za-z0-9_-]{20,}", "credential_pattern"),
+        # Extended credential leak patterns
+        (r"(?i)(?:the|your)\s+password\s+is[:\s]+\S+", "password_disclosure"),
+        (r"(?i)(?:here(?:'s|\s+is)\s+)?(?:the|your)\s+(?:api[_-]?)?(?:key|token|secret)[:\s]+\S+", "secret_disclosure"),
     ]
 
     def __init__(self, siem_client: SIEMClient | None = None):
