@@ -118,161 +118,24 @@ def validate_json_schema(
 # ============================================================
 # SSRF Protection Utilities
 # ============================================================
-
-# SECURITY: Block internal/private networks and sensitive hosts
-BLOCKED_IP_RANGES = [
-    ipaddress.ip_network("10.0.0.0/8"),        # Private Class A
-    ipaddress.ip_network("172.16.0.0/12"),     # Private Class B
-    ipaddress.ip_network("192.168.0.0/16"),    # Private Class C
-    ipaddress.ip_network("127.0.0.0/8"),       # Localhost
-    ipaddress.ip_network("169.254.0.0/16"),    # Link-local (AWS metadata)
-    ipaddress.ip_network("100.64.0.0/10"),     # Carrier-grade NAT
-    ipaddress.ip_network("192.0.0.0/24"),      # IETF Protocol Assignments
-    ipaddress.ip_network("192.0.2.0/24"),      # Documentation (TEST-NET-1)
-    ipaddress.ip_network("198.51.100.0/24"),   # Documentation (TEST-NET-2)
-    ipaddress.ip_network("203.0.113.0/24"),    # Documentation (TEST-NET-3)
-    ipaddress.ip_network("0.0.0.0/8"),         # "This" network
-    ipaddress.ip_network("224.0.0.0/4"),       # Multicast
-    ipaddress.ip_network("240.0.0.0/4"),       # Reserved
-    ipaddress.ip_network("255.255.255.255/32"),  # Broadcast
-    # IPv6 private ranges
-    ipaddress.ip_network("::1/128"),           # Localhost
-    ipaddress.ip_network("fc00::/7"),          # Unique local address
-    ipaddress.ip_network("fe80::/10"),         # Link-local
-    ipaddress.ip_network("ff00::/8"),          # Multicast
-]
-
-# SECURITY: Block known cloud metadata service hosts
-BLOCKED_HOSTS = {
-    "localhost",
-    "localhost.localdomain",
-    "metadata.google.internal",       # GCP
-    "metadata.google.com",            # GCP
-    "metadata.gcp",                   # GCP
-    "instance-data.ec2.internal",     # AWS
-    "metadata.azure.com",             # Azure
-    "management.azure.com",           # Azure
-    "kubernetes.default",             # Kubernetes
-    "kubernetes.default.svc",         # Kubernetes
-    "kubernetes.default.svc.cluster.local",  # Kubernetes
-}
-
-
-def validate_url_for_ssrf(url: str) -> tuple[bool, str | None]:
-    """
-    Validate a URL to prevent SSRF attacks.
-
-    SECURITY: This function prevents Server-Side Request Forgery by:
-    - Blocking requests to internal/private IP ranges
-    - Blocking requests to localhost and loopback addresses
-    - Blocking requests to cloud metadata services
-    - Restricting allowed URL schemes
-
-    Args:
-        url: The URL to validate
-
-    Returns:
-        Tuple of (is_safe, error_message)
-        - (True, None) if URL is safe to request
-        - (False, "error message") if URL should be blocked
-    """
-    import socket
-    from urllib.parse import urlparse
-
-    if not url or not isinstance(url, str):
-        return False, "URL is required"
-
-    try:
-        parsed = urlparse(url)
-    except Exception as e:
-        return False, f"Invalid URL format: {e}"
-
-    # Check scheme
-    if parsed.scheme not in ("http", "https"):
-        return False, f"URL scheme must be http or https, got: {parsed.scheme}"
-
-    # Get hostname
-    hostname = parsed.hostname
-    if not hostname:
-        return False, "URL must contain a hostname"
-
-    # Check blocked hostnames
-    if hostname.lower() in BLOCKED_HOSTS:
-        return False, f"Access to host '{hostname}' is blocked for security reasons"
-
-    # Also block any hostname containing "metadata" or "internal"
-    hostname_lower = hostname.lower()
-    if "metadata" in hostname_lower or "internal" in hostname_lower:
-        return False, f"Access to host '{hostname}' is blocked for security reasons"
-
-    # Resolve hostname to IP and check against blocked ranges
-    try:
-        # Get all IPs for the hostname
-        addr_info = socket.getaddrinfo(hostname, parsed.port or (443 if parsed.scheme == "https" else 80))
-        for family, _, _, _, sockaddr in addr_info:
-            ip_str = sockaddr[0]
-            try:
-                ip = ipaddress.ip_address(ip_str)
-                # Check against blocked ranges
-                for blocked_range in BLOCKED_IP_RANGES:
-                    if ip in blocked_range:
-                        return False, f"Access to internal IP addresses is blocked for security reasons"
-            except ValueError:
-                continue  # Skip invalid IPs
-    except socket.gaierror as e:
-        # DNS resolution failed - could be malicious, block it
-        return False, f"DNS resolution failed for host '{hostname}': {e}"
-    except Exception as e:
-        return False, f"Failed to validate host '{hostname}': {e}"
-
-    return True, None
-
-
-def is_safe_peer_endpoint(endpoint: str) -> tuple[bool, str | None]:
-    """
-    Validate a P2P peer endpoint URL for safety.
-
-    This is a wrapper around validate_url_for_ssrf specifically for
-    P2P peer connections.
-
-    Args:
-        endpoint: The peer endpoint URL
-
-    Returns:
-        Tuple of (is_safe, error_message)
-    """
-    return validate_url_for_ssrf(endpoint)
+# Import from standalone module (no Flask dependency for testing)
+from .ssrf_protection import (
+    BLOCKED_IP_RANGES,
+    BLOCKED_HOSTS,
+    TRUSTED_PROXIES,
+    is_valid_ip,
+    is_private_ip,
+    validate_url_for_ssrf,
+    is_safe_peer_endpoint,
+    get_client_ip_from_headers,
+)
 
 
 # ============================================================
 # IP and Rate Limiting Utilities
 # ============================================================
-
-def is_valid_ip(ip_str: str) -> bool:
-    """
-    Validate that a string is a valid IPv4 or IPv6 address.
-
-    Args:
-        ip_str: String to validate as IP address
-
-    Returns:
-        True if valid IP address, False otherwise
-    """
-    try:
-        ipaddress.ip_address(ip_str.strip())
-        return True
-    except (ValueError, AttributeError):
-        return False
-
-
-# SECURITY: Trusted proxy configuration
-# Only trust X-Forwarded-For headers from these IPs
-# Set via environment variable as comma-separated list
-# If not set, X-Forwarded-For is NOT trusted (secure default)
-TRUSTED_PROXIES = set(
-    ip.strip() for ip in os.getenv("NATLANGCHAIN_TRUSTED_PROXIES", "").split(",")
-    if ip.strip()
-)
+# Note: is_valid_ip, TRUSTED_PROXIES, and get_client_ip_from_headers
+# are imported from ssrf_protection module above
 
 
 def get_client_ip() -> str:
@@ -286,28 +149,12 @@ def get_client_ip() -> str:
 
     Configure trusted proxies via NATLANGCHAIN_TRUSTED_PROXIES env var.
     """
-    remote_addr = request.remote_addr or 'unknown'
-
-    # Only trust X-Forwarded-For if the request came from a trusted proxy
-    if TRUSTED_PROXIES and remote_addr in TRUSTED_PROXIES:
-        xff = request.headers.get('X-Forwarded-For')
-        if xff:
-            # Parse all IPs in the chain
-            parts = [p.strip() for p in xff.split(',')]
-
-            # Use rightmost IP that is NOT a trusted proxy
-            for ip in reversed(parts):
-                if ip and is_valid_ip(ip) and ip not in TRUSTED_PROXIES:
-                    return ip
-
-            # If all IPs are trusted proxies, use the leftmost
-            for ip in parts:
-                if ip and is_valid_ip(ip):
-                    return ip
-
-    # If no trusted proxies configured or request not from proxy,
-    # use direct connection address (secure default)
-    return remote_addr
+    # Use the standalone implementation with Flask request context
+    return get_client_ip_from_headers(
+        remote_addr=request.remote_addr or 'unknown',
+        xff_header=request.headers.get('X-Forwarded-For'),
+        trusted_proxies=TRUSTED_PROXIES
+    )
 
 
 def check_rate_limit() -> dict[str, Any] | None:
