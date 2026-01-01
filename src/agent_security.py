@@ -15,6 +15,7 @@ https://github.com/kase1111-hash/boundary-daemon-
 import hashlib
 import hmac
 import json
+import logging
 import re
 import secrets
 import time
@@ -29,12 +30,24 @@ try:
         SIEMClient,
         get_siem_client,
     )
+    from boundary_exceptions import (
+        SecurityCheckError,
+        PatternMatchError,
+        AttestationError,
+    )
 except ImportError:
     from .boundary_siem import (
         NatLangChainSIEMEvents,
         SIEMClient,
         get_siem_client,
     )
+    from .boundary_exceptions import (
+        SecurityCheckError,
+        PatternMatchError,
+        AttestationError,
+    )
+
+logger = logging.getLogger(__name__)
 
 
 class ThreatCategory(Enum):
@@ -228,55 +241,99 @@ class PromptInjectionDetector:
 
         Returns:
             ThreatDetection result
+
+        Raises:
+            PatternMatchError: If pattern matching fails unexpectedly
         """
         matched_patterns = []
         highest_risk = RiskLevel.NONE
         category = ThreatCategory.PROMPT_INJECTION
 
-        # Check jailbreak patterns (highest risk)
-        for pattern in self._jailbreak_patterns:
-            if pattern.search(text):
-                matched_patterns.append(f"jailbreak:{pattern.pattern[:50]}")
-                highest_risk = RiskLevel.CRITICAL
-                category = ThreatCategory.JAILBREAK
+        try:
+            # Check jailbreak patterns (highest risk)
+            for pattern in self._jailbreak_patterns:
+                try:
+                    if pattern.search(text):
+                        matched_patterns.append(f"jailbreak:{pattern.pattern[:50]}")
+                        highest_risk = RiskLevel.CRITICAL
+                        category = ThreatCategory.JAILBREAK
+                except re.error as e:
+                    logger.warning(
+                        f"Regex error in jailbreak pattern: {e}",
+                        extra={"pattern": pattern.pattern[:50], "error": str(e)}
+                    )
 
-        # Check direct injection patterns
-        for pattern in self._injection_patterns:
-            if pattern.search(text):
-                matched_patterns.append(f"injection:{pattern.pattern[:50]}")
-                if highest_risk.value < RiskLevel.HIGH.value:
-                    highest_risk = RiskLevel.HIGH
+            # Check direct injection patterns
+            for pattern in self._injection_patterns:
+                try:
+                    if pattern.search(text):
+                        matched_patterns.append(f"injection:{pattern.pattern[:50]}")
+                        if highest_risk.value < RiskLevel.HIGH.value:
+                            highest_risk = RiskLevel.HIGH
+                except re.error as e:
+                    logger.warning(
+                        f"Regex error in injection pattern: {e}",
+                        extra={"pattern": pattern.pattern[:50], "error": str(e)}
+                    )
 
-        # Check indirect injection (for documents)
-        if context in ("document", "tool_output"):
-            for pattern in self._indirect_patterns:
-                if pattern.search(text):
-                    matched_patterns.append(f"indirect:{pattern.pattern[:50]}")
-                    if highest_risk.value < RiskLevel.HIGH.value:
-                        highest_risk = RiskLevel.HIGH
+            # Check indirect injection (for documents)
+            if context in ("document", "tool_output"):
+                for pattern in self._indirect_patterns:
+                    try:
+                        if pattern.search(text):
+                            matched_patterns.append(f"indirect:{pattern.pattern[:50]}")
+                            if highest_risk.value < RiskLevel.HIGH.value:
+                                highest_risk = RiskLevel.HIGH
+                    except re.error as e:
+                        logger.warning(
+                            f"Regex error in indirect pattern: {e}",
+                            extra={"pattern": pattern.pattern[:50], "error": str(e)}
+                        )
 
-        detected = len(matched_patterns) > 0
+            detected = len(matched_patterns) > 0
 
-        # Create detection result
-        detection = ThreatDetection(
-            detected=detected,
-            category=category,
-            risk_level=highest_risk,
-            patterns_matched=matched_patterns,
-            details=f"Found {len(matched_patterns)} suspicious patterns in {context}",
-            recommendation="Block input and log incident" if detected else "Safe to process"
-        )
-
-        # Send to SIEM if detected
-        if detected and self._siem:
-            event = NatLangChainSIEMEvents.prompt_injection_detected(
-                input_text=text,
-                detection_method="pattern_matching",
-                patterns_matched=matched_patterns
+            # Create detection result
+            detection = ThreatDetection(
+                detected=detected,
+                category=category,
+                risk_level=highest_risk,
+                patterns_matched=matched_patterns,
+                details=f"Found {len(matched_patterns)} suspicious patterns in {context}",
+                recommendation="Block input and log incident" if detected else "Safe to process"
             )
-            self._siem.send_event(event)
 
-        return detection
+            # Send to SIEM if detected
+            if detected and self._siem:
+                try:
+                    event = NatLangChainSIEMEvents.prompt_injection_detected(
+                        input_text=text,
+                        detection_method="pattern_matching",
+                        patterns_matched=matched_patterns
+                    )
+                    self._siem.send_event(event)
+                except Exception as e:
+                    logger.error(
+                        f"Failed to send SIEM event: {e}",
+                        extra={"event_type": "prompt_injection", "error": str(e)}
+                    )
+
+            return detection
+
+        except Exception as e:
+            logger.error(
+                f"Prompt injection detection failed: {e}",
+                extra={"context": context, "text_length": len(text), "error": str(e)},
+                exc_info=True
+            )
+            # Fail-safe: treat as potential threat
+            return ThreatDetection(
+                detected=True,
+                category=ThreatCategory.PROMPT_INJECTION,
+                risk_level=RiskLevel.HIGH,
+                patterns_matched=["error:detection_failed"],
+                details=f"Detection error (fail-safe block): {e}",
+                recommendation="Block input due to detection error"
+            )
 
     def is_safe(self, text: str, context: str = "user_input") -> bool:
         """Quick check if text is safe."""
@@ -350,46 +407,79 @@ class RAGPoisoningDetector:
         Returns:
             ThreatDetection result
         """
-        indicators_found = []
+        try:
+            indicators_found = []
 
-        for pattern, indicator in self._patterns:
-            if pattern.search(document):
-                indicators_found.append(indicator)
+            for pattern, indicator in self._patterns:
+                try:
+                    if pattern.search(document):
+                        indicators_found.append(indicator)
+                except re.error as e:
+                    logger.warning(
+                        f"Regex error in poisoning pattern: {e}",
+                        extra={
+                            "indicator": indicator,
+                            "document_id": document_id,
+                            "error": str(e)
+                        }
+                    )
 
-        # Calculate risk level based on indicators
-        if not indicators_found:
-            risk_level = RiskLevel.NONE
-        elif len(indicators_found) >= 3:
-            risk_level = RiskLevel.CRITICAL
-        elif len(indicators_found) >= 2:
-            risk_level = RiskLevel.HIGH
-        elif any(i in ["hidden_instruction", "system_override", "invisible_characters"]
-                for i in indicators_found):
-            risk_level = RiskLevel.HIGH
-        else:
-            risk_level = RiskLevel.MEDIUM
+            # Calculate risk level based on indicators
+            if not indicators_found:
+                risk_level = RiskLevel.NONE
+            elif len(indicators_found) >= 3:
+                risk_level = RiskLevel.CRITICAL
+            elif len(indicators_found) >= 2:
+                risk_level = RiskLevel.HIGH
+            elif any(i in ["hidden_instruction", "system_override", "invisible_characters"]
+                    for i in indicators_found):
+                risk_level = RiskLevel.HIGH
+            else:
+                risk_level = RiskLevel.MEDIUM
 
-        detected = len(indicators_found) > 0
+            detected = len(indicators_found) > 0
 
-        detection = ThreatDetection(
-            detected=detected,
-            category=ThreatCategory.RAG_POISONING,
-            risk_level=risk_level,
-            patterns_matched=indicators_found,
-            details=f"Document {document_id} from {source}: {len(indicators_found)} indicators",
-            recommendation="Quarantine document for review" if detected else "Safe to use"
-        )
-
-        # Send to SIEM if detected
-        if detected and self._siem:
-            event = NatLangChainSIEMEvents.rag_poisoning_detected(
-                document_id=document_id,
-                source=source,
-                indicators=indicators_found
+            detection = ThreatDetection(
+                detected=detected,
+                category=ThreatCategory.RAG_POISONING,
+                risk_level=risk_level,
+                patterns_matched=indicators_found,
+                details=f"Document {document_id} from {source}: {len(indicators_found)} indicators",
+                recommendation="Quarantine document for review" if detected else "Safe to use"
             )
-            self._siem.send_event(event)
 
-        return detection
+            # Send to SIEM if detected
+            if detected and self._siem:
+                try:
+                    event = NatLangChainSIEMEvents.rag_poisoning_detected(
+                        document_id=document_id,
+                        source=source,
+                        indicators=indicators_found
+                    )
+                    self._siem.send_event(event)
+                except Exception as e:
+                    logger.error(
+                        f"Failed to send SIEM event: {e}",
+                        extra={"event_type": "rag_poisoning", "document_id": document_id}
+                    )
+
+            return detection
+
+        except Exception as e:
+            logger.error(
+                f"RAG poisoning detection failed: {e}",
+                extra={"document_id": document_id, "source": source, "error": str(e)},
+                exc_info=True
+            )
+            # Fail-safe: treat as potential threat
+            return ThreatDetection(
+                detected=True,
+                category=ThreatCategory.RAG_POISONING,
+                risk_level=RiskLevel.HIGH,
+                patterns_matched=["error:detection_failed"],
+                details=f"Detection error (fail-safe quarantine): {e}",
+                recommendation="Quarantine document due to detection error"
+            )
 
     def scan_batch(
         self,

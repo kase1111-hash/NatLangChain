@@ -20,6 +20,7 @@ https://github.com/kase1111-hash/boundary-daemon-
 
 import hashlib
 import json
+import logging
 import os
 import secrets
 import threading
@@ -42,6 +43,11 @@ try:
         SecurityEnforcementManager,
         USBEnforcement,
     )
+    from boundary_exceptions import (
+        ModeTransitionError,
+        OverrideError,
+        TripwireError,
+    )
 except ImportError:
     from .boundary_siem import (
         NatLangChainSIEMEvents,
@@ -55,6 +61,13 @@ except ImportError:
         SecurityEnforcementManager,
         USBEnforcement,
     )
+    from .boundary_exceptions import (
+        ModeTransitionError,
+        OverrideError,
+        TripwireError,
+    )
+
+logger = logging.getLogger(__name__)
 
 
 class BoundaryMode(Enum):
@@ -397,6 +410,14 @@ class BoundaryModeManager:
                 now = time.time()
                 if (now - self._last_transition_time) < self._cooldown_period:
                     remaining = self._cooldown_period - (now - self._last_transition_time)
+                    logger.info(
+                        f"Mode transition blocked: cooldown active",
+                        extra={
+                            "from_mode": old_mode.value,
+                            "to_mode": new_mode.value,
+                            "remaining_seconds": remaining
+                        }
+                    )
                     return ModeTransition(
                         transition_id=self._generate_transition_id(),
                         from_mode=old_mode,
@@ -411,6 +432,14 @@ class BoundaryModeManager:
 
             # Check if transition requires override ceremony
             if self._requires_override(old_mode, new_mode) and not force:
+                logger.warning(
+                    f"Mode transition blocked: requires override",
+                    extra={
+                        "from_mode": old_mode.value,
+                        "to_mode": new_mode.value,
+                        "reason": reason
+                    }
+                )
                 return ModeTransition(
                     transition_id=self._generate_transition_id(),
                     from_mode=old_mode,
@@ -444,15 +473,36 @@ class BoundaryModeManager:
 
             self._transition_history.append(transition)
 
+            # Log the successful transition
+            log_level = logging.WARNING if new_mode == BoundaryMode.LOCKDOWN else logging.INFO
+            logger.log(
+                log_level,
+                f"Mode transition: {old_mode.value} -> {new_mode.value}",
+                extra={
+                    "transition_id": transition.transition_id,
+                    "from_mode": old_mode.value,
+                    "to_mode": new_mode.value,
+                    "reason": reason,
+                    "triggered_by": triggered_by,
+                    "actions_taken": actions
+                }
+            )
+
             # Send SIEM event
             if self._siem:
-                event = NatLangChainSIEMEvents.mode_change(
-                    old_mode=old_mode.value,
-                    new_mode=new_mode.value,
-                    reason=reason,
-                    triggered_by=triggered_by
-                )
-                self._siem.send_event(event)
+                try:
+                    event = NatLangChainSIEMEvents.mode_change(
+                        old_mode=old_mode.value,
+                        new_mode=new_mode.value,
+                        reason=reason,
+                        triggered_by=triggered_by
+                    )
+                    self._siem.send_event(event)
+                except Exception as e:
+                    logger.error(
+                        f"Failed to send SIEM event for mode change: {e}",
+                        extra={"transition_id": transition.transition_id}
+                    )
 
             return transition
 
@@ -547,6 +597,13 @@ class BoundaryModeManager:
         now = time.time()
         last_triggered = self._tripwire_last_triggered.get(tripwire_type, 0)
         if (now - last_triggered) < config.cooldown_seconds:
+            logger.debug(
+                f"Tripwire cooldown active: {tripwire_type.value}",
+                extra={
+                    "tripwire_type": tripwire_type.value,
+                    "remaining_seconds": config.cooldown_seconds - (now - last_triggered)
+                }
+            )
             return False
 
         # Increment counter
@@ -554,20 +611,46 @@ class BoundaryModeManager:
 
         # Check threshold
         if self._tripwire_counters[tripwire_type] < config.threshold:
+            logger.info(
+                f"Tripwire event recorded: {tripwire_type.value}",
+                extra={
+                    "tripwire_type": tripwire_type.value,
+                    "current_count": self._tripwire_counters[tripwire_type],
+                    "threshold": config.threshold,
+                    "details": details
+                }
+            )
             return False
 
         # Reset counter and update last triggered
         self._tripwire_counters[tripwire_type] = 0
         self._tripwire_last_triggered[tripwire_type] = now
 
+        # Log tripwire activation
+        logger.warning(
+            f"Tripwire ACTIVATED: {tripwire_type.value}",
+            extra={
+                "tripwire_type": tripwire_type.value,
+                "target_mode": config.target_mode.value,
+                "details": details,
+                "threshold": config.threshold
+            }
+        )
+
         # Send SIEM event
         if self._siem:
-            event = NatLangChainSIEMEvents.tripwire_triggered(
-                tripwire_type=tripwire_type.value,
-                trigger_details=details,
-                automatic_response=f"Transitioning to {config.target_mode.value}"
-            )
-            self._siem.send_event(event)
+            try:
+                event = NatLangChainSIEMEvents.tripwire_triggered(
+                    tripwire_type=tripwire_type.value,
+                    trigger_details=details,
+                    automatic_response=f"Transitioning to {config.target_mode.value}"
+                )
+                self._siem.send_event(event)
+            except Exception as e:
+                logger.error(
+                    f"Failed to send SIEM event for tripwire: {e}",
+                    extra={"tripwire_type": tripwire_type.value}
+                )
 
         # Transition to target mode
         self.set_mode(
@@ -643,6 +726,19 @@ class BoundaryModeManager:
         )
 
         self._pending_overrides[request_id] = request
+
+        logger.info(
+            f"Override ceremony requested: {request.from_mode.value} -> {to_mode.value}",
+            extra={
+                "request_id": request_id,
+                "requested_by": requested_by,
+                "from_mode": request.from_mode.value,
+                "to_mode": to_mode.value,
+                "reason": reason,
+                "expires_at": request.expires_at
+            }
+        )
+
         return request
 
     def confirm_override(
@@ -665,6 +761,13 @@ class BoundaryModeManager:
         request = self._pending_overrides.get(request_id)
 
         if not request:
+            logger.warning(
+                f"Override confirmation failed: request not found",
+                extra={
+                    "request_id": request_id,
+                    "confirmed_by": confirmed_by
+                }
+            )
             return ModeTransition(
                 transition_id=self._generate_transition_id(),
                 from_mode=self.current_mode,
@@ -681,6 +784,14 @@ class BoundaryModeManager:
         expires = datetime.fromisoformat(request.expires_at.replace("Z", "+00:00"))
         if datetime.utcnow().replace(tzinfo=expires.tzinfo) > expires:
             del self._pending_overrides[request_id]
+            logger.warning(
+                f"Override confirmation failed: request expired",
+                extra={
+                    "request_id": request_id,
+                    "confirmed_by": confirmed_by,
+                    "expired_at": request.expires_at
+                }
+            )
             return ModeTransition(
                 transition_id=self._generate_transition_id(),
                 from_mode=self.current_mode,
@@ -695,6 +806,13 @@ class BoundaryModeManager:
 
         # Verify confirmation code (timing-safe comparison)
         if not secrets.compare_digest(confirmation_code, request.confirmation_code):
+            logger.warning(
+                f"Override confirmation failed: invalid code",
+                extra={
+                    "request_id": request_id,
+                    "confirmed_by": confirmed_by
+                }
+            )
             return ModeTransition(
                 transition_id=self._generate_transition_id(),
                 from_mode=self.current_mode,
@@ -711,6 +829,18 @@ class BoundaryModeManager:
         request.confirmed = True
         request.confirmed_at = datetime.utcnow().isoformat() + "Z"
         request.confirmed_by = confirmed_by
+
+        logger.info(
+            f"Override ceremony confirmed: {request.from_mode.value} -> {request.to_mode.value}",
+            extra={
+                "request_id": request_id,
+                "requested_by": request.requested_by,
+                "confirmed_by": confirmed_by,
+                "from_mode": request.from_mode.value,
+                "to_mode": request.to_mode.value,
+                "reason": request.reason
+            }
+        )
 
         # Execute the transition
         transition = self.set_mode(
