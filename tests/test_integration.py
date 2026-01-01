@@ -5,10 +5,21 @@ Tests for integrated features (semantic search, drift detection, dialectic conse
 import os
 import sys
 
+import pytest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from blockchain import NatLangChain, NaturalLanguageEntry
-from semantic_search import SemanticSearchEngine
+
+# Skip all tests if numpy/semantic_search is not available
+try:
+    from semantic_search import SemanticSearchEngine
+    SEMANTIC_SEARCH_AVAILABLE = True
+except ImportError as e:
+    SEMANTIC_SEARCH_AVAILABLE = False
+    pytestmark = pytest.mark.skip(
+        reason=f"semantic_search module not available (numpy/sentence-transformers required): {e}"
+    )
 
 
 def test_semantic_search():

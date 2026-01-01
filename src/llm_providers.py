@@ -202,8 +202,19 @@ class AnthropicProvider(LLMProvider):
             return False
         try:
             from anthropic import Anthropic
+            import httpx
 
-            self._client = Anthropic(api_key=self.config.api_key)
+            # Create client with timeout configuration
+            timeout = httpx.Timeout(
+                connect=10.0,  # Connection timeout
+                read=self.config.timeout,  # Read timeout (default 30s)
+                write=10.0,  # Write timeout
+                pool=10.0,  # Pool timeout
+            )
+            self._client = Anthropic(
+                api_key=self.config.api_key,
+                timeout=timeout,
+            )
             return True
         except ImportError:
             logger.warning("anthropic package not installed")
@@ -213,7 +224,7 @@ class AnthropicProvider(LLMProvider):
             return False
 
     def complete(self, prompt: str, max_tokens: int = 512) -> LLMResponse:
-        """Send completion request to Claude."""
+        """Send completion request to Claude with timeout protection."""
         if not self.is_available():
             return LLMResponse(
                 success=False,
@@ -223,10 +234,21 @@ class AnthropicProvider(LLMProvider):
 
         start_time = time.time()
         try:
-            from anthropic import Anthropic
+            from anthropic import Anthropic, APITimeoutError
+            import httpx
 
             if self._client is None:
-                self._client = Anthropic(api_key=self.config.api_key)
+                # Create client with timeout configuration
+                timeout = httpx.Timeout(
+                    connect=10.0,
+                    read=self.config.timeout,
+                    write=10.0,
+                    pool=10.0,
+                )
+                self._client = Anthropic(
+                    api_key=self.config.api_key,
+                    timeout=timeout,
+                )
 
             message = self._client.messages.create(
                 model=self.config.model_id,
@@ -259,6 +281,24 @@ class AnthropicProvider(LLMProvider):
 
         except Exception as e:
             latency = (time.time() - start_time) * 1000
+            error_type = type(e).__name__
+
+            # Check for timeout errors
+            if "timeout" in str(e).lower() or "Timeout" in error_type:
+                logger.error(
+                    "Anthropic API timeout after %.1fs (limit: %ds): %s",
+                    latency / 1000,
+                    self.config.timeout,
+                    str(e)
+                )
+                return LLMResponse(
+                    success=False,
+                    error=f"API timeout after {self.config.timeout}s",
+                    provider=self.name,
+                    model=self.config.model_id,
+                    latency_ms=latency,
+                )
+
             logger.error("Anthropic completion failed: %s", str(e))
             return LLMResponse(
                 success=False,
@@ -295,8 +335,19 @@ class OpenAIProvider(LLMProvider):
             return False
         try:
             from openai import OpenAI
+            import httpx
 
-            self._client = OpenAI(api_key=self.config.api_key)
+            # Create client with timeout configuration
+            timeout = httpx.Timeout(
+                connect=10.0,
+                read=self.config.timeout,
+                write=10.0,
+                pool=10.0,
+            )
+            self._client = OpenAI(
+                api_key=self.config.api_key,
+                timeout=timeout,
+            )
             return True
         except ImportError:
             logger.warning("openai package not installed. Install with: pip install openai")
@@ -306,7 +357,7 @@ class OpenAIProvider(LLMProvider):
             return False
 
     def complete(self, prompt: str, max_tokens: int = 512) -> LLMResponse:
-        """Send completion request to GPT."""
+        """Send completion request to GPT with timeout protection."""
         if not self.is_available():
             return LLMResponse(
                 success=False,
@@ -317,9 +368,19 @@ class OpenAIProvider(LLMProvider):
         start_time = time.time()
         try:
             from openai import OpenAI
+            import httpx
 
             if self._client is None:
-                self._client = OpenAI(api_key=self.config.api_key)
+                timeout = httpx.Timeout(
+                    connect=10.0,
+                    read=self.config.timeout,
+                    write=10.0,
+                    pool=10.0,
+                )
+                self._client = OpenAI(
+                    api_key=self.config.api_key,
+                    timeout=timeout,
+                )
 
             response = self._client.chat.completions.create(
                 model=self.config.model_id,
@@ -352,6 +413,24 @@ class OpenAIProvider(LLMProvider):
 
         except Exception as e:
             latency = (time.time() - start_time) * 1000
+            error_type = type(e).__name__
+
+            # Check for timeout errors
+            if "timeout" in str(e).lower() or "Timeout" in error_type:
+                logger.error(
+                    "OpenAI API timeout after %.1fs (limit: %ds): %s",
+                    latency / 1000,
+                    self.config.timeout,
+                    str(e)
+                )
+                return LLMResponse(
+                    success=False,
+                    error=f"API timeout after {self.config.timeout}s",
+                    provider=self.name,
+                    model=self.config.model_id,
+                    latency_ms=latency,
+                )
+
             logger.error("OpenAI completion failed: %s", str(e))
             return LLMResponse(
                 success=False,

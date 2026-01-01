@@ -17,6 +17,30 @@ import pytest
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
+# Check if cryptography is available before importing
+# This prevents pyo3 panic errors from crashing test collection
+def _check_cryptography_available():
+    """Check if cryptography module is usable."""
+    try:
+        # First check if cffi is available (required by cryptography)
+        import _cffi_backend  # noqa: F401
+        # Then try the actual cryptography import
+        from cryptography.hazmat.primitives import hashes  # noqa: F401
+        return True, None
+    except Exception as e:
+        return False, str(e)
+
+
+_crypto_available, _crypto_error = _check_cryptography_available()
+
+if not _crypto_available:
+    # Skip the entire module if cryptography is not available
+    pytest.skip(
+        f"cryptography module not available: {_crypto_error}",
+        allow_module_level=True
+    )
+
+# Only import if available
 from encryption import (
     ENCRYPTED_PREFIX,
     EncryptionError,

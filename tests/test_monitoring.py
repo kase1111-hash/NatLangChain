@@ -13,16 +13,24 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 import pytest
 
-from monitoring.metrics import MetricsCollector, metrics as global_metrics
-from monitoring.logging import (
-    get_logger,
-    configure_logging,
-    set_request_context,
-    clear_request_context,
-    get_request_context,
-    JSONFormatter,
-    LoggingContext,
-)
+# Skip all tests if monitoring dependencies are not available
+try:
+    from monitoring.metrics import MetricsCollector, metrics as global_metrics
+    from monitoring.logging import (
+        get_logger,
+        configure_logging,
+        set_request_context,
+        clear_request_context,
+        get_request_context,
+        JSONFormatter,
+        LoggingContext,
+    )
+    MONITORING_AVAILABLE = True
+except ImportError as e:
+    MONITORING_AVAILABLE = False
+    pytestmark = pytest.mark.skip(
+        reason=f"monitoring module not available (flask required): {e}"
+    )
 
 
 class TestMetricsCollector:

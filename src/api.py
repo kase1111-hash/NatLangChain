@@ -3,10 +3,14 @@ NatLangChain - REST API
 API endpoints for Agent OS to interact with the blockchain
 """
 
+import atexit
 import hashlib
 import json
+import logging
 import os
 import secrets
+import signal
+import sys
 import threading
 import time
 from dataclasses import dataclass
@@ -254,6 +258,115 @@ MAX_ORACLES = 10
 MAX_RESULTS = 100
 MAX_OFFSET = 100000  # Maximum offset to prevent memory exhaustion
 
+# =============================================================================
+# Graceful Shutdown Configuration
+# =============================================================================
+# Tracks server shutdown state for graceful termination
+_shutdown_event = threading.Event()
+_in_flight_requests = 0
+_request_lock = threading.Lock()
+_shutdown_timeout = int(os.getenv("SHUTDOWN_TIMEOUT", "30"))  # seconds
+
+# Configure module logger
+logger = logging.getLogger(__name__)
+
+
+def _track_request_start():
+    """Increment in-flight request counter."""
+    global _in_flight_requests
+    with _request_lock:
+        _in_flight_requests += 1
+
+
+def _track_request_end():
+    """Decrement in-flight request counter."""
+    global _in_flight_requests
+    with _request_lock:
+        _in_flight_requests -= 1
+
+
+def _graceful_shutdown(signum: int, frame) -> None:
+    """
+    Handle SIGTERM/SIGINT for graceful server shutdown.
+
+    This handler:
+    1. Signals the server to stop accepting new requests
+    2. Waits for in-flight requests to complete (with timeout)
+    3. Flushes pending entries to storage
+    4. Exits cleanly
+
+    Args:
+        signum: Signal number received
+        frame: Current stack frame (unused)
+    """
+    signal_name = signal.Signals(signum).name if hasattr(signal, 'Signals') else str(signum)
+    logger.info(f"Received {signal_name} - initiating graceful shutdown...")
+    print(f"\n[SHUTDOWN] Received {signal_name} - initiating graceful shutdown...")
+
+    # Signal that we're shutting down
+    _shutdown_event.set()
+
+    # Wait for in-flight requests to complete
+    waited = 0
+    while waited < _shutdown_timeout:
+        with _request_lock:
+            current_requests = _in_flight_requests
+
+        if current_requests == 0:
+            logger.info("All in-flight requests completed")
+            print("[SHUTDOWN] All in-flight requests completed")
+            break
+
+        logger.info(f"Waiting for {current_requests} in-flight request(s)... ({waited}s/{_shutdown_timeout}s)")
+        print(f"[SHUTDOWN] Waiting for {current_requests} in-flight request(s)... ({waited}s/{_shutdown_timeout}s)")
+        time.sleep(1)
+        waited += 1
+
+    if waited >= _shutdown_timeout:
+        with _request_lock:
+            remaining = _in_flight_requests
+        logger.warning(f"Shutdown timeout reached with {remaining} request(s) still in flight")
+        print(f"[SHUTDOWN] Timeout reached with {remaining} request(s) still in flight")
+
+    # Flush pending data to storage
+    try:
+        logger.info("Saving blockchain state...")
+        print("[SHUTDOWN] Saving blockchain state...")
+        save_chain()
+        logger.info("Blockchain state saved successfully")
+        print("[SHUTDOWN] Blockchain state saved successfully")
+    except Exception as e:
+        logger.error(f"Failed to save blockchain state: {e}")
+        print(f"[SHUTDOWN] WARNING: Failed to save blockchain state: {e}")
+
+    logger.info("Graceful shutdown complete")
+    print("[SHUTDOWN] Graceful shutdown complete")
+    sys.exit(0)
+
+
+def _register_shutdown_handlers():
+    """Register signal handlers for graceful shutdown."""
+    # Only register if not already in shutdown
+    if not _shutdown_event.is_set():
+        signal.signal(signal.SIGTERM, _graceful_shutdown)
+        signal.signal(signal.SIGINT, _graceful_shutdown)
+        # Register atexit handler for cleanup in case of unexpected exit
+        atexit.register(_cleanup_on_exit)
+
+
+def _cleanup_on_exit():
+    """Cleanup handler called on process exit."""
+    if not _shutdown_event.is_set():
+        try:
+            save_chain()
+        except Exception:
+            pass  # Best effort on exit
+
+
+def is_shutting_down() -> bool:
+    """Check if the server is in shutdown state."""
+    return _shutdown_event.is_set()
+
 
 def validate_pagination_params(
     limit: int,
@@ -437,19 +550,43 @@ def require_api_key(f):
 @app.before_request
 def before_request_security():
     """Apply security checks before each request."""
-    # Skip for health check endpoint
-    if request.endpoint == 'health_check':
+    # Skip shutdown check for health endpoints (needed for K8s probes)
+    if request.endpoint in ('health_check', 'health_live', 'health_ready', 'api_health'):
         return None
+
+    # Reject new requests during shutdown
+    if is_shutting_down():
+        response = jsonify({
+            "error": "Service is shutting down",
+            "status": "unavailable",
+            "retry_after": 30
+        })
+        response.status_code = 503
+        response.headers['Retry-After'] = '30'
+        return response
+
+    # Track this request for graceful shutdown
+    _track_request_start()
 
     # Rate limiting
     rate_error = check_rate_limit()
     if rate_error:
+        _track_request_end()  # Don't count rate-limited requests
         response = jsonify(rate_error)
         response.status_code = 429
         response.headers['Retry-After'] = str(rate_error.get('retry_after', 60))
         return response
 
     return None
+
+
+@app.teardown_request
+def teardown_request_tracking(exception=None):
+    """Track request completion for graceful shutdown."""
+    # Only decrement if we incremented (non-health endpoints, non-shutdown)
+    if request.endpoint not in ('health_check', 'health_live', 'health_ready', 'api_health'):
+        if not is_shutting_down():
+            _track_request_end()
 
 
 @app.after_request
@@ -935,7 +1072,7 @@ load_chain()
 
 @app.route('/health', methods=['GET'])
 def health_check():
-    """Health check endpoint."""
+    """Basic health check endpoint."""
     return jsonify({
         "status": "healthy",
         "service": "NatLangChain API",
@@ -943,6 +1080,101 @@ def health_check():
         "blocks": len(blockchain.chain),
         "pending_entries": len(blockchain.pending_entries)
     })
+
+
+@app.route('/health/live', methods=['GET'])
+def health_live():
+    """
+    Kubernetes liveness probe endpoint.
+
+    Returns 200 if the process is alive and responding.
+    This should be a simple check that doesn't depend on external services.
+    """
+    return jsonify({
+        "status": "alive",
+        "service": "NatLangChain API",
+        "timestamp": time.time()
+    }), 200
+
+
+@app.route('/health/ready', methods=['GET'])
+def health_ready():
+    """
+    Kubernetes readiness probe endpoint.
+
+    Returns 200 if the service is ready to accept traffic.
+    Checks:
+    - Blockchain is loaded and valid
+    - Storage is accessible (can write/read)
+    - Not in shutdown state
+
+    Returns 503 if not ready.
+    """
+    checks = {
+        "blockchain_loaded": False,
+        "storage_accessible": False,
+        "not_shutting_down": False,
+        "chain_valid": False,
+    }
+    errors = []
+
+    # Check if we're shutting down
+    if is_shutting_down():
+        errors.append("Service is shutting down")
+    else:
+        checks["not_shutting_down"] = True
+
+    # Check blockchain is loaded
+    try:
+        if blockchain is not None and len(blockchain.chain) >= 1:
+            checks["blockchain_loaded"] = True
+        else:
+            errors.append("Blockchain not loaded or empty")
+    except Exception as e:
+        errors.append(f"Blockchain check failed: {str(e)}")
+
+    # Check chain validity
+    try:
+        if blockchain.validate_chain():
+            checks["chain_valid"] = True
+        else:
+            errors.append("Chain validation failed")
+    except Exception as e:
+        errors.append(f"Chain validation error: {str(e)}")
+
+    # Check storage accessibility
+    try:
+        # Verify we can access the chain data file or storage
+        if os.path.exists(CHAIN_DATA_FILE):
+            # Check file is readable
+            with open(CHAIN_DATA_FILE, 'r') as f:
+                f.read(1)  # Just read 1 byte to verify access
+            checks["storage_accessible"] = True
+        else:
+            # No file yet is OK for fresh start - check directory is writable
+            chain_dir = os.path.dirname(CHAIN_DATA_FILE) or '.'
+            if os.access(chain_dir, os.W_OK):
+                checks["storage_accessible"] = True
+            else:
+                errors.append("Storage directory not writable")
+    except PermissionError:
+        errors.append("Storage file not readable")
+    except Exception as e:
+        errors.append(f"Storage check failed: {str(e)}")
+
+    # Determine overall status
+    all_passed = all(checks.values())
+
+    response = {
+        "status": "ready" if all_passed else "not_ready",
+        "checks": checks,
+        "timestamp": time.time()
+    }
+
+    if errors:
+        response["errors"] = errors
+
+    return jsonify(response), 200 if all_passed else 503
 
 
 @app.route('/chain', methods=['GET'])
@@ -8006,10 +8238,13 @@ def internal_error(error):
 
 
 def run_server():
-    """Run the Flask development server."""
+    """Run the Flask development server with graceful shutdown support."""
     host = os.getenv("HOST", "0.0.0.0")
     port = int(os.getenv("PORT", 5000))
     debug = os.getenv("FLASK_DEBUG", "false").lower() == "true"
+
+    # Register graceful shutdown handlers
+    _register_shutdown_handlers()
 
     print(f"\n{'='*60}")
     print("NatLangChain API Server")
@@ -8020,6 +8255,7 @@ def run_server():
     print(f"Rate Limit: {RATE_LIMIT_REQUESTS} req/{RATE_LIMIT_WINDOW}s")
     print(f"LLM Validation: {'Enabled' if llm_validator else 'Disabled'}")
     print(f"Blockchain: {len(blockchain.chain)} blocks loaded")
+    print(f"Graceful Shutdown: Enabled (timeout: {_shutdown_timeout}s)")
     print(f"{'='*60}\n")
 
     app.run(host=host, port=port, debug=debug)
