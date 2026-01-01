@@ -273,28 +273,100 @@ The daemon provides some EDR-like capabilities, but lacks:
 
 1. **Update README documentation** to clearly state these are audit/detection systems, not enforcement mechanisms
 
-2. **Implement actual network blocking** via iptables/nftables integration:
-   ```python
-   def block_network():
-       subprocess.run(['iptables', '-A', 'OUTPUT', '-j', 'DROP'])
-   ```
+2. ~~**Implement actual network blocking** via iptables/nftables integration~~ **IMPLEMENTED** in `src/security_enforcement.py`
 
-3. **Add process sandboxing** via seccomp:
-   ```python
-   import prctl
-   prctl.set_seccomp_strict()  # Minimal syscall set
-   ```
+3. ~~**Add process sandboxing** via seccomp~~ **IMPLEMENTED** - supports firejail, unshare, bubblewrap
 
-4. **Implement daemon watchdog** that restarts the daemon if killed
+4. ~~**Implement daemon watchdog** that restarts the daemon if killed~~ **IMPLEMENTED** in `DaemonWatchdog` class
 
-5. **Enable encryption at rest** for SIEM storage
+5. **Enable encryption at rest** for SIEM storage (still needed externally)
 
 ### Architectural Changes Required
 
 1. Move enforcement to kernel space (eBPF, kernel module, or LSM hook)
 2. Implement container-based isolation for protected processes
 3. Add hardware-backed attestation (TPM)
-4. Deploy actual firewall rules, not just monitoring
+4. ~~Deploy actual firewall rules, not just monitoring~~ **IMPLEMENTED**
+
+---
+
+## IMPLEMENTED IN NATLANGCHAIN
+
+The following security enforcement controls have been added to NatLangChain in `src/security_enforcement.py`:
+
+### 1. Network Enforcement (iptables/nftables)
+
+```python
+from security_enforcement import SecurityEnforcementManager
+
+manager = SecurityEnforcementManager()
+
+# Block ALL outbound network (AIRGAP mode)
+result = manager.enforce_airgap_mode()
+
+# Allow only VPN traffic (TRUSTED mode)
+result = manager.enforce_trusted_mode(vpn_interface="tun0")
+
+# Block specific destinations
+result = manager.network.block_destination("1.2.3.4", port=443)
+```
+
+### 2. USB Device Blocking (udev)
+
+```python
+# Block USB storage devices
+result = manager.usb.block_usb_storage()
+
+# Remove blocking
+result = manager.usb.allow_usb_storage()
+```
+
+### 3. Process Sandboxing
+
+```python
+# Run untrusted command in sandbox (uses firejail/unshare/bwrap)
+result = manager.sandbox.run_sandboxed(["python", "untrusted.py"])
+```
+
+### 4. Daemon Watchdog
+
+```python
+# Start self-healing watchdog
+result = manager.start_watchdog(restart_command=["python", "run_daemon.py"])
+```
+
+### 5. Immutable Audit Logs
+
+```python
+# Append to hash-chained, append-only log
+manager.audit_log.append("security_event", {"action": "blocked"})
+
+# Verify log integrity
+result = manager.audit_log.verify_integrity()
+```
+
+### API Endpoints
+
+New enforcement endpoints available:
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/security/enforcement/status` | GET | Get enforcement capabilities |
+| `/security/enforcement/mode` | POST | Enforce a boundary mode |
+| `/security/enforcement/network/block` | POST | Block all network |
+| `/security/enforcement/network/unblock` | POST | Remove network blocks |
+| `/security/enforcement/usb/block` | POST | Block USB storage |
+| `/security/enforcement/sandbox/run` | POST | Run sandboxed command |
+| `/security/enforcement/audit/verify` | GET | Verify audit log integrity |
+| `/security/enforcement/watchdog/start` | POST | Start daemon watchdog |
+
+### Requirements
+
+These features require:
+- **Root/sudo privileges** for network and USB enforcement
+- **Linux** for seccomp, namespaces, udev
+- **iptables or nftables** for network blocking
+- **firejail, unshare, or bubblewrap** for sandboxing
 
 ---
 

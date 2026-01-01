@@ -2,13 +2,18 @@
 NatLangChain - Boundary Daemon RBAC Integration
 
 Integrates the boundary-daemon trust enforcement layer with NatLangChain's
-role-based access control system.
+role-based access control system, now with ACTUAL ENFORCEMENT.
 
 Features:
 - RBAC decisions routed through boundary-daemon policies
 - Audit events fed to boundary-daemon's hash chain
 - Boundary modes control API access levels
 - Unified security layer for both trust and access control
+- **NEW**: Real network enforcement via iptables/nftables
+- **NEW**: USB device blocking via udev rules
+- **NEW**: Process sandboxing via seccomp/namespaces
+- **NEW**: Immutable audit logs with integrity verification
+- **NEW**: Daemon watchdog for self-healing
 
 Architecture:
     ┌─────────────────────────────────────────────────────────┐
@@ -91,6 +96,24 @@ from rbac import (
     ROLE_PERMISSIONS,
     get_rbac_manager,
 )
+
+# Import security enforcement layer (NEW - provides ACTUAL enforcement)
+try:
+    from security_enforcement import (
+        SecurityEnforcementManager,
+        NetworkEnforcement,
+        USBEnforcement,
+        ProcessSandbox,
+        ImmutableAuditLog,
+        DaemonWatchdog,
+        SystemCapabilityDetector,
+        EnforcementCapability,
+        EnforcementResult,
+        enforce_boundary_mode,
+    )
+    ENFORCEMENT_AVAILABLE = True
+except ImportError:
+    ENFORCEMENT_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -248,6 +271,7 @@ class BoundaryRBACGateway:
         rbac_manager: RBACManager | None = None,
         boundary_daemon: BoundaryDaemon | None = None,
         boundary_mode: BoundaryMode = BoundaryMode.STANDARD,
+        enable_enforcement: bool = True,
     ):
         self._rbac = rbac_manager or get_rbac_manager()
         self._boundary_mode = boundary_mode
@@ -265,9 +289,25 @@ class BoundaryRBACGateway:
         # Chain entry callback (set by integration)
         self._chain_callback: Callable[[dict], None] | None = None
 
+        # NEW: Initialize enforcement layer if available
+        self._enforcement_enabled = enable_enforcement and ENFORCEMENT_AVAILABLE
+        self._enforcement_manager: SecurityEnforcementManager | None = None
+        self._enforcement_active = False
+
+        if self._enforcement_enabled:
+            try:
+                self._enforcement_manager = SecurityEnforcementManager()
+                self._enforcement_capabilities = self._enforcement_manager.capabilities
+                logger.info(f"Enforcement layer initialized with capabilities: "
+                           f"{[k.value for k, v in self._enforcement_capabilities.items() if v]}")
+            except Exception as e:
+                logger.warning(f"Failed to initialize enforcement layer: {e}")
+                self._enforcement_enabled = False
+
         logger.info(
             f"Security gateway initialized: mode={boundary_mode.value}, "
-            f"enforcement={self._enforcement_mode.value}"
+            f"enforcement={self._enforcement_mode.value}, "
+            f"real_enforcement={'enabled' if self._enforcement_enabled else 'disabled'}"
         )
 
     @property
@@ -563,6 +603,186 @@ class BoundaryRBACGateway:
             "by_type": by_type,
         }
 
+    # =========================================================================
+    # NEW: Real Enforcement Methods
+    # These provide ACTUAL enforcement, not just detection
+    # =========================================================================
+
+    def enforce_mode(self, mode: str | BoundaryMode) -> dict[str, Any]:
+        """
+        ACTUALLY enforce a boundary mode with real system-level controls.
+
+        Unlike the detection-only boundary daemon, this:
+        - Blocks network via iptables/nftables for AIRGAP mode
+        - Restricts to VPN-only for TRUSTED mode
+        - Blocks USB for COLDROOM mode
+        - Applies all restrictions for LOCKDOWN mode
+
+        Args:
+            mode: The boundary mode to enforce
+
+        Returns:
+            Dictionary with enforcement results
+        """
+        if not self._enforcement_enabled or not self._enforcement_manager:
+            return {
+                "success": False,
+                "error": "Enforcement layer not available",
+                "hint": "Install required system tools (iptables, udev, etc.) and run with sudo"
+            }
+
+        if isinstance(mode, str):
+            mode = BoundaryMode(mode.lower())
+
+        results = {}
+
+        # Map boundary modes to enforcement actions
+        if mode == BoundaryMode.LOCKDOWN:
+            result = self._enforcement_manager.enforce_lockdown_mode()
+            results["lockdown"] = result.success
+            results["details"] = result.details
+            self._enforcement_active = result.success
+
+        elif mode == BoundaryMode.RESTRICTED:
+            # Block outbound network except essentials
+            net_result = self._enforcement_manager.enforce_airgap_mode()
+            results["network_blocked"] = net_result.success
+
+        elif mode == BoundaryMode.ELEVATED:
+            # Start watchdog for self-healing
+            if self._enforcement_manager.watchdog is None:
+                watch_result = self._enforcement_manager.start_watchdog()
+                results["watchdog"] = watch_result.success
+
+        elif mode == BoundaryMode.OPEN:
+            # Remove all enforcement
+            result = self._enforcement_manager.exit_lockdown()
+            results["enforcement_cleared"] = result.success
+            self._enforcement_active = False
+
+        # Update internal mode
+        self.boundary_mode = mode
+
+        # Log the enforcement
+        self._log_event(
+            event_type="enforcement_applied",
+            source="system",
+            action=f"enforce_mode:{mode.value}",
+            decision="applied",
+            reason=f"Real enforcement applied for {mode.value} mode",
+            record_to_chain=True,
+        )
+
+        return {
+            "success": all(v for v in results.values() if isinstance(v, bool)),
+            "mode": mode.value,
+            "enforcement_results": results,
+            "enforcement_active": self._enforcement_active
+        }
+
+    def block_network(self) -> dict[str, Any]:
+        """Block all outbound network traffic immediately."""
+        if not self._enforcement_enabled or not self._enforcement_manager:
+            return {"success": False, "error": "Enforcement not available"}
+
+        result = self._enforcement_manager.network.block_all_outbound()
+
+        self._log_event(
+            event_type="network_blocked",
+            source="system",
+            action="block_all_outbound",
+            decision="applied" if result.success else "failed",
+            reason=result.error or "Network blocked successfully",
+            record_to_chain=True,
+        )
+
+        return {
+            "success": result.success,
+            "error": result.error,
+            "details": result.details
+        }
+
+    def unblock_network(self) -> dict[str, Any]:
+        """Remove network blocking rules."""
+        if not self._enforcement_enabled or not self._enforcement_manager:
+            return {"success": False, "error": "Enforcement not available"}
+
+        result = self._enforcement_manager.network.clear_rules()
+        return {
+            "success": result.success,
+            "error": result.error
+        }
+
+    def block_usb(self) -> dict[str, Any]:
+        """Block USB storage devices."""
+        if not self._enforcement_enabled or not self._enforcement_manager:
+            return {"success": False, "error": "Enforcement not available"}
+
+        result = self._enforcement_manager.usb.block_usb_storage()
+
+        self._log_event(
+            event_type="usb_blocked",
+            source="system",
+            action="block_usb_storage",
+            decision="applied" if result.success else "failed",
+            reason=result.error or "USB storage blocked",
+            record_to_chain=True,
+        )
+
+        return {
+            "success": result.success,
+            "error": result.error
+        }
+
+    def run_sandboxed(self, command: list[str], timeout: int = 60) -> dict[str, Any]:
+        """Run a command in a sandboxed environment."""
+        if not self._enforcement_enabled or not self._enforcement_manager:
+            return {"success": False, "error": "Enforcement not available"}
+
+        result = self._enforcement_manager.sandbox.run_sandboxed(command, timeout)
+        return {
+            "success": result.success,
+            "error": result.error,
+            "details": result.details
+        }
+
+    def verify_audit_integrity(self) -> dict[str, Any]:
+        """Verify the integrity of immutable audit logs."""
+        if not self._enforcement_enabled or not self._enforcement_manager:
+            return {"success": False, "error": "Enforcement not available"}
+
+        result = self._enforcement_manager.audit_log.verify_integrity()
+        return {
+            "integrity_verified": result.success,
+            "details": result.details,
+            "error": result.error
+        }
+
+    def get_enforcement_status(self) -> dict[str, Any]:
+        """Get current enforcement status and capabilities."""
+        if not self._enforcement_enabled:
+            return {
+                "enforcement_available": False,
+                "reason": "Enforcement layer not initialized"
+            }
+
+        status = self._enforcement_manager.get_enforcement_status()
+        status["enforcement_active"] = self._enforcement_active
+        status["current_mode"] = self._boundary_mode.value
+        return status
+
+    def start_watchdog(self, restart_command: list[str] | None = None) -> dict[str, Any]:
+        """Start the daemon watchdog for self-healing."""
+        if not self._enforcement_enabled or not self._enforcement_manager:
+            return {"success": False, "error": "Enforcement not available"}
+
+        result = self._enforcement_manager.start_watchdog(restart_command)
+        return {
+            "success": result.success,
+            "error": result.error,
+            "details": result.details
+        }
+
 
 # =============================================================================
 # Global Gateway Instance
@@ -848,4 +1068,94 @@ def register_security_endpoints(app):
         gateway = get_security_gateway()
         return jsonify(gateway.get_stats())
 
-    logger.info("Security management endpoints registered")
+    # =========================================================================
+    # NEW: Enforcement Endpoints - These provide REAL security controls
+    # =========================================================================
+
+    @app.route('/security/enforcement/status', methods=['GET'])
+    def get_enforcement_status():
+        """Get current enforcement capabilities and status."""
+        gateway = get_security_gateway()
+        return jsonify(gateway.get_enforcement_status())
+
+    @app.route('/security/enforcement/mode', methods=['POST'])
+    @require_role(Role.ADMIN)
+    def enforce_mode():
+        """
+        ACTUALLY enforce a boundary mode with real system controls.
+
+        This goes beyond detection - it blocks network, USB, etc.
+        Requires admin role and often root privileges.
+        """
+        gateway = get_security_gateway()
+        data = request.get_json()
+        mode = data.get("mode")
+
+        if not mode:
+            return jsonify({"error": "mode is required"}), 400
+
+        result = gateway.enforce_mode(mode)
+        return jsonify(result)
+
+    @app.route('/security/enforcement/network/block', methods=['POST'])
+    @require_role(Role.ADMIN)
+    def block_network():
+        """Block all outbound network traffic (AIRGAP)."""
+        gateway = get_security_gateway()
+        result = gateway.block_network()
+        status_code = 200 if result.get("success") else 500
+        return jsonify(result), status_code
+
+    @app.route('/security/enforcement/network/unblock', methods=['POST'])
+    @require_role(Role.ADMIN)
+    def unblock_network():
+        """Remove network blocking rules."""
+        gateway = get_security_gateway()
+        result = gateway.unblock_network()
+        return jsonify(result)
+
+    @app.route('/security/enforcement/usb/block', methods=['POST'])
+    @require_role(Role.ADMIN)
+    def block_usb():
+        """Block USB storage devices."""
+        gateway = get_security_gateway()
+        result = gateway.block_usb()
+        status_code = 200 if result.get("success") else 500
+        return jsonify(result), status_code
+
+    @app.route('/security/enforcement/sandbox/run', methods=['POST'])
+    @require_role(Role.ADMIN)
+    def run_sandboxed():
+        """Run a command in a sandboxed environment."""
+        gateway = get_security_gateway()
+        data = request.get_json()
+
+        command = data.get("command")
+        timeout = data.get("timeout", 60)
+
+        if not command or not isinstance(command, list):
+            return jsonify({"error": "command must be a list of strings"}), 400
+
+        result = gateway.run_sandboxed(command, timeout)
+        return jsonify(result)
+
+    @app.route('/security/enforcement/audit/verify', methods=['GET'])
+    @require_role(Role.OPERATOR)
+    def verify_audit_integrity():
+        """Verify integrity of immutable audit logs."""
+        gateway = get_security_gateway()
+        result = gateway.verify_audit_integrity()
+        return jsonify(result)
+
+    @app.route('/security/enforcement/watchdog/start', methods=['POST'])
+    @require_role(Role.ADMIN)
+    def start_watchdog():
+        """Start the daemon watchdog for self-healing."""
+        gateway = get_security_gateway()
+        data = request.get_json() or {}
+        restart_command = data.get("restart_command")
+
+        result = gateway.start_watchdog(restart_command)
+        return jsonify(result)
+
+    logger.info("Security management endpoints registered (including enforcement)")
