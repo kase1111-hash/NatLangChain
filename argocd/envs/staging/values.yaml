@@ -1,0 +1,99 @@
+# Staging Environment Values
+# These override the default values.yaml in the Helm chart
+
+# Reduced replicas for staging
+replicaCount: 2
+
+image:
+  repository: ghcr.io/kase1111-hash/natlangchain
+  tag: "main"  # Use main branch for staging
+  pullPolicy: Always
+
+# Ingress for staging
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: letsencrypt-staging
+  hosts:
+    - host: staging.natlangchain.io
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: natlangchain-staging-tls
+      hosts:
+        - staging.natlangchain.io
+
+# Smaller resource limits for staging
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 256Mi
+
+# Reduced autoscaling
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+
+# PDB with lower availability for staging
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# Configuration for staging
+config:
+  flaskEnv: staging
+  flaskDebug: false
+  boundaryMode: standard
+  enableRbac: true
+  logLevel: DEBUG
+  logFormat: json
+  enableTracing: true
+  tracingSampleRate: 1.0  # Sample all traces in staging
+
+# Use internal Redis
+redis:
+  enabled: true
+  architecture: standalone
+  auth:
+    enabled: true
+  master:
+    persistence:
+      enabled: true
+      size: 2Gi
+    resources:
+      limits:
+        cpu: 200m
+        memory: 256Mi
+      requests:
+        cpu: 50m
+        memory: 128Mi
+
+# Disable PostgreSQL in staging (use SQLite/JSON)
+postgresql:
+  enabled: false
+
+# Smaller persistence
+persistence:
+  enabled: true
+  size: 5Gi
+
+# Enable monitoring in staging
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+  prometheusRule:
+    enabled: true
+
+# Network policy for staging
+networkPolicy:
+  enabled: true
