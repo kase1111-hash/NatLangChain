@@ -1,0 +1,12 @@
+# Load Testing Dependencies
+#
+# Install with: pip install -r tests/load/requirements.txt
+
+# Locust - Python load testing
+locust>=2.20.0
+
+# Optional: Locust plugins
+locust-plugins>=3.0.0
+
+# For custom reporting
+jinja2>=3.0.0

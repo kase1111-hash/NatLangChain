@@ -52,6 +52,13 @@ def register_blueprints(app):
     except ImportError:
         pass
 
+    # Initialize OpenAPI/Swagger documentation
+    try:
+        from swagger import init_swagger
+        init_swagger(app)
+    except ImportError as e:
+        print(f"Note: Swagger UI not available ({e})")
+
 
 def init_managers(api_key: str = None):
     """
