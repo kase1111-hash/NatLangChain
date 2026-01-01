@@ -47,6 +47,19 @@ except ImportError:
 import ipaddress
 import re
 import shlex
+from contextlib import contextmanager
+
+
+# =============================================================================
+# Custom Exceptions
+# =============================================================================
+
+class EnforcementError(Exception):
+    """Exception raised when enforcement fails and raise_on_failure=True."""
+
+    def __init__(self, result: "EnforcementResult"):
+        self.result = result
+        super().__init__(f"{result.action} failed: {result.error}")
 
 
 # =============================================================================
@@ -391,16 +404,10 @@ class NetworkEnforcement:
         """
         Block a specific destination IP/port.
 
-        SECURITY: Input is validated to prevent command injection.
+        SECURITY: Input is validated FIRST to prevent command injection.
         """
-        if not self.use_iptables:
-            return EnforcementResult(
-                success=False,
-                action="block_destination",
-                error="iptables not available"
-            )
-
-        # SECURITY FIX: Validate IP address
+        # SECURITY FIX: Validate input BEFORE checking system capabilities
+        # This ensures users get proper error messages even if iptables isn't available
         ip_valid, ip_error = validate_ip_address(ip)
         if not ip_valid:
             return EnforcementResult(
@@ -409,13 +416,20 @@ class NetworkEnforcement:
                 error=f"Invalid IP address: {ip_error}"
             )
 
-        # SECURITY FIX: Validate port
         port_valid, port_error = validate_port(port)
         if not port_valid:
             return EnforcementResult(
                 success=False,
                 action="block_destination",
                 error=f"Invalid port: {port_error}"
+            )
+
+        # Now check system capabilities
+        if not self.use_iptables:
+            return EnforcementResult(
+                success=False,
+                action="block_destination",
+                error="iptables not available"
             )
 
         try:
@@ -578,16 +592,9 @@ class NetworkEnforcement:
         Allowlist mode: Block everything EXCEPT specified IPs/ports.
         This is stricter than blocklist - denies by default.
 
-        SECURITY: All IPs and ports are validated before use.
+        SECURITY: All IPs and ports are validated FIRST before use.
         """
-        if not self.use_iptables:
-            return EnforcementResult(
-                success=False,
-                action="allowlist_only",
-                error="iptables not available"
-            )
-
-        # SECURITY FIX: Validate all IP addresses
+        # SECURITY FIX: Validate all input BEFORE checking system capabilities
         for ip in allowed_ips:
             ip_valid, ip_error = validate_ip_address(ip)
             if not ip_valid:
@@ -607,6 +614,14 @@ class NetworkEnforcement:
                         action="allowlist_only",
                         error=f"Invalid port: {port_error}"
                     )
+
+        # Now check system capabilities (after validation)
+        if not self.use_iptables:
+            return EnforcementResult(
+                success=False,
+                action="allowlist_only",
+                error="iptables not available"
+            )
 
         try:
             # SECURITY FIX: Use list-based subprocess calls
@@ -669,16 +684,9 @@ class NetworkEnforcement:
         Args:
             except_ports: Ports to allow (e.g., [22, 443, 5000])
 
-        SECURITY: All ports are validated before use.
+        SECURITY: All ports are validated FIRST before use.
         """
-        if not self.use_iptables:
-            return EnforcementResult(
-                success=False,
-                action="block_inbound",
-                error="iptables not available"
-            )
-
-        # SECURITY FIX: Validate all ports
+        # SECURITY FIX: Validate all input BEFORE checking system capabilities
         if except_ports:
             for port in except_ports:
                 port_valid, port_error = validate_port(port)
@@ -688,6 +696,14 @@ class NetworkEnforcement:
                         action="block_inbound",
                         error=f"Invalid port: {port_error}"
                     )
+
+        # Now check system capabilities (after validation)
+        if not self.use_iptables:
+            return EnforcementResult(
+                success=False,
+                action="block_inbound",
+                error="iptables not available"
+            )
 
         try:
             # SECURITY FIX: Use list-based subprocess calls
@@ -887,6 +903,244 @@ class NetworkEnforcement:
                 action="get_active_rules",
                 error=str(e)
             )
+
+    # =========================================================================
+    # Fluent Builder API
+    # =========================================================================
+
+    def rule(self) -> "NetworkRuleBuilder":
+        """
+        Create a new rule using the fluent builder pattern.
+
+        Example:
+            net.rule().block().destination("10.0.0.1").port(443).apply()
+            net.rule().allow().source("192.168.1.0/24").apply()
+        """
+        return NetworkRuleBuilder(self)
+
+    # =========================================================================
+    # Context Manager for Temporary Rules
+    # =========================================================================
+
+    @contextmanager
+    def temporary_block(self, ip: str, port: int | None = None):
+        """
+        Context manager for temporarily blocking an IP/port.
+
+        The block is automatically removed when the context exits.
+
+        Example:
+            with net.temporary_block("10.0.0.1", 443):
+                # IP is blocked here
+                do_something()
+            # IP is automatically unblocked
+
+        Args:
+            ip: IP address to block
+            port: Optional port to block
+        """
+        result = self.block_destination(ip, port)
+        if not result.success:
+            raise EnforcementError(result)
+
+        try:
+            yield result
+        finally:
+            # Remove the specific rule we added
+            try:
+                if port:
+                    cmd_args = ["iptables", "-D", "OUTPUT", "-d", ip,
+                               "-p", "tcp", "--dport", str(int(port)), "-j", "DROP"]
+                else:
+                    cmd_args = ["iptables", "-D", "OUTPUT", "-d", ip, "-j", "DROP"]
+                subprocess.run(cmd_args, capture_output=True, timeout=10)
+            except Exception:
+                pass  # Best effort cleanup
+
+
+class NetworkRuleBuilder:
+    """
+    Fluent builder for network rules.
+
+    Provides a chainable API for building complex rules:
+        net.rule().block().destination("10.0.0.1").port(443).apply()
+    """
+
+    def __init__(self, network: NetworkEnforcement):
+        self._network = network
+        self._action: str | None = None  # "block" or "allow"
+        self._direction: str = "OUTPUT"  # "INPUT" or "OUTPUT"
+        self._destination: str | None = None
+        self._source: str | None = None
+        self._port: int | None = None
+        self._protocol: str = "tcp"
+
+    def block(self) -> "NetworkRuleBuilder":
+        """Set action to DROP (block)."""
+        self._action = "DROP"
+        return self
+
+    def allow(self) -> "NetworkRuleBuilder":
+        """Set action to ACCEPT (allow)."""
+        self._action = "ACCEPT"
+        return self
+
+    def inbound(self) -> "NetworkRuleBuilder":
+        """Apply rule to inbound traffic."""
+        self._direction = "INPUT"
+        return self
+
+    def outbound(self) -> "NetworkRuleBuilder":
+        """Apply rule to outbound traffic (default)."""
+        self._direction = "OUTPUT"
+        return self
+
+    def destination(self, ip: str) -> "NetworkRuleBuilder":
+        """Set destination IP address."""
+        self._destination = ip
+        return self
+
+    def source(self, ip: str) -> "NetworkRuleBuilder":
+        """Set source IP address."""
+        self._source = ip
+        return self
+
+    def port(self, port: int) -> "NetworkRuleBuilder":
+        """Set port number."""
+        self._port = port
+        return self
+
+    def protocol(self, proto: str) -> "NetworkRuleBuilder":
+        """Set protocol (tcp, udp, icmp). Default is tcp."""
+        self._protocol = proto.lower()
+        return self
+
+    def apply(self, raise_on_failure: bool = False) -> EnforcementResult:
+        """
+        Apply the built rule.
+
+        Args:
+            raise_on_failure: If True, raises EnforcementError on failure
+
+        Returns:
+            EnforcementResult
+        """
+        if not self._action:
+            result = EnforcementResult(
+                success=False,
+                action="rule_builder",
+                error="Must call block() or allow() before apply()"
+            )
+            if raise_on_failure:
+                raise EnforcementError(result)
+            return result
+
+        if not self._destination and not self._source:
+            result = EnforcementResult(
+                success=False,
+                action="rule_builder",
+                error="Must specify destination() or source()"
+            )
+            if raise_on_failure:
+                raise EnforcementError(result)
+            return result
+
+        # Validate inputs
+        if self._destination:
+            ip_valid, ip_error = validate_ip_address(self._destination)
+            if not ip_valid:
+                result = EnforcementResult(
+                    success=False,
+                    action="rule_builder",
+                    error=f"Invalid destination: {ip_error}"
+                )
+                if raise_on_failure:
+                    raise EnforcementError(result)
+                return result
+
+        if self._source:
+            ip_valid, ip_error = validate_ip_address(self._source)
+            if not ip_valid:
+                result = EnforcementResult(
+                    success=False,
+                    action="rule_builder",
+                    error=f"Invalid source: {ip_error}"
+                )
+                if raise_on_failure:
+                    raise EnforcementError(result)
+                return result
+
+        if self._port:
+            port_valid, port_error = validate_port(self._port)
+            if not port_valid:
+                result = EnforcementResult(
+                    success=False,
+                    action="rule_builder",
+                    error=f"Invalid port: {port_error}"
+                )
+                if raise_on_failure:
+                    raise EnforcementError(result)
+                return result
+
+        if not self._network.use_iptables:
+            result = EnforcementResult(
+                success=False,
+                action="rule_builder",
+                error="iptables not available"
+            )
+            if raise_on_failure:
+                raise EnforcementError(result)
+            return result
+
+        # Build the command
+        cmd_args = ["iptables", "-A", self._direction]
+
+        if self._source:
+            cmd_args.extend(["-s", self._source])
+        if self._destination:
+            cmd_args.extend(["-d", self._destination])
+        if self._port:
+            cmd_args.extend(["-p", self._protocol, "--dport", str(self._port)])
+
+        cmd_args.extend(["-j", self._action])
+
+        try:
+            subprocess.run(cmd_args, capture_output=True, timeout=10, check=True)
+            self._network._rules_applied.append(" ".join(cmd_args))
+
+            result = EnforcementResult(
+                success=True,
+                action="rule_builder",
+                details={
+                    "command": " ".join(cmd_args),
+                    "action": self._action,
+                    "direction": self._direction,
+                    "destination": self._destination,
+                    "source": self._source,
+                    "port": self._port
+                }
+            )
+            return result
+
+        except subprocess.CalledProcessError as e:
+            result = EnforcementResult(
+                success=False,
+                action="rule_builder",
+                error=f"iptables command failed: {e.stderr.decode() if e.stderr else str(e)}"
+            )
+            if raise_on_failure:
+                raise EnforcementError(result)
+            return result
+
+        except Exception as e:
+            result = EnforcementResult(
+                success=False,
+                action="rule_builder",
+                error=str(e)
+            )
+            if raise_on_failure:
+                raise EnforcementError(result)
+            return result
 
 
 class USBEnforcement:
@@ -1397,11 +1651,24 @@ class SecurityEnforcementManager:
             available.append("mandatory_access_control")
         return available
 
-    def enforce_airgap_mode(self) -> EnforcementResult:
+    def enforce_airgap_mode(self, raise_on_failure: bool = False) -> EnforcementResult:
         """
         ACTUALLY enforce AIRGAP mode by blocking all network.
 
         Unlike the boundary daemon which just logs, this BLOCKS.
+
+        Args:
+            raise_on_failure: If True, raises EnforcementError on failure
+
+        Example:
+            # Silent failure (check result.success)
+            result = manager.enforce_airgap_mode()
+
+            # Raise exception on failure
+            try:
+                manager.enforce_airgap_mode(raise_on_failure=True)
+            except EnforcementError as e:
+                print(f"Failed: {e.result.error}")
         """
         result = self.network.block_all_outbound()
         self.audit_log.append("mode_change", {
@@ -1409,11 +1676,17 @@ class SecurityEnforcementManager:
             "action": "network_blocked",
             "result": result.success
         })
+        if raise_on_failure and not result.success:
+            raise EnforcementError(result)
         return result
 
-    def enforce_trusted_mode(self, vpn_interface: str = "tun0") -> EnforcementResult:
+    def enforce_trusted_mode(self, vpn_interface: str = "tun0", raise_on_failure: bool = False) -> EnforcementResult:
         """
         ACTUALLY enforce TRUSTED mode by allowing only VPN traffic.
+
+        Args:
+            vpn_interface: Name of VPN interface (default: tun0)
+            raise_on_failure: If True, raises EnforcementError on failure
         """
         result = self.network.allow_only_vpn(vpn_interface)
         self.audit_log.append("mode_change", {
@@ -1422,11 +1695,16 @@ class SecurityEnforcementManager:
             "vpn_interface": vpn_interface,
             "result": result.success
         })
+        if raise_on_failure and not result.success:
+            raise EnforcementError(result)
         return result
 
-    def enforce_coldroom_mode(self) -> EnforcementResult:
+    def enforce_coldroom_mode(self, raise_on_failure: bool = False) -> EnforcementResult:
         """
         ACTUALLY enforce COLDROOM mode by blocking USB.
+
+        Args:
+            raise_on_failure: If True, raises EnforcementError on failure
         """
         result = self.usb.block_usb_storage()
         self.audit_log.append("mode_change", {
@@ -1434,13 +1712,18 @@ class SecurityEnforcementManager:
             "action": "usb_blocked",
             "result": result.success
         })
+        if raise_on_failure and not result.success:
+            raise EnforcementError(result)
         return result
 
-    def enforce_lockdown_mode(self) -> EnforcementResult:
+    def enforce_lockdown_mode(self, raise_on_failure: bool = False) -> EnforcementResult:
         """
         ACTUALLY enforce LOCKDOWN mode with multiple layers.
 
         This addresses the audit finding that lockdown was cosmetic.
+
+        Args:
+            raise_on_failure: If True, raises EnforcementError on failure
         """
         results = []
 
@@ -1459,11 +1742,14 @@ class SecurityEnforcementManager:
         })
 
         success = all(r[1] for r in results)
-        return EnforcementResult(
+        result = EnforcementResult(
             success=success,
             action="enforce_lockdown",
             details={"results": dict(results)}
         )
+        if raise_on_failure and not success:
+            raise EnforcementError(result)
+        return result
 
     def exit_lockdown(self) -> EnforcementResult:
         """Remove all lockdown restrictions."""

@@ -479,27 +479,51 @@ def is_valid_ip(ip_str: str) -> bool:
         return False
 
 
+# SECURITY: Trusted proxy configuration
+# Only trust X-Forwarded-For headers from these IPs
+# Set via environment variable as comma-separated list
+# If not set, X-Forwarded-For is NOT trusted (secure default)
+TRUSTED_PROXIES = set(
+    ip.strip() for ip in os.getenv("NATLANGCHAIN_TRUSTED_PROXIES", "").split(",")
+    if ip.strip()
+)
+
+
 def get_client_ip() -> str:
     """
     Get client IP address, considering proxies.
 
-    SECURITY: Validates IP format to prevent rate limit bypass attacks.
-    """
-    # Check X-Forwarded-For header (set by reverse proxies)
-    xff = request.headers.get('X-Forwarded-For')
-    if xff:
-        # Take the first (leftmost) IP which is the original client
-        # X-Forwarded-For format: "client, proxy1, proxy2, ..."
-        parts = xff.split(',')
-        for part in parts:
-            candidate = part.strip()
-            # Validate it's actually an IP address to prevent bypass
-            if candidate and is_valid_ip(candidate):
-                return candidate
-        # If no valid IP found in header, fall through to remote_addr
+    SECURITY FIXES:
+    - Only trusts X-Forwarded-For when request comes from a trusted proxy
+    - Validates IP format to prevent rate limit bypass attacks
+    - Uses rightmost untrusted IP (harder to spoof than leftmost)
 
-    # Fall back to direct connection address
-    return request.remote_addr or 'unknown'
+    Configure trusted proxies via NATLANGCHAIN_TRUSTED_PROXIES env var.
+    """
+    remote_addr = request.remote_addr or 'unknown'
+
+    # Only trust X-Forwarded-For if the request came from a trusted proxy
+    if TRUSTED_PROXIES and remote_addr in TRUSTED_PROXIES:
+        xff = request.headers.get('X-Forwarded-For')
+        if xff:
+            # Parse all IPs in the chain
+            # Format: "client, proxy1, proxy2, ..."
+            parts = [p.strip() for p in xff.split(',')]
+
+            # Use rightmost IP that is NOT a trusted proxy
+            # This is the IP that the last trusted proxy saw
+            for ip in reversed(parts):
+                if ip and is_valid_ip(ip) and ip not in TRUSTED_PROXIES:
+                    return ip
+
+            # If all IPs are trusted proxies, use the leftmost
+            for ip in parts:
+                if ip and is_valid_ip(ip):
+                    return ip
+
+    # If no trusted proxies configured or request not from proxy,
+    # use direct connection address (secure default)
+    return remote_addr
 
 
 def check_rate_limit() -> dict[str, Any] | None:
