@@ -73,6 +73,25 @@ except ImportError:
     HAS_REQUESTS = False
     requests = None
 
+# Import NAT traversal module
+try:
+    from . import nat_traversal
+    from .nat_traversal import (
+        NATTraversalManager,
+        NATType,
+        CandidateType,
+        ICECandidate,
+        TURNServer,
+        create_nat_manager_from_env,
+        load_nat_config_from_env,
+    )
+    HAS_NAT_TRAVERSAL = True
+except ImportError:
+    HAS_NAT_TRAVERSAL = False
+    nat_traversal = None
+    NATTraversalManager = None
+    NATType = None
+
 
 # =============================================================================
 # Constants
@@ -879,7 +898,8 @@ class P2PNetwork:
         role: NodeRole = NodeRole.FULL_NODE,
         consensus_mode: ConsensusMode = ConsensusMode.PERMISSIONLESS,
         bootstrap_peers: list[str] | None = None,
-        secret_key: str | None = None
+        secret_key: str | None = None,
+        enable_nat_traversal: bool = True
     ):
         """
         Initialize P2P network manager.
@@ -891,12 +911,14 @@ class P2PNetwork:
             consensus_mode: Consensus mechanism to use
             bootstrap_peers: Initial peers to connect to
             secret_key: Secret key for signing messages
+            enable_nat_traversal: Enable STUN/TURN NAT traversal
         """
         self.node_id = node_id or f"node_{secrets.token_hex(8)}"
         self.endpoint = endpoint or f"http://localhost:{DEFAULT_API_PORT}"
         self.role = role
         self.consensus_mode = consensus_mode
         self.secret_key = secret_key or secrets.token_hex(32)
+        self.enable_nat_traversal = enable_nat_traversal
 
         # Peer management
         self.peers: dict[str, PeerInfo] = {}
@@ -936,7 +958,10 @@ class P2PNetwork:
             "failed_connections": 0,
             "blocked_messages": 0,
             "security_violations": 0,
-            "peers_banned": 0
+            "peers_banned": 0,
+            "nat_traversal_attempts": 0,
+            "stun_successes": 0,
+            "turn_fallbacks": 0
         }
 
         # Security components
@@ -945,8 +970,16 @@ class P2PNetwork:
         self.block_validator = BlockValidator()
         self.security_manager = PeerSecurityManager()
 
+        # NAT Traversal components
+        self.nat_manager: NATTraversalManager | None = None
+        self._nat_initialized = False
+        if enable_nat_traversal and HAS_NAT_TRAVERSAL:
+            self._init_nat_traversal()
+
         logger.info(f"P2P Network initialized: node_id={self.node_id}, role={role.value}")
         logger.info(f"Security hardening enabled: rate_limit={MAX_MESSAGES_PER_MINUTE}/min, max_peers={MAX_PEERS}")
+        if self.nat_manager:
+            logger.info("NAT traversal enabled with STUN/TURN support")
 
     def _setup_session(self):
         """Set up HTTP session with retry logic."""
@@ -964,6 +997,204 @@ class P2PNetwork:
             "X-Node-ID": self.node_id,
             "X-Node-Role": self.role.value
         })
+
+    def _init_nat_traversal(self):
+        """Initialize NAT traversal components."""
+        if not HAS_NAT_TRAVERSAL:
+            logger.warning("NAT traversal module not available")
+            return
+
+        try:
+            # Create NAT manager from environment configuration
+            self.nat_manager = create_nat_manager_from_env()
+
+            if self.nat_manager:
+                # Initialize NAT detection and candidate gathering
+                if self.nat_manager.initialize():
+                    self._nat_initialized = True
+                    nat_info = self.nat_manager.get_nat_info()
+                    if nat_info:
+                        logger.info(
+                            f"NAT type detected: {nat_info.nat_type.value}, "
+                            f"external: {nat_info.external_ip}:{nat_info.external_port}"
+                        )
+
+                        # Update endpoint if we discovered our public address
+                        if nat_info.external_ip and self.endpoint.startswith("http://localhost"):
+                            self.endpoint = f"http://{nat_info.external_ip}:{DEFAULT_API_PORT}"
+                            logger.info(f"Updated endpoint to: {self.endpoint}")
+                else:
+                    logger.warning("NAT traversal initialization failed")
+
+        except Exception as e:
+            logger.error(f"NAT traversal setup error: {e}")
+            self.nat_manager = None
+
+    # =========================================================================
+    # NAT Traversal Methods
+    # =========================================================================
+
+    def get_nat_info(self) -> dict[str, Any] | None:
+        """
+        Get NAT detection information.
+
+        Returns:
+            Dictionary with NAT type, external address, and traversal info
+        """
+        if not self.nat_manager or not self._nat_initialized:
+            return None
+
+        nat_info = self.nat_manager.get_nat_info()
+        if not nat_info:
+            return None
+
+        return nat_info.to_dict()
+
+    def get_ice_candidates(self) -> list[dict[str, Any]]:
+        """
+        Get gathered ICE candidates for peer connectivity.
+
+        Returns:
+            List of ICE candidate dictionaries
+        """
+        if not self.nat_manager or not self._nat_initialized:
+            return []
+
+        candidates = self.nat_manager.get_candidates()
+        return [c.to_dict() for c in candidates]
+
+    def get_external_endpoint(self) -> str | None:
+        """
+        Get external (NAT-traversed) endpoint for this node.
+
+        Returns:
+            External endpoint URL or None if not available
+        """
+        if not self.nat_manager:
+            return self.endpoint
+
+        external = self.nat_manager.get_external_address()
+        if external:
+            ip, port = external
+            # Use discovered external address with API port
+            return f"http://{ip}:{DEFAULT_API_PORT}"
+
+        return self.endpoint
+
+    def get_relay_endpoint(self) -> str | None:
+        """
+        Get TURN relay endpoint if available.
+
+        Returns:
+            Relay endpoint URL or None
+        """
+        if not self.nat_manager:
+            return None
+
+        relay = self.nat_manager.get_relay_address()
+        if relay:
+            ip, port = relay
+            return f"http://{ip}:{port}"
+
+        return None
+
+    def can_connect_directly(self, peer_nat_type: str) -> bool:
+        """
+        Check if direct connection is possible with peer's NAT type.
+
+        Args:
+            peer_nat_type: Peer's NAT type string (from NATType enum)
+
+        Returns:
+            True if direct connection might succeed
+        """
+        if not self.nat_manager or not HAS_NAT_TRAVERSAL:
+            return True  # Assume direct connection possible
+
+        try:
+            # Import NATType enum from nat_traversal module
+            from .nat_traversal import NATType as NATTypeEnum
+            peer_type = NATTypeEnum(peer_nat_type)
+            return self.nat_manager.can_traverse(peer_type)
+        except (ValueError, ImportError):
+            return True  # Unknown type, try direct
+
+    def _connect_with_nat_traversal(
+        self,
+        endpoint: str,
+        peer_nat_info: dict[str, Any] | None = None
+    ) -> tuple[bool, str]:
+        """
+        Attempt connection with NAT traversal fallback.
+
+        Connection strategy:
+        1. Try direct HTTP connection
+        2. If failed and peer has candidates, try STUN-assisted connection
+        3. If symmetric NAT, use TURN relay
+
+        Args:
+            endpoint: Peer's endpoint URL
+            peer_nat_info: Peer's NAT information (optional)
+
+        Returns:
+            Tuple of (success, final_endpoint_used)
+        """
+        self.stats["nat_traversal_attempts"] += 1
+
+        # Strategy 1: Direct connection
+        try:
+            response = self.session.get(
+                f"{endpoint}/api/{P2P_API_VERSION}/health",
+                timeout=PEER_TIMEOUT
+            )
+            if response.ok:
+                logger.debug(f"Direct connection to {endpoint} succeeded")
+                return True, endpoint
+        except Exception as e:
+            logger.debug(f"Direct connection failed: {e}")
+
+        # If no NAT manager or peer info, can't do NAT traversal
+        if not self.nat_manager or not peer_nat_info:
+            return False, endpoint
+
+        # Strategy 2: Try peer's external address (STUN-derived)
+        peer_external = peer_nat_info.get("external_address", {})
+        if peer_external.get("ip") and peer_external.get("port"):
+            external_endpoint = f"http://{peer_external['ip']}:{DEFAULT_API_PORT}"
+            try:
+                response = self.session.get(
+                    f"{external_endpoint}/api/{P2P_API_VERSION}/health",
+                    timeout=PEER_TIMEOUT
+                )
+                if response.ok:
+                    self.stats["stun_successes"] += 1
+                    logger.info(f"STUN-assisted connection to {external_endpoint} succeeded")
+                    return True, external_endpoint
+            except Exception as e:
+                logger.debug(f"STUN-assisted connection failed: {e}")
+
+        # Strategy 3: Try peer's ICE candidates in priority order
+        peer_candidates = peer_nat_info.get("candidates", [])
+        for candidate in sorted(peer_candidates, key=lambda c: c.get("priority", 0), reverse=True):
+            candidate_endpoint = f"http://{candidate['address']}:{DEFAULT_API_PORT}"
+            try:
+                response = self.session.get(
+                    f"{candidate_endpoint}/api/{P2P_API_VERSION}/health",
+                    timeout=PEER_TIMEOUT
+                )
+                if response.ok:
+                    ctype = candidate.get("type", "unknown")
+                    if ctype == "relay":
+                        self.stats["turn_fallbacks"] += 1
+                        logger.info(f"TURN relay connection to {candidate_endpoint} succeeded")
+                    else:
+                        self.stats["stun_successes"] += 1
+                        logger.info(f"Candidate ({ctype}) connection to {candidate_endpoint} succeeded")
+                    return True, candidate_endpoint
+            except Exception:
+                continue
+
+        return False, endpoint
 
     # =========================================================================
     # Lifecycle Management
@@ -991,8 +1222,16 @@ class P2PNetwork:
         logger.info(f"P2P network started with {len(self.peers)} peers")
 
     def stop(self):
-        """Stop the P2P network."""
+        """Stop the P2P network and cleanup resources."""
         self._running = False
+
+        # Cleanup NAT traversal resources (TURN allocations, etc.)
+        if self.nat_manager:
+            try:
+                self.nat_manager.cleanup()
+            except Exception as e:
+                logger.debug(f"NAT traversal cleanup error: {e}")
+
         logger.info("P2P network stopped")
 
     def _health_check_loop(self):
@@ -1033,9 +1272,18 @@ class P2PNetwork:
     # Peer Management
     # =========================================================================
 
-    def connect_to_peer(self, endpoint: str) -> tuple[bool, PeerInfo | None]:
+    def connect_to_peer(
+        self,
+        endpoint: str,
+        peer_nat_info: dict[str, Any] | None = None
+    ) -> tuple[bool, PeerInfo | None]:
         """
-        Connect to a peer node with security validation.
+        Connect to a peer node with security validation and NAT traversal.
+
+        Connection strategy:
+        1. Try direct HTTP connection to provided endpoint
+        2. If NAT traversal enabled, try STUN-assisted connection
+        3. Fall back to TURN relay if available
 
         Security checks:
         - Maximum peer limit (Sybil protection)
@@ -1045,6 +1293,7 @@ class P2PNetwork:
 
         Args:
             endpoint: Peer's API endpoint
+            peer_nat_info: Peer's NAT traversal info (optional, for assisted connection)
 
         Returns:
             Tuple of (success, peer_info)
@@ -1052,11 +1301,21 @@ class P2PNetwork:
         if not HAS_REQUESTS:
             return False, None
 
+        # Try connection with NAT traversal fallback if enabled
+        actual_endpoint = endpoint
+        if self.nat_manager and self._nat_initialized:
+            success, actual_endpoint = self._connect_with_nat_traversal(endpoint, peer_nat_info)
+            if not success:
+                # All connection strategies failed
+                logger.warning(f"All NAT traversal strategies failed for {endpoint}")
+                self.stats["failed_connections"] += 1
+                return False, None
+
         try:
-            # Request peer info
+            # Request peer info from the successful endpoint
             start_time = time.time()
             response = self.session.get(
-                f"{endpoint}/api/{P2P_API_VERSION}/node/info",
+                f"{actual_endpoint}/api/{P2P_API_VERSION}/node/info",
                 timeout=PEER_TIMEOUT
             )
             latency = (time.time() - start_time) * 1000
@@ -1067,26 +1326,31 @@ class P2PNetwork:
 
                 # Security Check 1: Don't connect to ourselves
                 if peer_id == self.node_id:
-                    logger.debug(f"Rejected connection to self: {endpoint}")
+                    logger.debug(f"Rejected connection to self: {actual_endpoint}")
                     return False, None
 
                 # Security Check 2: Check if peer is banned
                 if peer_id in self.banned_peers or self.security_manager.is_banned(peer_id):
-                    logger.warning(f"Rejected banned peer: {peer_id} at {endpoint}")
+                    logger.warning(f"Rejected banned peer: {peer_id} at {actual_endpoint}")
                     return False, None
 
                 # Security Check 3: Sybil/Eclipse protection
                 allowed, reason = self.security_manager.check_peer_allowed(
-                    peer_id, endpoint, self.peers
+                    peer_id, actual_endpoint, self.peers
                 )
                 if not allowed:
                     logger.warning(f"Peer rejected by security policy: {reason}")
                     self.stats["failed_connections"] += 1
                     return False, None
 
+                # Store NAT-related capabilities
+                capabilities = set(data.get("capabilities", []))
+                if data.get("nat_info"):
+                    capabilities.add("nat_traversal")
+
                 peer_info = PeerInfo(
                     peer_id=peer_id,
-                    endpoint=endpoint,
+                    endpoint=actual_endpoint,  # Use the endpoint that worked
                     role=NodeRole(data.get("role", "full_node")),
                     status=PeerStatus.CONNECTED,
                     chain_height=data.get("chain_height", 0),
@@ -1094,7 +1358,7 @@ class P2PNetwork:
                     last_seen=datetime.utcnow(),
                     latency_ms=latency,
                     version=data.get("version", "unknown"),
-                    capabilities=set(data.get("capabilities", []))
+                    capabilities=capabilities
                 )
 
                 self.peers[peer_info.peer_id] = peer_info
@@ -1105,34 +1369,45 @@ class P2PNetwork:
                     logger.warning(f"Eclipse attack warning: {warning}")
                     # Don't reject but log warning - operator should investigate
 
-                # Register ourselves with the peer
+                # Register ourselves with the peer (include NAT info)
                 self._register_with_peer(peer_info)
 
-                logger.info(f"Connected to peer: {peer_info.peer_id} at {endpoint} (latency: {latency:.0f}ms)")
+                conn_method = "NAT-traversed" if actual_endpoint != endpoint else "direct"
+                logger.info(
+                    f"Connected to peer: {peer_info.peer_id} at {actual_endpoint} "
+                    f"({conn_method}, latency: {latency:.0f}ms)"
+                )
                 return True, peer_info
             else:
                 self.stats["failed_connections"] += 1
                 return False, None
 
         except Exception as e:
-            logger.error(f"Failed to connect to peer {endpoint}: {e}")
+            logger.error(f"Failed to connect to peer {actual_endpoint}: {e}")
             self.stats["failed_connections"] += 1
             return False, None
 
     def _register_with_peer(self, peer: PeerInfo):
-        """Register this node with a peer."""
+        """Register this node with a peer, including NAT traversal info."""
         try:
+            registration_data = {
+                "node_id": self.node_id,
+                "endpoint": self.get_external_endpoint() or self.endpoint,
+                "role": self.role.value,
+                "chain_height": self._get_chain_height(),
+                "chain_tip_hash": self._get_chain_tip_hash(),
+                "version": "1.0.0",
+                "capabilities": ["entries", "blocks", "sync"]
+            }
+
+            # Include NAT traversal info for assisted connectivity
+            if self.nat_manager and self._nat_initialized:
+                registration_data["capabilities"].append("nat_traversal")
+                registration_data["nat_info"] = self.nat_manager.get_connection_info()
+
             self.session.post(
                 f"{peer.endpoint}/api/{P2P_API_VERSION}/peers/register",
-                json={
-                    "node_id": self.node_id,
-                    "endpoint": self.endpoint,
-                    "role": self.role.value,
-                    "chain_height": self._get_chain_height(),
-                    "chain_tip_hash": self._get_chain_tip_hash(),
-                    "version": "1.0.0",
-                    "capabilities": ["entries", "blocks", "sync"]
-                },
+                json=registration_data,
                 timeout=PEER_TIMEOUT
             )
         except Exception as e:
@@ -1673,22 +1948,31 @@ class P2PNetwork:
         return ""
 
     def get_node_info(self) -> dict[str, Any]:
-        """Get this node's info for peer discovery."""
-        return {
+        """Get this node's info for peer discovery, including NAT traversal data."""
+        capabilities = ["entries", "blocks", "sync", "settlements"]
+
+        info = {
             "node_id": self.node_id,
-            "endpoint": self.endpoint,
+            "endpoint": self.get_external_endpoint() or self.endpoint,
             "role": self.role.value,
             "chain_height": self._get_chain_height(),
             "chain_tip_hash": self._get_chain_tip_hash(),
             "version": "1.0.0",
-            "capabilities": ["entries", "blocks", "sync", "settlements"],
+            "capabilities": capabilities,
             "consensus_mode": self.consensus_mode.value,
             "peer_count": len(self.get_connected_peers())
         }
 
+        # Include NAT traversal information for assisted connectivity
+        if self.nat_manager and self._nat_initialized:
+            info["capabilities"].append("nat_traversal")
+            info["nat_info"] = self.nat_manager.get_connection_info()
+
+        return info
+
     def get_network_stats(self) -> dict[str, Any]:
-        """Get network statistics."""
-        return {
+        """Get network statistics including NAT traversal metrics."""
+        stats_data = {
             "node_id": self.node_id,
             "role": self.role.value,
             "peer_count": len(self.get_connected_peers()),
@@ -1699,6 +1983,24 @@ class P2PNetwork:
             },
             "stats": self.stats
         }
+
+        # Add NAT traversal status
+        if self.nat_manager and self._nat_initialized:
+            nat_info = self.nat_manager.get_nat_info()
+            stats_data["nat_traversal"] = {
+                "enabled": True,
+                "nat_type": nat_info.nat_type.value if nat_info else "unknown",
+                "external_address": {
+                    "ip": nat_info.external_ip if nat_info else None,
+                    "port": nat_info.external_port if nat_info else None
+                } if nat_info else None,
+                "candidates_count": len(self.nat_manager.get_candidates()),
+                "relay_available": self.nat_manager.get_relay_address() is not None
+            }
+        else:
+            stats_data["nat_traversal"] = {"enabled": False}
+
+        return stats_data
 
 
 # =============================================================================
@@ -1719,7 +2021,8 @@ def init_p2p_network(
     endpoint: str | None = None,
     role: NodeRole = NodeRole.FULL_NODE,
     consensus_mode: ConsensusMode = ConsensusMode.PERMISSIONLESS,
-    bootstrap_peers: list[str] | None = None
+    bootstrap_peers: list[str] | None = None,
+    enable_nat_traversal: bool | None = None
 ) -> P2PNetwork:
     """Initialize and return the global P2P network instance."""
     global _p2p_network
@@ -1730,12 +2033,17 @@ def init_p2p_network(
         if env_peers:
             bootstrap_peers = [p.strip() for p in env_peers.split(",")]
 
+    # Check environment for NAT traversal setting
+    if enable_nat_traversal is None:
+        enable_nat_traversal = os.getenv("NATLANGCHAIN_NAT_ENABLED", "true").lower() == "true"
+
     _p2p_network = P2PNetwork(
         node_id=node_id or os.getenv("NATLANGCHAIN_NODE_ID"),
         endpoint=endpoint or os.getenv("NATLANGCHAIN_ENDPOINT"),
         role=role,
         consensus_mode=consensus_mode,
-        bootstrap_peers=bootstrap_peers
+        bootstrap_peers=bootstrap_peers,
+        enable_nat_traversal=enable_nat_traversal
     )
 
     return _p2p_network
