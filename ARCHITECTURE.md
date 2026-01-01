@@ -123,7 +123,7 @@ Validation modes:
 
 ### 3. API Layer (`api.py`, `api/`)
 
-REST API with 190 endpoints organized into:
+REST API with **212+ endpoints** organized into:
 
 | Blueprint | Routes | Description |
 |-----------|--------|-------------|
@@ -205,12 +205,47 @@ pip install -e ".[dev]"
 python -m api  # or: python src/api.py
 ```
 
-### Production
+### Docker
 
 ```bash
-docker-compose up -d
-# Services: api, frontend, optional p2p nodes
+# Single container
+docker run -p 5000:5000 -e ANTHROPIC_API_KEY=your_key ghcr.io/kase1111-hash/natlangchain
+
+# With monitoring (Prometheus, Grafana, Alertmanager)
+cd deploy/monitoring && docker-compose up -d
 ```
+
+### Kubernetes (Helm)
+
+```bash
+# Install with Helm
+helm install natlangchain ./charts/natlangchain \
+  --namespace natlangchain \
+  --create-namespace \
+  --set config.anthropicApiKey=your_key
+
+# Key features included:
+# - Deployment with rolling updates
+# - HorizontalPodAutoscaler (3-10 replicas)
+# - PodDisruptionBudget (min 2 available)
+# - PostgreSQL and Redis as subcharts
+# - ServiceMonitor for Prometheus
+# - PrometheusRule for alerting
+```
+
+### GitOps (ArgoCD)
+
+```bash
+# Bootstrap app-of-apps pattern
+kubectl apply -f argocd/apps/root.yaml
+
+# Deploys:
+# - natlangchain-staging (auto-sync, 2 replicas)
+# - natlangchain-production (manual sync, 3 replicas)
+# - natlangchain-monitoring (Prometheus stack)
+```
+
+See `argocd/README.md` for detailed GitOps configuration.
 
 ### Mobile
 
@@ -266,10 +301,23 @@ pytest tests/test_blockchain.py -v
 pytest tests/ --cov=src --cov-report=html
 ```
 
-## Future Improvements
+## Implementation Status
 
-- [ ] Complete API blueprint refactoring
-- [ ] Database abstraction layer (PostgreSQL support)
-- [ ] Horizontal scaling with distributed blockchain
-- [ ] Real-time monitoring and metrics
+### Completed
+- [x] Complete API blueprint refactoring (212+ endpoints)
+- [x] Database abstraction layer (PostgreSQL support)
+- [x] Horizontal scaling with Redis-backed distributed locking
+- [x] Real-time monitoring and metrics (Prometheus/Grafana)
+- [x] Helm chart for Kubernetes deployment
+- [x] GitOps with ArgoCD (app-of-apps pattern)
+- [x] OpenAPI/Swagger documentation (`/docs`)
+- [x] Load testing suite (k6, Locust)
+- [x] CI/CD with GitHub Actions
+- [x] FIDO2/WebAuthn authentication
+- [x] Zero-knowledge proof infrastructure
+
+### Roadmap
 - [ ] Web-based UI dashboard
+- [ ] Multi-language semantic validation
+- [ ] Cross-chain interoperability bridges
+- [ ] Enhanced consensus algorithms (PoU v2)

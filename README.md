@@ -56,7 +56,7 @@ License: Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0
 
 ## Implementation Status
 
-**Working Implementation Available!** This repository now includes a functional implementation of the NatLangChain concept with a REST API for Agent OS integration.
+**Production-Ready Implementation Available!** This repository includes a fully functional, production-ready implementation with 212+ API endpoints, comprehensive monitoring, and enterprise deployment options.
 
 ### Quick Start
 
@@ -64,18 +64,38 @@ License: Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0
 # Install dependencies
 pip install -r requirements.txt
 
-# Configure API key
+# Configure environment
 cp .env.example .env
 # Edit .env and add your ANTHROPIC_API_KEY
 
 # Run the server
-python run_server.py
+python -m src.api
 
-# Test the implementation
-python tests/test_blockchain.py
+# Access API documentation
+open http://localhost:5000/docs
 ```
 
-See [API.md](API.md) for complete API documentation and Agent OS integration examples.
+### Production Deployment
+
+```bash
+# Using Docker
+docker build -t natlangchain .
+docker run -p 5000:5000 natlangchain
+
+# Using Kubernetes with Helm
+helm install natlangchain ./charts/natlangchain -n natlangchain --create-namespace
+
+# Using GitOps with ArgoCD
+kubectl apply -f argocd/apps/root.yaml
+```
+
+See [API.md](API.md) for complete API documentation and [INSTALLATION.md](INSTALLATION.md) for detailed setup instructions.
+
+### API Documentation
+
+- **Swagger UI**: http://localhost:5000/docs (interactive)
+- **OpenAPI Spec**: http://localhost:5000/openapi.json
+- **API Reference**: [API.md](API.md)
 
 ## Abstract
 Distributed ledgers have transformed trustless coordination, yet canonical records remain symbolic and opaque. NatLangChain proposes a paradigm where natural language prose is the primary substrate for immutable entries, forming a shared narrative "book." LLMs enable linguistic consensus, validation, and execution, preserving intent and enhancing auditability. This document addresses key considerations, challenges, and extensions.
@@ -168,73 +188,89 @@ NatLangChain reframes distributed trust around linguistic participation. By addr
 
 ## Implementation Features
 
-The current implementation includes:
-
 ### Core Blockchain
 - Natural language entries as primary substrate
 - Cryptographic block chaining with SHA-256
-- Genesis block initialization
 - Proof-of-work mining (configurable difficulty)
 - Chain validation and integrity checks
-- Full serialization/deserialization
-- Persistent storage (JSON-based)
+- Multiple storage backends (JSON, PostgreSQL, Memory)
 
 ### LLM-Powered Validation
 - **Proof of Understanding** consensus mechanism
-- Single and multi-validator consensus modes
-- Paraphrase-based comprehension verification
-- Ambiguity detection
+- Multi-validator consensus modes
+- Dialectic validation (Skeptic/Facilitator debate)
+- Semantic drift detection
 - Adversarial pattern detection
-- Intent matching validation
-- Semantic drift analysis
-- Clarification protocol generation
 
-### Hybrid Validation
-- Symbolic rule-based pre-validation
-- LLM validation for complex entries
-- Configurable validation tiers
-- Malicious pattern detection
+### 212+ API Endpoints
 
-### REST API for Agent OS
-- **Push**: Add natural language entries
-- **Pull**: Retrieve entries, blocks, narratives
-- **Query**: Search by author, intent, keywords
-- **Validate**: Dry-run validation without committing
-- **Mine**: Create blocks from pending entries
-- **Stats**: Blockchain statistics and health
+| Category | Endpoints | Description |
+|----------|-----------|-------------|
+| Core Blockchain | 14 | Chain, blocks, entries, mining |
+| Semantic Search | 6 | Meaning-based search, drift detection |
+| Contracts | 5 | Parsing, matching, posting |
+| Disputes | 8 | Filing, evidence, resolution |
+| Escalation Forks | 9 | Protocol amendments |
+| Treasury | 14 | Subsidies, deposits, accounting |
+| FIDO2 Auth | 17 | WebAuthn, delegations |
+| Zero-Knowledge | 20 | Identity proofs, viewing keys |
+| Negotiation | 16 | Multi-party sessions |
+| Market Pricing | 16 | AI-powered pricing |
+| Mobile | 21 | Edge inference, offline sync |
+| Monitoring | 8 | Prometheus metrics, health |
+| P2P Network | 16 | Peer discovery, sync |
+| Help/Docs | 11 | NCIPs, concepts |
 
-### API Endpoints
-```
-GET  /health                    - Health check
-GET  /stats                     - Blockchain statistics
-GET  /chain                     - Full blockchain data
-GET  /chain/narrative           - Human-readable narrative
-POST /entry                     - Add new entry
-POST /entry/validate            - Validate without adding
-POST /mine                      - Mine pending entries
-GET  /block/<index>             - Get specific block
-GET  /entries/author/<author>   - Get entries by author
-GET  /entries/search?intent=... - Search by intent
-GET  /pending                   - Get pending entries
-GET  /validate/chain            - Validate integrity
-```
+### Production Readiness
 
-### Agent OS Integration
-See [API.md](API.md) for complete examples in:
-- Python
-- JavaScript
-- cURL
-- Any HTTP-capable system
+| Feature | Status |
+|---------|--------|
+| Graceful shutdown | Implemented |
+| Health probes (K8s) | /health/live, /health/ready |
+| Rate limiting | Configurable, Redis-backed |
+| RBAC | Role-based API keys |
+| Distributed tracing | OpenTelemetry |
+| Database migrations | PostgreSQL support |
+| Backup/restore | Automated backups |
+| TLS/HTTPS | Configurable |
+| Circuit breakers | LLM API protection |
+
+### Deployment Options
+
+| Method | Documentation |
+|--------|---------------|
+| Docker | `docker build -t natlangchain .` |
+| Docker Compose | `deploy/monitoring/docker-compose.yml` |
+| Kubernetes | `charts/natlangchain/` (Helm) |
+| GitOps | `argocd/` (ArgoCD) |
+
+### Monitoring Stack
+
+- **Prometheus**: Metrics collection (`/metrics`)
+- **Grafana**: Dashboards and visualization
+- **Alertmanager**: Alert routing (Slack, PagerDuty)
+- **ServiceMonitor**: Kubernetes auto-discovery
+
+### CI/CD Pipeline
+
+- **GitHub Actions**: `.github/workflows/`
+  - CI: Lint, type-check, test (Python 3.10-3.12), security scan
+  - CD: Build, push to GHCR, deploy to staging/production
+  - Release: Semantic versioning, changelog
+- **Dependabot**: Automated dependency updates
 
 ### Testing
-Comprehensive test suite covering:
-- Genesis block creation
-- Entry addition and validation
-- Block mining
-- Chain validation
-- Author queries
-- Narrative generation
-- Serialization/deserialization
+
+```bash
+# Unit tests
+pytest tests/ -v
+
+# Load tests
+./tests/load/run-tests.sh tps
+
+# E2E tests
+pytest tests/test_e2e.py -v
+```
 
 ## License
 Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)  

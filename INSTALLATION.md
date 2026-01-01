@@ -103,6 +103,135 @@ docker build -t natlangchain .
 docker run -p 5000:5000 -e ANTHROPIC_API_KEY=your_key natlangchain
 ```
 
+### Docker Compose (with Monitoring)
+
+```bash
+cd deploy/monitoring
+docker-compose up -d
+```
+
+This starts NatLangChain with Prometheus, Grafana, and Alertmanager.
+
+## Kubernetes Deployment
+
+### Using Helm
+
+```bash
+# Add Bitnami repo for dependencies (Redis, PostgreSQL)
+helm repo add bitnami https://charts.bitnami.com/bitnami
+helm repo update
+
+# Install NatLangChain
+helm install natlangchain ./charts/natlangchain \
+  --namespace natlangchain \
+  --create-namespace \
+  --set config.anthropicApiKey=your_key
+
+# With custom values
+helm install natlangchain ./charts/natlangchain \
+  -f my-values.yaml \
+  --namespace natlangchain \
+  --create-namespace
+```
+
+### Key Helm Values
+
+| Value | Description | Default |
+|-------|-------------|---------|
+| `replicaCount` | Number of replicas | `2` |
+| `image.tag` | Image tag | `latest` |
+| `ingress.enabled` | Enable ingress | `false` |
+| `autoscaling.enabled` | Enable HPA | `false` |
+| `postgresql.enabled` | Deploy PostgreSQL | `true` |
+| `redis.enabled` | Deploy Redis | `true` |
+| `metrics.enabled` | Enable Prometheus metrics | `true` |
+
+### Direct Kubernetes
+
+```bash
+# Apply base manifests
+kubectl apply -f k8s/namespace.yaml
+kubectl apply -f k8s/
+
+# Or with kustomize
+kubectl apply -k k8s/overlays/production
+```
+
+## GitOps Deployment (ArgoCD)
+
+### Prerequisites
+
+1. ArgoCD installed in your cluster
+2. GitHub repository accessible to ArgoCD
+
+### Deploy with App-of-Apps
+
+```bash
+# Bootstrap all applications
+kubectl apply -f argocd/apps/root.yaml
+```
+
+This deploys:
+- **natlangchain-staging**: Auto-sync from HEAD, 2 replicas
+- **natlangchain-production**: Manual sync, 3 replicas
+- **natlangchain-monitoring**: Prometheus stack
+
+### Environment-Specific Configuration
+
+```
+argocd/
+├── apps/
+│   ├── root.yaml              # App-of-apps bootstrap
+│   ├── natlangchain-staging.yaml
+│   ├── natlangchain-production.yaml
+│   └── applicationset.yaml    # Dynamic environments
+├── envs/
+│   ├── staging/values.yaml    # Staging overrides
+│   └── production/values.yaml # Production overrides
+└── projects/
+    └── natlangchain.yaml      # ArgoCD project with RBAC
+```
+
+### ArgoCD Image Updater
+
+For automatic image updates, install ArgoCD Image Updater:
+
+```bash
+kubectl apply -f argocd/image-updater.yaml
+```
+
+## Production Checklist
+
+Before deploying to production:
+
+- [ ] Set `ANTHROPIC_API_KEY` via sealed secret or external secrets
+- [ ] Configure PostgreSQL for persistent storage
+- [ ] Set up Redis for distributed caching/rate limiting
+- [ ] Enable TLS via cert-manager
+- [ ] Configure ingress with rate limiting
+- [ ] Set up monitoring (Prometheus/Grafana)
+- [ ] Configure alerting (Slack/PagerDuty)
+- [ ] Enable RBAC (`ENABLE_RBAC=true`)
+- [ ] Review network policies
+- [ ] Set appropriate resource limits
+
+## Load Testing
+
+Validate your deployment with the load testing suite:
+
+```bash
+# Run TPS benchmark
+./tests/load/run-tests.sh tps
+
+# Run stress test
+./tests/load/run-tests.sh stress
+
+# Run with Locust (interactive)
+./tests/load/run-tests.sh locust
+```
+
+See `tests/load/README.md` for detailed load testing documentation.
+
 ## Ecosystem Integration
 
 NatLangChain integrates with the broader ecosystem. See [SPEC.md](SPEC.md) for integration specifications:
@@ -145,4 +274,4 @@ NatLangChain integrates with the broader ecosystem. See [SPEC.md](SPEC.md) for i
 
 ---
 
-**Last Updated:** December 23, 2025
+**Last Updated:** January 1, 2026

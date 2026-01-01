@@ -9,6 +9,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### Helm Chart & Kubernetes (`charts/natlangchain/`)
+- Complete Helm chart for Kubernetes deployment
+- 15 template files (Deployment, Service, Ingress, HPA, PDB, etc.)
+- PostgreSQL and Redis as optional subcharts
+- ServiceMonitor and PrometheusRule for monitoring
+- Migration job for database setup
+- Configurable values for all deployment scenarios
+
+#### GitOps with ArgoCD (`argocd/`)
+- App-of-apps pattern for multi-environment management
+- Staging environment with auto-sync
+- Production environment with manual sync
+- ApplicationSet for dynamic environment creation
+- ArgoCD project with RBAC roles (developer, operator, admin)
+- ArgoCD Image Updater configuration
+- Slack and PagerDuty notification templates
+
+#### OpenAPI/Swagger Documentation (`src/swagger.py`)
+- OpenAPI 3.0 specification for all 212+ endpoints
+- Interactive Swagger UI at `/docs`
+- OpenAPI spec available at `/openapi.json` and `/openapi.yaml`
+- Request/response schemas for all endpoint categories
+
+#### Load Testing Suite (`tests/load/`)
+- k6 tests: smoke, TPS benchmark, stress, soak
+- Locust tests with stepped load shape
+- TPS targets: 100 (baseline), 500 (target), 1000 (stretch)
+- Solana comparison at 65,000 TPS for context
+- Automated test runner script
+
+#### TPS Simulation Benchmark
+- Solana network simulation for comparison
+- 65,000 TPS benchmark target
+- Performance profiling and bottleneck detection
+
 #### Production Infrastructure
 - **Storage Abstraction Layer** (`src/storage/`)
   - Pluggable storage backends for blockchain persistence
@@ -84,7 +119,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Core blockchain implementation with natural language entries
 - Proof of Understanding (PoU) validation via LLM
 - Hybrid validation combining rules and LLM
-- Flask REST API with 190+ endpoints
+- Flask REST API with 212+ endpoints
 - Semantic search and drift detection
 - Contract parsing and matching
 - Dispute resolution system
