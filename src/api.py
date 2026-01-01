@@ -204,6 +204,23 @@ except ImportError:
     NodeRole = None
     ConsensusMode = None
 
+# Adaptive query cache for mediator nodes
+try:
+    from adaptive_cache import (
+        AdaptiveCache,
+        CacheCategory,
+        CongestionLevel,
+        get_adaptive_cache,
+        make_cache_key,
+    )
+    ADAPTIVE_CACHE_AVAILABLE = True
+except ImportError:
+    ADAPTIVE_CACHE_AVAILABLE = False
+    AdaptiveCache = None
+    CacheCategory = None
+    get_adaptive_cache = None
+    make_cache_key = None
+
 
 # Load environment variables
 load_dotenv()
@@ -1084,12 +1101,21 @@ def add_entry():
     # Add to blockchain
     result = blockchain.add_entry(entry)
 
+    # Invalidate pending intent cache on new entry
+    if ADAPTIVE_CACHE_AVAILABLE and get_adaptive_cache:
+        cache = get_adaptive_cache()
+        cache.on_new_entry()
+
     # Auto-mine if requested
     auto_mine = data.get("auto_mine", False)
     mined_block = None
     if auto_mine:
         mined_block = blockchain.mine_pending_entries()
         save_chain()
+        # Invalidate all affected caches on new block
+        if ADAPTIVE_CACHE_AVAILABLE and get_adaptive_cache:
+            cache = get_adaptive_cache()
+            cache.on_new_block()
 
     response = {
         "status": "success",
@@ -1212,6 +1238,11 @@ def mine_block():
     # Mine the block
     mined_block = blockchain.mine_pending_entries(difficulty=difficulty)
     save_chain()
+
+    # Invalidate caches affected by new block
+    if ADAPTIVE_CACHE_AVAILABLE and get_adaptive_cache:
+        cache = get_adaptive_cache()
+        cache.on_new_block()
 
     return jsonify({
         "status": "success",
@@ -1384,10 +1415,31 @@ def get_pending_entries():
 def get_stats():
     """
     Get blockchain statistics.
+    Uses adaptive caching to reduce load during congestion.
 
     Returns:
         Various statistics about the blockchain
     """
+    # Try adaptive cache first
+    if ADAPTIVE_CACHE_AVAILABLE and get_adaptive_cache:
+        cache = get_adaptive_cache()
+
+        def compute_stats():
+            return _compute_stats()
+
+        result = cache.get_or_compute(
+            CacheCategory.STATS,
+            "blockchain_stats",
+            compute_stats
+        )
+        return jsonify(result)
+
+    # Fallback: compute directly without cache
+    return jsonify(_compute_stats())
+
+
+def _compute_stats() -> dict:
+    """Compute blockchain stats (extracted for caching)."""
     total_entries = sum(len(block.entries) for block in blockchain.chain)
 
     authors = set()
@@ -1413,7 +1465,7 @@ def get_stats():
                 elif status == "matched":
                     matched_contracts += 1
 
-    return jsonify({
+    return {
         "total_blocks": len(blockchain.chain),
         "total_entries": total_entries,
         "pending_entries": len(blockchain.pending_entries),
@@ -1432,7 +1484,7 @@ def get_stats():
         "matched_contracts": matched_contracts,
         "total_disputes": sum(1 for block in blockchain.chain for entry in block.entries if entry.metadata.get("is_dispute") and entry.metadata.get("dispute_type") == "dispute_declaration"),
         "open_disputes": sum(1 for block in blockchain.chain for entry in block.entries if entry.metadata.get("is_dispute") and entry.metadata.get("dispute_type") == "dispute_declaration" and entry.metadata.get("status") == "open")
-    })
+    }
 
 
 # ========== Semantic Search Endpoints ==========
@@ -7242,12 +7294,41 @@ def get_node_info():
 @app.route('/api/v1/health', methods=['GET'])
 def p2p_health():
     """P2P health check endpoint for peers."""
-    return jsonify({
+    response = {
         "status": "healthy",
         "chain_height": len(blockchain.chain) - 1,
         "pending_entries": len(blockchain.pending_entries),
         "timestamp": datetime.utcnow().isoformat()
-    })
+    }
+
+    # Include cache congestion info if available
+    if ADAPTIVE_CACHE_AVAILABLE and get_adaptive_cache:
+        cache = get_adaptive_cache()
+        congestion = cache.congestion.get_state()
+        response["congestion"] = {
+            "level": congestion.level.value,
+            "factor": round(congestion.factor, 2)
+        }
+
+    return jsonify(response)
+
+
+@app.route('/api/v1/cache/stats', methods=['GET'])
+def get_cache_stats():
+    """
+    Get adaptive cache statistics.
+
+    Returns cache performance metrics and current congestion state.
+    Useful for monitoring mediator node performance.
+    """
+    if not ADAPTIVE_CACHE_AVAILABLE or not get_adaptive_cache:
+        return jsonify({
+            "enabled": False,
+            "reason": "Adaptive cache not available"
+        })
+
+    cache = get_adaptive_cache()
+    return jsonify(cache.get_stats())
 
 
 @app.route('/api/v1/peers/register', methods=['POST'])
@@ -7355,6 +7436,7 @@ def get_intents():
     Get pending intents for mediator nodes.
 
     This is the primary endpoint mediators poll to find matching opportunities.
+    Uses adaptive caching to reduce load during congestion.
 
     Query params:
         status: Filter by status (pending, open)
@@ -7366,6 +7448,30 @@ def get_intents():
     status_filter = request.args.get('status', 'open')
     limit = min(int(request.args.get('limit', 100)), 1000)
 
+    # Try adaptive cache first
+    if ADAPTIVE_CACHE_AVAILABLE and get_adaptive_cache:
+        cache = get_adaptive_cache()
+        cache_key = make_cache_key(status_filter, limit)
+
+        # Update congestion state with pending count
+        cache.congestion.update(len(blockchain.pending_entries))
+
+        def compute_intents():
+            return _compute_intents(status_filter, limit)
+
+        result = cache.get_or_compute(
+            CacheCategory.INTENTS,
+            cache_key,
+            compute_intents
+        )
+        return jsonify(result)
+
+    # Fallback: compute directly without cache
+    return jsonify(_compute_intents(status_filter, limit))
+
+
+def _compute_intents(status_filter: str, limit: int) -> dict:
+    """Compute intents (extracted for caching)."""
     intents = []
 
     # Get pending entries
@@ -7409,10 +7515,10 @@ def get_intents():
                         "status": "open"
                     })
 
-    return jsonify({
+    return {
         "intents": intents,
         "count": len(intents)
-    })
+    }
 
 
 @app.route('/api/v1/entries', methods=['POST'])
