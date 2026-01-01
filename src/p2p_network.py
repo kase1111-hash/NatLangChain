@@ -92,6 +92,21 @@ except ImportError:
     NATTraversalManager = None
     NATType = None
 
+# Import gossip protocol module
+try:
+    from .gossip_protocol import (
+        GossipProtocol,
+        GossipMessageType,
+        MessagePriority,
+        get_message_priority,
+        calculate_optimal_fanout,
+    )
+    HAS_GOSSIP_PROTOCOL = True
+except ImportError:
+    HAS_GOSSIP_PROTOCOL = False
+    GossipProtocol = None
+    MessagePriority = None
+
 
 # =============================================================================
 # Constants
@@ -976,10 +991,18 @@ class P2PNetwork:
         if enable_nat_traversal and HAS_NAT_TRAVERSAL:
             self._init_nat_traversal()
 
+        # Gossip Protocol (optimized epidemic broadcast)
+        self.gossip_protocol: GossipProtocol | None = None
+        self._gossip_enabled = False
+        if HAS_GOSSIP_PROTOCOL:
+            self._init_gossip_protocol()
+
         logger.info(f"P2P Network initialized: node_id={self.node_id}, role={role.value}")
         logger.info(f"Security hardening enabled: rate_limit={MAX_MESSAGES_PER_MINUTE}/min, max_peers={MAX_PEERS}")
         if self.nat_manager:
             logger.info("NAT traversal enabled with STUN/TURN support")
+        if self.gossip_protocol:
+            logger.info("Optimized gossip protocol enabled (Plumtree + adaptive fanout)")
 
     def _setup_session(self):
         """Set up HTTP session with retry logic."""
@@ -1197,6 +1220,90 @@ class P2PNetwork:
         return False, endpoint
 
     # =========================================================================
+    # Gossip Protocol Methods
+    # =========================================================================
+
+    def _init_gossip_protocol(self):
+        """Initialize the optimized gossip protocol."""
+        if not HAS_GOSSIP_PROTOCOL:
+            logger.warning("Gossip protocol module not available")
+            return
+
+        try:
+            self.gossip_protocol = GossipProtocol(
+                node_id=self.node_id,
+                send_callback=self._gossip_send_callback,
+                on_message_callback=self._gossip_message_callback
+            )
+            self._gossip_enabled = True
+            logger.info("Gossip protocol initialized")
+        except Exception as e:
+            logger.error(f"Gossip protocol setup error: {e}")
+            self.gossip_protocol = None
+
+    def _gossip_send_callback(self, peer_id: str, message: dict[str, Any]) -> bool:
+        """Callback for gossip protocol to send messages to peers."""
+        if not HAS_REQUESTS or peer_id not in self.peers:
+            return False
+
+        peer = self.peers[peer_id]
+        try:
+            response = self.session.post(
+                f"{peer.endpoint}/api/{P2P_API_VERSION}/gossip",
+                json=message,
+                timeout=BROADCAST_TIMEOUT
+            )
+            if response.ok:
+                peer.last_seen = datetime.utcnow()
+                return True
+        except Exception as e:
+            logger.debug(f"Gossip send to {peer_id} failed: {e}")
+        return False
+
+    def _gossip_message_callback(self, payload: dict[str, Any]) -> None:
+        """Callback when gossip protocol receives a new message."""
+        broadcast_type = payload.get("broadcast_type", "")
+
+        if broadcast_type == "new_entry":
+            if self._on_entry_received:
+                self._on_entry_received(payload.get("payload", payload))
+        elif broadcast_type == "new_block":
+            if self._on_block_received:
+                self._on_block_received(payload.get("payload", payload))
+        elif broadcast_type == "settlement":
+            if self._on_settlement_received:
+                self._on_settlement_received(payload.get("payload", payload))
+
+    def handle_gossip_message(self, sender_id: str, message: dict[str, Any]) -> tuple[bool, str]:
+        """
+        Handle an incoming gossip protocol message.
+
+        Args:
+            sender_id: ID of the sending peer
+            message: Gossip protocol message
+
+        Returns:
+            Tuple of (success, reason)
+        """
+        if not self.gossip_protocol:
+            return False, "Gossip protocol not enabled"
+
+        # Rate limiting
+        allowed, reason = self.rate_limiter.check_rate_limit(sender_id)
+        if not allowed:
+            self.stats["blocked_messages"] += 1
+            return False, reason
+
+        success = self.gossip_protocol.handle_message(sender_id, message)
+        return success, "OK" if success else "Message handling failed"
+
+    def get_gossip_stats(self) -> dict[str, Any] | None:
+        """Get gossip protocol statistics."""
+        if not self.gossip_protocol:
+            return None
+        return self.gossip_protocol.get_stats()
+
+    # =========================================================================
     # Lifecycle Management
     # =========================================================================
 
@@ -1207,6 +1314,10 @@ class P2PNetwork:
 
         self._running = True
         logger.info("Starting P2P network...")
+
+        # Start gossip protocol
+        if self.gossip_protocol:
+            self.gossip_protocol.start()
 
         # Connect to bootstrap peers
         for peer_endpoint in self.bootstrap_peers:
@@ -1224,6 +1335,13 @@ class P2PNetwork:
     def stop(self):
         """Stop the P2P network and cleanup resources."""
         self._running = False
+
+        # Stop gossip protocol
+        if self.gossip_protocol:
+            try:
+                self.gossip_protocol.stop()
+            except Exception as e:
+                logger.debug(f"Gossip protocol stop error: {e}")
 
         # Cleanup NAT traversal resources (TURN allocations, etc.)
         if self.nat_manager:
@@ -1363,6 +1481,10 @@ class P2PNetwork:
 
                 self.peers[peer_info.peer_id] = peer_info
 
+                # Add peer to gossip protocol
+                if self.gossip_protocol:
+                    self.gossip_protocol.add_peer(peer_info.peer_id)
+
                 # Security Check 4: Eclipse attack detection
                 is_safe, warning = self.security_manager.check_eclipse_attack(self.peers)
                 if not is_safe:
@@ -1433,6 +1555,9 @@ class P2PNetwork:
         if peer_id in self.peers:
             self.peers[peer_id].status = PeerStatus.DISCONNECTED
             del self.peers[peer_id]
+            # Remove from gossip protocol
+            if self.gossip_protocol:
+                self.gossip_protocol.remove_peer(peer_id)
             logger.info(f"Disconnected from peer: {peer_id}")
 
     def ban_peer(self, peer_id: str, reason: str = ""):
@@ -1441,6 +1566,9 @@ class P2PNetwork:
         if peer_id in self.peers:
             self.peers[peer_id].status = PeerStatus.BANNED
             del self.peers[peer_id]
+        # Remove from gossip protocol
+        if self.gossip_protocol:
+            self.gossip_protocol.remove_peer(peer_id)
         logger.warning(f"Banned peer {peer_id}: {reason}")
 
     def get_connected_peers(self) -> list[PeerInfo]:
@@ -1458,12 +1586,15 @@ class P2PNetwork:
         ]
 
     # =========================================================================
-    # Broadcasting
+    # Broadcasting (with optimized gossip protocol support)
     # =========================================================================
 
     def broadcast_entry(self, entry_data: dict[str, Any]) -> int:
         """
         Broadcast a new entry to all peers.
+
+        Uses optimized gossip protocol (Plumtree) when available,
+        otherwise falls back to basic flooding.
 
         Args:
             entry_data: Entry data to broadcast
@@ -1471,8 +1602,23 @@ class P2PNetwork:
         Returns:
             Number of peers that received the broadcast
         """
+        message_id = secrets.token_hex(16)
+
+        # Use gossip protocol if available
+        if self.gossip_protocol and self._gossip_enabled:
+            gossip_payload = {
+                "broadcast_type": BroadcastType.NEW_ENTRY.value,
+                "payload": entry_data,
+                "origin_node": self.node_id,
+                "timestamp": datetime.utcnow().isoformat()
+            }
+            return self.gossip_protocol.gossip(
+                message_id, gossip_payload, MessagePriority.NORMAL
+            )
+
+        # Fallback to basic flooding
         message = BroadcastMessage(
-            message_id=secrets.token_hex(16),
+            message_id=message_id,
             broadcast_type=BroadcastType.NEW_ENTRY,
             payload=entry_data,
             origin_node=self.node_id,
@@ -1484,14 +1630,32 @@ class P2PNetwork:
         """
         Broadcast a new block to all peers.
 
+        Blocks use CRITICAL priority in gossip protocol for
+        maximum reliability and minimum latency.
+
         Args:
             block_data: Block data to broadcast
 
         Returns:
             Number of peers that received the broadcast
         """
+        message_id = secrets.token_hex(16)
+
+        # Use gossip protocol if available (blocks are CRITICAL priority)
+        if self.gossip_protocol and self._gossip_enabled:
+            gossip_payload = {
+                "broadcast_type": BroadcastType.NEW_BLOCK.value,
+                "payload": block_data,
+                "origin_node": self.node_id,
+                "timestamp": datetime.utcnow().isoformat()
+            }
+            return self.gossip_protocol.gossip(
+                message_id, gossip_payload, MessagePriority.CRITICAL
+            )
+
+        # Fallback to basic flooding
         message = BroadcastMessage(
-            message_id=secrets.token_hex(16),
+            message_id=message_id,
             broadcast_type=BroadcastType.NEW_BLOCK,
             payload=block_data,
             origin_node=self.node_id,
@@ -1503,14 +1667,31 @@ class P2PNetwork:
         """
         Broadcast a settlement from a mediator.
 
+        Settlements use HIGH priority in gossip protocol.
+
         Args:
             settlement_data: Settlement data to broadcast
 
         Returns:
             Number of peers that received the broadcast
         """
+        message_id = secrets.token_hex(16)
+
+        # Use gossip protocol if available (settlements are HIGH priority)
+        if self.gossip_protocol and self._gossip_enabled:
+            gossip_payload = {
+                "broadcast_type": BroadcastType.SETTLEMENT.value,
+                "payload": settlement_data,
+                "origin_node": self.node_id,
+                "timestamp": datetime.utcnow().isoformat()
+            }
+            return self.gossip_protocol.gossip(
+                message_id, gossip_payload, MessagePriority.HIGH
+            )
+
+        # Fallback to basic flooding
         message = BroadcastMessage(
-            message_id=secrets.token_hex(16),
+            message_id=message_id,
             broadcast_type=BroadcastType.SETTLEMENT,
             payload=settlement_data,
             origin_node=self.node_id,
@@ -1519,7 +1700,11 @@ class P2PNetwork:
         return self._broadcast(message)
 
     def _broadcast(self, message: BroadcastMessage) -> int:
-        """Internal broadcast implementation."""
+        """
+        Internal broadcast implementation (basic flooding fallback).
+
+        Used when gossip protocol is not available.
+        """
         if not HAS_REQUESTS:
             return 0
 
@@ -1971,7 +2156,7 @@ class P2PNetwork:
         return info
 
     def get_network_stats(self) -> dict[str, Any]:
-        """Get network statistics including NAT traversal metrics."""
+        """Get network statistics including NAT traversal and gossip metrics."""
         stats_data = {
             "node_id": self.node_id,
             "role": self.role.value,
@@ -1999,6 +2184,21 @@ class P2PNetwork:
             }
         else:
             stats_data["nat_traversal"] = {"enabled": False}
+
+        # Add gossip protocol statistics
+        if self.gossip_protocol and self._gossip_enabled:
+            gossip_stats = self.gossip_protocol.get_stats()
+            stats_data["gossip_protocol"] = {
+                "enabled": True,
+                "protocol": "plumtree",
+                **gossip_stats
+            }
+        else:
+            stats_data["gossip_protocol"] = {
+                "enabled": False,
+                "protocol": "basic_flooding",
+                "fanout": BROADCAST_FANOUT
+            }
 
         return stats_data
 
