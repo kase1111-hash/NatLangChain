@@ -13,6 +13,7 @@ This directory contains governance specifications, protocol documentation, and g
 - [README](../README.md) - Project overview and quick start
 - [Architecture](../ARCHITECTURE.md) - System design and components
 - [Specification](../SPEC.md) - Technical specification and protocol details
+- [Design Philosophy](DESIGN-PHILOSOPHY.md) - Why non-determinism is a feature, not a bug
 - [FAQ](../FAQ.md) - Frequently asked questions
 
 ### NCIP Governance Framework
