@@ -23,6 +23,10 @@ numpy>=1.20.0
 cryptography>=41.0.0
 requests>=2.28.0
 
+# API Documentation
+flask-swagger-ui>=4.11.1
+apispec>=6.3.0
+
 # NAT Traversal (STUN/TURN)
 # The core NAT traversal module uses only standard library (socket, struct, etc.)
 # No additional dependencies required for basic STUN/TURN functionality

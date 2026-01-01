@@ -8276,10 +8276,19 @@ def run_server():
     # Register graceful shutdown handlers
     _register_shutdown_handlers()
 
+    # Initialize OpenAPI/Swagger documentation
+    swagger_enabled = False
+    try:
+        from swagger import init_swagger
+        swagger_enabled = init_swagger(app)
+    except ImportError:
+        pass
+
     print(f"\n{'='*60}")
     print("NatLangChain API Server")
     print(f"{'='*60}")
     print(f"Listening on: http://{host}:{port}")
+    print(f"API Docs: http://{host}:{port}/docs" if swagger_enabled else "API Docs: Disabled (install flask-swagger-ui)")
     print(f"Debug Mode: {'ENABLED (not for production!)' if debug else 'Disabled'}")
     print(f"Auth Required: {'Yes' if API_KEY_REQUIRED else 'No'}")
     print(f"Rate Limit: {RATE_LIMIT_REQUESTS} req/{RATE_LIMIT_WINDOW}s")
