@@ -391,16 +391,10 @@ class NetworkEnforcement:
         """
         Block a specific destination IP/port.
 
-        SECURITY: Input is validated to prevent command injection.
+        SECURITY: Input is validated FIRST to prevent command injection.
         """
-        if not self.use_iptables:
-            return EnforcementResult(
-                success=False,
-                action="block_destination",
-                error="iptables not available"
-            )
-
-        # SECURITY FIX: Validate IP address
+        # SECURITY FIX: Validate input BEFORE checking system capabilities
+        # This ensures users get proper error messages even if iptables isn't available
         ip_valid, ip_error = validate_ip_address(ip)
         if not ip_valid:
             return EnforcementResult(
@@ -409,13 +403,20 @@ class NetworkEnforcement:
                 error=f"Invalid IP address: {ip_error}"
             )
 
-        # SECURITY FIX: Validate port
         port_valid, port_error = validate_port(port)
         if not port_valid:
             return EnforcementResult(
                 success=False,
                 action="block_destination",
                 error=f"Invalid port: {port_error}"
+            )
+
+        # Now check system capabilities
+        if not self.use_iptables:
+            return EnforcementResult(
+                success=False,
+                action="block_destination",
+                error="iptables not available"
             )
 
         try:
@@ -578,16 +579,9 @@ class NetworkEnforcement:
         Allowlist mode: Block everything EXCEPT specified IPs/ports.
         This is stricter than blocklist - denies by default.
 
-        SECURITY: All IPs and ports are validated before use.
+        SECURITY: All IPs and ports are validated FIRST before use.
         """
-        if not self.use_iptables:
-            return EnforcementResult(
-                success=False,
-                action="allowlist_only",
-                error="iptables not available"
-            )
-
-        # SECURITY FIX: Validate all IP addresses
+        # SECURITY FIX: Validate all input BEFORE checking system capabilities
         for ip in allowed_ips:
             ip_valid, ip_error = validate_ip_address(ip)
             if not ip_valid:
@@ -607,6 +601,14 @@ class NetworkEnforcement:
                         action="allowlist_only",
                         error=f"Invalid port: {port_error}"
                     )
+
+        # Now check system capabilities (after validation)
+        if not self.use_iptables:
+            return EnforcementResult(
+                success=False,
+                action="allowlist_only",
+                error="iptables not available"
+            )
 
         try:
             # SECURITY FIX: Use list-based subprocess calls
@@ -669,16 +671,9 @@ class NetworkEnforcement:
         Args:
             except_ports: Ports to allow (e.g., [22, 443, 5000])
 
-        SECURITY: All ports are validated before use.
+        SECURITY: All ports are validated FIRST before use.
         """
-        if not self.use_iptables:
-            return EnforcementResult(
-                success=False,
-                action="block_inbound",
-                error="iptables not available"
-            )
-
-        # SECURITY FIX: Validate all ports
+        # SECURITY FIX: Validate all input BEFORE checking system capabilities
         if except_ports:
             for port in except_ports:
                 port_valid, port_error = validate_port(port)
@@ -688,6 +683,14 @@ class NetworkEnforcement:
                         action="block_inbound",
                         error=f"Invalid port: {port_error}"
                     )
+
+        # Now check system capabilities (after validation)
+        if not self.use_iptables:
+            return EnforcementResult(
+                success=False,
+                action="block_inbound",
+                error="iptables not available"
+            )
 
         try:
             # SECURITY FIX: Use list-based subprocess calls
