@@ -373,11 +373,178 @@ POST /boundary/patterns/add
 - **NatLangChain**: Audit record storage
 - **Memory Vault**: Confidential data source
 
+## External System Integration
+
+NatLangChain implements full integration with external Boundary Daemon and Boundary SIEM systems.
+
+### Configuration
+
+Set environment variables to enable external integration:
+
+```bash
+# External Boundary Daemon
+export BOUNDARY_ENABLE_EXTERNAL_DAEMON=true
+export BOUNDARY_DAEMON_SOCKET=/var/run/boundary-daemon/boundary.sock
+export BOUNDARY_DAEMON_URL=http://localhost:8080/api/v1
+export BOUNDARY_DAEMON_API_KEY=your-api-key
+export BOUNDARY_DAEMON_TIMEOUT=5.0
+export BOUNDARY_DAEMON_FAIL_OPEN=false  # Fail-closed by default
+export BOUNDARY_SYNC_MODE_WITH_DAEMON=true
+
+# External Boundary SIEM
+export BOUNDARY_USE_ENHANCED_SIEM=true
+export BOUNDARY_SIEM_URL=https://siem.example.com/api/v1
+export BOUNDARY_SIEM_API_KEY=your-siem-key
+export BOUNDARY_SIEM_AUTH_METHOD=oauth2  # bearer_token, oauth2, mtls
+export BOUNDARY_SIEM_KAFKA_BROKERS=kafka1:9092,kafka2:9092
+export BOUNDARY_SIEM_KAFKA_TOPIC=boundary-siem-events
+```
+
+### Python Usage
+
+```python
+from boundary_protection import BoundaryProtection, ProtectionConfig
+
+# Create config with external integration
+config = ProtectionConfig.from_env()
+
+# Or manually configure
+config = ProtectionConfig(
+    enable_external_daemon=True,
+    external_daemon_socket="/var/run/boundary-daemon/boundary.sock",
+    sync_mode_with_daemon=True,
+    use_enhanced_siem=True,
+    siem_url="https://siem.example.com/api/v1"
+)
+
+# Initialize protection
+protection = BoundaryProtection(config)
+protection.start()
+
+# Check ToolGate with external daemon
+result = protection.check_external_tool_gate(
+    tool_name="file_read",
+    parameters={"path": "/etc/passwd"},
+    requester="my_agent"
+)
+
+if not result.allowed:
+    print(f"Blocked: {result.details['reasoning']}")
+
+# Forward events to external daemon
+protection.forward_event_to_daemon(
+    event_type="policy_decision",
+    event_data={"action": "block", "tool": "shell_execute"},
+    severity=7
+)
+
+# Query SIEM via GraphQL (requires enhanced SIEM)
+events = protection.graphql_query('''
+    query {
+        events(limit: 100) {
+            id
+            timestamp
+            action
+            severity
+        }
+    }
+''')
+
+# Cleanup
+protection.stop()
+```
+
+### RecallGate Integration
+
+Query the external daemon for memory access decisions:
+
+```python
+# Check memory access
+result = protection.check_external_recall_gate(
+    memory_class=3,  # CONFIDENTIAL
+    purpose="Research project analysis",
+    requester="researcher_agent"
+)
+
+if result.allowed:
+    # Proceed with memory access
+    pass
+else:
+    # Access denied by daemon
+    print(f"Memory access denied: {result.details['reasoning']}")
+```
+
+### Human Override Ceremony
+
+Coordinate ceremonies with external daemon:
+
+```python
+# Request ceremony
+ceremony = protection.request_external_ceremony(
+    ceremony_type="mode_change",
+    reason="Maintenance window required",
+    target="open",
+    requester="admin"
+)
+
+if ceremony["success"]:
+    print(f"Ceremony ID: {ceremony['ceremony_id']}")
+    print(f"Steps required: {ceremony['steps']}")
+
+    # Complete ceremony with confirmation code
+    result = protection.confirm_external_ceremony(
+        ceremony_id=ceremony["ceremony_id"],
+        confirmation_code="ABC123",
+        confirmed_by="security_admin"
+    )
+```
+
+### SIEM Detection Rules
+
+Create custom detection rules in Boundary SIEM:
+
+```python
+# Get existing rules
+rules = protection.get_siem_detection_rules()
+
+# Create custom rule
+protection.create_custom_detection_rule(
+    name="NatLangChain Prompt Injection",
+    query="event.category:ai_agent AND event.action:prompt_injection",
+    severity=8,
+    description="Detects prompt injection attempts in NatLangChain",
+    tags=["ai-security", "injection"]
+)
+```
+
+### Bulk Event Ingestion
+
+Efficiently send multiple events:
+
+```python
+from boundary_siem import SIEMEvent, SIEMEventCategory, SIEMSeverity
+
+events = [
+    SIEMEvent(
+        category=SIEMEventCategory.CHAIN_ENTRY_CREATED,
+        action="create",
+        outcome="success",
+        severity=SIEMSeverity.INFORMATIONAL,
+        message=f"Entry created: {entry_id}"
+    )
+    for entry_id in recent_entries
+]
+
+result = protection.send_events_bulk(events, sync=True)
+print(f"Sent {result['success']} events")
+```
+
 ## Version History
 
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0 | 2025-12-19 | Initial specification |
+| 1.1 | 2026-01-02 | Added external system integration (Boundary-SIEM, Boundary-Daemon) |
 
 ---
 

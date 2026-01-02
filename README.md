@@ -236,6 +236,7 @@ NatLangChain reframes distributed trust around linguistic participation. By addr
 | TLS/HTTPS | Configurable |
 | Circuit breakers | LLM API protection |
 | Boundary Protection | Six security modes, SIEM integration |
+| External Integration | Boundary-Daemon & Boundary-SIEM connectors |
 | Input Security | Prompt injection & RAG poisoning detection |
 
 ### Deployment Options
