@@ -321,6 +321,9 @@ class ExternalDaemonClient:
                 reason=f"Daemon unavailable (fail-closed): {last_error}"
             )
 
+    # Maximum response size to prevent DoS via large responses (10MB)
+    MAX_RESPONSE_SIZE = 10 * 1024 * 1024
+
     def _send_socket(self, request: DaemonRequest) -> DaemonResponse:
         """Send request via Unix socket."""
         if not self._socket:
@@ -331,13 +334,18 @@ class ExternalDaemonClient:
             request_data = request.to_json().encode() + b"\n"
             self._socket.sendall(request_data)
 
-            # Receive response
+            # Receive response with size limit to prevent DoS
             response_data = b""
             while True:
                 chunk = self._socket.recv(4096)
                 if not chunk:
                     break
                 response_data += chunk
+                # Security: Prevent DoS via unbounded response
+                if len(response_data) > self.MAX_RESPONSE_SIZE:
+                    raise ExternalDaemonConnectionError(
+                        f"Response exceeded max size ({self.MAX_RESPONSE_SIZE} bytes)"
+                    )
                 if b"\n" in chunk:
                     break
 
