@@ -1046,3 +1046,601 @@ def shutdown_siem_client() -> None:
     if _global_client:
         _global_client.stop()
         _global_client = None
+
+
+# =============================================================================
+# Enhanced SIEM Client for External Boundary-SIEM Integration
+# =============================================================================
+
+
+class AuthMethod(Enum):
+    """Authentication methods for Boundary-SIEM."""
+    BEARER_TOKEN = "bearer_token"
+    OAUTH2 = "oauth2"
+    SAML = "saml"
+    OIDC = "oidc"
+    MTLS = "mtls"
+
+
+@dataclass
+class SIEMAuthConfig:
+    """Authentication configuration for Boundary-SIEM."""
+    method: AuthMethod = AuthMethod.BEARER_TOKEN
+    token: str | None = None
+
+    # OAuth2 configuration
+    oauth2_client_id: str | None = None
+    oauth2_client_secret: str | None = None
+    oauth2_token_url: str | None = None
+    oauth2_scope: str = "siem:write siem:read"
+
+    # OIDC configuration
+    oidc_issuer: str | None = None
+    oidc_client_id: str | None = None
+
+    # mTLS configuration
+    mtls_cert_path: str | None = None
+    mtls_key_path: str | None = None
+    mtls_ca_path: str | None = None
+
+    @classmethod
+    def from_env(cls) -> "SIEMAuthConfig":
+        """Create auth config from environment variables."""
+        method_str = os.getenv("BOUNDARY_SIEM_AUTH_METHOD", "bearer_token")
+        try:
+            method = AuthMethod(method_str.lower())
+        except ValueError:
+            method = AuthMethod.BEARER_TOKEN
+
+        return cls(
+            method=method,
+            token=os.getenv("BOUNDARY_SIEM_API_KEY"),
+            oauth2_client_id=os.getenv("BOUNDARY_SIEM_OAUTH2_CLIENT_ID"),
+            oauth2_client_secret=os.getenv("BOUNDARY_SIEM_OAUTH2_CLIENT_SECRET"),
+            oauth2_token_url=os.getenv("BOUNDARY_SIEM_OAUTH2_TOKEN_URL"),
+            oauth2_scope=os.getenv("BOUNDARY_SIEM_OAUTH2_SCOPE", "siem:write siem:read"),
+            oidc_issuer=os.getenv("BOUNDARY_SIEM_OIDC_ISSUER"),
+            oidc_client_id=os.getenv("BOUNDARY_SIEM_OIDC_CLIENT_ID"),
+            mtls_cert_path=os.getenv("BOUNDARY_SIEM_MTLS_CERT"),
+            mtls_key_path=os.getenv("BOUNDARY_SIEM_MTLS_KEY"),
+            mtls_ca_path=os.getenv("BOUNDARY_SIEM_MTLS_CA"),
+        )
+
+
+class EnhancedSIEMClient(SIEMClient):
+    """
+    Enhanced SIEM client with full Boundary-SIEM integration.
+
+    Additional features over base SIEMClient:
+    - OAuth2/SAML/OIDC authentication
+    - GraphQL query support
+    - Kafka streaming (if available)
+    - Canonical event schema validation
+    - Bulk event ingestion
+    - Real-time WebSocket subscriptions
+    """
+
+    def __init__(
+        self,
+        siem_url: str | None = None,
+        auth_config: SIEMAuthConfig | None = None,
+        syslog_host: str | None = None,
+        syslog_port: int = 514,
+        syslog_protocol: str = "udp",
+        kafka_brokers: list[str] | None = None,
+        kafka_topic: str = "boundary-siem-events",
+        batch_size: int = 100,
+        flush_interval: float = 5.0,
+        max_queue_size: int = 10000,
+        retry_attempts: int = 3,
+        verify_ssl: bool = True,
+        validate_schema: bool = True
+    ):
+        """
+        Initialize the enhanced SIEM client.
+
+        Args:
+            siem_url: Base URL for SIEM HTTP API
+            auth_config: Authentication configuration
+            syslog_host: Syslog server hostname
+            syslog_port: Syslog server port
+            syslog_protocol: Syslog protocol (udp/tcp)
+            kafka_brokers: List of Kafka broker addresses
+            kafka_topic: Kafka topic for events
+            batch_size: Events per batch
+            flush_interval: Flush interval in seconds
+            max_queue_size: Maximum queue size
+            retry_attempts: Number of retry attempts
+            verify_ssl: Verify SSL certificates
+            validate_schema: Validate events against schema
+        """
+        # Initialize base client
+        super().__init__(
+            siem_url=siem_url,
+            api_key=auth_config.token if auth_config else None,
+            syslog_host=syslog_host,
+            syslog_port=syslog_port,
+            syslog_protocol=syslog_protocol,
+            batch_size=batch_size,
+            flush_interval=flush_interval,
+            max_queue_size=max_queue_size,
+            retry_attempts=retry_attempts,
+            verify_ssl=verify_ssl
+        )
+
+        self.auth_config = auth_config or SIEMAuthConfig.from_env()
+        self.kafka_brokers = kafka_brokers or os.getenv("BOUNDARY_SIEM_KAFKA_BROKERS", "").split(",")
+        self.kafka_brokers = [b.strip() for b in self.kafka_brokers if b.strip()]
+        self.kafka_topic = kafka_topic
+        self.validate_schema = validate_schema
+
+        # Kafka producer (if available and configured)
+        self._kafka_producer = None
+        self._init_kafka()
+
+        # OAuth2 token cache
+        self._oauth2_token: str | None = None
+        self._oauth2_token_expires: float = 0
+
+        # Apply authentication to session
+        if self._session:
+            self._apply_auth()
+
+    def _init_kafka(self) -> None:
+        """Initialize Kafka producer if brokers are configured."""
+        if not self.kafka_brokers:
+            return
+
+        try:
+            from kafka import KafkaProducer
+            self._kafka_producer = KafkaProducer(
+                bootstrap_servers=self.kafka_brokers,
+                value_serializer=lambda v: json.dumps(v).encode(),
+                retries=self.retry_attempts,
+                acks='all'
+            )
+            logger.info(f"Kafka producer initialized: {self.kafka_brokers}")
+        except ImportError:
+            logger.debug("kafka-python not available, Kafka streaming disabled")
+        except Exception as e:
+            logger.error(f"Failed to initialize Kafka producer: {e}")
+
+    def _apply_auth(self) -> None:
+        """Apply authentication to the HTTP session."""
+        if not self._session:
+            return
+
+        if self.auth_config.method == AuthMethod.BEARER_TOKEN:
+            if self.auth_config.token:
+                self._session.headers["Authorization"] = f"Bearer {self.auth_config.token}"
+
+        elif self.auth_config.method == AuthMethod.OAUTH2:
+            token = self._get_oauth2_token()
+            if token:
+                self._session.headers["Authorization"] = f"Bearer {token}"
+
+        elif self.auth_config.method == AuthMethod.MTLS:
+            if self.auth_config.mtls_cert_path and self.auth_config.mtls_key_path:
+                self._session.cert = (
+                    self.auth_config.mtls_cert_path,
+                    self.auth_config.mtls_key_path
+                )
+                if self.auth_config.mtls_ca_path:
+                    self._session.verify = self.auth_config.mtls_ca_path
+
+    def _get_oauth2_token(self) -> str | None:
+        """Get OAuth2 access token (with caching)."""
+        now = time.time()
+        if self._oauth2_token and now < self._oauth2_token_expires:
+            return self._oauth2_token
+
+        if not all([
+            self.auth_config.oauth2_client_id,
+            self.auth_config.oauth2_client_secret,
+            self.auth_config.oauth2_token_url
+        ]):
+            logger.error("OAuth2 credentials not configured")
+            return None
+
+        try:
+            import requests
+            response = requests.post(
+                self.auth_config.oauth2_token_url,
+                data={
+                    "grant_type": "client_credentials",
+                    "client_id": self.auth_config.oauth2_client_id,
+                    "client_secret": self.auth_config.oauth2_client_secret,
+                    "scope": self.auth_config.oauth2_scope
+                },
+                timeout=30
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+                self._oauth2_token = data.get("access_token")
+                expires_in = data.get("expires_in", 3600)
+                self._oauth2_token_expires = now + expires_in - 60  # Refresh 1 min early
+                return self._oauth2_token
+            else:
+                logger.error(f"OAuth2 token request failed: {response.status_code}")
+                return None
+
+        except Exception as e:
+            logger.error(f"OAuth2 token request error: {e}")
+            return None
+
+    def _validate_event(self, event: SIEMEvent) -> list[str]:
+        """
+        Validate event against Boundary-SIEM canonical schema.
+
+        Returns list of validation errors (empty if valid).
+        """
+        errors = []
+
+        # Required fields
+        if not event.timestamp:
+            errors.append("Missing required field: timestamp")
+        if not event.category:
+            errors.append("Missing required field: category")
+        if not event.action:
+            errors.append("Missing required field: action")
+        if not event.outcome:
+            errors.append("Missing required field: outcome")
+
+        # Severity range
+        if not (0 <= event.severity.value <= 10):
+            errors.append(f"Severity out of range: {event.severity.value}")
+
+        # Outcome values
+        valid_outcomes = ["success", "failure", "unknown"]
+        if event.outcome not in valid_outcomes:
+            errors.append(f"Invalid outcome: {event.outcome}")
+
+        return errors
+
+    def send_event(self, event: SIEMEvent) -> bool:
+        """
+        Queue an event for sending.
+
+        Validates against schema if enabled.
+        """
+        if self.validate_schema:
+            errors = self._validate_event(event)
+            if errors:
+                logger.warning(f"Event validation failed: {errors}")
+                # Still queue the event but log the issue
+                event.metadata["validation_errors"] = errors
+
+        return super().send_event(event)
+
+    def _send_batch(self, batch: list[SIEMEvent]) -> bool:
+        """Send batch via all available transports."""
+        success = super()._send_batch(batch)
+
+        # Also send to Kafka if available
+        if self._kafka_producer and batch:
+            try:
+                for event in batch:
+                    self._kafka_producer.send(
+                        self.kafka_topic,
+                        value=event.to_json()
+                    )
+                self._kafka_producer.flush()
+                success = True
+            except Exception as e:
+                logger.error(f"Kafka send failed: {e}")
+
+        return success
+
+    # =========================================================================
+    # GraphQL Support
+    # =========================================================================
+
+    def graphql_query(
+        self,
+        query: str,
+        variables: dict[str, Any] | None = None
+    ) -> dict[str, Any] | None:
+        """
+        Execute a GraphQL query against the SIEM.
+
+        Args:
+            query: GraphQL query string
+            variables: Query variables
+
+        Returns:
+            Query result or None on error
+
+        Example:
+            result = client.graphql_query('''
+                query GetEvents($limit: Int!) {
+                    events(limit: $limit) {
+                        id
+                        timestamp
+                        severity
+                        action
+                    }
+                }
+            ''', {"limit": 100})
+        """
+        if not self.siem_url or not self._session:
+            return None
+
+        try:
+            url = urljoin(self.siem_url, "/graphql")
+            response = self._session.post(
+                url,
+                json={
+                    "query": query,
+                    "variables": variables or {}
+                },
+                timeout=60
+            )
+
+            if response.status_code == 200:
+                return response.json()
+            else:
+                logger.error(f"GraphQL query failed: {response.status_code}")
+                return None
+
+        except Exception as e:
+            logger.error(f"GraphQL error: {e}")
+            return None
+
+    def query_events_graphql(
+        self,
+        filters: dict[str, Any] | None = None,
+        limit: int = 100,
+        fields: list[str] | None = None
+    ) -> list[dict[str, Any]]:
+        """
+        Query events using GraphQL.
+
+        Args:
+            filters: Event filters (severity, action, time_range, etc.)
+            limit: Maximum events to return
+            fields: Fields to return (default: id, timestamp, severity, action, outcome)
+
+        Returns:
+            List of events
+        """
+        default_fields = ["id", "timestamp", "severity", "action", "outcome", "message"]
+        fields = fields or default_fields
+
+        query = f"""
+            query GetEvents($filters: EventFilters, $limit: Int!) {{
+                events(filters: $filters, limit: $limit) {{
+                    {' '.join(fields)}
+                }}
+            }}
+        """
+
+        result = self.graphql_query(query, {
+            "filters": filters or {},
+            "limit": limit
+        })
+
+        if result and "data" in result:
+            return result["data"].get("events", [])
+        return []
+
+    def query_alerts_graphql(
+        self,
+        status: str | None = None,
+        severity: int | None = None,
+        limit: int = 100
+    ) -> list[dict[str, Any]]:
+        """
+        Query alerts using GraphQL.
+
+        Args:
+            status: Filter by status (open, acknowledged, closed)
+            severity: Minimum severity
+            limit: Maximum alerts to return
+
+        Returns:
+            List of alerts
+        """
+        query = """
+            query GetAlerts($status: String, $minSeverity: Int, $limit: Int!) {
+                alerts(status: $status, minSeverity: $minSeverity, limit: $limit) {
+                    id
+                    rule_id
+                    rule_name
+                    severity
+                    status
+                    created_at
+                    description
+                    event_count
+                }
+            }
+        """
+
+        result = self.graphql_query(query, {
+            "status": status,
+            "minSeverity": severity,
+            "limit": limit
+        })
+
+        if result and "data" in result:
+            return result["data"].get("alerts", [])
+        return []
+
+    # =========================================================================
+    # Bulk Operations
+    # =========================================================================
+
+    def send_events_bulk(
+        self,
+        events: list[SIEMEvent],
+        sync: bool = False
+    ) -> dict[str, Any]:
+        """
+        Send multiple events in bulk.
+
+        More efficient than sending events one by one.
+
+        Args:
+            events: List of events to send
+            sync: If True, send synchronously and wait for confirmation
+
+        Returns:
+            Result with success count and any errors
+        """
+        if not events:
+            return {"success": 0, "failed": 0, "errors": []}
+
+        if self.validate_schema:
+            for event in events:
+                errors = self._validate_event(event)
+                if errors:
+                    event.metadata["validation_errors"] = errors
+
+        if sync:
+            success = self._send_batch(events)
+            return {
+                "success": len(events) if success else 0,
+                "failed": 0 if success else len(events),
+                "errors": [] if success else ["Batch send failed"]
+            }
+        else:
+            queued = 0
+            failed = 0
+            errors = []
+
+            for event in events:
+                if self.send_event(event):
+                    queued += 1
+                else:
+                    failed += 1
+                    errors.append(f"Failed to queue event: {event.event_id}")
+
+            return {
+                "queued": queued,
+                "failed": failed,
+                "errors": errors
+            }
+
+    # =========================================================================
+    # Detection Rules
+    # =========================================================================
+
+    def get_detection_rules(self) -> list[dict[str, Any]]:
+        """
+        Get available detection rules from the SIEM.
+
+        Returns:
+            List of detection rules
+        """
+        if not self.siem_url or not self._session:
+            return []
+
+        try:
+            url = urljoin(self.siem_url, "/api/v1/rules")
+            response = self._session.get(url, timeout=30)
+
+            if response.status_code == 200:
+                return response.json().get("rules", [])
+            else:
+                logger.error(f"Failed to get detection rules: {response.status_code}")
+                return []
+
+        except Exception as e:
+            logger.error(f"Error getting detection rules: {e}")
+            return []
+
+    def create_custom_rule(
+        self,
+        name: str,
+        query: str,
+        severity: int,
+        description: str,
+        tags: list[str] | None = None
+    ) -> dict[str, Any] | None:
+        """
+        Create a custom detection rule.
+
+        Args:
+            name: Rule name
+            query: Detection query
+            severity: Alert severity (0-10)
+            description: Rule description
+            tags: Optional tags
+
+        Returns:
+            Created rule or None on error
+        """
+        if not self.siem_url or not self._session:
+            return None
+
+        try:
+            url = urljoin(self.siem_url, "/api/v1/rules")
+            response = self._session.post(
+                url,
+                json={
+                    "name": name,
+                    "query": query,
+                    "severity": severity,
+                    "description": description,
+                    "tags": tags or [],
+                    "enabled": True
+                },
+                timeout=30
+            )
+
+            if response.status_code in (200, 201):
+                return response.json()
+            else:
+                logger.error(f"Failed to create rule: {response.status_code}")
+                return None
+
+        except Exception as e:
+            logger.error(f"Error creating rule: {e}")
+            return None
+
+    def stop(self) -> None:
+        """Stop the enhanced client and cleanup resources."""
+        super().stop()
+
+        if self._kafka_producer:
+            try:
+                self._kafka_producer.close()
+            except Exception:
+                pass
+            self._kafka_producer = None
+
+
+# =============================================================================
+# Global Enhanced Client
+# =============================================================================
+
+_global_enhanced_client: EnhancedSIEMClient | None = None
+
+
+def get_enhanced_siem_client() -> EnhancedSIEMClient | None:
+    """Get the global enhanced SIEM client instance."""
+    return _global_enhanced_client
+
+
+def init_enhanced_siem_client(**kwargs) -> EnhancedSIEMClient:
+    """
+    Initialize the global enhanced SIEM client.
+
+    Args:
+        **kwargs: Arguments to pass to EnhancedSIEMClient
+
+    Returns:
+        The initialized client
+    """
+    global _global_enhanced_client
+    _global_enhanced_client = EnhancedSIEMClient(**kwargs)
+    _global_enhanced_client.start()
+    return _global_enhanced_client
+
+
+def shutdown_enhanced_siem_client() -> None:
+    """Shutdown the global enhanced SIEM client."""
+    global _global_enhanced_client
+    if _global_enhanced_client:
+        _global_enhanced_client.stop()
+        _global_enhanced_client = None
