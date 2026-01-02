@@ -140,6 +140,8 @@ REST API with **212+ endpoints** organized into:
 - **API Key Authentication**: Optional (default enabled)
 - **Encryption at Rest**: AES-256 for chain data
 - **Boundary Daemon**: Data sovereignty enforcement
+- **External Boundary-Daemon**: Unix socket/HTTP integration with external policy enforcement daemon
+- **External Boundary-SIEM**: OAuth2/GraphQL/Kafka integration with external SIEM systems
 - **FIDO2/WebAuthn**: Hardware security key support
 - **ZK Privacy**: Zero-knowledge proofs for sensitive data
 

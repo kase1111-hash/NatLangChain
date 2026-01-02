@@ -7,7 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_No unreleased changes._
+### Added
+
+#### External Boundary System Integration (`src/external_daemon_client.py`, `src/boundary_siem.py`)
+- **External Boundary-Daemon Client**: Full integration with external Boundary Daemon via Unix socket or HTTP
+  - RecallGate: Query daemon for memory access decisions
+  - ToolGate: Query daemon for tool execution authorization
+  - Human Override Ceremony coordination
+  - Mode synchronization between NatLangChain and external daemon
+  - Health check and connection management
+- **Enhanced SIEM Client**: Extended SIEM integration with enterprise features
+  - OAuth2, SAML, OIDC, and mTLS authentication support
+  - GraphQL query support for advanced event queries
+  - Apache Kafka streaming for bulk event ingestion
+  - Custom detection rule management
+  - Alert lifecycle management (acknowledge, close)
+- **Security Hardening**: DoS prevention via bounded socket reads (10MB max response)
+- **Environment Configuration**: All external integration features configurable via environment variables
+
+### Security
+- Fixed unbounded socket read vulnerability that could cause DoS via large responses
 
 ---
 
