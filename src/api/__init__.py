@@ -9,6 +9,7 @@ Blueprints:
 - mobile: Mobile deployment
 - monitoring: Metrics and health endpoints
 - boundary: Boundary protection (modes, SIEM, agent security)
+- marketplace: Module marketplace with Story Protocol integration
 
 Future blueprints (to be extracted from api.py):
 - contracts: Contract parsing, matching, and management
@@ -31,6 +32,7 @@ from api.mobile import mobile_bp
 from api.monitoring import monitoring_bp
 from api.search import search_bp
 from api.boundary import boundary_bp
+from api.marketplace import marketplace_bp
 
 # List of all blueprints for registration
 # Tuple format: (blueprint, url_prefix)
@@ -40,6 +42,7 @@ ALL_BLUEPRINTS = [
     (mobile_bp, ''),      # Mobile routes (blueprint has /mobile prefix)
     (monitoring_bp, ''),  # Monitoring routes (/metrics, /health/*)
     (boundary_bp, ''),    # Boundary protection routes (/boundary/*)
+    (marketplace_bp, ''), # Marketplace routes (/marketplace/*)
 ]
 
 
@@ -142,3 +145,14 @@ def init_managers(api_key: str = None):
             pass
 
         print("LLM-based features initialized")
+
+    # Initialize marketplace (independent of API key)
+    try:
+        from marketplace import create_marketplace_manager, NetworkType
+        managers.marketplace_manager = create_marketplace_manager(
+            network=NetworkType.MAINNET,
+            register_rra_module=True
+        )
+        print("Marketplace initialized with RRA-Module registered")
+    except Exception as e:
+        print(f"Warning: Could not initialize marketplace: {e}")
