@@ -116,6 +116,12 @@ production = [
     "gunicorn>=21.0.0",
 ]
 
+# Story Protocol SDK for IP licensing
+story-protocol = [
+    "story-protocol-python-sdk>=0.1.0",
+    "web3>=6.0.0",
+]
+
 # All optional features (including all LLM providers)
 all = [
     "fido2>=1.1.0",  # Hardware security key support
@@ -124,6 +130,8 @@ all = [
     "gunicorn>=21.0.0",
     "openai>=1.0.0",
     "google-generativeai>=0.3.0",
+    "story-protocol-python-sdk>=0.1.0",
+    "web3>=6.0.0",
 ]
 
 [project.scripts]

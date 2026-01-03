@@ -274,6 +274,9 @@ class ManagerRegistry:
     # P2P network
     p2p_network: Any = None
 
+    # Marketplace
+    marketplace_manager: Any = None
+
     def is_llm_enabled(self) -> bool:
         """Check if LLM-based features are available."""
         return self.llm_validator is not None
@@ -289,6 +292,10 @@ class ManagerRegistry:
     def is_p2p_enabled(self) -> bool:
         """Check if P2P network is available."""
         return self.p2p_network is not None
+
+    def is_marketplace_enabled(self) -> bool:
+        """Check if marketplace is available."""
+        return self.marketplace_manager is not None
 
 
 # Global manager registry instance
