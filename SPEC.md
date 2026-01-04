@@ -341,17 +341,17 @@ The following discrepancies between NCIP-000+ governance and current implementat
 
 #### NCIP Authoritative (Implementation Required)
 
-#### 1. Semantic Locking Not Implemented
+#### 1. Semantic Locking ✅ RESOLVED
 - **NCIP-005 requires:** "Semantic Locking" — the ability to freeze meaning during disputes
-- **Current MP-03 implements:** Evidence freezing only
-- **Gap:** No semantic locking mechanism to prevent meaning drift during active disputes
-- **Resolution:** ✅ NCIP-005 IS AUTHORITATIVE — implement semantic locking in MP-03
+- **Status:** ✅ IMPLEMENTED in `src/semantic_locking.py`, integrated with `src/dispute.py`
+- **Features:** LockedState (registry version, prose hash, anchor language, PoUs, NCIPs), SemanticLock dataclass, SemanticLockManager, lock verification, action logging
+- **Resolution:** ✅ NCIP-005 IS AUTHORITATIVE — full semantic locking implemented
 
-#### 2. Cooling Periods Not Specified
+#### 2. Cooling Periods ✅ RESOLVED
 - **NCIP-005 requires:** "Cooling Periods" — mandatory waiting periods during dispute lifecycle
-- **Current MP-03 implements:** 7-day solver window (Escalation Fork only)
-- **Gap:** No general cooling period mechanism for standard disputes
-- **Resolution:** ✅ NCIP-005 IS AUTHORITATIVE — implement cooling periods in MP-03
+- **Status:** ✅ IMPLEMENTED in `src/semantic_locking.py`, integrated with `src/dispute.py`
+- **Features:** D3 (24h) and D4 (72h) cooling periods, CoolingPeriodStatus, action enforcement (allowed/forbidden during cooling), automatic cooling period calculation
+- **Resolution:** ✅ NCIP-005 IS AUTHORITATIVE — full cooling periods implemented
 
 #### 3. Validator Trust Scoring ✅ RESOLVED
 - **NCIP-007 requires:** Validator Trust Scoring & Reliability Weighting
@@ -373,11 +373,11 @@ The following discrepancies between NCIP-000+ governance and current implementat
 - **Features:** CTS scoring (6 dimensions), bonding, slashing (5 offense types), cooldowns, treasury, market dynamics
 - **Resolution:** ✅ NCIP-010 IS AUTHORITATIVE — full mediator reputation implemented
 
-#### 5. Validator-Mediator Weight Coupling Missing
+#### 5. Validator-Mediator Weight Coupling ✅ RESOLVED
 - **NCIP-011 requires:** Joint trust dynamics between validators and mediators
-- **Current implementation:** Validators and mediators operate independently
-- **Gap:** No weight coupling mechanism
-- **Resolution:** 🟡 PENDING — both NCIP-011 and spec require further definition
+- **Status:** ✅ IMPLEMENTED in `src/validator_mediator_coupling.py`
+- **Features:** Role separation enforcement, ValidatorWeight & MediatorWeight classes, SemanticConsistencyScore, influence gate mechanism, competitive mediation, dispute phase handling, delayed weight updates, collusion resistance
+- **Resolution:** ✅ NCIP-011 IS AUTHORITATIVE — full validator-mediator coupling implemented
 
 #### 6. Human Ratification UX Limits ✅ RESOLVED
 - **NCIP-012 requires:** Cognitive Load Limits for human decision-making
