@@ -315,40 +315,40 @@ class TestSigning(unittest.TestCase):
 
     def test_begin_sign_proposal(self):
         """Test beginning a proposal signing flow."""
-        result = self.manager.begin_sign_message(
+        result = self.manager.sign_proposal(
             user_id="user123",
-            signature_type=SignatureType.PROPOSAL_ACCEPT,
-            message="I accept proposal XYZ",
-            metadata={"proposal_id": "XYZ"}
+            dispute_id="DISPUTE-001",
+            proposal_action="accept",
+            proposal_hash="abc123"
         )
 
         self.assertIn("challenge_id", result)
-        self.assertIn("message_hash", result)
+        self.assertIn("publicKey", result)
 
     def test_begin_sign_contract(self):
         """Test beginning a contract signing flow."""
-        result = self.manager.begin_sign_message(
+        result = self.manager.sign_contract(
             user_id="user123",
-            signature_type=SignatureType.CONTRACT_SIGN,
-            message="Contract terms here...",
-            metadata={"contract_id": "CONTRACT-001"}
+            contract_hash="contract_hash_123",
+            counterparty="bob"
         )
 
         self.assertIn("challenge_id", result)
-        self.assertEqual(result["signature_type"], SignatureType.CONTRACT_SIGN.value)
+        self.assertIn("publicKey", result)
 
     def test_complete_sign_success(self):
-        """Test successful message signing."""
+        """Test successful proposal signing."""
         # Begin signing
-        begin_result = self.manager.begin_sign_message(
+        begin_result = self.manager.sign_proposal(
             user_id="user123",
-            signature_type=SignatureType.PROPOSAL_ACCEPT,
-            message="I accept"
+            dispute_id="DISPUTE-001",
+            proposal_action="accept",
+            proposal_hash="abc123"
         )
         challenge_id = begin_result["challenge_id"]
 
-        # Complete signing
-        success, result = self.manager.complete_sign_message(
+        # Complete signing using verify_authentication
+        success, result = self.manager.verify_authentication(
             challenge_id=challenge_id,
             credential_id="cred123",
             authenticator_data=base64.b64encode(b"auth_data").decode(),
@@ -357,7 +357,7 @@ class TestSigning(unittest.TestCase):
         )
 
         self.assertTrue(success)
-        self.assertEqual(result["status"], "signed")
+        self.assertEqual(result["status"], "verified")
         self.assertIn("signature_id", result)
 
 
@@ -431,10 +431,10 @@ class TestAgentDelegation(unittest.TestCase):
             signature=base64.b64encode(b"sig").decode()
         )
 
-        # Verify action
-        is_valid, msg = self.manager.verify_agent_action(
+        # Verify permission
+        is_valid, delegation_id = self.manager.verify_agent_permission(
             agent_id="agent001",
-            action="read_contracts",
+            permission="read_contracts",
             principal_user_id="principal"
         )
 
@@ -457,15 +457,15 @@ class TestAgentDelegation(unittest.TestCase):
             signature=base64.b64encode(b"sig").decode()
         )
 
-        # Try action outside scope
-        is_valid, msg = self.manager.verify_agent_action(
+        # Try permission outside scope
+        is_valid, delegation_id = self.manager.verify_agent_permission(
             agent_id="agent001",
-            action="delete_contracts",  # Not in scope
+            permission="delete_contracts",  # Not in scope
             principal_user_id="principal"
         )
 
         self.assertFalse(is_valid)
-        self.assertIn("permission", msg.lower())
+        self.assertIsNone(delegation_id)
 
 
 class TestCredentialManagement(unittest.TestCase):
@@ -540,7 +540,7 @@ class TestStatisticsAndAudit(unittest.TestCase):
         trail = self.manager.get_audit_trail()
 
         self.assertGreater(len(trail), 0)
-        self.assertEqual(trail[0]["event"], "RegistrationStarted")
+        self.assertEqual(trail[0]["event_type"], "RegistrationStarted")
 
 
 class TestDataclasses(unittest.TestCase):

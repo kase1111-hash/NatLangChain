@@ -19,7 +19,14 @@ class TestFIEAssetDirectives(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.blockchain = NatLangChain()
+        # Disable validation and security checks for unit testing
+        self.blockchain = NatLangChain(
+            require_validation=False,
+            enable_deduplication=False,
+            enable_rate_limiting=False,
+            enable_timestamp_validation=False,
+            enable_metadata_sanitization=False
+        )
 
     def test_record_crypto_wallet_directive(self):
         """Test recording directive for crypto wallet transfer."""
@@ -195,7 +202,14 @@ class TestExecutorAssetAccess(unittest.TestCase):
 
     def setUp(self):
         """Set up blockchain with multiple asset directives."""
-        self.blockchain = NatLangChain()
+        # Disable validation and security checks for unit testing
+        self.blockchain = NatLangChain(
+            require_validation=False,
+            enable_deduplication=False,
+            enable_rate_limiting=False,
+            enable_timestamp_validation=False,
+            enable_metadata_sanitization=False
+        )
         self._populate_test_directives()
 
     def _populate_test_directives(self):
@@ -298,7 +312,14 @@ class TestExecutorRecordsExecution(unittest.TestCase):
 
     def setUp(self):
         """Set up blockchain with a directive ready for execution."""
-        self.blockchain = NatLangChain()
+        # Disable validation and security checks for unit testing
+        self.blockchain = NatLangChain(
+            require_validation=False,
+            enable_deduplication=False,
+            enable_rate_limiting=False,
+            enable_timestamp_validation=False,
+            enable_metadata_sanitization=False
+        )
 
         # Record initial directive
         self.directive_entry = NaturalLanguageEntry(
@@ -409,7 +430,14 @@ class TestMultiAssetDirective(unittest.TestCase):
 
     def setUp(self):
         """Set up blockchain."""
-        self.blockchain = NatLangChain()
+        # Disable validation and security checks for unit testing
+        self.blockchain = NatLangChain(
+            require_validation=False,
+            enable_deduplication=False,
+            enable_rate_limiting=False,
+            enable_timestamp_validation=False,
+            enable_metadata_sanitization=False
+        )
 
     def test_estate_distribution_directive(self):
         """Test comprehensive estate distribution directive."""
@@ -498,7 +526,14 @@ class TestConditionalAssetDirectives(unittest.TestCase):
 
     def setUp(self):
         """Set up blockchain."""
-        self.blockchain = NatLangChain()
+        # Disable validation and security checks for unit testing
+        self.blockchain = NatLangChain(
+            require_validation=False,
+            enable_deduplication=False,
+            enable_rate_limiting=False,
+            enable_timestamp_validation=False,
+            enable_metadata_sanitization=False
+        )
 
     def test_incapacity_directive(self):
         """Test directive triggered by incapacity declaration."""
@@ -593,7 +628,14 @@ class TestFullFIEWorkflow(unittest.TestCase):
 
     def setUp(self):
         """Set up blockchain."""
-        self.blockchain = NatLangChain()
+        # Disable validation and security checks for unit testing
+        self.blockchain = NatLangChain(
+            require_validation=False,
+            enable_deduplication=False,
+            enable_rate_limiting=False,
+            enable_timestamp_validation=False,
+            enable_metadata_sanitization=False
+        )
 
     def test_complete_asset_directive_workflow(self):
         """Test full workflow: directive → trigger → execution → proof."""

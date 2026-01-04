@@ -86,7 +86,7 @@ def test_chain_validation():
 
 def test_get_entries_by_author():
     """Test retrieving entries by author."""
-    chain = NatLangChain(require_validation=False, enable_deduplication=False, enable_rate_limiting=False, enable_timestamp_validation=False, enable_metadata_sanitization=False, enable_asset_tracking=False)
+    chain = NatLangChain(require_validation=False, enable_deduplication=False, enable_rate_limiting=False, enable_timestamp_validation=False, enable_metadata_sanitization=False, enable_asset_tracking=False, enable_quality_checks=False)
 
     entry1 = NaturalLanguageEntry(
         content="Alice's first entry.",

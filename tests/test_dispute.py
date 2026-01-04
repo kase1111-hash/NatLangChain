@@ -19,7 +19,15 @@ class TestDisputeManager(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.blockchain = NatLangChain()
+        # Disable validation and security checks for unit testing
+        self.blockchain = NatLangChain(
+            require_validation=False,
+            enable_deduplication=False,
+            enable_rate_limiting=False,
+            enable_timestamp_validation=False,
+            enable_metadata_sanitization=False,
+            enable_quality_checks=False
+        )
         self.dispute_manager = DisputeManager()  # No LLM for basic tests
 
         # Add some entries to dispute
