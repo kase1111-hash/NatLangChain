@@ -1002,26 +1002,26 @@ Decentralized "Compliance Council" using BLS or FROST threshold signatures:
 | **FIDO2/YubiKey Integration** | `src/fido2_auth.py` | WebAuthn credential management, hardware-backed signing, agent delegation |
 | **Web UI / Sandbox** | `frontend/` | Tauri + Svelte desktop app with Dashboard, ChainExplorer, ContractViewer |
 | **Escrow Integration** | `src/anti_harassment.py` | StakeEscrow class, stake matching, fallback resolution |
+| **Real-time Mediation Network** | `src/mediator_reputation.py` | NCIP-010 CTS scoring, bond management, slashing, cooldowns, treasury subsidy |
+| **ZK Dispute Membership Circuit** | `src/zk_privacy.py` | Phase 14A: ZKProof generation, membership verification, dispute anonymization |
+| **Viewing Key Infrastructure** | `src/zk_privacy.py` | Phase 14B: Pedersen commitments, ECIES encryption, Shamir secret sharing |
+| **Market-Aware Pricing** | `src/market_pricing.py` | MarketDataOracle, DynamicPricingEngine, HistoricalPricingAnalyzer |
+| **Mobile Deployment** | `src/mobile_deployment.py` | EdgeAIRuntime, MobileWalletManager, OfflineFirstManager, PortableArchitecture |
+| **Multilingual Support** | `src/multilingual.py` | NCIP-003 Semantic Alignment, language roles, drift detection, cross-language validation |
+| **Benchmark Suite** | `benchmarks/tps_comparison_solana.py` | TPSSimulation, Solana comparison, concurrent throughput, batch processing |
+| **Database Backend** | `src/storage/postgresql.py` | PostgreSQLStorage, connection pooling, ACID transactions, indexed queries |
+| **Threshold Decryption Compliance** | `src/zk_privacy.py` | Phase 14D: BLS/FROST threshold signatures, key share management |
+| **Inference Attack Mitigations** | `src/zk_privacy.py` | Phase 14C: Batched disclosure, dummy queries, timing obfuscation |
+| **Chain Subscription & Sync** | `src/chain_interface.py` | ChainInterface, HMAC authentication, intent/settlement operations |
 
 ### ❌ NOT IMPLEMENTED (Documented Only)
 
 | Feature | Documentation | Priority | Complexity | Target Repo |
 |---------|---------------|----------|------------|-------------|
-| **Real-time Mediation Network** | future.md | HIGH 🔴 | High | Mediator Node |
-| **ZK Dispute Membership Circuit** | Dispute-membership-circuit.md | HIGH 🔴 | High | NatLangChain |
-| **Viewing Key Infrastructure** | Dispute-membership-circuit.md | HIGH 🔴 | High | NatLangChain |
-| **Market-Aware Pricing** | final-features.md | MEDIUM 🟡 | Medium | NatLangChain |
-| **Mobile Deployment** | final-features.md | MEDIUM 🟡 | High | All Modules |
 | **Daily Work Output Automation** | future.md | MEDIUM 🟡 | Medium | RRA-Module |
-| **Chain Subscription & Sync** | future.md | MEDIUM 🟡 | High | NatLangChain |
 | **Cosmos SDK Integration** | cosmos.md | MEDIUM 🟡 | Very High | NatLangChain |
-| **Multilingual Support** | multilingual.md | MEDIUM 🟡 | High | Common |
-| **Benchmark Suite** | roadmap.md | MEDIUM 🟡 | Medium | NatLangChain |
-| **Database Backend** | API.md | MEDIUM 🟡 | Low | NatLangChain |
 | **Async Validation Pipeline** | API.md | MEDIUM 🟡 | Medium | NatLangChain |
 | **LNI Multi-Agent Testing** | lni-testable-theory.md | MEDIUM 🟡 | High | Agent OS |
-| **Threshold Decryption Compliance** | Dispute-membership-circuit.md | MEDIUM 🟡 | High | NatLangChain |
-| **Inference Attack Mitigations** | Dispute-membership-circuit.md | MEDIUM 🟡 | Medium | NatLangChain |
 | **Prediction Markets** | COMPLIANCE.md | LOW 🟢 | High | NatLangChain |
 | **Narrative Staking** | COMPLIANCE.md | LOW 🟢 | High | NatLangChain |
 | **Insurance Premium Integration** | COMPLIANCE.md | LOW 🟢 | Medium | Value Ledger |
