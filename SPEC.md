@@ -998,16 +998,16 @@ Decentralized "Compliance Council" using BLS or FROST threshold signatures:
 | **MP-03 Dispute Protocol** | `src/dispute.py` | Full dispute lifecycle, evidence freezing, escalation, NCIP-005/010 integration |
 | **Treasury System** | `src/treasury.py` | Autonomous fund management, defender subsidies, anti-Sybil protection |
 | **Automated Negotiation Engine** | `src/negotiation_engine.py` | Session management, intent alignment, LLM clause generation |
+| **Anti-Harassment Economic Layer** | `src/anti_harassment.py` | Dual initiation paths, stake escrow, harassment scoring, counter-proposal limits |
+| **FIDO2/YubiKey Integration** | `src/fido2_auth.py` | WebAuthn credential management, hardware-backed signing, agent delegation |
+| **Web UI / Sandbox** | `frontend/` | Tauri + Svelte desktop app with Dashboard, ChainExplorer, ContractViewer |
+| **Escrow Integration** | `src/anti_harassment.py` | StakeEscrow class, stake matching, fallback resolution |
 
 ### ❌ NOT IMPLEMENTED (Documented Only)
 
 | Feature | Documentation | Priority | Complexity | Target Repo |
 |---------|---------------|----------|------------|-------------|
 | **Real-time Mediation Network** | future.md | HIGH 🔴 | High | Mediator Node |
-| **Escrow Integration** | CONTRACTS.md | HIGH 🔴 | Medium | Value Ledger |
-| **Web UI / Sandbox** | roadmap.md | HIGH 🔴 | Medium | NatLangChain |
-| **Anti-Harassment Economic Layer** | Anti-Harassment.md | HIGH 🔴 | Medium | NatLangChain |
-| **FIDO2/YubiKey Integration** | FIDO-Yubi.md | HIGH 🔴 | Medium | ILRM, NatLangChain |
 | **ZK Dispute Membership Circuit** | Dispute-membership-circuit.md | HIGH 🔴 | High | NatLangChain |
 | **Viewing Key Infrastructure** | Dispute-membership-circuit.md | HIGH 🔴 | High | NatLangChain |
 | **Market-Aware Pricing** | final-features.md | MEDIUM 🟡 | Medium | NatLangChain |
