@@ -414,7 +414,7 @@ class TestMultilingualRatification(unittest.TestCase):
 
         self.assertEqual(ratification.anchor_language, "en")
         self.assertIn("es", ratification.reviewed_languages)
-        self.assertIn("English (anchor)", ratification.statement)
+        self.assertIn("en (anchor)", ratification.statement)
 
     def test_confirm_ratification(self):
         """Test confirming ratification binding."""

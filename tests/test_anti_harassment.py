@@ -257,7 +257,8 @@ class TestVoluntaryRequests(unittest.TestCase):
         )
 
         self.assertTrue(success)
-        self.assertEqual(result["status"], "accepted")
+        self.assertEqual(result["status"], "responded")
+        self.assertTrue(result["accepted"])
 
     def test_respond_to_voluntary_request_decline(self):
         """Test declining a voluntary request (free)."""
@@ -321,9 +322,9 @@ class TestCounterProposalLimits(unittest.TestCase):
                 party="alice",
                 proposal_content=f"proposal {i+1}"
             )
-            fees.append(result.get("fee_required", 0))
+            fees.append(result.get("fee_burned", 0))
 
-        # Fees should escalate (base_fee × 2^n pattern)
+        # Fees should escalate (base_fee × 2^n pattern: 1.0, 2.0, 4.0)
         self.assertGreater(fees[1], fees[0])
         self.assertGreater(fees[2], fees[1])
 
@@ -390,18 +391,19 @@ class TestHarassmentScoring(unittest.TestCase):
         """Test that harassment levels are correctly categorized."""
         profile = self.manager._get_or_create_profile("user")
 
-        # Low
-        profile.harassment_score = 10.0
+        # Low (0 non_resolving_disputes = score 0)
+        profile.non_resolving_disputes = 0
         self.manager._recalculate_harassment_score(profile)
         self.assertLess(profile.harassment_score, self.manager.HARASSMENT_THRESHOLD_MODERATE)
 
-        # Moderate
-        profile.non_resolving_disputes = 5
+        # Moderate (3 non_resolving_disputes × 10 = 30, between 25 and 50)
+        profile.non_resolving_disputes = 3
         self.manager._recalculate_harassment_score(profile)
 
         result = self.manager.get_harassment_score("user")
-        if result["harassment_score"] >= self.manager.HARASSMENT_THRESHOLD_MODERATE:
-            self.assertEqual(result["severity"], "moderate")
+        self.assertGreaterEqual(result["harassment_score"], self.manager.HARASSMENT_THRESHOLD_MODERATE)
+        self.assertLess(result["harassment_score"], self.manager.HARASSMENT_THRESHOLD_HIGH)
+        self.assertEqual(result["severity"], "moderate")
 
 
 class TestStakeTimeouts(unittest.TestCase):
