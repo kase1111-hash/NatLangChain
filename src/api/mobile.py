@@ -7,7 +7,7 @@ and offline synchronization.
 
 from flask import Blueprint, jsonify, request
 
-from api.utils import managers, require_api_key
+from api.utils import DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT, managers, require_api_key
 
 # Create the blueprint
 mobile_bp = Blueprint('mobile', __name__, url_prefix='/mobile')
@@ -582,8 +582,8 @@ def get_mobile_audit():
     if not managers.mobile_deployment:
         return jsonify({"error": "Mobile deployment not available"}), 503
 
-    limit = request.args.get("limit", 100, type=int)
-    limit = min(limit, 1000)  # Cap at 1000
+    limit = request.args.get("limit", DEFAULT_PAGE_LIMIT, type=int)
+    limit = min(limit, MAX_PAGE_LIMIT)
 
     audit = managers.mobile_deployment.get_audit_trail(limit=limit)
 

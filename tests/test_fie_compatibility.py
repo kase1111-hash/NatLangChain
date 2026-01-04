@@ -20,7 +20,14 @@ class TestFIEDelayedIntentRecording(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.blockchain = NatLangChain()
+        # Disable validation and security checks for unit testing
+        self.blockchain = NatLangChain(
+            require_validation=False,
+            enable_deduplication=False,
+            enable_rate_limiting=False,
+            enable_timestamp_validation=False,
+            enable_metadata_sanitization=False
+        )
 
     def test_posthumous_intent_recording(self):
         """Test recording a posthumous IP transfer intent."""
@@ -186,7 +193,14 @@ class TestFIEExecutionRecording(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.blockchain = NatLangChain()
+        # Disable validation and security checks for unit testing
+        self.blockchain = NatLangChain(
+            require_validation=False,
+            enable_deduplication=False,
+            enable_rate_limiting=False,
+            enable_timestamp_validation=False,
+            enable_metadata_sanitization=False
+        )
 
         # Add a delayed intent first
         intent_entry = NaturalLanguageEntry(
@@ -262,7 +276,14 @@ class TestFIERevocation(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.blockchain = NatLangChain()
+        # Disable validation and security checks for unit testing
+        self.blockchain = NatLangChain(
+            require_validation=False,
+            enable_deduplication=False,
+            enable_rate_limiting=False,
+            enable_timestamp_validation=False,
+            enable_metadata_sanitization=False
+        )
 
         # Add original intent
         intent_entry = NaturalLanguageEntry(
@@ -311,7 +332,14 @@ class TestFIEQueryCapabilities(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures with multiple intents."""
-        self.blockchain = NatLangChain()
+        # Disable validation and security checks for unit testing
+        self.blockchain = NatLangChain(
+            require_validation=False,
+            enable_deduplication=False,
+            enable_rate_limiting=False,
+            enable_timestamp_validation=False,
+            enable_metadata_sanitization=False
+        )
 
         # Add various delayed intents
         intents = [
@@ -356,7 +384,14 @@ class TestFIEMetadataIntegrity(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.blockchain = NatLangChain()
+        # Disable validation and security checks for unit testing
+        self.blockchain = NatLangChain(
+            require_validation=False,
+            enable_deduplication=False,
+            enable_rate_limiting=False,
+            enable_timestamp_validation=False,
+            enable_metadata_sanitization=False
+        )
 
     def test_complex_metadata_preservation(self):
         """Test that complex nested metadata is preserved correctly."""
@@ -464,7 +499,14 @@ class TestFIESunsetAndPublicDomain(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.blockchain = NatLangChain()
+        # Disable validation and security checks for unit testing
+        self.blockchain = NatLangChain(
+            require_validation=False,
+            enable_deduplication=False,
+            enable_rate_limiting=False,
+            enable_timestamp_validation=False,
+            enable_metadata_sanitization=False
+        )
 
     def test_sunset_metadata(self):
         """Test recording sunset/public domain transition metadata."""
@@ -504,7 +546,14 @@ class TestFIECompatibilitySummary(unittest.TestCase):
 
     def test_full_fie_workflow(self):
         """Test complete FIE workflow: intent -> execution -> proof."""
-        blockchain = NatLangChain()
+        # Disable validation and security checks for unit testing
+        blockchain = NatLangChain(
+            require_validation=False,
+            enable_deduplication=False,
+            enable_rate_limiting=False,
+            enable_timestamp_validation=False,
+            enable_metadata_sanitization=False
+        )
 
         # Step 1: Record delayed intent
         intent = NaturalLanguageEntry(

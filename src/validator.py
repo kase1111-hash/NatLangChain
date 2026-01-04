@@ -117,12 +117,7 @@ def create_safe_prompt_section(label: str, content: str, max_length: int) -> str
 try:
     from pou_scoring import (
         PoUScorer,
-        PoUScoreResult,
-        PoUStatus,
-        PoUValidationResult,
         classify_pou_score,
-        get_pou_config,
-        score_pou,
     )
     NCIP_004_AVAILABLE = True
 except ImportError:
@@ -135,11 +130,8 @@ try:
         MAX_EFFECTIVE_WEIGHT,
         NegativeSignal,
         PositiveSignal,
-        TrustManager,
-        TrustProfile,
         TrustScope,
         ValidatorType,
-        WeightedSignal,
         get_ncip_007_config,
         get_trust_manager,
     )
@@ -151,14 +143,10 @@ except ImportError:
 try:
     from cognitive_load import (
         ActionType,
-        CognitiveBudget,
         CognitiveLoadManager,
         InformationLevel,
-        PoUConfirmation,
         RatificationContext,
-        RatificationState,
         SemanticUnit,
-        UIViolationType,
     )
     NCIP_012_AVAILABLE = True
 except ImportError:
@@ -167,15 +155,10 @@ except ImportError:
 # Import NCIP-014 Protocol Amendments & Constitutional Change
 try:
     from protocol_amendments import (
-        Amendment,
         AmendmentClass,
         AmendmentManager,
-        AmendmentStatus,
         ConstitutionalArtifact,
-        EmergencyAmendment,
         PoUStatement,
-        RatificationStage,
-        SemanticCompatibilityResult,
     )
     NCIP_014_AVAILABLE = True
 except ImportError:
@@ -185,17 +168,8 @@ except ImportError:
 try:
     from multilingual import (
         SUPPORTED_LANGUAGE_CODES,
-        AlignmentRules,
-        CanonicalTermMapping,
-        ClauseDriftResult,
-        DriftLevel,
-        LanguageEntry,
         LanguageRole,
         MultilingualAlignmentManager,
-        MultilingualContract,
-        MultilingualRatification,
-        TranslationViolation,
-        ValidatorAction,
     )
     NCIP_003_AVAILABLE = True
 except ImportError:
@@ -206,17 +180,9 @@ try:
     from jurisdictional import (
         US_STATE_CODES,
         VALID_COUNTRY_CODES,
-        CourtRuling,
         CourtRulingType,
-        DriftLevel as JurisdictionalDriftLevel,
-        JurisdictionalBridge,
         JurisdictionalManager,
-        JurisdictionConflict,
-        JurisdictionDeclaration,
         JurisdictionRole,
-        LegalTranslationArtifact,
-        LTAViolation,
-        validate_jurisdiction_code,
     )
     NCIP_006_AVAILABLE = True
 except ImportError:
@@ -225,18 +191,11 @@ except ImportError:
 # Import NCIP-008 Semantic Appeals, Precedent & Case Law Encoding
 try:
     from appeals import (
-        Appeal,
         AppealableItem,
         AppealOutcome,
         AppealsManager,
-        AppealStatus,
         DriftLevel as AppealsDriftLevel,
-        NonAppealableItem,
-        PrecedentEntry,
-        PrecedentWeight,
-        ReviewPanel,
         ReviewPanelMember,
-        SemanticCaseRecord,
     )
     NCIP_008_AVAILABLE = True
 except ImportError:
@@ -246,73 +205,12 @@ except ImportError:
 try:
     from validator_mediator_coupling import (
         ActorRole,
-        DisputePhase,
-        MediatorProposal,
-        MediatorWeight,
-        ProtocolViolationType,
-        SemanticConsistencyScore,
         ValidatorMediatorCoupling,
-        ValidatorWeight,
-        WeightUpdateStatus,
     )
     NCIP_011_AVAILABLE = True
 except ImportError:
     NCIP_011_AVAILABLE = False
 
-# Import NCIP-013 Emergency Overrides, Force Majeure & Semantic Fallbacks
-try:
-    from emergency_overrides import (
-        EmergencyDeclaration,
-        EmergencyDispute,
-        EmergencyManager,
-        EmergencyScope,
-        EmergencyStatus,
-        ExecutionEffect,
-        ForceMajeureClass,
-        OracleEvidence,
-        OracleType,
-        ProhibitedEffect,
-        SemanticFallback,
-    )
-    NCIP_013_AVAILABLE = True
-except ImportError:
-    NCIP_013_AVAILABLE = False
-
-# Import NCIP-015 Sunset Clauses, Archival Finality & Historical Semantics
-try:
-    from sunset_clauses import (
-        DEFAULT_SUNSET_YEARS,
-        VALID_TRANSITIONS,
-        ArchivedEntry,
-        EntryState,
-        EntryType,
-        ManagedEntry,
-        SunsetClause,
-        SunsetManager,
-        SunsetTriggerType,
-        TemporalContext,
-    )
-    NCIP_015_AVAILABLE = True
-except ImportError:
-    NCIP_015_AVAILABLE = False
-
-# Import NCIP-009 Regulatory Interface Modules & Compliance Proofs
-try:
-    from regulatory_interface import (
-        ComplianceClaimType,
-        ComplianceProof,
-        DisclosureScope,
-        ProofMechanism,
-        ProofStatus,
-        RegulatoryInterfaceManager,
-        RegulatoryInterfaceModule,
-        RegulatoryRegime,
-        WORMCertificate,
-        ZKProof,
-    )
-    NCIP_009_AVAILABLE = True
-except ImportError:
-    NCIP_009_AVAILABLE = False
 
 
 class ProofOfUnderstanding:

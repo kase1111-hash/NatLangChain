@@ -11,6 +11,7 @@ import hashlib
 import hmac
 import json
 import logging
+import os
 import secrets
 import time
 from collections.abc import Callable
@@ -38,8 +39,8 @@ except ImportError:
 # Constants
 # =============================================================================
 
-# Default chain endpoint
-DEFAULT_CHAIN_ENDPOINT = "http://localhost:8545"
+# Default chain endpoint (configurable via environment variable)
+DEFAULT_CHAIN_ENDPOINT = os.getenv("NATLANGCHAIN_CHAIN_ENDPOINT", "http://localhost:8545")
 
 # API version
 API_VERSION = "v1"

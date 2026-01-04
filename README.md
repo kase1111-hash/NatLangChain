@@ -186,95 +186,25 @@ NatLangChain advances by making prose canonical.
 10. Conclusion
 NatLangChain reframes distributed trust around linguistic participation. By addressing challenges head-on, it offers interpretable, inclusive ledgers for human-AI collaboration.
 
-## Implementation Features
+## Documentation
 
-### Core Blockchain
-- Natural language entries as primary substrate
-- Cryptographic block chaining with SHA-256
-- Proof-of-work mining (configurable difficulty)
-- Chain validation and integrity checks
-- Multiple storage backends (JSON, PostgreSQL, Memory)
+| Document | Description |
+|----------|-------------|
+| [INSTALLATION.md](INSTALLATION.md) | Setup guide (Windows, Linux, Docker, Kubernetes) |
+| [API.md](API.md) | Complete REST API reference (212+ endpoints) |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | System design and components |
+| [SPEC.md](SPEC.md) | Technical specification and protocol details |
+| [SECURITY.md](SECURITY.md) | Security audit and configuration |
+| [docs/](docs/README.md) | Full documentation index |
 
-### LLM-Powered Validation
-- **Proof of Understanding** consensus mechanism
-- Multi-validator consensus modes
-- Dialectic validation (Skeptic/Facilitator debate)
-- Semantic drift detection
-- Adversarial pattern detection
+## Key Features
 
-### 212+ API Endpoints
-
-| Category | Endpoints | Description |
-|----------|-----------|-------------|
-| Core Blockchain | 14 | Chain, blocks, entries, mining |
-| Semantic Search | 6 | Meaning-based search, drift detection |
-| Contracts | 5 | Parsing, matching, posting |
-| Disputes | 8 | Filing, evidence, resolution |
-| Escalation Forks | 9 | Protocol amendments |
-| Treasury | 14 | Subsidies, deposits, accounting |
-| FIDO2 Auth | 17 | WebAuthn, delegations |
-| Zero-Knowledge | 20 | Identity proofs, viewing keys |
-| Negotiation | 16 | Multi-party sessions |
-| Market Pricing | 16 | AI-powered pricing |
-| Mobile | 21 | Edge inference, offline sync |
-| Monitoring | 8 | Prometheus metrics, health |
-| P2P Network | 16 | Peer discovery, sync |
-| Boundary Protection | 18 | Security modes, SIEM, input protection |
-| Help/Docs | 11 | NCIPs, concepts |
-
-### Production Readiness
-
-| Feature | Status |
-|---------|--------|
-| Graceful shutdown | Implemented |
-| Health probes (K8s) | /health/live, /health/ready |
-| Rate limiting | Configurable, Redis-backed |
-| RBAC | Role-based API keys |
-| Distributed tracing | OpenTelemetry |
-| Database migrations | PostgreSQL support |
-| Backup/restore | Automated backups |
-| TLS/HTTPS | Configurable |
-| Circuit breakers | LLM API protection |
-| Boundary Protection | Six security modes, SIEM integration |
-| External Integration | Boundary-Daemon & Boundary-SIEM connectors |
-| Input Security | Prompt injection & RAG poisoning detection |
-
-### Deployment Options
-
-| Method | Documentation |
-|--------|---------------|
-| Docker | `docker build -t natlangchain .` |
-| Docker Compose | `deploy/monitoring/docker-compose.yml` |
-| Kubernetes | `charts/natlangchain/` (Helm) |
-| GitOps | `argocd/` (ArgoCD) |
-
-### Monitoring Stack
-
-- **Prometheus**: Metrics collection (`/metrics`)
-- **Grafana**: Dashboards and visualization
-- **Alertmanager**: Alert routing (Slack, PagerDuty)
-- **ServiceMonitor**: Kubernetes auto-discovery
-
-### CI/CD Pipeline
-
-- **GitHub Actions**: `.github/workflows/`
-  - CI: Lint, type-check, test (Python 3.10-3.12), security scan
-  - CD: Build, push to GHCR, deploy to staging/production
-  - Release: Semantic versioning, changelog
-- **Dependabot**: Automated dependency updates
-
-### Testing
-
-```bash
-# Unit tests
-pytest tests/ -v
-
-# Load tests
-./tests/load/run-tests.sh tps
-
-# E2E tests
-pytest tests/test_e2e.py -v
-```
+- **Natural Language Entries**: Prose-first blockchain with readable, auditable records
+- **LLM Validation**: Proof of Understanding consensus with multi-model support
+- **212+ API Endpoints**: Core blockchain, semantic search, contracts, disputes, treasury, FIDO2 auth, ZK privacy, negotiation, mobile, P2P network
+- **Production Ready**: Health probes, rate limiting, RBAC, distributed tracing, PostgreSQL, automated backups
+- **Multiple Deployment Options**: Docker, Kubernetes/Helm, ArgoCD GitOps
+- **Full Monitoring Stack**: Prometheus, Grafana, Alertmanager
 
 ## License
 Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)  

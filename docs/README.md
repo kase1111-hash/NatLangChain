@@ -52,11 +52,11 @@ See also: [NCIP-016 Draft](../NCIP-016-DRAFT.md) (provisional)
 | [MP-05](MP-05-spec.md) | Settlement & Capitalization |
 
 ### Operations & Security
+- [Security Documentation](../SECURITY.md) - Consolidated security audits and configuration
 - [Validator Reference Guide](Validator-Reference-Guide.md) - Validator operations
 - [Escalation Protocol](Escalation-Protocol.md) - Escalation procedures
 - [Observance Burn](Observance-Burn.md) - Token burn mechanism
-- [Threat Model](Threat-Model.md) - Security threat analysis
-- [Security Report](../SECURITY_REPORT.md) - Security audit findings
+- [Threat Model](Threat-Model.md) - Protocol-level threat analysis
 
 ### Legal & Community
 - [Terms of Service](terms-of-service.md) - Platform terms

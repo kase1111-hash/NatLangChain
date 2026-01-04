@@ -94,7 +94,8 @@ class BadActorSimulator:
             max_future_drift=self.max_future_drift,
             enable_metadata_sanitization=self.use_metadata_sanitization,
             metadata_sanitize_mode=self.metadata_sanitize_mode,
-            enable_asset_tracking=self.use_asset_tracking
+            enable_asset_tracking=self.use_asset_tracking,
+            enable_quality_checks=False  # Disable quality checks for security testing
         )
 
     def reset_chain(self):

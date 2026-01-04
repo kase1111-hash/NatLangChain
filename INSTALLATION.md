@@ -1,6 +1,45 @@
 # Installation Guide
 
-This guide covers how to set up NatLangChain for development and testing.
+This guide covers how to set up NatLangChain for development, testing, and production.
+
+---
+
+## Windows Quick Start (3 Steps)
+
+For Windows users who want to get started quickly:
+
+### Step 1: Download
+
+**Option A: Download ZIP**
+1. Go to https://github.com/kase1111-hash/NatLangChain
+2. Click the green "Code" button → "Download ZIP"
+3. Extract to a folder (e.g., `C:\NatLangChain`)
+
+**Option B: Using Git**
+```cmd
+git clone https://github.com/kase1111-hash/NatLangChain.git
+```
+
+### Step 2: Run Build Script
+
+1. Open the NatLangChain folder
+2. **Double-click `build.bat`**
+
+The script automatically creates a virtual environment, installs dependencies, and starts the server.
+
+### Step 3: Verify
+
+Once you see `Server starting at http://localhost:5000`, open your browser to:
+- http://localhost:5000/health → Should show `{"status": "healthy"}`
+- http://localhost:5000/chain → Shows the blockchain
+
+**Common Windows Questions:**
+- **Stop server:** Press `Ctrl + C`
+- **Restart:** Double-click `build.bat` again
+- **"Python not installed":** Download from https://python.org and check "Add Python to PATH"
+- **API key warnings:** Optional for basic use; see [Configuration](#configuration) for LLM features
+
+---
 
 ## Prerequisites
 
@@ -13,7 +52,9 @@ This guide covers how to set up NatLangChain for development and testing.
 - **Docker** (for containerized deployment)
 - **YubiKey** (for FIDO2 authentication features)
 
-## Quick Start
+---
+
+## Quick Start (Linux/macOS)
 
 ### 1. Clone the Repository
 

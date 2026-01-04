@@ -191,10 +191,11 @@ class TestJSONFileStorage:
             assert len(loaded["chain"]) == 2
 
     def test_json_format(self):
-        """Test that file contains valid JSON."""
+        """Test that file contains valid JSON (with compression disabled)."""
         with tempfile.TemporaryDirectory() as tmpdir:
             filepath = os.path.join(tmpdir, "chain.json")
-            storage = JSONFileStorage(filepath)
+            # Disable compression to test raw JSON format
+            storage = JSONFileStorage(filepath, compression_enabled=False)
             storage.save_chain(SAMPLE_CHAIN_DATA)
 
             with open(filepath, 'r') as f:
@@ -269,7 +270,8 @@ class TestJSONFileStorage:
         """Test creating backup."""
         with tempfile.TemporaryDirectory() as tmpdir:
             filepath = os.path.join(tmpdir, "chain.json")
-            storage = JSONFileStorage(filepath)
+            # Disable compression so backup is plain JSON
+            storage = JSONFileStorage(filepath, compression_enabled=False)
             storage.save_chain(SAMPLE_CHAIN_DATA)
 
             backup_path = os.path.join(tmpdir, "backup.json")

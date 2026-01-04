@@ -18,6 +18,9 @@ import logging
 from flask import Blueprint, jsonify, request
 
 from api.utils import (
+    DEFAULT_HISTORY_LIMIT,
+    DEFAULT_PAGE_LIMIT,
+    MAX_PAGE_LIMIT,
     managers,
     require_api_key,
     validate_json_schema,
@@ -305,8 +308,8 @@ def get_mode_history():
     if not protection:
         return jsonify({"error": "Boundary protection not initialized"}), 503
 
-    limit = request.args.get("limit", 50, type=int)
-    limit = min(limit, 1000)  # Cap at 1000
+    limit = request.args.get("limit", DEFAULT_HISTORY_LIMIT, type=int)
+    limit = min(limit, MAX_PAGE_LIMIT)
 
     history = protection.get_transition_history(limit=limit)
     return jsonify({
@@ -649,8 +652,8 @@ def get_violations():
     if not protection:
         return jsonify({"error": "Boundary protection not initialized"}), 503
 
-    limit = request.args.get("limit", 100, type=int)
-    limit = min(limit, 1000)
+    limit = request.args.get("limit", DEFAULT_PAGE_LIMIT, type=int)
+    limit = min(limit, MAX_PAGE_LIMIT)
 
     violations = protection.get_violations(limit=limit)
 
@@ -682,8 +685,8 @@ def get_audit_log():
     if not protection:
         return jsonify({"error": "Boundary protection not initialized"}), 503
 
-    limit = request.args.get("limit", 100, type=int)
-    limit = min(limit, 1000)
+    limit = request.args.get("limit", DEFAULT_PAGE_LIMIT, type=int)
+    limit = min(limit, MAX_PAGE_LIMIT)
 
     audit_log = protection.get_audit_log(limit=limit)
 
@@ -720,8 +723,8 @@ def get_siem_alerts():
         return jsonify({"error": "Boundary protection not initialized"}), 503
 
     status = request.args.get("status")
-    limit = request.args.get("limit", 100, type=int)
-    limit = min(limit, 1000)
+    limit = request.args.get("limit", DEFAULT_PAGE_LIMIT, type=int)
+    limit = min(limit, MAX_PAGE_LIMIT)
 
     alerts = protection.get_siem_alerts(status=status, limit=limit)
 

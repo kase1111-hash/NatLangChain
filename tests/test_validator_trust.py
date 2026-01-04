@@ -571,19 +571,20 @@ class TestWeightingFunction:
             assert BASE_WEIGHTS[identity.validator_type.value] == expected_weight
 
     def test_effective_weight_formula(self, trust_manager):
-        """Test effective_weight = base_weight * trust_score * scope_modifier."""
+        """Test effective_weight = base_weight * trust_score * scope_modifier (capped at MAX)."""
         trust_manager.register_validator(
             validator_id="vld-weight",
             validator_type=ValidatorType.HYBRID,  # base_weight = 1.1
             declared_capabilities=[TrustScope.SEMANTIC_PARSING]
         )
 
-        # Set known trust score
+        # Set known trust score - use values that stay under MAX_EFFECTIVE_WEIGHT (0.35)
         profile = trust_manager.get_profile("vld-weight")
-        profile.scoped_scores[TrustScope.SEMANTIC_PARSING].score = 0.8
+        profile.scoped_scores[TrustScope.SEMANTIC_PARSING].score = 0.3
 
         scope_modifier = 0.9
-        expected = 1.1 * 0.8 * 0.9  # = 0.792
+        # 1.1 * 0.3 * 0.9 = 0.297, which is under the 0.35 cap
+        expected = 1.1 * 0.3 * 0.9  # = 0.297
 
         actual = trust_manager.calculate_effective_weight(
             "vld-weight",

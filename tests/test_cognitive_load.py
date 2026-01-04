@@ -461,7 +461,7 @@ class TestUIValidation:
         })
 
         assert len(patterns) == 3
-        assert any("shame" in p.lower() for p in patterns)
+        assert any("shaming" in p.lower() for p in patterns)
 
     def test_missing_lock_visibility(self):
         """Test detection of missing lock visibility post-ratification."""

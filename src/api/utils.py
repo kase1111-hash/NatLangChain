@@ -35,6 +35,11 @@ MAX_ORACLES = 10
 MAX_RESULTS = 100
 MAX_OFFSET = 100000  # Maximum offset to prevent memory exhaustion
 
+# Pagination configuration
+DEFAULT_PAGE_LIMIT = int(os.getenv("NATLANGCHAIN_DEFAULT_PAGE_LIMIT", "100"))
+MAX_PAGE_LIMIT = int(os.getenv("NATLANGCHAIN_MAX_PAGE_LIMIT", "1000"))
+DEFAULT_HISTORY_LIMIT = int(os.getenv("NATLANGCHAIN_DEFAULT_HISTORY_LIMIT", "50"))
+
 
 # ============================================================
 # Validation Utilities
