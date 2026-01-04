@@ -76,6 +76,8 @@ from typing import Any, Callable
 
 from flask import g, jsonify, request
 
+from api.utils import DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT
+
 # Import boundary daemon
 from boundary_daemon import (
     AuditRecord,
@@ -1041,7 +1043,7 @@ def register_security_endpoints(app):
 
         event_type = request.args.get("type")
         decision = request.args.get("decision")
-        limit = int(request.args.get("limit", 100))
+        limit = min(int(request.args.get("limit", DEFAULT_PAGE_LIMIT)), MAX_PAGE_LIMIT)
 
         events = gateway.get_events(
             event_type=event_type,
@@ -1056,7 +1058,7 @@ def register_security_endpoints(app):
     def get_violations():
         """Get security violations."""
         gateway = get_security_gateway()
-        limit = int(request.args.get("limit", 100))
+        limit = min(int(request.args.get("limit", DEFAULT_PAGE_LIMIT)), MAX_PAGE_LIMIT)
 
         return jsonify({
             "violations": gateway.get_violations(limit=limit)

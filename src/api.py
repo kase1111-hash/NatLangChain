@@ -21,6 +21,8 @@ from typing import Any
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request
 
+from api.utils import DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT
+
 # Core imports (always required)
 from blockchain import NatLangChain, NaturalLanguageEntry
 
@@ -7760,7 +7762,7 @@ def get_intents():
         List of intent entries ready for matching
     """
     status_filter = request.args.get('status', 'open')
-    limit = min(int(request.args.get('limit', 100)), 1000)
+    limit = min(int(request.args.get('limit', DEFAULT_PAGE_LIMIT)), MAX_PAGE_LIMIT)
 
     # Try adaptive cache first
     if ADAPTIVE_CACHE_AVAILABLE and get_adaptive_cache:
