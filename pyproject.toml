@@ -135,7 +135,7 @@ all = [
 ]
 
 [project.scripts]
-natlangchain = "cli:main"
+natlangchain = "src.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/kase1111-hash/NatLangChain"

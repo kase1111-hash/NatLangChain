@@ -18,7 +18,7 @@ import time
 
 from flask import Blueprint, Response, jsonify
 
-from api.state import blockchain, get_storage
+from .state import blockchain, get_storage
 
 # Create the blueprint
 monitoring_bp = Blueprint('monitoring', __name__)

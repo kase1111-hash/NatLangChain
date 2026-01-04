@@ -18,7 +18,7 @@ from typing import Any
 from blockchain import NatLangChain
 
 # Import manager registry
-from api.utils import managers
+from .utils import managers
 
 # ============================================================
 # Shared State

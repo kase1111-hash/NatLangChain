@@ -17,7 +17,7 @@ import logging
 
 from flask import Blueprint, jsonify, request
 
-from api.utils import (
+from .utils import (
     DEFAULT_HISTORY_LIMIT,
     DEFAULT_PAGE_LIMIT,
     MAX_PAGE_LIMIT,

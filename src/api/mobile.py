@@ -7,7 +7,7 @@ and offline synchronization.
 
 from flask import Blueprint, jsonify, request
 
-from api.utils import DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT, managers, require_api_key
+from .utils import DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT, managers, require_api_key
 
 # Create the blueprint
 mobile_bp = Blueprint('mobile', __name__, url_prefix='/mobile')
