@@ -988,23 +988,28 @@ Decentralized "Compliance Council" using BLS or FROST threshold signatures:
 | **MP-05 Settlement** | 🚧 40% | Settlement concepts | Mutual declaration, capitalization interface |
 | **Multi-Chain Branching** | 🚧 30% | Architecture designed | Git-like fork/merge implementation |
 | **Agent-Driven Participation** | 🚧 20% | API ready for agents | Agent-OS integration, standing intents |
-| **Reputation Systems** | 🚧 10% | Miner tracking in contracts | Full reputation scoring, stake slashing |
+| **Reputation Systems** | ✅ Complete | Full CTS scoring, bonding, slashing | `src/mediator_reputation.py`, `src/validator_trust.py` |
+
+### ✅ RECENTLY IMPLEMENTED (Previously Documented Only)
+
+| Feature | Implementation | Description |
+|---------|---------------|-------------|
+| **Distributed P2P Network** | `src/p2p_network.py` | Peer discovery, entry broadcast, chain sync, NAT traversal |
+| **MP-03 Dispute Protocol** | `src/dispute.py` | Full dispute lifecycle, evidence freezing, escalation, NCIP-005/010 integration |
+| **Treasury System** | `src/treasury.py` | Autonomous fund management, defender subsidies, anti-Sybil protection |
+| **Automated Negotiation Engine** | `src/negotiation_engine.py` | Session management, intent alignment, LLM clause generation |
 
 ### ❌ NOT IMPLEMENTED (Documented Only)
 
 | Feature | Documentation | Priority | Complexity | Target Repo |
 |---------|---------------|----------|------------|-------------|
-| **Distributed P2P Network** | README.md | HIGH 🔴 | Very High | NatLangChain |
 | **Real-time Mediation Network** | future.md | HIGH 🔴 | High | Mediator Node |
 | **Escrow Integration** | CONTRACTS.md | HIGH 🔴 | Medium | Value Ledger |
 | **Web UI / Sandbox** | roadmap.md | HIGH 🔴 | Medium | NatLangChain |
-| **MP-03 Dispute Protocol** | MP-03-spec.md | HIGH 🔴 | Medium | NatLangChain |
 | **Anti-Harassment Economic Layer** | Anti-Harassment.md | HIGH 🔴 | Medium | NatLangChain |
-| **Treasury System** | Treasury.md | HIGH 🔴 | Medium | NatLangChain |
 | **FIDO2/YubiKey Integration** | FIDO-Yubi.md | HIGH 🔴 | Medium | ILRM, NatLangChain |
 | **ZK Dispute Membership Circuit** | Dispute-membership-circuit.md | HIGH 🔴 | High | NatLangChain |
 | **Viewing Key Infrastructure** | Dispute-membership-circuit.md | HIGH 🔴 | High | NatLangChain |
-| **Automated Negotiation Engine** | final-features.md | HIGH 🔴 | Medium | NatLangChain |
 | **Market-Aware Pricing** | final-features.md | MEDIUM 🟡 | Medium | NatLangChain |
 | **Mobile Deployment** | final-features.md | MEDIUM 🟡 | High | All Modules |
 | **Daily Work Output Automation** | future.md | MEDIUM 🟡 | Medium | RRA-Module |
