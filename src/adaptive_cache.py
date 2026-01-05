@@ -110,8 +110,8 @@ DEFAULT_CACHE_CONFIGS: dict[CacheCategory, CacheConfig] = {
 
 
 @dataclass
-class CacheEntry:
-    """A cached value with metadata."""
+class AdaptiveCacheEntry:
+    """A cached value with metadata for the adaptive cache system."""
     value: Any
     category: CacheCategory
     created_at: float
@@ -322,7 +322,7 @@ class AdaptiveCache:
         self.configs = configs or DEFAULT_CACHE_CONFIGS.copy()
         self.enabled = enabled
 
-        self._cache: dict[str, CacheEntry] = {}
+        self._cache: dict[str, AdaptiveCacheEntry] = {}
         self._lock = threading.RLock()
         self._stats = CacheStats()
         self._stats_by_category: dict[CacheCategory, CacheStats] = {
@@ -451,7 +451,7 @@ class AdaptiveCache:
             now = time.time()
             full_key = self._make_key(category, key)
 
-            self._cache[full_key] = CacheEntry(
+            self._cache[full_key] = AdaptiveCacheEntry(
                 value=value,
                 category=category,
                 created_at=now,

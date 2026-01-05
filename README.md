@@ -60,19 +60,48 @@ License: Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0
 
 ### Quick Start
 
+> **Note**: First install downloads ~500MB (ML libraries including PyTorch).
+
 ```bash
 # Install dependencies
 pip install -r requirements.txt
 
-# Configure environment
+# Run the quickstart example (no API key needed)
+python examples/quickstart.py
+
+# Or start the API server
+python run_server.py
+
+# Access the API
+curl http://localhost:5000/health
+```
+
+#### API Key (Optional for basic use)
+
+For LLM-powered validation features, add your Anthropic API key:
+
+```bash
 cp .env.example .env
-# Edit .env and add your ANTHROPIC_API_KEY
+# Edit .env and set: ANTHROPIC_API_KEY=your_key_here
+```
 
-# Run the server
-python -m src.api
+Without an API key, the server runs in basic mode (validation disabled).
+Get a key at: https://console.anthropic.com/
 
-# Access API documentation
-open http://localhost:5000/docs
+### Architecture Overview
+
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│  Your Intent    │────▶│   REST API      │────▶│   Blockchain    │
+│  (Natural Lang) │     │  (Flask)        │     │   (Immutable)   │
+└─────────────────┘     └────────┬────────┘     └─────────────────┘
+                                 │
+                        ┌────────▼────────┐
+                        │  LLM Validator  │
+                        │  (Optional)     │
+                        │  Proof of       │
+                        │  Understanding  │
+                        └─────────────────┘
 ```
 
 ### Production Deployment
@@ -206,8 +235,43 @@ NatLangChain reframes distributed trust around linguistic participation. By addr
 - **Multiple Deployment Options**: Docker, Kubernetes/Helm, ArgoCD GitOps
 - **Full Monitoring Stack**: Prometheus, Grafana, Alertmanager
 
+## Troubleshooting
+
+### ModuleNotFoundError: No module named 'X'
+
+```bash
+# Install all dependencies
+pip install -r requirements.txt
+
+# Or install as editable package
+pip install -e .
+```
+
+### Import errors when running
+
+Make sure you're running from the project root directory:
+
+```bash
+cd /path/to/NatLangChain
+python run_server.py
+```
+
+### Slow installation / Large download
+
+The first install downloads ~500MB of ML libraries (PyTorch, sentence-transformers). This is normal and may take 5-10 minutes on slower connections.
+
+### API returns 401 Unauthorized
+
+The API requires authentication by default. Either:
+1. Set `NATLANGCHAIN_REQUIRE_AUTH=false` in your `.env` file
+2. Or set `NATLANGCHAIN_API_KEY=your_secret_key` and include it in requests
+
+### Validation endpoints return errors
+
+Without `ANTHROPIC_API_KEY`, LLM validation is disabled. The server still works for basic operations. Add your API key to `.env` for full functionality.
+
 ## License
-Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)  
+Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)
 You are free to share and adapt, provided you give appropriate credit and share alike.
 
 ## References / Further Reading

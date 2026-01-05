@@ -72,21 +72,33 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 ### 3. Install Dependencies
 
+> **Note**: First install downloads ~500MB (ML libraries including PyTorch).
+
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4. Configure Environment
+### 4. Try the Quickstart Example (No API Key Needed)
 
 ```bash
+python examples/quickstart.py
+```
+
+### 5. Configure Environment (Optional)
+
+```bash
+# For minimal config:
+cp .env.minimal .env
+
+# Or for full options:
 cp .env.example .env
 # Edit .env with your configuration
 ```
 
-### 5. Run the API Server
+### 6. Run the API Server
 
 ```bash
-python src/api.py
+python run_server.py
 ```
 
 The server will start at `http://localhost:5000`.
@@ -97,7 +109,7 @@ The server will start at `http://localhost:5000`.
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `ANTHROPIC_API_KEY` | API key for Claude LLM validation | Required |
+| `ANTHROPIC_API_KEY` | API key for Claude LLM validation | Optional (basic mode without)
 | `CHAIN_DIFFICULTY` | Proof-of-work difficulty | `4` |
 | `CHAIN_FILE` | Path to chain persistence file | `chain.json` |
 | `VALIDATION_MODE` | `llm`, `hybrid`, `multi` | `hybrid` |

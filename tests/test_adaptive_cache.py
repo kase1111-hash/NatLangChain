@@ -19,7 +19,7 @@ from adaptive_cache import (
     AdaptiveCache,
     CacheCategory,
     CacheConfig,
-    CacheEntry,
+    AdaptiveCacheEntry,
     CongestionDetector,
     CongestionLevel,
     CongestionState,

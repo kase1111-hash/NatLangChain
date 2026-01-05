@@ -45,7 +45,7 @@ Usage:
     from boundary_rbac_integration import (
         get_security_gateway,
         require_boundary_permission,
-        BoundaryMode,
+        AccessLevel,
     )
 
     # Decorator usage
@@ -124,11 +124,13 @@ logger = logging.getLogger(__name__)
 # Boundary Mode to RBAC Role Mapping
 # =============================================================================
 
-class BoundaryMode(Enum):
+class AccessLevel(Enum):
     """
-    Boundary modes that control overall API access levels.
+    Access levels that control overall API access restrictions.
 
-    These map to enforcement strictness and available operations.
+    Note: This is different from BoundaryMode in boundary_modes.py which
+    defines the 6 trust levels for the boundary daemon. This enum defines
+    the 5 RBAC access levels for API operations.
     """
     OPEN = "open"              # Development mode, minimal restrictions
     STANDARD = "standard"      # Normal operation, standard policies
@@ -137,15 +139,15 @@ class BoundaryMode(Enum):
     LOCKDOWN = "lockdown"      # Emergency mode, minimal operations
 
 
-# Map boundary modes to RBAC restrictions
-MODE_PERMISSION_RESTRICTIONS: dict[BoundaryMode, set[Permission]] = {
-    BoundaryMode.OPEN: set(),  # No restrictions
-    BoundaryMode.STANDARD: set(),  # Normal operation
-    BoundaryMode.ELEVATED: {
+# Map access levels to RBAC restrictions
+ACCESS_LEVEL_RESTRICTIONS: dict[AccessLevel, set[Permission]] = {
+    AccessLevel.OPEN: set(),  # No restrictions
+    AccessLevel.STANDARD: set(),  # Normal operation
+    AccessLevel.ELEVATED: {
         Permission.ADMIN_CONFIG,
         Permission.TREASURY_MANAGE,
     },
-    BoundaryMode.RESTRICTED: {
+    AccessLevel.RESTRICTED: {
         Permission.ADMIN_CONFIG,
         Permission.ADMIN_USERS,
         Permission.TREASURY_MANAGE,
@@ -153,20 +155,20 @@ MODE_PERMISSION_RESTRICTIONS: dict[BoundaryMode, set[Permission]] = {
         Permission.DISPUTE_RESOLVE,
         Permission.P2P_MANAGE,
     },
-    BoundaryMode.LOCKDOWN: {
+    AccessLevel.LOCKDOWN: {
         # In lockdown, only allow read operations
         permission for permission in Permission
         if not permission.name.endswith('_READ') and permission != Permission.CHAIN_VALIDATE
     },
 }
 
-# Map boundary modes to enforcement modes
-MODE_TO_ENFORCEMENT: dict[BoundaryMode, EnforcementMode] = {
-    BoundaryMode.OPEN: EnforcementMode.AUDIT_ONLY,
-    BoundaryMode.STANDARD: EnforcementMode.PERMISSIVE,
-    BoundaryMode.ELEVATED: EnforcementMode.STRICT,
-    BoundaryMode.RESTRICTED: EnforcementMode.STRICT,
-    BoundaryMode.LOCKDOWN: EnforcementMode.STRICT,
+# Map access levels to enforcement modes
+ACCESS_LEVEL_TO_ENFORCEMENT: dict[AccessLevel, EnforcementMode] = {
+    AccessLevel.OPEN: EnforcementMode.AUDIT_ONLY,
+    AccessLevel.STANDARD: EnforcementMode.PERMISSIVE,
+    AccessLevel.ELEVATED: EnforcementMode.STRICT,
+    AccessLevel.RESTRICTED: EnforcementMode.STRICT,
+    AccessLevel.LOCKDOWN: EnforcementMode.STRICT,
 }
 
 # Map roles to data classifications
@@ -272,12 +274,12 @@ class BoundaryRBACGateway:
         self,
         rbac_manager: RBACManager | None = None,
         boundary_daemon: BoundaryDaemon | None = None,
-        boundary_mode: BoundaryMode = BoundaryMode.STANDARD,
+        boundary_mode: AccessLevel = AccessLevel.STANDARD,
         enable_enforcement: bool = True,
     ):
         self._rbac = rbac_manager or get_rbac_manager()
         self._boundary_mode = boundary_mode
-        self._enforcement_mode = MODE_TO_ENFORCEMENT[boundary_mode]
+        self._enforcement_mode = ACCESS_LEVEL_TO_ENFORCEMENT[boundary_mode]
 
         self._daemon = boundary_daemon or BoundaryDaemon(
             enforcement_mode=self._enforcement_mode
@@ -313,17 +315,17 @@ class BoundaryRBACGateway:
         )
 
     @property
-    def boundary_mode(self) -> BoundaryMode:
+    def boundary_mode(self) -> AccessLevel:
         """Get current boundary mode."""
         return self._boundary_mode
 
     @boundary_mode.setter
-    def boundary_mode(self, mode: BoundaryMode):
+    def boundary_mode(self, mode: AccessLevel):
         """Set boundary mode and update enforcement."""
         with self._lock:
             old_mode = self._boundary_mode
             self._boundary_mode = mode
-            self._enforcement_mode = MODE_TO_ENFORCEMENT[mode]
+            self._enforcement_mode = ACCESS_LEVEL_TO_ENFORCEMENT[mode]
 
             # Update daemon enforcement mode
             self._daemon = BoundaryDaemon(
@@ -433,7 +435,7 @@ class BoundaryRBACGateway:
         data_classification = None
 
         # Step 1: Check mode-based restrictions
-        mode_restrictions = MODE_PERMISSION_RESTRICTIONS.get(self._boundary_mode, set())
+        mode_restrictions = ACCESS_LEVEL_RESTRICTIONS.get(self._boundary_mode, set())
         if permission in mode_restrictions:
             event = self._log_event(
                 event_type="mode_restriction",
@@ -610,7 +612,7 @@ class BoundaryRBACGateway:
     # These provide ACTUAL enforcement, not just detection
     # =========================================================================
 
-    def enforce_mode(self, mode: str | BoundaryMode) -> dict[str, Any]:
+    def enforce_mode(self, mode: str | AccessLevel) -> dict[str, Any]:
         """
         ACTUALLY enforce a boundary mode with real system-level controls.
 
@@ -634,29 +636,29 @@ class BoundaryRBACGateway:
             }
 
         if isinstance(mode, str):
-            mode = BoundaryMode(mode.lower())
+            mode = AccessLevel(mode.lower())
 
         results = {}
 
         # Map boundary modes to enforcement actions
-        if mode == BoundaryMode.LOCKDOWN:
+        if mode == AccessLevel.LOCKDOWN:
             result = self._enforcement_manager.enforce_lockdown_mode()
             results["lockdown"] = result.success
             results["details"] = result.details
             self._enforcement_active = result.success
 
-        elif mode == BoundaryMode.RESTRICTED:
+        elif mode == AccessLevel.RESTRICTED:
             # Block outbound network except essentials
             net_result = self._enforcement_manager.enforce_airgap_mode()
             results["network_blocked"] = net_result.success
 
-        elif mode == BoundaryMode.ELEVATED:
+        elif mode == AccessLevel.ELEVATED:
             # Start watchdog for self-healing
             if self._enforcement_manager.watchdog is None:
                 watch_result = self._enforcement_manager.start_watchdog()
                 results["watchdog"] = watch_result.success
 
-        elif mode == BoundaryMode.OPEN:
+        elif mode == AccessLevel.OPEN:
             # Remove all enforcement
             result = self._enforcement_manager.exit_lockdown()
             results["enforcement_cleared"] = result.success
@@ -802,9 +804,9 @@ def get_security_gateway() -> BoundaryRBACGateway:
         if _gateway is None:
             mode_str = os.getenv("NATLANGCHAIN_BOUNDARY_MODE", "standard")
             try:
-                mode = BoundaryMode(mode_str)
+                mode = AccessLevel(mode_str)
             except ValueError:
-                mode = BoundaryMode.STANDARD
+                mode = AccessLevel.STANDARD
                 logger.warning(f"Invalid boundary mode '{mode_str}', using STANDARD")
 
             _gateway = BoundaryRBACGateway(boundary_mode=mode)
@@ -812,13 +814,13 @@ def get_security_gateway() -> BoundaryRBACGateway:
         return _gateway
 
 
-def set_boundary_mode(mode: BoundaryMode):
+def set_boundary_mode(mode: AccessLevel):
     """Set the global boundary mode."""
     gateway = get_security_gateway()
     gateway.boundary_mode = mode
 
 
-def get_boundary_mode() -> BoundaryMode:
+def get_boundary_mode() -> AccessLevel:
     """Get the current boundary mode."""
     return get_security_gateway().boundary_mode
 
@@ -885,7 +887,7 @@ def require_boundary_permission(
     return decorator
 
 
-def require_boundary_mode(max_mode: BoundaryMode):
+def require_boundary_mode(max_mode: AccessLevel):
     """
     Decorator to restrict endpoint based on boundary mode.
 
@@ -894,17 +896,17 @@ def require_boundary_mode(max_mode: BoundaryMode):
                   (modes more restrictive than this will block)
 
     Example:
-        @require_boundary_mode(BoundaryMode.ELEVATED)
+        @require_boundary_mode(AccessLevel.ELEVATED)
         def sensitive_operation():
             # Only available in OPEN, STANDARD, or ELEVATED modes
             ...
     """
     mode_hierarchy = [
-        BoundaryMode.OPEN,
-        BoundaryMode.STANDARD,
-        BoundaryMode.ELEVATED,
-        BoundaryMode.RESTRICTED,
-        BoundaryMode.LOCKDOWN,
+        AccessLevel.OPEN,
+        AccessLevel.STANDARD,
+        AccessLevel.ELEVATED,
+        AccessLevel.RESTRICTED,
+        AccessLevel.LOCKDOWN,
     ]
 
     def decorator(f: Callable) -> Callable:
@@ -1023,7 +1025,7 @@ def register_security_endpoints(app):
         mode_str = data.get("mode")
 
         try:
-            mode = BoundaryMode(mode_str)
+            mode = AccessLevel(mode_str)
             set_boundary_mode(mode)
             return jsonify({
                 "success": True,
@@ -1032,7 +1034,7 @@ def register_security_endpoints(app):
         except ValueError:
             return jsonify({
                 "error": f"Invalid mode: {mode_str}",
-                "valid_modes": [m.value for m in BoundaryMode],
+                "valid_modes": [m.value for m in AccessLevel],
             }), 400
 
     @app.route('/security/events', methods=['GET'])

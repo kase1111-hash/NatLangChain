@@ -25,10 +25,10 @@ from rbac import (
 )
 from boundary_rbac_integration import (
     BoundaryRBACGateway,
-    BoundaryMode,
+    AccessLevel,
     SecurityEvent,
-    MODE_PERMISSION_RESTRICTIONS,
-    MODE_TO_ENFORCEMENT,
+    ACCESS_LEVEL_RESTRICTIONS,
+    ACCESS_LEVEL_TO_ENFORCEMENT,
     ROLE_TO_CLASSIFICATION,
     get_security_gateway,
     set_boundary_mode,
@@ -69,7 +69,7 @@ def gateway(rbac_manager):
     """Create a security gateway."""
     return BoundaryRBACGateway(
         rbac_manager=rbac_manager,
-        boundary_mode=BoundaryMode.STANDARD,
+        boundary_mode=AccessLevel.STANDARD,
     )
 
 
@@ -82,21 +82,21 @@ class TestModeMapping:
 
     def test_mode_to_enforcement_mapping(self):
         """Test that all boundary modes map to enforcement modes."""
-        for mode in BoundaryMode:
-            assert mode in MODE_TO_ENFORCEMENT
-            assert isinstance(MODE_TO_ENFORCEMENT[mode], EnforcementMode)
+        for mode in AccessLevel:
+            assert mode in ACCESS_LEVEL_TO_ENFORCEMENT
+            assert isinstance(ACCESS_LEVEL_TO_ENFORCEMENT[mode], EnforcementMode)
 
     def test_open_mode_is_audit_only(self):
         """Test OPEN mode uses audit-only enforcement."""
-        assert MODE_TO_ENFORCEMENT[BoundaryMode.OPEN] == EnforcementMode.AUDIT_ONLY
+        assert ACCESS_LEVEL_TO_ENFORCEMENT[AccessLevel.OPEN] == EnforcementMode.AUDIT_ONLY
 
     def test_lockdown_mode_is_strict(self):
         """Test LOCKDOWN mode uses strict enforcement."""
-        assert MODE_TO_ENFORCEMENT[BoundaryMode.LOCKDOWN] == EnforcementMode.STRICT
+        assert ACCESS_LEVEL_TO_ENFORCEMENT[AccessLevel.LOCKDOWN] == EnforcementMode.STRICT
 
     def test_lockdown_restricts_most_permissions(self):
         """Test LOCKDOWN mode restricts non-read permissions."""
-        lockdown_restrictions = MODE_PERMISSION_RESTRICTIONS[BoundaryMode.LOCKDOWN]
+        lockdown_restrictions = ACCESS_LEVEL_RESTRICTIONS[AccessLevel.LOCKDOWN]
 
         # Write operations should be restricted
         assert Permission.ENTRY_CREATE in lockdown_restrictions
@@ -196,7 +196,7 @@ class TestModeRestrictions:
         """Test LOCKDOWN mode blocks write operations even for admin."""
         gateway = BoundaryRBACGateway(
             rbac_manager=rbac_manager,
-            boundary_mode=BoundaryMode.LOCKDOWN,
+            boundary_mode=AccessLevel.LOCKDOWN,
         )
 
         allowed, reason, event = gateway.authorize(
@@ -212,7 +212,7 @@ class TestModeRestrictions:
         """Test LOCKDOWN mode still allows read operations."""
         gateway = BoundaryRBACGateway(
             rbac_manager=rbac_manager,
-            boundary_mode=BoundaryMode.LOCKDOWN,
+            boundary_mode=AccessLevel.LOCKDOWN,
         )
 
         allowed, reason, event = gateway.authorize(
@@ -226,7 +226,7 @@ class TestModeRestrictions:
         """Test OPEN mode has no mode-based restrictions."""
         gateway = BoundaryRBACGateway(
             rbac_manager=rbac_manager,
-            boundary_mode=BoundaryMode.OPEN,
+            boundary_mode=AccessLevel.OPEN,
         )
 
         # Admin should have full access
@@ -241,7 +241,7 @@ class TestModeRestrictions:
         """Test that mode changes are logged."""
         initial_count = len(gateway.get_events())
 
-        gateway.boundary_mode = BoundaryMode.ELEVATED
+        gateway.boundary_mode = AccessLevel.ELEVATED
 
         events = gateway.get_events(event_type="mode_change")
         assert len(events) > 0
@@ -449,13 +449,13 @@ class TestGlobalGateway:
 
     def test_set_boundary_mode_global(self):
         """Test setting boundary mode globally."""
-        set_boundary_mode(BoundaryMode.ELEVATED)
+        set_boundary_mode(AccessLevel.ELEVATED)
 
         gateway = get_security_gateway()
-        assert gateway.boundary_mode == BoundaryMode.ELEVATED
+        assert gateway.boundary_mode == AccessLevel.ELEVATED
 
         # Reset
-        set_boundary_mode(BoundaryMode.STANDARD)
+        set_boundary_mode(AccessLevel.STANDARD)
 
 
 # =============================================================================

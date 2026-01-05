@@ -318,10 +318,13 @@ class AssetRegistry:
         return registry
 
 
-class RateLimiter:
+class EntryRateLimiter:
     """
-    Rate limiter to prevent Sybil/flooding attacks.
-    Tracks entry submissions per author and globally.
+    Rate limiter for blockchain entry submissions.
+
+    Prevents Sybil/flooding attacks by tracking entry submissions
+    per author and globally. This is different from the general-purpose
+    RateLimiter in rate_limiter.py which handles API request limiting.
     """
 
     def __init__(
@@ -925,7 +928,7 @@ class NatLangChain:
         self._entry_fingerprints: dict[str, float] = {}
 
         # Rate limiter for anti-flooding
-        self._rate_limiter = RateLimiter(
+        self._rate_limiter = EntryRateLimiter(
             window_seconds=rate_limit_window,
             max_per_author=max_entries_per_author,
             max_global=max_global_entries
@@ -1725,7 +1728,7 @@ class NatLangChain:
         chain.dedup_window_seconds = dedup_window_seconds
         chain._entry_fingerprints = {}
         chain.enable_rate_limiting = enable_rate_limiting
-        chain._rate_limiter = RateLimiter(
+        chain._rate_limiter = EntryRateLimiter(
             window_seconds=rate_limit_window,
             max_per_author=max_entries_per_author,
             max_global=max_global_entries

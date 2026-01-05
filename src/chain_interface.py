@@ -76,8 +76,12 @@ class IntentStatus(Enum):
     REJECTED = "rejected"
 
 
-class EntryType(Enum):
-    """Types of entries that can be submitted."""
+class SubmissionType(Enum):
+    """Types of submissions that can be made to the chain.
+
+    Note: This is different from SubmissionType in sunset_clauses.py which
+    defines document types with different sunset/archival policies.
+    """
     SETTLEMENT = "settlement"
     ACCEPT = "accept"
     PAYOUT = "payout"
@@ -650,7 +654,7 @@ class ChainInterface:
 
     def submit_entry(
         self,
-        entry_type: EntryType,
+        entry_type: SubmissionType,
         author: str,
         content: dict[str, Any],
         metadata: dict[str, Any],
@@ -718,7 +722,7 @@ class ChainInterface:
         }
 
         return self.submit_entry(
-            entry_type=EntryType.SETTLEMENT,
+            entry_type=SubmissionType.SETTLEMENT,
             author=self.mediator_id,
             content={"settlement": metadata},
             metadata=metadata
@@ -748,7 +752,7 @@ class ChainInterface:
         }
 
         return self.submit_entry(
-            entry_type=EntryType.ACCEPT,
+            entry_type=SubmissionType.ACCEPT,
             author=party_identifier,
             content={"acceptance": metadata},
             metadata=metadata
@@ -774,7 +778,7 @@ class ChainInterface:
         }
 
         return self.submit_entry(
-            entry_type=EntryType.PAYOUT,
+            entry_type=SubmissionType.PAYOUT,
             author=self.mediator_id,
             content={"payout": metadata},
             metadata=metadata
