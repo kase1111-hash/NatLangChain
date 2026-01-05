@@ -18,6 +18,8 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any
 
+from drift_thresholds import DriftLevel
+
 
 class AppealableItem(Enum):
     """Items that may be appealed per NCIP-008 Section 3.1."""
@@ -58,15 +60,6 @@ class PrecedentWeight(Enum):
     MEDIUM = "medium"    # 3-12 months
     LOW = "low"          # > 12 months
     ZERO = "zero"        # Superseded term registry
-
-
-class DriftLevel(Enum):
-    """Drift levels per NCIP-002."""
-    D0 = "D0"
-    D1 = "D1"
-    D2 = "D2"
-    D3 = "D3"
-    D4 = "D4"
 
 
 @dataclass

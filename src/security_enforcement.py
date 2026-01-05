@@ -54,8 +54,14 @@ from contextlib import contextmanager
 # Custom Exceptions
 # =============================================================================
 
-class EnforcementError(Exception):
-    """Exception raised when enforcement fails and raise_on_failure=True."""
+class SecurityEnforcementError(Exception):
+    """
+    Exception raised when security enforcement fails and raise_on_failure=True.
+
+    Note: This is different from EnforcementError in boundary_exceptions.py
+    which is part of the BoundaryProtectionError hierarchy. This exception
+    is specific to the security enforcement module.
+    """
 
     def __init__(self, result: "EnforcementResult"):
         self.result = result
@@ -960,7 +966,7 @@ class NetworkEnforcement:
         """
         result = self.block_destination(ip, port)
         if not result.success:
-            raise EnforcementError(result)
+            raise SecurityEnforcementError(result)
 
         try:
             yield result
@@ -1039,7 +1045,7 @@ class NetworkRuleBuilder:
         Apply the built rule.
 
         Args:
-            raise_on_failure: If True, raises EnforcementError on failure
+            raise_on_failure: If True, raises SecurityEnforcementError on failure
 
         Returns:
             EnforcementResult
@@ -1051,7 +1057,7 @@ class NetworkRuleBuilder:
                 error="Must call block() or allow() before apply()"
             )
             if raise_on_failure:
-                raise EnforcementError(result)
+                raise SecurityEnforcementError(result)
             return result
 
         if not self._destination and not self._source:
@@ -1061,7 +1067,7 @@ class NetworkRuleBuilder:
                 error="Must specify destination() or source()"
             )
             if raise_on_failure:
-                raise EnforcementError(result)
+                raise SecurityEnforcementError(result)
             return result
 
         # Validate inputs
@@ -1074,7 +1080,7 @@ class NetworkRuleBuilder:
                     error=f"Invalid destination: {ip_error}"
                 )
                 if raise_on_failure:
-                    raise EnforcementError(result)
+                    raise SecurityEnforcementError(result)
                 return result
 
         if self._source:
@@ -1086,7 +1092,7 @@ class NetworkRuleBuilder:
                     error=f"Invalid source: {ip_error}"
                 )
                 if raise_on_failure:
-                    raise EnforcementError(result)
+                    raise SecurityEnforcementError(result)
                 return result
 
         if self._port:
@@ -1098,7 +1104,7 @@ class NetworkRuleBuilder:
                     error=f"Invalid port: {port_error}"
                 )
                 if raise_on_failure:
-                    raise EnforcementError(result)
+                    raise SecurityEnforcementError(result)
                 return result
 
         if not self._network.use_iptables:
@@ -1108,7 +1114,7 @@ class NetworkRuleBuilder:
                 error="iptables not available"
             )
             if raise_on_failure:
-                raise EnforcementError(result)
+                raise SecurityEnforcementError(result)
             return result
 
         # Build the command
@@ -1148,7 +1154,7 @@ class NetworkRuleBuilder:
                 error=f"iptables command failed: {e.stderr.decode() if e.stderr else str(e)}"
             )
             if raise_on_failure:
-                raise EnforcementError(result)
+                raise SecurityEnforcementError(result)
             return result
 
         except Exception as e:
@@ -1158,7 +1164,7 @@ class NetworkRuleBuilder:
                 error=str(e)
             )
             if raise_on_failure:
-                raise EnforcementError(result)
+                raise SecurityEnforcementError(result)
             return result
 
 
@@ -1677,7 +1683,7 @@ class SecurityEnforcementManager:
         Unlike the boundary daemon which just logs, this BLOCKS.
 
         Args:
-            raise_on_failure: If True, raises EnforcementError on failure
+            raise_on_failure: If True, raises SecurityEnforcementError on failure
 
         Example:
             # Silent failure (check result.success)
@@ -1686,7 +1692,7 @@ class SecurityEnforcementManager:
             # Raise exception on failure
             try:
                 manager.enforce_airgap_mode(raise_on_failure=True)
-            except EnforcementError as e:
+            except SecurityEnforcementError as e:
                 print(f"Failed: {e.result.error}")
         """
         result = self.network.block_all_outbound()
@@ -1696,7 +1702,7 @@ class SecurityEnforcementManager:
             "result": result.success
         })
         if raise_on_failure and not result.success:
-            raise EnforcementError(result)
+            raise SecurityEnforcementError(result)
         return result
 
     def enforce_trusted_mode(self, vpn_interface: str = "tun0", raise_on_failure: bool = False) -> EnforcementResult:
@@ -1705,7 +1711,7 @@ class SecurityEnforcementManager:
 
         Args:
             vpn_interface: Name of VPN interface (default: tun0)
-            raise_on_failure: If True, raises EnforcementError on failure
+            raise_on_failure: If True, raises SecurityEnforcementError on failure
         """
         result = self.network.allow_only_vpn(vpn_interface)
         self.audit_log.append("mode_change", {
@@ -1715,7 +1721,7 @@ class SecurityEnforcementManager:
             "result": result.success
         })
         if raise_on_failure and not result.success:
-            raise EnforcementError(result)
+            raise SecurityEnforcementError(result)
         return result
 
     def enforce_coldroom_mode(self, raise_on_failure: bool = False) -> EnforcementResult:
@@ -1723,7 +1729,7 @@ class SecurityEnforcementManager:
         ACTUALLY enforce COLDROOM mode by blocking USB.
 
         Args:
-            raise_on_failure: If True, raises EnforcementError on failure
+            raise_on_failure: If True, raises SecurityEnforcementError on failure
         """
         result = self.usb.block_usb_storage()
         self.audit_log.append("mode_change", {
@@ -1732,7 +1738,7 @@ class SecurityEnforcementManager:
             "result": result.success
         })
         if raise_on_failure and not result.success:
-            raise EnforcementError(result)
+            raise SecurityEnforcementError(result)
         return result
 
     def enforce_lockdown_mode(self, raise_on_failure: bool = False) -> EnforcementResult:
@@ -1742,7 +1748,7 @@ class SecurityEnforcementManager:
         This addresses the audit finding that lockdown was cosmetic.
 
         Args:
-            raise_on_failure: If True, raises EnforcementError on failure
+            raise_on_failure: If True, raises SecurityEnforcementError on failure
         """
         results = []
 
@@ -1767,7 +1773,7 @@ class SecurityEnforcementManager:
             details={"results": dict(results)}
         )
         if raise_on_failure and not success:
-            raise EnforcementError(result)
+            raise SecurityEnforcementError(result)
         return result
 
     def exit_lockdown(self) -> EnforcementResult:

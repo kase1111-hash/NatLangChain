@@ -25,7 +25,7 @@ from chain_interface import (
     ChainDelegation,
     ChainHealth,
     IntentStatus,
-    EntryType,
+    SubmissionType,
     SettlementStatus,
     TIMESTAMP_WINDOW,
 )
@@ -557,11 +557,11 @@ class TestEnums:
         assert IntentStatus.CHALLENGED.value == "challenged"
 
     def test_entry_type_values(self):
-        """EntryType should have expected values."""
-        assert EntryType.SETTLEMENT.value == "settlement"
-        assert EntryType.ACCEPT.value == "accept"
-        assert EntryType.PAYOUT.value == "payout"
-        assert EntryType.CHALLENGE.value == "challenge"
+        """SubmissionType should have expected values."""
+        assert SubmissionType.SETTLEMENT.value == "settlement"
+        assert SubmissionType.ACCEPT.value == "accept"
+        assert SubmissionType.PAYOUT.value == "payout"
+        assert SubmissionType.CHALLENGE.value == "challenge"
 
     def test_settlement_status_values(self):
         """SettlementStatus should have expected values."""

@@ -19,7 +19,7 @@ from nat_traversal import (
     # Enums
     NATType,
     CandidateType,
-    ConnectionState,
+    NATConnectionState,
     # Data classes
     STUNServer,
     TURNServer,
@@ -450,7 +450,7 @@ class TestNATTraversalManager:
         manager._candidates = [
             ICECandidate("h0", 1, "udp", 1000, "192.168.1.100", 5000, CandidateType.HOST)
         ]
-        manager._state = ConnectionState.CHECKING
+        manager._state = NATConnectionState.CHECKING
 
         info = manager.get_connection_info()
 

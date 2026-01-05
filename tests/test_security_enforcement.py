@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from security_enforcement import (
     validate_ip_address,
-    EnforcementError,
+    SecurityEnforcementError,
 )
 
 
@@ -147,18 +147,18 @@ class TestIPAddressValidation(unittest.TestCase):
         self.assertIsNone(error)
 
 
-class TestEnforcementError(unittest.TestCase):
-    """Tests for EnforcementError exception."""
+class TestSecurityEnforcementError(unittest.TestCase):
+    """Tests for SecurityEnforcementError exception."""
 
     def test_enforcement_error_creation(self):
         """Test creating an enforcement error."""
         # We need a mock EnforcementResult to create the error
         # Since we can't easily import it, test the exception class exists
-        self.assertTrue(issubclass(EnforcementError, Exception))
+        self.assertTrue(issubclass(SecurityEnforcementError, Exception))
 
     def test_enforcement_error_inheritance(self):
-        """Test that EnforcementError inherits from Exception."""
-        self.assertTrue(issubclass(EnforcementError, Exception))
+        """Test that SecurityEnforcementError inherits from Exception."""
+        self.assertTrue(issubclass(SecurityEnforcementError, Exception))
 
 
 class TestDangerousCharacterDetection(unittest.TestCase):

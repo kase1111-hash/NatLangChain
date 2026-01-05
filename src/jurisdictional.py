@@ -20,6 +20,8 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
+from drift_thresholds import DriftLevel
+
 
 class JurisdictionRole(Enum):
     """
@@ -30,15 +32,6 @@ class JurisdictionRole(Enum):
     ENFORCEMENT = "enforcement"      # Where remedies may be sought
     INTERPRETIVE = "interpretive"    # Where courts may interpret facts (not semantics)
     PROCEDURAL = "procedural"        # Governs process only
-
-
-class DriftLevel(Enum):
-    """Drift levels per NCIP-002, used for LTA validation."""
-    D0 = "D0"  # 0.00-0.10
-    D1 = "D1"  # 0.10-0.25
-    D2 = "D2"  # 0.25-0.45
-    D3 = "D3"  # 0.45-0.70
-    D4 = "D4"  # 0.70-1.00
 
 
 class LTAViolation(Enum):

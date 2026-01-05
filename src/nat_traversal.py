@@ -120,8 +120,12 @@ class CandidateType(Enum):
     RELAY = "relay"  # TURN relay address
 
 
-class ConnectionState(Enum):
-    """Connection state for NAT traversal."""
+class NATConnectionState(Enum):
+    """Connection state for NAT traversal (ICE negotiation).
+
+    Note: This is different from ConnectionState in mobile_deployment.py
+    which tracks device connectivity (online/offline/syncing).
+    """
     NEW = "new"
     CHECKING = "checking"
     CONNECTED = "connected"
@@ -1197,7 +1201,7 @@ class NATTraversalManager:
         self._nat_info: NATInfo | None = None
         self._candidates: list[ICECandidate] = []
         self._active_turn_client: TURNClient | None = None
-        self._state = ConnectionState.NEW
+        self._state = NATConnectionState.NEW
 
     def initialize(self) -> bool:
         """
@@ -1215,12 +1219,12 @@ class NATTraversalManager:
                 gather_relay=self.enable_relay and self._nat_info.nat_type == NATType.SYMMETRIC
             )
 
-            self._state = ConnectionState.CHECKING
+            self._state = NATConnectionState.CHECKING
             return True
 
         except Exception as e:
             logger.error(f"NAT traversal initialization failed: {e}")
-            self._state = ConnectionState.FAILED
+            self._state = NATConnectionState.FAILED
             return False
 
     def get_nat_info(self) -> NATInfo | None:
@@ -1322,7 +1326,7 @@ class NATTraversalManager:
     def cleanup(self):
         """Clean up resources."""
         self.candidate_gatherer.cleanup()
-        self._state = ConnectionState.DISCONNECTED
+        self._state = NATConnectionState.DISCONNECTED
 
 
 # =============================================================================

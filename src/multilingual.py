@@ -19,6 +19,8 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
+from drift_thresholds import DriftLevel
+
 
 class LanguageRole(Enum):
     """
@@ -29,17 +31,6 @@ class LanguageRole(Enum):
     ANCHOR = "anchor"           # Canonical meaning source
     ALIGNED = "aligned"         # Verified semantic equivalent
     INFORMATIONAL = "informational"  # Human convenience only (non-executable)
-
-
-class DriftLevel(Enum):
-    """
-    Drift levels per NCIP-002, used for multilingual drift.
-    """
-    D0 = "D0"  # 0.00-0.10: Identical/near-identical
-    D1 = "D1"  # 0.10-0.25: Minor lexical variation
-    D2 = "D2"  # 0.25-0.45: Noticeable but manageable
-    D3 = "D3"  # 0.45-0.70: Significant divergence
-    D4 = "D4"  # 0.70-1.00: Critical divergence
 
 
 class ValidatorAction(Enum):

@@ -21,7 +21,7 @@ from typing import Any
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request
 
-from api.utils import DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT
+from api.utils import DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT, ManagerRegistry, managers
 
 # Core imports (always required)
 from blockchain import NatLangChain, NaturalLanguageEntry
@@ -747,65 +747,7 @@ def handle_value_error(error):
 blockchain = NatLangChain()
 
 
-@dataclass
-class ManagerRegistry:
-    """
-    Centralized registry for all optional managers and validators.
-
-    This provides a clean interface for accessing optional features
-    and makes it easy to check feature availability.
-    """
-    # LLM-based validators
-    llm_validator: Any = None
-    hybrid_validator: Any = None
-    drift_detector: Any = None
-    dialectic_validator: Any = None
-    multi_model_consensus: Any = None
-
-    # Search and semantic features
-    search_engine: Any = None
-    temporal_fixity: Any = None
-    semantic_oracle: Any = None
-    circuit_breaker: Any = None
-
-    # Contract management
-    contract_parser: Any = None
-    contract_matcher: Any = None
-
-    # Dispute and governance
-    dispute_manager: Any = None
-    escalation_fork_manager: Any = None
-
-    # Economic features
-    observance_burn_manager: Any = None
-    anti_harassment_manager: Any = None
-    treasury: Any = None
-
-    # Authentication and privacy
-    fido2_manager: Any = None
-    zk_privacy_manager: Any = None
-
-    # Advanced features
-    negotiation_engine: Any = None
-    market_pricing: Any = None
-    mobile_deployment: Any = None
-
-    def is_llm_enabled(self) -> bool:
-        """Check if LLM-based features are available."""
-        return self.llm_validator is not None
-
-    def is_dispute_enabled(self) -> bool:
-        """Check if dispute management is available."""
-        return self.dispute_manager is not None
-
-    def is_economic_enabled(self) -> bool:
-        """Check if economic features (burn, treasury) are available."""
-        return self.treasury is not None
-
-
-# Global manager registry instance
-managers = ManagerRegistry()
-
+# ManagerRegistry and managers are imported from api.utils
 # Backwards compatibility aliases (to avoid breaking existing code)
 llm_validator = None
 hybrid_validator = None
