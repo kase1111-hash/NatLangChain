@@ -60,14 +60,20 @@ NatLangChain transforms professional relationships by using natural language as 
 ```
 NatLangChain/
 ├── src/                    # Python source code (78 modules)
-│   ├── api/               # NEW: Modular API blueprints
-│   │   ├── __init__.py    # Blueprint registration
+│   ├── api/               # Modular API blueprints (9 modules)
+│   │   ├── __init__.py    # Blueprint registration (ALL_BLUEPRINTS)
 │   │   ├── core.py        # Core chain operations
 │   │   ├── search.py      # Semantic search, drift detection
 │   │   ├── mobile.py      # Mobile deployment endpoints
+│   │   ├── monitoring.py  # Health checks, metrics
+│   │   ├── boundary.py    # Boundary protection endpoints
+│   │   ├── marketplace.py # IP marketplace endpoints
+│   │   ├── help.py        # Governance help documentation
+│   │   ├── chat.py        # Ollama chat helper endpoints
+│   │   ├── contracts.py   # Live contract management
 │   │   ├── state.py       # Shared state (blockchain instance)
-│   │   └── utils.py       # Shared utilities (auth, validation)
-│   ├── api.py             # Main API (monolithic, being refactored)
+│   │   └── utils.py       # Shared utilities (auth, managers)
+│   ├── api.py             # Main API (7656 lines, being modularized)
 │   ├── blockchain.py      # Core blockchain data structures
 │   ├── validator.py       # LLM-powered validation
 │   └── ...                # Feature modules
@@ -123,16 +129,25 @@ Validation modes:
 
 ### 3. API Layer (`api.py`, `api/`)
 
-REST API with **212+ endpoints** organized into:
+REST API with **212+ endpoints** organized into 9 blueprints:
 
 | Blueprint | Routes | Description |
 |-----------|--------|-------------|
 | core | `/health`, `/chain`, `/entry`, `/mine` | Basic blockchain operations |
 | search | `/search/semantic`, `/drift/*` | Semantic search and drift |
-| contracts | `/contract/*` | Contract parsing and matching |
-| disputes | `/dispute/*` | Dispute management |
 | mobile | `/mobile/*` | Mobile deployment |
-| p2p | `/api/v1/*` | Peer-to-peer network |
+| monitoring | `/metrics`, `/health/*` | Prometheus metrics, health probes |
+| boundary | `/boundary/*` | Boundary protection, security modes |
+| marketplace | `/marketplace/*` | IP licensing marketplace |
+| help | `/api/help/*` | Governance documentation (NCIPs, MP specs) |
+| chat | `/chat/*` | Ollama LLM chat assistant |
+| contracts | `/contract/*` | Live contract parsing and matching |
+
+Additional routes in `api.py` (being modularized):
+- `/dispute/*` - Dispute management (MP-03)
+- `/api/v1/*` - P2P network and mediator nodes
+- `/fido2/*` - WebAuthn authentication
+- `/zk/*` - Zero-knowledge privacy
 
 ### 4. Security Features
 
@@ -271,8 +286,10 @@ The `mobile_deployment.py` module provides:
 
 ```python
 # src/api/myfeature.py
-from flask import Blueprint
-from api.utils import managers, require_api_key
+from flask import Blueprint, jsonify, request
+
+from .state import blockchain, create_entry_with_encryption, save_chain
+from .utils import managers, require_api_key
 
 myfeature_bp = Blueprint('myfeature', __name__, url_prefix='/myfeature')
 
@@ -281,13 +298,18 @@ myfeature_bp = Blueprint('myfeature', __name__, url_prefix='/myfeature')
 def action():
     if not managers.my_manager:
         return jsonify({"error": "Feature not available"}), 503
-    # ... implementation
+    # Use blockchain, create_entry_with_encryption, save_chain as needed
+    return jsonify({"status": "success"})
 ```
 
 Register in `api/__init__.py`:
 ```python
-from api.myfeature import myfeature_bp
-ALL_BLUEPRINTS.append((myfeature_bp, ''))
+from .myfeature import myfeature_bp
+
+ALL_BLUEPRINTS = [
+    # ... existing blueprints ...
+    (myfeature_bp, ''),  # Routes at /myfeature/*
+]
 ```
 
 ## Testing

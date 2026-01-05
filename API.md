@@ -12,6 +12,24 @@ The NatLangChain API provides RESTful endpoints for Agent OS (and other systems)
 
 Base URL: `http://localhost:5000` (configurable via PORT environment variable)
 
+### Architecture
+
+The API is organized into modular Flask blueprints in `src/api/`:
+
+| Blueprint | Prefix | Description |
+|-----------|--------|-------------|
+| `core` | `/` | Core blockchain operations |
+| `search` | `/search` | Semantic search and drift |
+| `mobile` | `/mobile` | Mobile deployment |
+| `monitoring` | `/metrics`, `/health` | Prometheus metrics, health probes |
+| `boundary` | `/boundary` | Security boundary protection |
+| `marketplace` | `/marketplace` | IP licensing marketplace |
+| `help` | `/api/help` | Governance documentation |
+| `chat` | `/chat` | Ollama LLM chat assistant |
+| `contracts` | `/contract` | Live contract management |
+
+See `ARCHITECTURE.md` for detailed module documentation.
+
 ## Interactive Documentation
 
 **Swagger UI** is available at `/docs` for interactive API exploration:
@@ -1031,7 +1049,7 @@ Semantic oracles verify external events against contract intent using LLM reason
 
 ### Live Contract Endpoints
 
-Self-seeking live contracts with AI-mediated matching.
+Self-seeking live contracts with AI-mediated matching. These endpoints are served by the `api/contracts.py` blueprint.
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -1044,6 +1062,8 @@ Self-seeking live contracts with AI-mediated matching.
 **Contract Types:** `offer`, `seek`, `proposal`, `response`, `closure`
 
 **Contract Statuses:** `open`, `matched`, `negotiating`, `closed`, `cancelled`
+
+**Required:** `ANTHROPIC_API_KEY` environment variable for contract parsing features.
 
 ---
 
@@ -1306,21 +1326,58 @@ Peer-to-peer networking for distributed node communication and chain synchroniza
 
 ### Help & Documentation Endpoints
 
-In-app help and documentation access.
+In-app help and documentation access. These endpoints are served by the `api/help.py` blueprint.
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/help` | Get help overview |
-| GET | `/help/concepts` | List key concepts |
-| GET | `/help/concepts/<concept>` | Get concept explanation |
-| GET | `/help/ncips` | List all NCIPs |
-| GET | `/help/ncips/<ncip_id>` | Get NCIP details |
-| GET | `/help/endpoints` | List all endpoints |
-| GET | `/help/endpoints/<category>` | Get endpoints by category |
-| GET | `/help/faq` | Get frequently asked questions |
-| GET | `/help/glossary` | Get terminology glossary |
-| GET | `/help/tutorials` | List available tutorials |
-| GET | `/help/tutorials/<tutorial_id>` | Get tutorial content |
+| GET | `/api/help/overview` | Get help system overview |
+| GET | `/api/help/ncips` | List all NCIPs |
+| GET | `/api/help/ncips/<ncip_id>` | Get specific NCIP details |
+| GET | `/api/help/mp-specs` | List all MP specifications |
+| GET | `/api/help/mp-specs/<spec_id>` | Get specific MP spec |
+| GET | `/api/help/concepts` | Get core concepts and design philosophy |
+| GET | `/api/help/search` | Search documentation |
+| POST | `/api/help/search` | Search with query in body |
+
+---
+
+### Chat Helper Endpoints
+
+Ollama LLM-powered chat assistant for guidance on NatLangChain usage. These endpoints are served by the `api/chat.py` blueprint.
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/chat/status` | Check Ollama connection status |
+| POST | `/chat/message` | Send message and get response |
+| POST | `/chat/suggestions` | Get suggestions for draft improvements |
+| GET | `/chat/questions` | Get starter questions |
+| POST | `/chat/explain` | Get explanation of a concept |
+| GET | `/chat/history` | Get conversation history |
+| POST | `/chat/clear` | Clear conversation history |
+
+**Example: Chat with Assistant**
+
+```bash
+# Check if chat is available
+curl http://localhost:5000/chat/status
+
+# Send a message
+curl -X POST http://localhost:5000/chat/message \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message": "How do I create a contract entry?",
+    "context": {"current_page": "contracts"}
+  }'
+
+# Get suggestions for draft content
+curl -X POST http://localhost:5000/chat/suggestions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": "I want to sell my car",
+    "intent": "Vehicle sale agreement",
+    "contract_type": "offer"
+  }'
+```
 
 ---
 

@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+#### Code Quality Improvements
+- **Duplicate Class Resolution**: Resolved 8 duplicate class definitions across codebase
+  - `CacheEntry` → `AdaptiveCacheEntry` in adaptive_cache.py
+  - `DriftLevel` consolidated to drift_thresholds.py (removed from appeals.py, multilingual.py, jurisdictional.py)
+  - `EntryType` → `SubmissionType` in chain_interface.py
+  - `ConnectionState` → `NATConnectionState` in nat_traversal.py
+  - `AccessLevel`, `FeeType`, `StorageType` disambiguated across modules
+- **Missing Docstrings**: Added comprehensive docstrings to ~80 undocumented functions/methods
+  - cli.py: StandaloneApplication class and WSGI methods
+  - api.py: encryption fallbacks, P2P stubs, SSRF protection stubs
+  - p2p_network.py: format(), to_dict/from_dict methods
+  - marketplace.py: RevenueSplit, TierConfig, PILTerms, MarketConfig serialization
+  - voluntary_fees.py: FeeInfo, QueuedContract, MediatorEarnings, CommunityPool
+  - backup.py: BackupMetadata serialization methods
+  - governance_help.py: NCIPEntry and MPSpec serialization
+- **Long Function Refactoring**: Extracted helper methods from blockchain.py
+  - `add_entry()` reduced from ~213 to ~52 lines (8 helper methods extracted)
+  - `MockValidator.validate_entry()` reduced from ~115 to ~68 lines (4 helpers)
+  - Extracted initialization helpers: `_init_rate_limiter()`, `_init_asset_registry()`, `_init_quality_analyzer()`
+
+#### API Modularization
+- **Blueprint Extraction**: Split monolithic api.py (8317 lines) into modular blueprints
+  - `api/help.py`: Governance help endpoints (`/api/help/*`) - 133 lines
+  - `api/chat.py`: Ollama chat helper endpoints (`/chat/*`) - 236 lines
+  - `api/contracts.py`: Live contract management (`/contract/*`) - 340 lines
+  - api.py reduced to 7656 lines (661 lines extracted)
+  - Total blueprints: 9 registered modules
+
 ### Added
 
 #### External Boundary System Integration (`src/external_daemon_client.py`, `src/boundary_siem.py`)
