@@ -41,16 +41,26 @@ try:
     ENCRYPTION_AVAILABLE = True
 except ImportError:
     ENCRYPTION_AVAILABLE = False
+
     def is_encryption_enabled():
+        """Check if encryption is enabled (stub when encryption module unavailable)."""
         return False
+
     encrypt_chain_data = None
     decrypt_chain_data = None
+
     def encrypt_sensitive_fields(x, **kwargs):
+        """Encrypt sensitive fields in data (passthrough stub when encryption unavailable)."""
         return x
+
     def decrypt_sensitive_fields(x, **kwargs):
+        """Decrypt sensitive fields in data (passthrough stub when encryption unavailable)."""
         return x
+
     def is_encrypted(x):
+        """Check if data is encrypted (stub returns False when encryption unavailable)."""
         return False
+
     EncryptionError = Exception
     ENCRYPTION_KEY_ENV = "NATLANGCHAIN_ENCRYPTION_KEY"
 
@@ -205,8 +215,11 @@ except ImportError:
     P2P_AVAILABLE = False
     P2PNetwork = None
     init_p2p_network = None
+
     def get_p2p_network():
+        """Get the P2P network instance (stub returns None when P2P unavailable)."""
         return None
+
     NodeRole = None
     ConsensusMode = None
 
@@ -233,9 +246,13 @@ try:
     SSRF_PROTECTION_AVAILABLE = True
 except ImportError:
     SSRF_PROTECTION_AVAILABLE = False
+
     def is_safe_peer_endpoint(endpoint):
+        """Check if a peer endpoint is safe from SSRF (stub allows all when unavailable)."""
         return True, None
+
     def validate_url_for_ssrf(url):
+        """Validate a URL for SSRF vulnerabilities (stub allows all when unavailable)."""
         return True, None
 
 
@@ -2043,338 +2060,7 @@ def verify_oracle_event():
         }), 500
 
 
-# ========== Live Contract Endpoints ==========
-
-@app.route('/contract/parse', methods=['POST'])
-def parse_contract_endpoint():
-    """
-    Parse natural language contract content and extract structured terms.
-
-    Request body:
-    {
-        "content": "Natural language contract text"
-    }
-
-    Returns:
-        Parsed contract with extracted terms, type, and structure
-    """
-    if not contract_parser:
-        return jsonify({
-            "error": "Contract features not available",
-            "reason": "ANTHROPIC_API_KEY not configured"
-        }), 503
-
-    data = request.get_json()
-
-    if not data:
-        return jsonify({"error": "No data provided"}), 400
-
-    content = data.get("content")
-
-    if not content:
-        return jsonify({
-            "error": "Missing required field",
-            "required": ["content"]
-        }), 400
-
-    try:
-        parsed = contract_parser.parse_contract(content)
-        return jsonify({
-            "status": "success",
-            "parsed": parsed
-        })
-    except Exception as e:
-        return jsonify({
-            "error": "Failed to parse contract",
-            "details": str(e)
-        }), 500
-
-
-@app.route('/contract/match', methods=['POST'])
-def match_contracts():
-    """
-    Find matching contracts for pending entries.
-
-    Request body:
-    {
-        "pending_entries": [...],  (optional - uses blockchain pending if not provided)
-        "miner_id": "miner identifier"
-    }
-
-    Returns:
-        List of matched contract proposals
-    """
-    if not contract_matcher:
-        return jsonify({
-            "error": "Contract features not available",
-            "reason": "ANTHROPIC_API_KEY not configured"
-        }), 503
-
-    data = request.get_json()
-
-    if not data:
-        return jsonify({"error": "No data provided"}), 400
-
-    miner_id = data.get("miner_id", "anonymous-miner")
-    pending_entries = data.get("pending_entries")
-
-    # Use blockchain pending entries if not provided
-    if pending_entries is None:
-        pending_entries = blockchain.pending_entries
-
-    try:
-        matches = contract_matcher.find_matches(blockchain, pending_entries, miner_id)
-        return jsonify({
-            "status": "success",
-            "matches": [m.to_dict() if hasattr(m, 'to_dict') else m for m in matches],
-            "count": len(matches)
-        })
-    except Exception as e:
-        return jsonify({
-            "error": "Failed to find matches",
-            "details": str(e)
-        }), 500
-
-
-@app.route('/contract/post', methods=['POST'])
-@require_api_key
-def post_contract():
-    """
-    Post a new live contract (offer or seek).
-
-    Request body:
-    {
-        "content": "Natural language contract description",
-        "author": "author identifier",
-        "intent": "Contract intent",
-        "contract_type": "offer" | "seek",
-        "terms": {"key": "value"},  (optional, will be extracted if not provided)
-        "auto_mine": true/false (optional)
-    }
-
-    Returns:
-        Contract entry with validation results
-    """
-    if not contract_parser:
-        return jsonify({
-            "error": "Contract features not available",
-            "reason": "ANTHROPIC_API_KEY not configured"
-        }), 503
-
-    data = request.get_json()
-
-    if not data:
-        return jsonify({"error": "No data provided"}), 400
-
-    content = data.get("content")
-    author = data.get("author")
-    intent = data.get("intent")
-    contract_type = data.get("contract_type", ContractParser.TYPE_OFFER)
-
-    if not all([content, author, intent]):
-        return jsonify({
-            "error": "Missing required fields",
-            "required": ["content", "author", "intent"]
-        }), 400
-
-    try:
-        # Parse contract
-        contract_data = contract_parser.parse_contract(content, use_llm=True)
-
-        # Override type if provided
-        if contract_type:
-            contract_data["contract_type"] = contract_type
-
-        # Override terms if provided
-        if "terms" in data:
-            contract_data["terms"] = data["terms"]
-
-        # Validate clarity
-        is_valid, reason = contract_parser.validate_contract_clarity(content)
-        if not is_valid:
-            return jsonify({
-                "error": "Contract validation failed",
-                "reason": reason
-            }), 400
-
-        # Create entry with contract metadata (encrypted sensitive fields)
-        entry = create_entry_with_encryption(
-            content=content,
-            author=author,
-            intent=intent,
-            metadata=contract_data
-        )
-
-        entry.validation_status = "valid"
-
-        # Add to blockchain
-        result = blockchain.add_entry(entry)
-
-        # Auto-mine if requested
-        auto_mine = data.get("auto_mine", False)
-        mined_block = None
-        if auto_mine:
-            mined_block = blockchain.mine_pending_entries()
-            save_chain()
-
-        response = {
-            "status": "success",
-            "entry": result,
-            "contract_metadata": contract_data
-        }
-
-        if mined_block:
-            response["mined_block"] = {
-                "index": mined_block.index,
-                "hash": mined_block.hash
-            }
-
-        return jsonify(response), 201
-
-    except Exception as e:
-        return jsonify({
-            "error": "Contract posting failed",
-            "reason": str(e)
-        }), 500
-
-
-@app.route('/contract/list', methods=['GET'])
-def list_contracts():
-    """
-    List all contracts, optionally filtered by status or type.
-
-    Query params:
-        status: Filter by status (open, matched, negotiating, closed, cancelled)
-        type: Filter by type (offer, seek, proposal)
-        author: Filter by author
-
-    Returns:
-        List of contract entries
-    """
-    status_filter = request.args.get('status')
-    type_filter = request.args.get('type')
-    author_filter = request.args.get('author')
-
-    contracts = []
-
-    for block in blockchain.chain:
-        for entry in block.entries:
-            # Skip if not a contract
-            if not entry.metadata.get("is_contract"):
-                continue
-
-            # Apply filters
-            if status_filter and entry.metadata.get("status") != status_filter:
-                continue
-
-            if type_filter and entry.metadata.get("contract_type") != type_filter:
-                continue
-
-            if author_filter and entry.author != author_filter:
-                continue
-
-            contracts.append({
-                "block_index": block.index,
-                "block_hash": block.hash,
-                "entry": entry.to_dict()
-            })
-
-    return jsonify({
-        "count": len(contracts),
-        "contracts": contracts
-    })
-
-
-@app.route('/contract/respond', methods=['POST'])
-@require_api_key
-def respond_to_contract():
-    """
-    Respond to a contract proposal or create a counter-offer.
-
-    Request body:
-    {
-        "to_block": block_index,
-        "to_entry": entry_index,
-        "response_content": "Natural language response",
-        "author": "author identifier",
-        "response_type": "accept" | "counter" | "reject",
-        "counter_terms": {"key": "value"} (optional, for counter-offers)
-    }
-
-    Returns:
-        Response entry with mediation if counter-offer
-    """
-    if not contract_parser or not contract_matcher:
-        return jsonify({
-            "error": "Contract features not available"
-        }), 503
-
-    data = request.get_json()
-
-    if not data:
-        return jsonify({"error": "No data provided"}), 400
-
-    to_block = data.get("to_block")
-    to_entry = data.get("to_entry")
-    response_content = data.get("response_content")
-    author = data.get("author")
-    response_type = data.get("response_type", "counter")
-
-    if not all([to_block is not None, to_entry is not None, response_content, author]):
-        return jsonify({
-            "error": "Missing required fields",
-            "required": ["to_block", "to_entry", "response_content", "author"]
-        }), 400
-
-    # Get original entry
-    if to_block < 0 or to_block >= len(blockchain.chain):
-        return jsonify({"error": "Block not found"}), 404
-
-    block = blockchain.chain[to_block]
-
-    if to_entry < 0 or to_entry >= len(block.entries):
-        return jsonify({"error": "Entry not found"}), 404
-
-    original_entry = block.entries[to_entry]
-
-    # Create response entry
-    response_metadata = {
-        "is_contract": True,
-        "contract_type": ContractParser.TYPE_RESPONSE,
-        "response_type": response_type,
-        "links": [block.hash],  # Link to original
-        "terms": data.get("counter_terms", {})
-    }
-
-    # If counter-offer, get mediation
-    mediation_result = None
-    if response_type == "counter" and contract_matcher:
-        mediation_result = contract_matcher.mediate_negotiation(
-            original_entry.content,
-            original_entry.metadata.get("terms", {}),
-            response_content,
-            data.get("counter_terms", {}),
-            original_entry.metadata.get("negotiation_round", 0) + 1
-        )
-
-        response_metadata["mediation"] = mediation_result
-        response_metadata["negotiation_round"] = original_entry.metadata.get("negotiation_round", 0) + 1
-
-    response_entry = create_entry_with_encryption(
-        content=f"[RESPONSE TO: {block.hash[:8]}] {response_content}",
-        author=author,
-        intent=f"Response to contract: {response_type}",
-        metadata=response_metadata
-    )
-
-    blockchain.add_entry(response_entry)
-
-    return jsonify({
-        "status": "success",
-        "response": response_entry.to_dict(),
-        "mediation": mediation_result
-    }), 201
-
+# Live Contract Endpoints moved to api/contracts.py
 
 # ========== Dispute Protocol (MP-03) Endpoints ==========
 
@@ -7195,228 +6881,7 @@ def get_mobile_audit():
     })
 
 
-# ============================================================
-# Chat Helper Endpoints (Ollama LLM Assistant)
-# ============================================================
-
-
-@app.route('/chat/status', methods=['GET'])
-def chat_status():
-    """
-    Check if the Ollama chat helper is available.
-
-    Returns:
-        Status of Ollama connection and available models
-    """
-    if get_chat_helper is None:
-        return jsonify({
-            "available": False,
-            "error": "Chat helper module not installed"
-        })
-
-    try:
-        helper = get_chat_helper()
-        status = helper.check_ollama_status()
-        return jsonify(status)
-    except Exception:
-        return jsonify({
-            "available": False,
-            "error": "Failed to check chat status"
-        })
-
-
-@app.route('/chat/message', methods=['POST'])
-def chat_message():
-    """
-    Send a message to the chat helper and get a response.
-
-    Request body:
-        message: The user's message
-        context: Optional context about current activity
-
-    Returns:
-        The assistant's response
-    """
-    if get_chat_helper is None:
-        return jsonify({
-            "success": False,
-            "error": "Chat helper module not installed"
-        }), 503
-
-    data = request.get_json()
-    if not data:
-        return jsonify({"error": "Request body required"}), 400
-
-    message = data.get('message', '').strip()
-    if not message:
-        return jsonify({"error": "Message is required"}), 400
-
-    context = data.get('context', {})
-
-    try:
-        helper = get_chat_helper()
-        result = helper.chat(message, context)
-        return jsonify(result)
-    except Exception:
-        return jsonify({
-            "success": False,
-            "error": "An error occurred processing your request"
-        }), 500
-
-
-@app.route('/chat/suggestions', methods=['POST'])
-def chat_suggestions():
-    """
-    Get suggestions for improving a draft entry or contract.
-
-    Request body:
-        content: The draft content
-        intent: The stated intent
-        contract_type: Optional contract type
-
-    Returns:
-        Suggestions for improvement
-    """
-    if get_chat_helper is None:
-        return jsonify({
-            "success": False,
-            "error": "Chat helper module not installed"
-        }), 503
-
-    data = request.get_json()
-    if not data:
-        return jsonify({"error": "Request body required"}), 400
-
-    content = data.get('content', '').strip()
-    intent = data.get('intent', '').strip()
-    contract_type = data.get('contract_type', '')
-
-    if not content and not intent:
-        return jsonify({"error": "Content or intent is required"}), 400
-
-    try:
-        helper = get_chat_helper()
-        result = helper.get_suggestions(content, intent, contract_type)
-        return jsonify(result)
-    except Exception:
-        return jsonify({
-            "success": False,
-            "error": "Failed to get suggestions"
-        }), 500
-
-
-@app.route('/chat/questions', methods=['GET'])
-def chat_starter_questions():
-    """
-    Get starter questions to help begin crafting an entry.
-
-    Query params:
-        contract_type: Optional contract type for specific questions
-
-    Returns:
-        List of helpful starter questions
-    """
-    if get_chat_helper is None:
-        return jsonify({
-            "questions": [
-                "What would you like to communicate?",
-                "Who is your intended audience?",
-                "What outcome are you hoping for?"
-            ]
-        })
-
-    contract_type = request.args.get('contract_type', '')
-
-    try:
-        helper = get_chat_helper()
-        questions = helper.get_starter_questions(contract_type)
-        return jsonify({"questions": questions})
-    except Exception:
-        return jsonify({
-            "questions": [],
-            "error": "Failed to get questions"
-        })
-
-
-@app.route('/chat/explain', methods=['POST'])
-def chat_explain():
-    """
-    Get an explanation of a NatLangChain concept.
-
-    Request body:
-        concept: The concept to explain
-
-    Returns:
-        A friendly explanation
-    """
-    if get_chat_helper is None:
-        return jsonify({
-            "success": False,
-            "error": "Chat helper module not installed"
-        }), 503
-
-    data = request.get_json()
-    if not data:
-        return jsonify({"error": "Request body required"}), 400
-
-    concept = data.get('concept', '').strip()
-    if not concept:
-        return jsonify({"error": "Concept is required"}), 400
-
-    try:
-        helper = get_chat_helper()
-        result = helper.explain_concept(concept)
-        return jsonify(result)
-    except Exception:
-        return jsonify({
-            "success": False,
-            "error": "Failed to explain concept"
-        }), 500
-
-
-@app.route('/chat/history', methods=['GET'])
-def chat_history():
-    """
-    Get the current conversation history.
-
-    Returns:
-        List of messages in the conversation
-    """
-    if get_chat_helper is None:
-        return jsonify({"history": []})
-
-    try:
-        helper = get_chat_helper()
-        history = helper.get_history()
-        return jsonify({"history": history})
-    except Exception:
-        return jsonify({
-            "history": [],
-            "error": "Failed to get history"
-        })
-
-
-@app.route('/chat/clear', methods=['POST'])
-def chat_clear():
-    """
-    Clear the conversation history.
-
-    Returns:
-        Success status
-    """
-    if get_chat_helper is None:
-        return jsonify({"success": True, "message": "No history to clear"})
-
-    try:
-        helper = get_chat_helper()
-        helper.clear_history()
-        return jsonify({"success": True, "message": "Conversation cleared"})
-    except Exception:
-        return jsonify({
-            "success": False,
-            "error": "Failed to clear history"
-        }), 500
-
+# Chat Helper Endpoints moved to api/chat.py
 
 # =============================================================================
 # P2P Network & Mediator Node API (api/v1/)
@@ -8136,119 +7601,10 @@ def network_stats():
 
 
 # =============================================================================
-# Governance Help API Endpoints
+# Governance Help API Endpoints - MOVED to api/help.py
 # =============================================================================
-
-# Try to import governance help system
-try:
-    from governance_help import get_help_system
-    GOVERNANCE_HELP_AVAILABLE = True
-except ImportError:
-    GOVERNANCE_HELP_AVAILABLE = False
-    get_help_system = None
-
-
-@app.route('/api/help/overview', methods=['GET'])
-def help_overview():
-    """Get help system overview."""
-    if not GOVERNANCE_HELP_AVAILABLE:
-        return jsonify({"error": "Governance help not available"}), 503
-    return jsonify(get_help_system().get_help_overview())
-
-
-@app.route('/api/help/ncips', methods=['GET'])
-def list_ncips():
-    """Get list of all NCIPs."""
-    if not GOVERNANCE_HELP_AVAILABLE:
-        return jsonify({"error": "Governance help not available"}), 503
-    return jsonify(get_help_system().get_ncip_list())
-
-
-@app.route('/api/help/ncips/by-category', methods=['GET'])
-def ncips_by_category():
-    """Get NCIPs organized by category."""
-    if not GOVERNANCE_HELP_AVAILABLE:
-        return jsonify({"error": "Governance help not available"}), 503
-    return jsonify(get_help_system().get_ncips_by_category())
-
-
-@app.route('/api/help/ncips/<ncip_id>', methods=['GET'])
-def get_ncip(ncip_id):
-    """Get a specific NCIP."""
-    if not GOVERNANCE_HELP_AVAILABLE:
-        return jsonify({"error": "Governance help not available"}), 503
-    ncip = get_help_system().get_ncip(ncip_id)
-    if not ncip:
-        return jsonify({"error": f"NCIP {ncip_id} not found"}), 404
-    return jsonify(ncip)
-
-
-@app.route('/api/help/ncips/<ncip_id>/full', methods=['GET'])
-def get_ncip_full(ncip_id):
-    """Get full markdown content of an NCIP."""
-    if not GOVERNANCE_HELP_AVAILABLE:
-        return jsonify({"error": "Governance help not available"}), 503
-    content = get_help_system().get_ncip_full_text(ncip_id)
-    if not content:
-        return jsonify({"error": f"NCIP {ncip_id} content not found"}), 404
-    return jsonify({"id": ncip_id, "content": content})
-
-
-@app.route('/api/help/mps', methods=['GET'])
-def list_mps():
-    """Get list of all Mediator Protocol specs."""
-    if not GOVERNANCE_HELP_AVAILABLE:
-        return jsonify({"error": "Governance help not available"}), 503
-    return jsonify(get_help_system().get_mp_list())
-
-
-@app.route('/api/help/mps/<mp_id>', methods=['GET'])
-def get_mp(mp_id):
-    """Get a specific MP spec."""
-    if not GOVERNANCE_HELP_AVAILABLE:
-        return jsonify({"error": "Governance help not available"}), 503
-    mp = get_help_system().get_mp(mp_id)
-    if not mp:
-        return jsonify({"error": f"MP {mp_id} not found"}), 404
-    return jsonify(mp)
-
-
-@app.route('/api/help/concepts', methods=['GET'])
-def list_concepts():
-    """Get all core concepts."""
-    if not GOVERNANCE_HELP_AVAILABLE:
-        return jsonify({"error": "Governance help not available"}), 503
-    return jsonify(get_help_system().get_core_concepts())
-
-
-@app.route('/api/help/concepts/<concept_id>', methods=['GET'])
-def get_concept(concept_id):
-    """Get a specific concept."""
-    if not GOVERNANCE_HELP_AVAILABLE:
-        return jsonify({"error": "Governance help not available"}), 503
-    concept = get_help_system().get_concept(concept_id)
-    if not concept:
-        return jsonify({"error": f"Concept {concept_id} not found"}), 404
-    return jsonify(concept)
-
-
-@app.route('/api/help/philosophy', methods=['GET'])
-def get_philosophy():
-    """Get design philosophy."""
-    if not GOVERNANCE_HELP_AVAILABLE:
-        return jsonify({"error": "Governance help not available"}), 503
-    return jsonify(get_help_system().get_design_philosophy())
-
-
-@app.route('/api/help/search', methods=['GET'])
-def search_governance():
-    """Search governance documentation."""
-    if not GOVERNANCE_HELP_AVAILABLE:
-        return jsonify({"error": "Governance help not available"}), 503
-    query = request.args.get('q', '')
-    if not query:
-        return jsonify([])
-    return jsonify(get_help_system().search_governance(query))
+# These endpoints are now handled by the help_bp blueprint.
+# See api/help.py for the implementation.
 
 
 @app.errorhandler(404)

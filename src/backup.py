@@ -147,6 +147,7 @@ class BackupMetadata:
     location: str
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize backup metadata to a dictionary for storage or API response."""
         return {
             "backup_id": self.backup_id,
             "timestamp": self.timestamp,
@@ -164,6 +165,7 @@ class BackupMetadata:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "BackupMetadata":
+        """Deserialize backup metadata from a dictionary."""
         return cls(
             backup_id=data["backup_id"],
             timestamp=data["timestamp"],
