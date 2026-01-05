@@ -590,6 +590,45 @@ class MockValidator:
 
         return None
 
+    def _build_validation_response(
+        self,
+        paraphrase: str,
+        intent_match: bool,
+        decision: str,
+        reasoning: str,
+        ambiguities: list[str] | None = None,
+        adversarial_indicators: list[str] | None = None,
+        action_mismatch: dict | None = None
+    ) -> dict[str, Any]:
+        """Build a standardized validation response."""
+        validation = {
+            "paraphrase": paraphrase,
+            "intent_match": intent_match,
+            "ambiguities": ambiguities or [],
+            "adversarial_indicators": adversarial_indicators or [],
+            "decision": decision,
+            "reasoning": reasoning
+        }
+        if action_mismatch:
+            validation["action_mismatch"] = action_mismatch
+        return {"status": "success", "validation": validation}
+
+    def _find_adversarial_patterns(self, content_lower: str) -> list[str]:
+        """Find adversarial patterns in content."""
+        return [p for p in self.ADVERSARIAL_PATTERNS if p in content_lower]
+
+    def _find_ambiguous_terms(self, content_lower: str) -> list[str]:
+        """Find ambiguous terms in content."""
+        return [t for t in self.AMBIGUOUS_TERMS if t in content_lower]
+
+    def _check_intent_match(self, content_lower: str, intent_lower: str) -> bool:
+        """Check if intent keywords appear in content."""
+        stop_words = {"the", "a", "an", "to", "for", "of", "and", "is", "in", "on", "at"}
+        intent_keywords = set(intent_lower.split()) - stop_words
+        content_keywords = set(content_lower.split()) - stop_words
+        overlap = intent_keywords & content_keywords
+        return len(overlap) > 0 or len(intent_keywords) == 0
+
     def validate_entry(
         self,
         content: str,
@@ -599,11 +638,8 @@ class MockValidator:
         """
         Perform mock validation with basic heuristic checks.
 
-        Detects:
-        - Ambiguous language
-        - Intent-content mismatch (basic keyword check)
-        - Action category mismatch (semantic action alignment)
-        - Adversarial patterns
+        Detects adversarial patterns, action mismatches, ambiguous terms,
+        and intent-content mismatches.
 
         Returns:
             Validation result mimicking ProofOfUnderstanding format
@@ -612,98 +648,55 @@ class MockValidator:
         intent_lower = intent.lower()
 
         # Check for adversarial patterns
-        adversarial_found = []
-        for pattern in self.ADVERSARIAL_PATTERNS:
-            if pattern in content_lower:
-                adversarial_found.append(pattern)
+        adversarial = self._find_adversarial_patterns(content_lower)
+        if adversarial:
+            return self._build_validation_response(
+                paraphrase="[MOCK] Entry contains adversarial patterns",
+                intent_match=False,
+                decision=VALIDATION_INVALID,
+                reasoning=f"Detected adversarial patterns: {adversarial}",
+                adversarial_indicators=adversarial
+            )
 
-        if adversarial_found:
-            return {
-                "status": "success",
-                "validation": {
-                    "paraphrase": "[MOCK] Entry contains adversarial patterns",
-                    "intent_match": False,
-                    "ambiguities": [],
-                    "adversarial_indicators": adversarial_found,
-                    "decision": VALIDATION_INVALID,
-                    "reasoning": f"Detected adversarial patterns: {adversarial_found}"
-                }
-            }
-
-        # Check for action category mismatch (semantic layer)
+        # Check for action category mismatch
         action_mismatch = self._detect_action_mismatch(content, intent)
         if action_mismatch:
-            return {
-                "status": "success",
-                "validation": {
-                    "paraphrase": "[MOCK] Entry action doesn't match stated intent",
-                    "intent_match": False,
-                    "ambiguities": [],
-                    "adversarial_indicators": [],
-                    "action_mismatch": action_mismatch,
-                    "decision": VALIDATION_INVALID,
-                    "reasoning": action_mismatch["reason"]
-                }
-            }
+            return self._build_validation_response(
+                paraphrase="[MOCK] Entry action doesn't match stated intent",
+                intent_match=False,
+                decision=VALIDATION_INVALID,
+                reasoning=action_mismatch["reason"],
+                action_mismatch=action_mismatch
+            )
 
         # Check for ambiguous terms
-        ambiguities_found = []
-        for term in self.AMBIGUOUS_TERMS:
-            if term in content_lower:
-                ambiguities_found.append(term)
+        ambiguities = self._find_ambiguous_terms(content_lower)
+        intent_match = self._check_intent_match(content_lower, intent_lower)
 
-        # Check for basic intent mismatch
-        # Extract key words from intent and check if they appear in content
-        intent_words = set(intent_lower.split())
-        content_words = set(content_lower.split())
-
-        # Remove common stop words
-        stop_words = {"the", "a", "an", "to", "for", "of", "and", "is", "in", "on", "at"}
-        intent_keywords = intent_words - stop_words
-        content_keywords = content_words - stop_words
-
-        # Check if at least some intent keywords appear in content
-        overlap = intent_keywords & content_keywords
-        intent_match = len(overlap) > 0 or len(intent_keywords) == 0
-
-        if ambiguities_found:
-            return {
-                "status": "success",
-                "validation": {
-                    "paraphrase": f"[MOCK] Entry about: {intent}",
-                    "intent_match": intent_match,
-                    "ambiguities": ambiguities_found,
-                    "adversarial_indicators": [],
-                    "decision": VALIDATION_NEEDS_CLARIFICATION,
-                    "reasoning": f"Contains ambiguous terms: {ambiguities_found}"
-                }
-            }
+        if ambiguities:
+            return self._build_validation_response(
+                paraphrase=f"[MOCK] Entry about: {intent}",
+                intent_match=intent_match,
+                decision=VALIDATION_NEEDS_CLARIFICATION,
+                reasoning=f"Contains ambiguous terms: {ambiguities}",
+                ambiguities=ambiguities
+            )
 
         if not intent_match:
-            return {
-                "status": "success",
-                "validation": {
-                    "paraphrase": "[MOCK] Entry content does not match stated intent",
-                    "intent_match": False,
-                    "ambiguities": [],
-                    "adversarial_indicators": [],
-                    "decision": VALIDATION_INVALID,
-                    "reasoning": "Intent does not match content keywords"
-                }
-            }
+            return self._build_validation_response(
+                paraphrase="[MOCK] Entry content does not match stated intent",
+                intent_match=False,
+                decision=VALIDATION_INVALID,
+                reasoning="Intent does not match content keywords"
+            )
 
         # All checks passed
-        return {
-            "status": "success",
-            "validation": {
-                "paraphrase": f"[MOCK] The author {author} states: {content[:100]}...",
-                "intent_match": True,
-                "ambiguities": [],
-                "adversarial_indicators": [],
-                "decision": VALIDATION_VALID,
-                "reasoning": "Entry passes basic validation checks"
-            }
-        }
+        return self._build_validation_response(
+            paraphrase=f"[MOCK] The author {author} states: {content[:100]}...",
+            intent_match=True,
+            decision=VALIDATION_VALID,
+            reasoning="Entry passes basic validation checks"
+        )
 
 
 class NaturalLanguageEntry:
@@ -924,36 +917,69 @@ class NatLangChain:
         if allow_needs_clarification:
             self._acceptable_decisions.add(VALIDATION_NEEDS_CLARIFICATION)
 
-        # Entry fingerprint registry for deduplication: {fingerprint: timestamp}
+        # Entry fingerprint registry for deduplication
         self._entry_fingerprints: dict[str, float] = {}
 
-        # Rate limiter for anti-flooding
-        self._rate_limiter = EntryRateLimiter(
-            window_seconds=rate_limit_window,
-            max_per_author=max_entries_per_author,
-            max_global=max_global_entries
-        ) if enable_rate_limiting else None
-
-        # Asset registry for double-spending prevention
-        self.enable_asset_tracking = enable_asset_tracking
-        self._asset_registry = asset_registry if asset_registry else (
-            AssetRegistry() if enable_asset_tracking else None
+        # Initialize optional components
+        self._rate_limiter = self._init_rate_limiter(
+            enable_rate_limiting, rate_limit_window,
+            max_entries_per_author, max_global_entries
         )
-
-        # Entry quality analyzer for chain bloat prevention
+        self.enable_asset_tracking = enable_asset_tracking
+        self._asset_registry = self._init_asset_registry(
+            enable_asset_tracking, asset_registry
+        )
         self.enable_quality_checks = enable_quality_checks
         self.max_entry_size = max_entry_size
         self.min_entry_size = min_entry_size
         self.quality_strict_mode = quality_strict_mode
-        self._quality_analyzer = None
-        if enable_quality_checks and ENTRY_QUALITY_AVAILABLE:
-            self._quality_analyzer = EntryQualityAnalyzer(
-                max_size=max_entry_size,
-                min_size=min_entry_size,
-                strict_mode=quality_strict_mode,
-            )
+        self._quality_analyzer = self._init_quality_analyzer(
+            enable_quality_checks, max_entry_size, min_entry_size, quality_strict_mode
+        )
 
         self.create_genesis_block()
+
+    def _init_rate_limiter(
+        self,
+        enabled: bool,
+        window_seconds: int,
+        max_per_author: int,
+        max_global: int
+    ) -> EntryRateLimiter | None:
+        """Initialize rate limiter for anti-flooding protection."""
+        if not enabled:
+            return None
+        return EntryRateLimiter(
+            window_seconds=window_seconds,
+            max_per_author=max_per_author,
+            max_global=max_global
+        )
+
+    def _init_asset_registry(
+        self,
+        enabled: bool,
+        registry: AssetRegistry | None
+    ) -> AssetRegistry | None:
+        """Initialize asset registry for double-transfer prevention."""
+        if registry:
+            return registry
+        return AssetRegistry() if enabled else None
+
+    def _init_quality_analyzer(
+        self,
+        enabled: bool,
+        max_size: int,
+        min_size: int,
+        strict_mode: bool
+    ) -> Any | None:
+        """Initialize quality analyzer for chain bloat prevention."""
+        if not enabled or not ENTRY_QUALITY_AVAILABLE:
+            return None
+        return EntryQualityAnalyzer(
+            max_size=max_size,
+            min_size=min_size,
+            strict_mode=strict_mode
+        )
 
     def create_genesis_block(self):
         """Create the first block in the chain."""
@@ -987,211 +1013,51 @@ class NatLangChain:
         """
         Add a new natural language entry to pending entries.
 
-        If require_validation is True (default), the entry must pass PoU validation
-        before being added to the pending queue. This prevents bad actors from
-        submitting ambiguous, mismatched, or adversarial entries.
-
-        If enable_deduplication is True (default), duplicate entries within the
-        dedup window will be rejected. This prevents replay attacks.
-
-        If enable_rate_limiting is True (default), rate limits are enforced per
-        author and globally to prevent Sybil/flooding attacks.
-
-        If enable_timestamp_validation is True (default), entry timestamps are
-        validated against current system time to prevent backdating attacks.
-
-        If enable_metadata_sanitization is True (default), entry metadata is
-        sanitized to prevent injection of system-reserved fields like validation
-        status or bypass flags.
+        Runs a validation pipeline with the following checks (all configurable):
+        - Rate limiting: Prevents Sybil/flooding attacks
+        - Timestamp validation: Prevents backdating attacks
+        - Metadata sanitization: Prevents injection attacks
+        - Quality analysis: Prevents chain bloat
+        - Deduplication: Prevents replay attacks
+        - Asset tracking: Prevents double-transfer attacks
+        - Entry validation: Ensures semantic validity via PoU
 
         Args:
             entry: The natural language entry to add
-            skip_validation: If True, bypass validation (requires require_validation=False
-                           on chain initialization). This is for testing only.
+            skip_validation: If True, bypass PoU validation (testing only)
 
         Returns:
             Dict with entry information and validation result
         """
-        # Check rate limits (anti-flooding protection)
-        if self._rate_limiter is not None:
-            rate_check = self._rate_limiter.check_rate_limit(entry.author)
-            if not rate_check["allowed"]:
-                return {
-                    "status": "rejected",
-                    "message": rate_check["message"],
-                    "reason": "rate_limit",
-                    "rate_limit_type": rate_check["reason"],
-                    "retry_after": rate_check.get("retry_after", 0),
-                    "entry": entry.to_dict()
-                }
+        # Run validation pipeline - early return on any rejection
+        if (rejection := self._get_rate_limit_rejection(entry)):
+            return rejection
 
-        # Validate entry timestamp (anti-backdating protection)
-        if self.enable_timestamp_validation:
-            ts_check = self._validate_timestamp(entry)
-            if not ts_check["is_valid"]:
-                return {
-                    "status": "rejected",
-                    "message": ts_check["message"],
-                    "reason": "invalid_timestamp",
-                    "timestamp_issue": ts_check["reason"],
-                    "entry": entry.to_dict()
-                }
+        if (rejection := self._get_timestamp_rejection(entry)):
+            return rejection
 
-        # Sanitize metadata (anti-injection protection)
-        metadata_warning = None
-        if self.enable_metadata_sanitization:
-            sanitize_result = self._sanitize_metadata(entry)
-            if sanitize_result["rejected"]:
-                return {
-                    "status": "rejected",
-                    "message": sanitize_result["message"],
-                    "reason": "forbidden_metadata",
-                    "forbidden_fields": sanitize_result.get("forbidden_fields", []),
-                    "entry": entry.to_dict()
-                }
-            # Track warning for later inclusion in response
-            if sanitize_result.get("warning"):
-                metadata_warning = {
-                    "stripped_fields": sanitize_result["stripped_fields"],
-                    "message": sanitize_result["message"]
-                }
+        metadata_rejection, metadata_warning = self._get_metadata_rejection(entry)
+        if metadata_rejection:
+            return metadata_rejection
 
-        # Check entry quality (chain bloat prevention)
-        # This runs before validation to save LLM calls on rejected entries
-        quality_info = None
-        if self._quality_analyzer is not None:
-            quality_result = self._quality_analyzer.analyze(entry.content, entry.intent)
+        quality_rejection, quality_info = self._get_quality_rejection(entry)
+        if quality_rejection:
+            return quality_rejection
 
-            if quality_result.decision == QualityDecision.REJECT:
-                return {
-                    "status": "rejected",
-                    "message": quality_result.summary,
-                    "reason": "quality_check_failed",
-                    "quality_score": quality_result.score,
-                    "quality_issues": [
-                        {"issue": i.issue.value, "severity": i.severity,
-                         "message": i.message, "suggestion": i.suggestion}
-                        for i in quality_result.issues
-                    ],
-                    "quality_metrics": quality_result.metrics,
-                    "entry": entry.to_dict()
-                }
+        if (rejection := self._get_duplicate_rejection(entry)):
+            return rejection
 
-            if quality_result.decision == QualityDecision.NEEDS_REVISION:
-                return {
-                    "status": "needs_revision",
-                    "message": quality_result.summary,
-                    "reason": "quality_needs_improvement",
-                    "quality_score": quality_result.score,
-                    "quality_issues": [
-                        {"issue": i.issue.value, "severity": i.severity,
-                         "message": i.message, "suggestion": i.suggestion}
-                        for i in quality_result.issues
-                    ],
-                    "quality_metrics": quality_result.metrics,
-                    "entry": entry.to_dict()
-                }
+        asset_rejection, asset_transfer_info = self._get_asset_transfer_rejection(entry)
+        if asset_rejection:
+            return asset_rejection
 
-            # Track quality info for successful entries (includes suggestions)
-            if quality_result.has_suggestions:
-                quality_info = {
-                    "score": quality_result.score,
-                    "suggestions": [
-                        {"message": i.message, "suggestion": i.suggestion}
-                        for i in quality_result.issues
-                    ],
-                    "metrics": quality_result.metrics,
-                }
+        if (rejection := self._get_validation_rejection(entry, skip_validation)):
+            return rejection
 
-        # Check for duplicate entries (replay attack prevention)
-        if self.enable_deduplication:
-            duplicate_check = self._check_duplicate(entry)
-            if duplicate_check["is_duplicate"]:
-                return {
-                    "status": "rejected",
-                    "message": "Entry rejected: duplicate detected (possible replay attack)",
-                    "reason": "duplicate",
-                    "original_timestamp": duplicate_check["original_timestamp"],
-                    "fingerprint": duplicate_check["fingerprint"],
-                    "entry": entry.to_dict()
-                }
-
-        # Check for asset double-transfer (double-spending prevention)
-        asset_transfer_info = None
-        if self.enable_asset_tracking:
-            asset_check = self._check_asset_transfer(entry)
-            if not asset_check["allowed"]:
-                return {
-                    "status": "rejected",
-                    "message": asset_check["message"],
-                    "reason": "double_transfer",
-                    "asset_id": asset_check.get("asset_id"),
-                    "existing_transfer": asset_check.get("existing_transfer"),
-                    "entry": entry.to_dict()
-                }
-            if asset_check.get("is_transfer"):
-                asset_transfer_info = asset_check
-
-        # Check if validation should be enforced
-        if self.require_validation and not skip_validation:
-            validation_result = self._validate_entry(entry)
-
-            if validation_result["status"] == "error":
-                return {
-                    "status": "rejected",
-                    "message": "Validation failed with error",
-                    "error": validation_result.get("error", "Unknown validation error"),
-                    "entry": entry.to_dict()
-                }
-
-            decision = validation_result.get("validation", {}).get("decision", "ERROR")
-
-            if decision not in self._acceptable_decisions:
-                return {
-                    "status": "rejected",
-                    "message": f"Entry rejected: validation decision was {decision}",
-                    "validation_decision": decision,
-                    "validation_details": validation_result.get("validation", {}),
-                    "entry": entry.to_dict()
-                }
-
-            # Entry passed validation - update status and store paraphrase
-            entry.validation_status = "validated"
-            paraphrase = validation_result.get("validation", {}).get("paraphrase", "")
-            if paraphrase:
-                entry.validation_paraphrases.append(paraphrase)
-
-        # Register entry fingerprint for deduplication
-        if self.enable_deduplication:
-            fingerprint = compute_entry_fingerprint(entry.content, entry.author, entry.intent)
-            self._entry_fingerprints[fingerprint] = time.time()
-            self._cleanup_expired_fingerprints()
-
-        # Record submission for rate limiting
-        if self._rate_limiter is not None:
-            self._rate_limiter.record_submission(entry.author)
-
-        self.pending_entries.append(entry)
-        response = {
-            "status": "pending",
-            "message": "Entry added to pending queue",
-            "validated": self.require_validation and not skip_validation,
-            "entry": entry.to_dict()
-        }
-        # Include metadata warning if fields were stripped
-        if metadata_warning:
-            response["metadata_warning"] = metadata_warning
-        # Include asset transfer info if this is a transfer
-        if asset_transfer_info:
-            response["asset_transfer"] = {
-                "asset_id": asset_transfer_info["asset_id"],
-                "from": asset_transfer_info["from_owner"],
-                "to": asset_transfer_info["to_recipient"]
-            }
-        # Include quality suggestions if any (helps users write better contracts)
-        if quality_info:
-            response["quality_suggestions"] = quality_info
-        return response
+        # All checks passed - finalize and return success
+        return self._finalize_entry_addition(
+            entry, skip_validation, metadata_warning, asset_transfer_info, quality_info
+        )
 
     def _check_duplicate(self, entry: NaturalLanguageEntry) -> dict[str, Any]:
         """
@@ -1522,6 +1388,234 @@ class NatLangChain:
             intent=entry.intent,
             author=entry.author
         )
+
+    # =========================================================================
+    # Entry Validation Helpers (extracted from add_entry for clarity)
+    # =========================================================================
+
+    def _get_rate_limit_rejection(
+        self, entry: NaturalLanguageEntry
+    ) -> dict[str, Any] | None:
+        """Check rate limits and return rejection response if exceeded."""
+        if self._rate_limiter is None:
+            return None
+        rate_check = self._rate_limiter.check_rate_limit(entry.author)
+        if not rate_check["allowed"]:
+            return {
+                "status": "rejected",
+                "message": rate_check["message"],
+                "reason": "rate_limit",
+                "rate_limit_type": rate_check["reason"],
+                "retry_after": rate_check.get("retry_after", 0),
+                "entry": entry.to_dict()
+            }
+        return None
+
+    def _get_timestamp_rejection(
+        self, entry: NaturalLanguageEntry
+    ) -> dict[str, Any] | None:
+        """Check timestamp validity and return rejection response if invalid."""
+        if not self.enable_timestamp_validation:
+            return None
+        ts_check = self._validate_timestamp(entry)
+        if not ts_check["is_valid"]:
+            return {
+                "status": "rejected",
+                "message": ts_check["message"],
+                "reason": "invalid_timestamp",
+                "timestamp_issue": ts_check["reason"],
+                "entry": entry.to_dict()
+            }
+        return None
+
+    def _get_metadata_rejection(
+        self, entry: NaturalLanguageEntry
+    ) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+        """Check metadata and return (rejection, warning) tuple."""
+        if not self.enable_metadata_sanitization:
+            return None, None
+        sanitize_result = self._sanitize_metadata(entry)
+        if sanitize_result["rejected"]:
+            rejection = {
+                "status": "rejected",
+                "message": sanitize_result["message"],
+                "reason": "forbidden_metadata",
+                "forbidden_fields": sanitize_result.get("forbidden_fields", []),
+                "entry": entry.to_dict()
+            }
+            return rejection, None
+        warning = None
+        if sanitize_result.get("warning"):
+            warning = {
+                "stripped_fields": sanitize_result["stripped_fields"],
+                "message": sanitize_result["message"]
+            }
+        return None, warning
+
+    def _get_quality_rejection(
+        self, entry: NaturalLanguageEntry
+    ) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+        """Check quality and return (rejection, quality_info) tuple."""
+        if self._quality_analyzer is None:
+            return None, None
+
+        quality_result = self._quality_analyzer.analyze(entry.content, entry.intent)
+        quality_issues = [
+            {"issue": i.issue.value, "severity": i.severity,
+             "message": i.message, "suggestion": i.suggestion}
+            for i in quality_result.issues
+        ]
+
+        if quality_result.decision == QualityDecision.REJECT:
+            return {
+                "status": "rejected",
+                "message": quality_result.summary,
+                "reason": "quality_check_failed",
+                "quality_score": quality_result.score,
+                "quality_issues": quality_issues,
+                "quality_metrics": quality_result.metrics,
+                "entry": entry.to_dict()
+            }, None
+
+        if quality_result.decision == QualityDecision.NEEDS_REVISION:
+            return {
+                "status": "needs_revision",
+                "message": quality_result.summary,
+                "reason": "quality_needs_improvement",
+                "quality_score": quality_result.score,
+                "quality_issues": quality_issues,
+                "quality_metrics": quality_result.metrics,
+                "entry": entry.to_dict()
+            }, None
+
+        # Track quality info for successful entries
+        quality_info = None
+        if quality_result.has_suggestions:
+            quality_info = {
+                "score": quality_result.score,
+                "suggestions": [
+                    {"message": i.message, "suggestion": i.suggestion}
+                    for i in quality_result.issues
+                ],
+                "metrics": quality_result.metrics,
+            }
+        return None, quality_info
+
+    def _get_duplicate_rejection(
+        self, entry: NaturalLanguageEntry
+    ) -> dict[str, Any] | None:
+        """Check for duplicates and return rejection response if found."""
+        if not self.enable_deduplication:
+            return None
+        duplicate_check = self._check_duplicate(entry)
+        if duplicate_check["is_duplicate"]:
+            return {
+                "status": "rejected",
+                "message": "Entry rejected: duplicate detected (possible replay attack)",
+                "reason": "duplicate",
+                "original_timestamp": duplicate_check["original_timestamp"],
+                "fingerprint": duplicate_check["fingerprint"],
+                "entry": entry.to_dict()
+            }
+        return None
+
+    def _get_asset_transfer_rejection(
+        self, entry: NaturalLanguageEntry
+    ) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+        """Check asset transfer and return (rejection, transfer_info) tuple."""
+        if not self.enable_asset_tracking:
+            return None, None
+        asset_check = self._check_asset_transfer(entry)
+        if not asset_check["allowed"]:
+            return {
+                "status": "rejected",
+                "message": asset_check["message"],
+                "reason": "double_transfer",
+                "asset_id": asset_check.get("asset_id"),
+                "existing_transfer": asset_check.get("existing_transfer"),
+                "entry": entry.to_dict()
+            }, None
+        transfer_info = asset_check if asset_check.get("is_transfer") else None
+        return None, transfer_info
+
+    def _get_validation_rejection(
+        self, entry: NaturalLanguageEntry, skip_validation: bool
+    ) -> dict[str, Any] | None:
+        """Run entry validation and return rejection response if failed."""
+        if not self.require_validation or skip_validation:
+            return None
+
+        validation_result = self._validate_entry(entry)
+
+        if validation_result["status"] == "error":
+            return {
+                "status": "rejected",
+                "message": "Validation failed with error",
+                "error": validation_result.get("error", "Unknown validation error"),
+                "entry": entry.to_dict()
+            }
+
+        decision = validation_result.get("validation", {}).get("decision", "ERROR")
+
+        if decision not in self._acceptable_decisions:
+            return {
+                "status": "rejected",
+                "message": f"Entry rejected: validation decision was {decision}",
+                "validation_decision": decision,
+                "validation_details": validation_result.get("validation", {}),
+                "entry": entry.to_dict()
+            }
+
+        # Entry passed validation - update status and store paraphrase
+        entry.validation_status = "validated"
+        paraphrase = validation_result.get("validation", {}).get("paraphrase", "")
+        if paraphrase:
+            entry.validation_paraphrases.append(paraphrase)
+
+        return None
+
+    def _finalize_entry_addition(
+        self,
+        entry: NaturalLanguageEntry,
+        skip_validation: bool,
+        metadata_warning: dict | None,
+        asset_transfer_info: dict | None,
+        quality_info: dict | None
+    ) -> dict[str, Any]:
+        """Finalize entry addition and build success response."""
+        # Register entry fingerprint for deduplication
+        if self.enable_deduplication:
+            fingerprint = compute_entry_fingerprint(
+                entry.content, entry.author, entry.intent
+            )
+            self._entry_fingerprints[fingerprint] = time.time()
+            self._cleanup_expired_fingerprints()
+
+        # Record submission for rate limiting
+        if self._rate_limiter is not None:
+            self._rate_limiter.record_submission(entry.author)
+
+        self.pending_entries.append(entry)
+
+        response = {
+            "status": "pending",
+            "message": "Entry added to pending queue",
+            "validated": self.require_validation and not skip_validation,
+            "entry": entry.to_dict()
+        }
+
+        if metadata_warning:
+            response["metadata_warning"] = metadata_warning
+        if asset_transfer_info:
+            response["asset_transfer"] = {
+                "asset_id": asset_transfer_info["asset_id"],
+                "from": asset_transfer_info["from_owner"],
+                "to": asset_transfer_info["to_recipient"]
+            }
+        if quality_info:
+            response["quality_suggestions"] = quality_info
+
+        return response
 
     def mine_pending_entries(self, difficulty: int = 2) -> Block | None:
         """
