@@ -66,6 +66,7 @@ class RevenueSplit:
             raise ValueError(f"Revenue split must total 100%, got {total}%")
 
     def to_dict(self) -> dict[str, float]:
+        """Serialize revenue split percentages to a dictionary."""
         return {
             "developer": self.developer,
             "platform": self.platform,
@@ -81,6 +82,7 @@ class TierConfig:
     features: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize tier configuration to a dictionary."""
         return {
             "name": self.name,
             "multiplier": self.multiplier,
@@ -98,6 +100,7 @@ class PILTerms:
     payment_token: str = "ETH"
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize PIL terms to a dictionary for Story Protocol integration."""
         return {
             "commercial_use": self.commercial_use,
             "derivatives_allowed": self.derivatives_allowed,
@@ -155,6 +158,7 @@ class MarketConfig:
         return self.base_price_eth
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize market configuration to a dictionary for storage or API response."""
         return {
             "module_name": self.module_name,
             "version": self.version,
@@ -204,6 +208,7 @@ class LicensePurchase:
         return hashlib.sha256(data.encode()).hexdigest()[:16]
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize license purchase record to a dictionary for storage or API response."""
         return {
             "purchase_id": self.purchase_id,
             "module_name": self.module_name,

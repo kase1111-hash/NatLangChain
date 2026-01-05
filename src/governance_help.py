@@ -77,6 +77,7 @@ class NCIPEntry:
     doc_file: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize NCIP entry to a dictionary for API response."""
         return {
             "id": self.id,
             "title": self.title,
@@ -252,6 +253,7 @@ class MPSpec:
     doc_file: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize Mediator Protocol spec to a dictionary for API response."""
         return {
             "id": self.id,
             "title": self.title,

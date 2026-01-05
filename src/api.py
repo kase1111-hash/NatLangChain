@@ -41,16 +41,26 @@ try:
     ENCRYPTION_AVAILABLE = True
 except ImportError:
     ENCRYPTION_AVAILABLE = False
+
     def is_encryption_enabled():
+        """Check if encryption is enabled (stub when encryption module unavailable)."""
         return False
+
     encrypt_chain_data = None
     decrypt_chain_data = None
+
     def encrypt_sensitive_fields(x, **kwargs):
+        """Encrypt sensitive fields in data (passthrough stub when encryption unavailable)."""
         return x
+
     def decrypt_sensitive_fields(x, **kwargs):
+        """Decrypt sensitive fields in data (passthrough stub when encryption unavailable)."""
         return x
+
     def is_encrypted(x):
+        """Check if data is encrypted (stub returns False when encryption unavailable)."""
         return False
+
     EncryptionError = Exception
     ENCRYPTION_KEY_ENV = "NATLANGCHAIN_ENCRYPTION_KEY"
 
@@ -205,8 +215,11 @@ except ImportError:
     P2P_AVAILABLE = False
     P2PNetwork = None
     init_p2p_network = None
+
     def get_p2p_network():
+        """Get the P2P network instance (stub returns None when P2P unavailable)."""
         return None
+
     NodeRole = None
     ConsensusMode = None
 
@@ -233,9 +246,13 @@ try:
     SSRF_PROTECTION_AVAILABLE = True
 except ImportError:
     SSRF_PROTECTION_AVAILABLE = False
+
     def is_safe_peer_endpoint(endpoint):
+        """Check if a peer endpoint is safe from SSRF (stub allows all when unavailable)."""
         return True, None
+
     def validate_url_for_ssrf(url):
+        """Validate a URL for SSRF vulnerabilities (stub allows all when unavailable)."""
         return True, None
 
 

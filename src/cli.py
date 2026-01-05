@@ -40,17 +40,25 @@ def cmd_serve(args):
             import gunicorn.app.base
 
             class StandaloneApplication(gunicorn.app.base.BaseApplication):
+                """Gunicorn WSGI application wrapper for production deployment.
+
+                Wraps a Flask application for use with Gunicorn's WSGI server,
+                allowing configuration through a dictionary of options.
+                """
+
                 def __init__(self, app, options=None):
                     self.options = options or {}
                     self.application = app
                     super().__init__()
 
                 def load_config(self):
+                    """Load configuration from the options dictionary into Gunicorn settings."""
                     for key, value in self.options.items():
                         if key in self.cfg.settings and value is not None:
                             self.cfg.set(key.lower(), value)
 
                 def load(self):
+                    """Return the Flask application instance for Gunicorn to serve."""
                     return self.application
 
             # Import the Flask app

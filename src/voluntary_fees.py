@@ -113,6 +113,7 @@ class FeeInfo:
     is_explicit: bool = False         # Explicitly stated vs inferred
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize fee information to a dictionary."""
         return {
             "amount": self.amount,
             "currency": self.currency,
@@ -169,6 +170,7 @@ class QueuedContract:
         return self.metrics.priority_score > other.metrics.priority_score
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize queued contract to a dictionary for API response."""
         return {
             "contract_id": self.contract_id,
             "submitter_id": self.submitter_id,
@@ -194,6 +196,7 @@ class MediatorEarnings:
     contracts_processed: int = 0
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize mediator earnings to a dictionary for reporting."""
         return {
             "mediator_id": self.mediator_id,
             "total_earned": self.total_earned,
@@ -237,6 +240,7 @@ class CommunityPool:
         return True
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize community pool state to a dictionary for API response."""
         return {
             "balance": self.balance,
             "total_contributions": self.total_contributions,

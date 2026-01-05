@@ -41,6 +41,7 @@ class SafeLogFormatter(logging.Formatter):
     """
 
     def format(self, record: logging.LogRecord) -> str:
+        """Format a log record after sanitizing it to prevent log injection attacks."""
         # Sanitize the message to prevent log injection
         if isinstance(record.msg, str):
             # Replace newlines and carriage returns that could create fake log entries
@@ -268,6 +269,7 @@ class PeerInfo:
     capabilities: set[str] = field(default_factory=set)
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize peer info to a dictionary for JSON encoding or network transmission."""
         return {
             "peer_id": self.peer_id,
             "endpoint": self.endpoint,
@@ -284,6 +286,7 @@ class PeerInfo:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> 'PeerInfo':
+        """Deserialize peer info from a dictionary received from network or storage."""
         return cls(
             peer_id=data["peer_id"],
             endpoint=data["endpoint"],
@@ -311,6 +314,7 @@ class BroadcastMessage:
     signature: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize broadcast message to a dictionary for network transmission."""
         return {
             "message_id": self.message_id,
             "broadcast_type": self.broadcast_type.value,
@@ -323,6 +327,7 @@ class BroadcastMessage:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> 'BroadcastMessage':
+        """Deserialize broadcast message from a dictionary received from the network."""
         return cls(
             message_id=data["message_id"],
             broadcast_type=BroadcastType(data["broadcast_type"]),
