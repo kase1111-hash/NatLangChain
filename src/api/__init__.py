@@ -33,6 +33,9 @@ from .monitoring import monitoring_bp
 from .search import search_bp
 from .boundary import boundary_bp
 from .marketplace import marketplace_bp
+from .help import help_bp
+from .chat import chat_bp
+from .contracts import contracts_bp
 
 # List of all blueprints for registration
 # Tuple format: (blueprint, url_prefix)
@@ -43,6 +46,9 @@ ALL_BLUEPRINTS = [
     (monitoring_bp, ''),  # Monitoring routes (/metrics, /health/*)
     (boundary_bp, ''),    # Boundary protection routes (/boundary/*)
     (marketplace_bp, ''), # Marketplace routes (/marketplace/*)
+    (help_bp, ''),        # Help routes (/api/help/*)
+    (chat_bp, ''),        # Chat routes (/chat/*)
+    (contracts_bp, ''),   # Contract routes (/contract/*)
 ]
 
 
