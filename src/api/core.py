@@ -13,12 +13,12 @@ import json
 
 from flask import Blueprint, jsonify, request
 
-from api.state import (
+from .state import (
     blockchain,
     create_entry_with_encryption,
     save_chain,
 )
-from api.utils import (
+from .utils import (
     managers,
     require_api_key,
     validate_json_schema,

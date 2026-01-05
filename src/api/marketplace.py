@@ -12,7 +12,7 @@ All endpoints are prefixed with /marketplace/
 
 from flask import Blueprint, jsonify, request
 
-from api.utils import managers, require_api_key, validate_json_schema
+from .utils import managers, require_api_key, validate_json_schema
 
 marketplace_bp = Blueprint('marketplace', __name__, url_prefix='/marketplace')
 

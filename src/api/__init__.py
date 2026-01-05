@@ -27,12 +27,12 @@ Future blueprints (to be extracted from api.py):
 - p2p: Peer-to-peer network operations
 """
 
-from api.core import core_bp
-from api.mobile import mobile_bp
-from api.monitoring import monitoring_bp
-from api.search import search_bp
-from api.boundary import boundary_bp
-from api.marketplace import marketplace_bp
+from .core import core_bp
+from .mobile import mobile_bp
+from .monitoring import monitoring_bp
+from .search import search_bp
+from .boundary import boundary_bp
+from .marketplace import marketplace_bp
 
 # List of all blueprints for registration
 # Tuple format: (blueprint, url_prefix)

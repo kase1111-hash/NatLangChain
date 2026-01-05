@@ -11,8 +11,8 @@ This blueprint handles semantic search, drift detection, and dialectic consensus
 
 from flask import Blueprint, jsonify, request
 
-from api.state import blockchain
-from api.utils import managers, require_api_key, validate_json_schema
+from .state import blockchain
+from .utils import managers, require_api_key, validate_json_schema
 
 # Create the blueprint
 search_bp = Blueprint('search', __name__)
