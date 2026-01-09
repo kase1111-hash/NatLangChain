@@ -43,6 +43,7 @@ import { SearchClient } from './clients/search';
 import { ContractsClient } from './clients/contracts';
 import { DisputesClient } from './clients/disputes';
 import { SettlementsClient } from './clients/settlements';
+import { DerivativesClient } from './clients/derivatives';
 import type { NatLangChainConfig } from './types';
 
 // Re-export all types
@@ -64,6 +65,21 @@ export type {
   DelegationResponse,
   StakeResponse,
 } from './clients/settlements';
+export type {
+  DerivativeType,
+  ParentRef,
+  DerivativeRef,
+  LineageRef,
+  DerivativesResponse,
+  LineageResponse,
+  DerivationTreeResponse,
+  DerivativeStatusResponse,
+  DerivativeTypesResponse,
+  ValidateDerivativeRefsRequest,
+  ValidateDerivativeRefsResponse,
+  GetDerivativesOptions,
+  GetLineageOptions,
+} from './clients/derivatives';
 
 /**
  * NatLangChain SDK Client
@@ -173,6 +189,26 @@ export class NatLangChain {
   public readonly settlements: SettlementsClient;
 
   /**
+   * Derivative operations: lineage tracking, derivation trees
+   *
+   * @example
+   * ```ts
+   * // Get derivatives of an entry
+   * await client.derivatives.getDerivatives(1, 0, { recursive: true });
+   *
+   * // Get lineage/ancestry
+   * await client.derivatives.getLineage(5, 2);
+   *
+   * // Get full derivation tree
+   * await client.derivatives.getTree(3, 1);
+   *
+   * // Check derivative status
+   * await client.derivatives.getStatus(2, 0);
+   * ```
+   */
+  public readonly derivatives: DerivativesClient;
+
+  /**
    * Create a new NatLangChain client
    *
    * @param config - Client configuration
@@ -185,6 +221,7 @@ export class NatLangChain {
     this.contracts = new ContractsClient(this.http);
     this.disputes = new DisputesClient(this.http);
     this.settlements = new SettlementsClient(this.http);
+    this.derivatives = new DerivativesClient(this.http);
   }
 
   /**

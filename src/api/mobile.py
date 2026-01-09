@@ -10,12 +10,13 @@ from flask import Blueprint, jsonify, request
 from .utils import DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT, managers, require_api_key
 
 # Create the blueprint
-mobile_bp = Blueprint('mobile', __name__, url_prefix='/mobile')
+mobile_bp = Blueprint("mobile", __name__, url_prefix="/mobile")
 
 
 # ========== Device Management ==========
 
-@mobile_bp.route('/device/register', methods=['POST'])
+
+@mobile_bp.route("/device/register", methods=["POST"])
 @require_api_key
 def register_device():
     """
@@ -46,25 +47,25 @@ def register_device():
     try:
         device_type = DeviceType[device_type_str.upper()]
     except KeyError:
-        return jsonify({
-            "error": f"Invalid device_type. Valid: {[t.name.lower() for t in DeviceType]}"
-        }), 400
+        return jsonify(
+            {"error": f"Invalid device_type. Valid: {[t.name.lower() for t in DeviceType]}"}
+        ), 400
 
     device_id = managers.mobile_deployment.register_device(
-        device_type=device_type,
-        device_name=device_name,
-        capabilities=capabilities
+        device_type=device_type, device_name=device_name, capabilities=capabilities
     )
 
-    return jsonify({
-        "device_id": device_id,
-        "device_type": device_type_str,
-        "device_name": device_name,
-        "registered": True
-    })
+    return jsonify(
+        {
+            "device_id": device_id,
+            "device_type": device_type_str,
+            "device_name": device_name,
+            "registered": True,
+        }
+    )
 
 
-@mobile_bp.route('/device/<device_id>', methods=['GET'])
+@mobile_bp.route("/device/<device_id>", methods=["GET"])
 def get_device_info(device_id: str):
     """Get information about a registered device."""
     if not managers.mobile_deployment:
@@ -74,19 +75,21 @@ def get_device_info(device_id: str):
     if not device:
         return jsonify({"error": "Device not found"}), 404
 
-    return jsonify({
-        "device_id": device.device_id,
-        "device_type": device.device_type.name.lower(),
-        "device_name": device.device_name,
-        "capabilities": device.capabilities,
-        "registered_at": device.registered_at.isoformat(),
-        "last_sync": device.last_sync.isoformat() if device.last_sync else None,
-        "is_active": device.is_active,
-        "platform_version": device.platform_version
-    })
+    return jsonify(
+        {
+            "device_id": device.device_id,
+            "device_type": device.device_type.name.lower(),
+            "device_name": device.device_name,
+            "capabilities": device.capabilities,
+            "registered_at": device.registered_at.isoformat(),
+            "last_sync": device.last_sync.isoformat() if device.last_sync else None,
+            "is_active": device.is_active,
+            "platform_version": device.platform_version,
+        }
+    )
 
 
-@mobile_bp.route('/device/<device_id>/features', methods=['GET'])
+@mobile_bp.route("/device/<device_id>/features", methods=["GET"])
 def get_device_features(device_id: str):
     """Get feature flags for a specific device."""
     if not managers.mobile_deployment:
@@ -96,15 +99,13 @@ def get_device_features(device_id: str):
     if not features:
         return jsonify({"error": "Device not found"}), 404
 
-    return jsonify({
-        "device_id": device_id,
-        "features": features
-    })
+    return jsonify({"device_id": device_id, "features": features})
 
 
 # ========== Edge AI ==========
 
-@mobile_bp.route('/edge/model/load', methods=['POST'])
+
+@mobile_bp.route("/edge/model/load", methods=["POST"])
 @require_api_key
 def load_edge_model():
     """
@@ -132,20 +133,13 @@ def load_edge_model():
         return jsonify({"error": "model_id required"}), 400
 
     success = managers.mobile_deployment.load_edge_model(
-        model_id=model_id,
-        model_type=model_type,
-        model_path=model_path,
-        device_id=device_id
+        model_id=model_id, model_type=model_type, model_path=model_path, device_id=device_id
     )
 
-    return jsonify({
-        "model_id": model_id,
-        "loaded": success,
-        "device_id": device_id
-    })
+    return jsonify({"model_id": model_id, "loaded": success, "device_id": device_id})
 
 
-@mobile_bp.route('/edge/inference', methods=['POST'])
+@mobile_bp.route("/edge/inference", methods=["POST"])
 @require_api_key
 def run_edge_inference():
     """
@@ -171,15 +165,13 @@ def run_edge_inference():
         return jsonify({"error": "model_id and input_data required"}), 400
 
     result = managers.mobile_deployment.run_inference(
-        model_id=model_id,
-        input_data=input_data,
-        device_id=device_id
+        model_id=model_id, input_data=input_data, device_id=device_id
     )
 
     return jsonify(result)
 
 
-@mobile_bp.route('/edge/models', methods=['GET'])
+@mobile_bp.route("/edge/models", methods=["GET"])
 def list_edge_models():
     """List all loaded edge models."""
     if not managers.mobile_deployment:
@@ -187,21 +179,20 @@ def list_edge_models():
 
     models = []
     for model_id, config in managers.mobile_deployment.edge_ai.loaded_models.items():
-        models.append({
-            "model_id": model_id,
-            "model_type": config.model_type,
-            "is_quantized": config.is_quantized,
-            "loaded_at": config.loaded_at.isoformat(),
-            "inference_count": config.inference_count
-        })
+        models.append(
+            {
+                "model_id": model_id,
+                "model_type": config.model_type,
+                "is_quantized": config.is_quantized,
+                "loaded_at": config.loaded_at.isoformat(),
+                "inference_count": config.inference_count,
+            }
+        )
 
-    return jsonify({
-        "count": len(models),
-        "models": models
-    })
+    return jsonify({"count": len(models), "models": models})
 
 
-@mobile_bp.route('/edge/resources', methods=['GET'])
+@mobile_bp.route("/edge/resources", methods=["GET"])
 def get_edge_resources():
     """Get current edge AI resource usage."""
     if not managers.mobile_deployment:
@@ -210,20 +201,23 @@ def get_edge_resources():
     resources = managers.mobile_deployment.edge_ai.resource_limits
     stats = managers.mobile_deployment.edge_ai.get_statistics()
 
-    return jsonify({
-        "limits": {
-            "max_memory_mb": resources.max_memory_mb,
-            "max_cpu_percent": resources.max_cpu_percent,
-            "max_battery_drain_percent": resources.max_battery_drain_percent,
-            "prefer_wifi": resources.prefer_wifi
-        },
-        "current": stats
-    })
+    return jsonify(
+        {
+            "limits": {
+                "max_memory_mb": resources.max_memory_mb,
+                "max_cpu_percent": resources.max_cpu_percent,
+                "max_battery_drain_percent": resources.max_battery_drain_percent,
+                "prefer_wifi": resources.prefer_wifi,
+            },
+            "current": stats,
+        }
+    )
 
 
 # ========== Wallet Management ==========
 
-@mobile_bp.route('/wallet/connect', methods=['POST'])
+
+@mobile_bp.route("/wallet/connect", methods=["POST"])
 @require_api_key
 def connect_mobile_wallet():
     """
@@ -256,25 +250,25 @@ def connect_mobile_wallet():
     try:
         wallet_type = WalletType[wallet_type_str.upper()]
     except KeyError:
-        return jsonify({
-            "error": f"Invalid wallet_type. Valid: {[t.name.lower() for t in WalletType]}"
-        }), 400
+        return jsonify(
+            {"error": f"Invalid wallet_type. Valid: {[t.name.lower() for t in WalletType]}"}
+        ), 400
 
     connection_id = managers.mobile_deployment.connect_wallet(
-        wallet_type=wallet_type,
-        device_id=device_id,
-        wallet_address=wallet_address
+        wallet_type=wallet_type, device_id=device_id, wallet_address=wallet_address
     )
 
-    return jsonify({
-        "connection_id": connection_id,
-        "wallet_type": wallet_type_str,
-        "device_id": device_id,
-        "connected": True
-    })
+    return jsonify(
+        {
+            "connection_id": connection_id,
+            "wallet_type": wallet_type_str,
+            "device_id": device_id,
+            "connected": True,
+        }
+    )
 
 
-@mobile_bp.route('/wallet/<connection_id>', methods=['GET'])
+@mobile_bp.route("/wallet/<connection_id>", methods=["GET"])
 def get_wallet_connection(connection_id: str):
     """Get wallet connection details."""
     if not managers.mobile_deployment:
@@ -284,17 +278,19 @@ def get_wallet_connection(connection_id: str):
     if not conn:
         return jsonify({"error": "Connection not found"}), 404
 
-    return jsonify({
-        "connection_id": conn.connection_id,
-        "wallet_type": conn.wallet_type.name.lower(),
-        "wallet_address": conn.wallet_address,
-        "state": conn.state.name.lower(),
-        "connected_at": conn.connected_at.isoformat(),
-        "signature_count": conn.signature_count
-    })
+    return jsonify(
+        {
+            "connection_id": conn.connection_id,
+            "wallet_type": conn.wallet_type.name.lower(),
+            "wallet_address": conn.wallet_address,
+            "state": conn.state.name.lower(),
+            "connected_at": conn.connected_at.isoformat(),
+            "signature_count": conn.signature_count,
+        }
+    )
 
 
-@mobile_bp.route('/wallet/<connection_id>/disconnect', methods=['POST'])
+@mobile_bp.route("/wallet/<connection_id>/disconnect", methods=["POST"])
 @require_api_key
 def disconnect_mobile_wallet(connection_id: str):
     """Disconnect a wallet."""
@@ -303,13 +299,10 @@ def disconnect_mobile_wallet(connection_id: str):
 
     success = managers.mobile_deployment.disconnect_wallet(connection_id)
 
-    return jsonify({
-        "connection_id": connection_id,
-        "disconnected": success
-    })
+    return jsonify({"connection_id": connection_id, "disconnected": success})
 
 
-@mobile_bp.route('/wallet/<connection_id>/sign', methods=['POST'])
+@mobile_bp.route("/wallet/<connection_id>/sign", methods=["POST"])
 @require_api_key
 def sign_with_wallet(connection_id: str):
     """
@@ -333,15 +326,13 @@ def sign_with_wallet(connection_id: str):
         return jsonify({"error": "message required"}), 400
 
     result = managers.mobile_deployment.sign_message(
-        connection_id=connection_id,
-        message=message,
-        sign_type=sign_type
+        connection_id=connection_id, message=message, sign_type=sign_type
     )
 
     return jsonify(result)
 
 
-@mobile_bp.route('/wallet/list', methods=['GET'])
+@mobile_bp.route("/wallet/list", methods=["GET"])
 def list_wallet_connections():
     """List all wallet connections."""
     if not managers.mobile_deployment:
@@ -349,23 +340,23 @@ def list_wallet_connections():
 
     connections = []
     for conn_id, conn in managers.mobile_deployment.wallet_manager.connections.items():
-        connections.append({
-            "connection_id": conn.connection_id,
-            "wallet_type": conn.wallet_type.name.lower(),
-            "wallet_address": conn.wallet_address,
-            "state": conn.state.name.lower(),
-            "device_id": conn.device_id
-        })
+        connections.append(
+            {
+                "connection_id": conn.connection_id,
+                "wallet_type": conn.wallet_type.name.lower(),
+                "wallet_address": conn.wallet_address,
+                "state": conn.state.name.lower(),
+                "device_id": conn.device_id,
+            }
+        )
 
-    return jsonify({
-        "count": len(connections),
-        "connections": connections
-    })
+    return jsonify({"count": len(connections), "connections": connections})
 
 
 # ========== Offline Management ==========
 
-@mobile_bp.route('/offline/state/save', methods=['POST'])
+
+@mobile_bp.route("/offline/state/save", methods=["POST"])
 @require_api_key
 def save_offline_state():
     """
@@ -391,20 +382,15 @@ def save_offline_state():
         return jsonify({"error": "device_id, state_type, and state_data required"}), 400
 
     state_id = managers.mobile_deployment.save_offline_state(
-        device_id=device_id,
-        state_type=state_type,
-        state_data=state_data
+        device_id=device_id, state_type=state_type, state_data=state_data
     )
 
-    return jsonify({
-        "state_id": state_id,
-        "device_id": device_id,
-        "state_type": state_type,
-        "saved": True
-    })
+    return jsonify(
+        {"state_id": state_id, "device_id": device_id, "state_type": state_type, "saved": True}
+    )
 
 
-@mobile_bp.route('/offline/state/<device_id>', methods=['GET'])
+@mobile_bp.route("/offline/state/<device_id>", methods=["GET"])
 def get_offline_state(device_id: str):
     """Get offline state for a device."""
     if not managers.mobile_deployment:
@@ -413,14 +399,10 @@ def get_offline_state(device_id: str):
     state_type = request.args.get("state_type")
     state = managers.mobile_deployment.get_offline_state(device_id, state_type)
 
-    return jsonify({
-        "device_id": device_id,
-        "state_type": state_type,
-        "state": state
-    })
+    return jsonify({"device_id": device_id, "state_type": state_type, "state": state})
 
 
-@mobile_bp.route('/offline/queue/add', methods=['POST'])
+@mobile_bp.route("/offline/queue/add", methods=["POST"])
 @require_api_key
 def add_to_sync_queue():
     """
@@ -445,25 +427,21 @@ def add_to_sync_queue():
     resource_data = data.get("resource_data")
 
     if not all([device_id, operation_type, resource_type, resource_data]):
-        return jsonify({
-            "error": "device_id, operation_type, resource_type, and resource_data required"
-        }), 400
+        return jsonify(
+            {"error": "device_id, operation_type, resource_type, and resource_data required"}
+        ), 400
 
     op_id = managers.mobile_deployment.queue_offline_operation(
         device_id=device_id,
         operation_type=operation_type,
         resource_type=resource_type,
-        resource_data=resource_data
+        resource_data=resource_data,
     )
 
-    return jsonify({
-        "operation_id": op_id,
-        "device_id": device_id,
-        "queued": True
-    })
+    return jsonify({"operation_id": op_id, "device_id": device_id, "queued": True})
 
 
-@mobile_bp.route('/offline/sync', methods=['POST'])
+@mobile_bp.route("/offline/sync", methods=["POST"])
 @require_api_key
 def sync_offline_data():
     """
@@ -491,7 +469,7 @@ def sync_offline_data():
     return jsonify(result)
 
 
-@mobile_bp.route('/offline/queue/<device_id>', methods=['GET'])
+@mobile_bp.route("/offline/queue/<device_id>", methods=["GET"])
 def get_sync_queue(device_id: str):
     """Get sync queue for a device."""
     if not managers.mobile_deployment:
@@ -499,14 +477,10 @@ def get_sync_queue(device_id: str):
 
     queue = managers.mobile_deployment.get_sync_queue(device_id)
 
-    return jsonify({
-        "device_id": device_id,
-        "queue_length": len(queue),
-        "operations": queue
-    })
+    return jsonify({"device_id": device_id, "queue_length": len(queue), "operations": queue})
 
 
-@mobile_bp.route('/offline/conflicts/<device_id>', methods=['GET'])
+@mobile_bp.route("/offline/conflicts/<device_id>", methods=["GET"])
 def get_sync_conflicts(device_id: str):
     """Get sync conflicts for a device."""
     if not managers.mobile_deployment:
@@ -514,14 +488,12 @@ def get_sync_conflicts(device_id: str):
 
     conflicts = managers.mobile_deployment.get_conflicts(device_id)
 
-    return jsonify({
-        "device_id": device_id,
-        "conflict_count": len(conflicts),
-        "conflicts": conflicts
-    })
+    return jsonify(
+        {"device_id": device_id, "conflict_count": len(conflicts), "conflicts": conflicts}
+    )
 
 
-@mobile_bp.route('/offline/conflict/resolve', methods=['POST'])
+@mobile_bp.route("/offline/conflict/resolve", methods=["POST"])
 @require_api_key
 def resolve_sync_conflict():
     """
@@ -553,21 +525,16 @@ def resolve_sync_conflict():
         return jsonify({"error": "merged_data required for merge resolution"}), 400
 
     success = managers.mobile_deployment.resolve_conflict(
-        conflict_id=conflict_id,
-        resolution=resolution,
-        merged_data=merged_data
+        conflict_id=conflict_id, resolution=resolution, merged_data=merged_data
     )
 
-    return jsonify({
-        "conflict_id": conflict_id,
-        "resolved": success,
-        "resolution": resolution
-    })
+    return jsonify({"conflict_id": conflict_id, "resolved": success, "resolution": resolution})
 
 
 # ========== Statistics ==========
 
-@mobile_bp.route('/stats', methods=['GET'])
+
+@mobile_bp.route("/stats", methods=["GET"])
 def get_mobile_stats():
     """Get mobile deployment statistics."""
     if not managers.mobile_deployment:
@@ -576,7 +543,7 @@ def get_mobile_stats():
     return jsonify(managers.mobile_deployment.get_statistics())
 
 
-@mobile_bp.route('/audit', methods=['GET'])
+@mobile_bp.route("/audit", methods=["GET"])
 def get_mobile_audit():
     """Get mobile deployment audit trail."""
     if not managers.mobile_deployment:
@@ -587,7 +554,4 @@ def get_mobile_audit():
 
     audit = managers.mobile_deployment.get_audit_trail(limit=limit)
 
-    return jsonify({
-        "count": len(audit),
-        "entries": audit
-    })
+    return jsonify({"count": len(audit), "entries": audit})

@@ -13,13 +13,17 @@ import time
 import pytest
 
 # Add src to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from adaptive_cache import (
+    BASE_TTL_INTENTS,
+    CONGESTION_THRESHOLD_HIGH,
+    CONGESTION_THRESHOLD_LOW,
+    MAX_TTL_INTENTS,
     AdaptiveCache,
+    AdaptiveCacheEntry,
     CacheCategory,
     CacheConfig,
-    AdaptiveCacheEntry,
     CongestionDetector,
     CongestionLevel,
     CongestionState,
@@ -27,16 +31,12 @@ from adaptive_cache import (
     get_adaptive_cache,
     make_cache_key,
     reset_adaptive_cache,
-    CONGESTION_THRESHOLD_LOW,
-    CONGESTION_THRESHOLD_HIGH,
-    BASE_TTL_INTENTS,
-    MAX_TTL_INTENTS,
 )
-
 
 # =============================================================================
 # CongestionDetector Tests
 # =============================================================================
+
 
 class TestCongestionDetector:
     """Tests for CongestionDetector class."""
@@ -57,11 +57,7 @@ class TestCongestionDetector:
 
     def test_moderate_load(self):
         """Test congestion detection with moderate load."""
-        detector = CongestionDetector(
-            threshold_low=50,
-            threshold_medium=100,
-            threshold_high=200
-        )
+        detector = CongestionDetector(threshold_low=50, threshold_medium=100, threshold_high=200)
         state = detector.update(pending_count=120)
 
         assert state.level == CongestionLevel.MODERATE
@@ -69,11 +65,7 @@ class TestCongestionDetector:
 
     def test_heavy_load(self):
         """Test congestion detection with heavy load."""
-        detector = CongestionDetector(
-            threshold_low=50,
-            threshold_medium=100,
-            threshold_high=200
-        )
+        detector = CongestionDetector(threshold_low=50, threshold_medium=100, threshold_high=200)
         state = detector.update(pending_count=250)
 
         assert state.level == CongestionLevel.HEAVY
@@ -81,11 +73,7 @@ class TestCongestionDetector:
 
     def test_critical_load(self):
         """Test congestion detection with critical load."""
-        detector = CongestionDetector(
-            threshold_low=50,
-            threshold_medium=100,
-            threshold_high=200
-        )
+        detector = CongestionDetector(threshold_low=50, threshold_medium=100, threshold_high=200)
         state = detector.update(pending_count=500)
 
         assert state.level == CongestionLevel.CRITICAL
@@ -132,6 +120,7 @@ class TestCongestionDetector:
 # CacheConfig Tests
 # =============================================================================
 
+
 class TestCacheConfig:
     """Tests for CacheConfig class."""
 
@@ -157,6 +146,7 @@ class TestCacheConfig:
 # =============================================================================
 # AdaptiveCache Tests
 # =============================================================================
+
 
 class TestAdaptiveCache:
     """Tests for AdaptiveCache class."""
@@ -385,6 +375,7 @@ class TestAdaptiveCache:
 # Helper Function Tests
 # =============================================================================
 
+
 class TestHelperFunctions:
     """Tests for helper functions."""
 
@@ -410,16 +401,19 @@ class TestHelperFunctions:
 # Environment Configuration Tests
 # =============================================================================
 
+
 class TestEnvironmentConfiguration:
     """Tests for environment-based configuration."""
 
     def setup_method(self):
         """Reset cache and clean env."""
         reset_adaptive_cache()
-        for key in ['NATLANGCHAIN_QUERY_CACHE_ENABLED',
-                    'NATLANGCHAIN_QUERY_CACHE_MAX_SIZE',
-                    'NATLANGCHAIN_CONGESTION_THRESHOLD_LOW',
-                    'NATLANGCHAIN_CONGESTION_THRESHOLD_HIGH']:
+        for key in [
+            "NATLANGCHAIN_QUERY_CACHE_ENABLED",
+            "NATLANGCHAIN_QUERY_CACHE_MAX_SIZE",
+            "NATLANGCHAIN_CONGESTION_THRESHOLD_LOW",
+            "NATLANGCHAIN_CONGESTION_THRESHOLD_HIGH",
+        ]:
             os.environ.pop(key, None)
 
     def test_create_from_env_defaults(self):
@@ -431,10 +425,10 @@ class TestEnvironmentConfiguration:
 
     def test_create_from_env_custom(self):
         """Test creating cache from custom environment."""
-        os.environ['NATLANGCHAIN_QUERY_CACHE_ENABLED'] = 'false'
-        os.environ['NATLANGCHAIN_QUERY_CACHE_MAX_SIZE'] = '1000'
-        os.environ['NATLANGCHAIN_CONGESTION_THRESHOLD_LOW'] = '25'
-        os.environ['NATLANGCHAIN_CONGESTION_THRESHOLD_HIGH'] = '100'
+        os.environ["NATLANGCHAIN_QUERY_CACHE_ENABLED"] = "false"
+        os.environ["NATLANGCHAIN_QUERY_CACHE_MAX_SIZE"] = "1000"
+        os.environ["NATLANGCHAIN_CONGESTION_THRESHOLD_LOW"] = "25"
+        os.environ["NATLANGCHAIN_CONGESTION_THRESHOLD_HIGH"] = "100"
 
         try:
             cache = create_cache_from_env()
@@ -444,16 +438,19 @@ class TestEnvironmentConfiguration:
             assert cache.congestion.threshold_low == 25
             assert cache.congestion.threshold_high == 100
         finally:
-            for key in ['NATLANGCHAIN_QUERY_CACHE_ENABLED',
-                        'NATLANGCHAIN_QUERY_CACHE_MAX_SIZE',
-                        'NATLANGCHAIN_CONGESTION_THRESHOLD_LOW',
-                        'NATLANGCHAIN_CONGESTION_THRESHOLD_HIGH']:
+            for key in [
+                "NATLANGCHAIN_QUERY_CACHE_ENABLED",
+                "NATLANGCHAIN_QUERY_CACHE_MAX_SIZE",
+                "NATLANGCHAIN_CONGESTION_THRESHOLD_LOW",
+                "NATLANGCHAIN_CONGESTION_THRESHOLD_HIGH",
+            ]:
                 os.environ.pop(key, None)
 
 
 # =============================================================================
 # Global Instance Tests
 # =============================================================================
+
 
 class TestGlobalInstance:
     """Tests for global cache instance."""
@@ -484,6 +481,7 @@ class TestGlobalInstance:
 # Performance Tests
 # =============================================================================
 
+
 class TestPerformance:
     """Performance benchmarks for adaptive cache."""
 
@@ -502,7 +500,9 @@ class TestPerformance:
         elapsed = time.perf_counter() - start
 
         ops_per_sec = 1000 / elapsed
-        print(f"\nCache get performance: {ops_per_sec:.0f} ops/sec ({elapsed*1000:.2f}ms for 1000 ops)")
+        print(
+            f"\nCache get performance: {ops_per_sec:.0f} ops/sec ({elapsed * 1000:.2f}ms for 1000 ops)"
+        )
 
         # Should be fast - at least 10k ops/sec
         assert ops_per_sec > 10000
@@ -524,7 +524,9 @@ class TestPerformance:
         elapsed = time.perf_counter() - start
 
         ops_per_sec = 1000 / elapsed
-        print(f"\nCached get_or_compute: {ops_per_sec:.0f} ops/sec ({elapsed*1000:.2f}ms for 1000 ops)")
+        print(
+            f"\nCached get_or_compute: {ops_per_sec:.0f} ops/sec ({elapsed * 1000:.2f}ms for 1000 ops)"
+        )
 
         assert ops_per_sec > 5000
 
@@ -539,7 +541,9 @@ class TestPerformance:
         elapsed = time.perf_counter() - start
 
         ops_per_sec = 1000 / elapsed
-        print(f"\nCongestion update: {ops_per_sec:.0f} ops/sec ({elapsed*1000:.2f}ms for 1000 ops)")
+        print(
+            f"\nCongestion update: {ops_per_sec:.0f} ops/sec ({elapsed * 1000:.2f}ms for 1000 ops)"
+        )
 
         assert ops_per_sec > 50000
 

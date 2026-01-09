@@ -21,16 +21,17 @@ import logging
 import os
 import threading
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Callable
+from typing import Any
 
 try:
     from agent_security import (
         AgentSecurityManager,
-        ThreatDetection,
-        ThreatCategory,
         RiskLevel,
+        ThreatCategory,
+        ThreatDetection,
         init_agent_security,
     )
     from boundary_daemon import (
@@ -50,47 +51,40 @@ try:
         init_mode_manager,
     )
     from boundary_siem import (
+        EnhancedSIEMClient,
         NatLangChainSIEMEvents,
+        SIEMAuthConfig,
         SIEMClient,
         SIEMEvent,
         SIEMSeverity,
-        init_siem_client,
-        shutdown_siem_client,
-        EnhancedSIEMClient,
-        SIEMAuthConfig,
         init_enhanced_siem_client,
+        init_siem_client,
         shutdown_enhanced_siem_client,
+        shutdown_siem_client,
+    )
+    from external_daemon_client import (
+        DaemonDecision,
+        DaemonResponse,
+        ExternalDaemonClient,
+        init_daemon_client,
+        shutdown_daemon_client,
     )
     from security_enforcement import (
         EnforcementResult,
         SecurityEnforcementManager,
     )
-    from external_daemon_client import (
-        ExternalDaemonClient,
-        DaemonDecision,
-        DaemonResponse,
-        init_daemon_client,
-        shutdown_daemon_client,
-    )
 except ImportError:
     from .agent_security import (
-        AgentSecurityManager,
-        ThreatDetection,
-        ThreatCategory,
         RiskLevel,
         init_agent_security,
     )
     from .boundary_daemon import (
         BoundaryDaemon,
-        BoundaryPolicy,
-        DataClassification,
         EnforcementMode,
-        PolicyViolation,
         ViolationType,
     )
     from .boundary_modes import (
         BoundaryMode,
-        BoundaryModeManager,
         MemoryClass,
         ModeTransition,
         TripwireType,
@@ -98,26 +92,20 @@ except ImportError:
     )
     from .boundary_siem import (
         NatLangChainSIEMEvents,
-        SIEMClient,
-        SIEMEvent,
-        SIEMSeverity,
-        init_siem_client,
-        shutdown_siem_client,
-        EnhancedSIEMClient,
         SIEMAuthConfig,
+        SIEMEvent,
         init_enhanced_siem_client,
+        init_siem_client,
         shutdown_enhanced_siem_client,
-    )
-    from .security_enforcement import (
-        EnforcementResult,
-        SecurityEnforcementManager,
+        shutdown_siem_client,
     )
     from .external_daemon_client import (
-        ExternalDaemonClient,
         DaemonDecision,
-        DaemonResponse,
         init_daemon_client,
         shutdown_daemon_client,
+    )
+    from .security_enforcement import (
+        SecurityEnforcementManager,
     )
 
 logger = logging.getLogger(__name__)
@@ -126,6 +114,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ProtectionConfig:
     """Configuration for the boundary protection system."""
+
     # SIEM configuration
     siem_url: str | None = None
     siem_api_key: str | None = None
@@ -184,43 +173,42 @@ class ProtectionConfig:
             siem_api_key=os.getenv("BOUNDARY_SIEM_API_KEY"),
             siem_syslog_host=os.getenv("BOUNDARY_SIEM_SYSLOG_HOST"),
             siem_syslog_port=int(os.getenv("BOUNDARY_SIEM_SYSLOG_PORT", "514")),
-
             # Enhanced SIEM configuration
             use_enhanced_siem=os.getenv("BOUNDARY_USE_ENHANCED_SIEM", "false").lower() == "true",
             siem_kafka_brokers=kafka_brokers,
             siem_kafka_topic=os.getenv("BOUNDARY_SIEM_KAFKA_TOPIC", "boundary-siem-events"),
-            siem_validate_schema=os.getenv("BOUNDARY_SIEM_VALIDATE_SCHEMA", "true").lower() == "true",
-
+            siem_validate_schema=os.getenv("BOUNDARY_SIEM_VALIDATE_SCHEMA", "true").lower()
+            == "true",
             # External Daemon configuration
-            enable_external_daemon=os.getenv("BOUNDARY_ENABLE_EXTERNAL_DAEMON", "false").lower() == "true",
+            enable_external_daemon=os.getenv("BOUNDARY_ENABLE_EXTERNAL_DAEMON", "false").lower()
+            == "true",
             external_daemon_socket=os.getenv("BOUNDARY_DAEMON_SOCKET"),
             external_daemon_url=os.getenv("BOUNDARY_DAEMON_URL"),
             external_daemon_api_key=os.getenv("BOUNDARY_DAEMON_API_KEY"),
             external_daemon_timeout=float(os.getenv("BOUNDARY_DAEMON_TIMEOUT", "5.0")),
-            external_daemon_fail_open=os.getenv("BOUNDARY_DAEMON_FAIL_OPEN", "false").lower() == "true",
-
+            external_daemon_fail_open=os.getenv("BOUNDARY_DAEMON_FAIL_OPEN", "false").lower()
+            == "true",
             # Mode synchronization
-            sync_mode_with_daemon=os.getenv("BOUNDARY_SYNC_MODE_WITH_DAEMON", "false").lower() == "true",
-
+            sync_mode_with_daemon=os.getenv("BOUNDARY_SYNC_MODE_WITH_DAEMON", "false").lower()
+            == "true",
             # Mode configuration
             initial_mode=BoundaryMode(os.getenv("BOUNDARY_INITIAL_MODE", "restricted")),
             enable_tripwires=os.getenv("BOUNDARY_ENABLE_TRIPWIRES", "true").lower() == "true",
             cooldown_period=int(os.getenv("BOUNDARY_COOLDOWN_PERIOD", "300")),
-
             # Enforcement configuration
-            enable_network_enforcement=os.getenv("BOUNDARY_NETWORK_ENFORCEMENT", "true").lower() == "true",
+            enable_network_enforcement=os.getenv("BOUNDARY_NETWORK_ENFORCEMENT", "true").lower()
+            == "true",
             enable_usb_enforcement=os.getenv("BOUNDARY_USB_ENFORCEMENT", "true").lower() == "true",
             enable_process_sandboxing=os.getenv("BOUNDARY_SANDBOXING", "true").lower() == "true",
-
             # Agent security configuration
-            enable_injection_detection=os.getenv("BOUNDARY_INJECTION_DETECTION", "true").lower() == "true",
-            enable_rag_poisoning_detection=os.getenv("BOUNDARY_RAG_DETECTION", "true").lower() == "true",
+            enable_injection_detection=os.getenv("BOUNDARY_INJECTION_DETECTION", "true").lower()
+            == "true",
+            enable_rag_poisoning_detection=os.getenv("BOUNDARY_RAG_DETECTION", "true").lower()
+            == "true",
             enable_response_guardrails=os.getenv("BOUNDARY_GUARDRAILS", "true").lower() == "true",
             enable_agent_attestation=os.getenv("BOUNDARY_ATTESTATION", "true").lower() == "true",
-
             # Daemon enforcement mode
             enforcement_mode=EnforcementMode(os.getenv("BOUNDARY_ENFORCEMENT_MODE", "strict")),
-
             # Audit configuration
             audit_log_path=os.getenv("BOUNDARY_AUDIT_LOG", "/var/log/natlangchain/boundary.log"),
         )
@@ -229,6 +217,7 @@ class ProtectionConfig:
 @dataclass
 class ProtectionResult:
     """Result of a protection check."""
+
     allowed: bool
     action: str
     risk_level: RiskLevel
@@ -242,7 +231,7 @@ class ProtectionResult:
             "action": self.action,
             "risk_level": self.risk_level.value,
             "details": self.details,
-            "timestamp": self.timestamp
+            "timestamp": self.timestamp,
         }
 
 
@@ -285,7 +274,7 @@ class BoundaryProtection:
             "threats_detected": 0,
             "mode_changes": 0,
             "tripwires_triggered": 0,
-            "startup_time": datetime.utcnow().isoformat() + "Z"
+            "startup_time": datetime.utcnow().isoformat() + "Z",
         }
 
     def _init_components(self) -> None:
@@ -301,7 +290,7 @@ class BoundaryProtection:
                 syslog_port=self.config.siem_syslog_port,
                 kafka_brokers=self.config.siem_kafka_brokers,
                 kafka_topic=self.config.siem_kafka_topic,
-                validate_schema=self.config.siem_validate_schema
+                validate_schema=self.config.siem_validate_schema,
             )
             self._using_enhanced_siem = True
             logger.info("Initialized enhanced SIEM client for Boundary-SIEM integration")
@@ -311,7 +300,7 @@ class BoundaryProtection:
                 siem_url=self.config.siem_url,
                 api_key=self.config.siem_api_key,
                 syslog_host=self.config.siem_syslog_host,
-                syslog_port=self.config.siem_syslog_port
+                syslog_port=self.config.siem_syslog_port,
             )
             self._using_enhanced_siem = False
         else:
@@ -325,16 +314,14 @@ class BoundaryProtection:
                 http_url=self.config.external_daemon_url,
                 api_key=self.config.external_daemon_api_key,
                 timeout=self.config.external_daemon_timeout,
-                fail_open=self.config.external_daemon_fail_open
+                fail_open=self.config.external_daemon_fail_open,
             )
             logger.info("Initialized external daemon client for Boundary-Daemon integration")
         else:
             self.external_daemon = None
 
         # Initialize security enforcement
-        self.enforcement = SecurityEnforcementManager(
-            log_path=self.config.audit_log_path
-        )
+        self.enforcement = SecurityEnforcementManager(log_path=self.config.audit_log_path)
 
         # Initialize mode manager
         self.modes = init_mode_manager(
@@ -342,7 +329,7 @@ class BoundaryProtection:
             enforcement=self.enforcement,
             siem_client=self.siem,
             enable_tripwires=self.config.enable_tripwires,
-            cooldown_period=self.config.cooldown_period
+            cooldown_period=self.config.cooldown_period,
         )
 
         # Sync initial mode with external daemon if enabled
@@ -350,14 +337,11 @@ class BoundaryProtection:
             self._sync_mode_from_daemon()
 
         # Initialize boundary daemon (local policy engine)
-        self.daemon = BoundaryDaemon(
-            enforcement_mode=self.config.enforcement_mode
-        )
+        self.daemon = BoundaryDaemon(enforcement_mode=self.config.enforcement_mode)
 
         # Initialize agent security
         self.agent_security = init_agent_security(
-            siem_client=self.siem,
-            enable_attestation=self.config.enable_agent_attestation
+            siem_client=self.siem, enable_attestation=self.config.enable_agent_attestation
         )
 
     def _sync_mode_from_daemon(self) -> None:
@@ -378,7 +362,7 @@ class BoundaryProtection:
                                 mode,
                                 reason="Synced from external Boundary-Daemon",
                                 triggered_by="external_daemon",
-                                force=True
+                                force=True,
                             )
                     except ValueError:
                         logger.warning(f"Unknown mode from external daemon: {daemon_mode}")
@@ -407,8 +391,8 @@ class BoundaryProtection:
                     config={
                         "initial_mode": self.config.initial_mode.value,
                         "tripwires_enabled": self.config.enable_tripwires,
-                        "enforcement_mode": self.config.enforcement_mode.value
-                    }
+                        "enforcement_mode": self.config.enforcement_mode.value,
+                    },
                 )
                 self.siem.send_event_sync(event)
 
@@ -440,11 +424,7 @@ class BoundaryProtection:
     # =========================================================================
 
     def authorize_request(
-        self,
-        source: str,
-        destination: str,
-        payload: Any,
-        classification: str | None = None
+        self, source: str, destination: str, payload: Any, classification: str | None = None
     ) -> ProtectionResult:
         """
         Authorize an outbound data request.
@@ -477,27 +457,32 @@ class BoundaryProtection:
                     details={
                         "reason": f"Network blocked in {self.modes.current_mode.value} mode",
                         "source": source,
-                        "destination": destination
-                    }
+                        "destination": destination,
+                    },
                 )
 
             # Check boundary daemon policies
-            auth_result = self.daemon.authorize_request({
-                "request_id": f"REQ-{int(time.time() * 1000)}",
-                "source": source,
-                "destination": destination,
-                "payload": payload,
-                "data_classification": classification
-            })
+            auth_result = self.daemon.authorize_request(
+                {
+                    "request_id": f"REQ-{int(time.time() * 1000)}",
+                    "source": source,
+                    "destination": destination,
+                    "payload": payload,
+                    "data_classification": classification,
+                }
+            )
 
             if not auth_result.get("authorized", False):
                 self._stats["requests_blocked"] += 1
 
                 # Trigger tripwire for exfiltration attempts
-                if auth_result.get("violation", {}).get("type") == ViolationType.DATA_EXFILTRATION_ATTEMPT.value:
+                if (
+                    auth_result.get("violation", {}).get("type")
+                    == ViolationType.DATA_EXFILTRATION_ATTEMPT.value
+                ):
                     self.modes.trigger_tripwire(
                         TripwireType.DATA_EXFILTRATION_ATTEMPT,
-                        f"Exfiltration attempt to {destination}"
+                        f"Exfiltration attempt to {destination}",
                     )
                     self._stats["tripwires_triggered"] += 1
 
@@ -508,7 +493,7 @@ class BoundaryProtection:
                         source=source,
                         destination=destination,
                         pattern=auth_result.get("violation", {}).get("pattern"),
-                        blocked=True
+                        blocked=True,
                     )
                     self.siem.send_event(event)
 
@@ -517,10 +502,12 @@ class BoundaryProtection:
                     action="blocked_by_policy",
                     risk_level=RiskLevel.HIGH,
                     details={
-                        "reason": auth_result.get("violation", {}).get("reason", "Policy violation"),
+                        "reason": auth_result.get("violation", {}).get(
+                            "reason", "Policy violation"
+                        ),
                         "violation_type": auth_result.get("violation", {}).get("type"),
-                        "pattern": auth_result.get("violation", {}).get("pattern")
-                    }
+                        "pattern": auth_result.get("violation", {}).get("pattern"),
+                    },
                 )
 
             return ProtectionResult(
@@ -529,8 +516,8 @@ class BoundaryProtection:
                 risk_level=RiskLevel.NONE,
                 details={
                     "authorization_id": auth_result.get("authorization_id"),
-                    "classification": auth_result.get("data_classification")
-                }
+                    "classification": auth_result.get("data_classification"),
+                },
             )
 
     def inspect_data(self, data: str) -> ProtectionResult:
@@ -564,8 +551,8 @@ class BoundaryProtection:
             details={
                 "risk_score": result["risk_score"],
                 "patterns_found": len(result["detected_patterns"]),
-                "classification": result["classification_suggested"]
-            }
+                "classification": result["classification_suggested"],
+            },
         )
 
     # =========================================================================
@@ -578,10 +565,7 @@ class BoundaryProtection:
         return self.modes.current_mode
 
     def set_mode(
-        self,
-        mode: BoundaryMode,
-        reason: str,
-        triggered_by: str | None = None
+        self, mode: BoundaryMode, reason: str, triggered_by: str | None = None
     ) -> ModeTransition:
         """
         Change the boundary mode.
@@ -600,12 +584,7 @@ class BoundaryProtection:
                 self._stats["mode_changes"] += 1
             return transition
 
-    def request_mode_override(
-        self,
-        to_mode: BoundaryMode,
-        reason: str,
-        requested_by: str
-    ):
+    def request_mode_override(self, to_mode: BoundaryMode, reason: str, requested_by: str):
         """
         Request a human override ceremony for mode change.
 
@@ -622,10 +601,7 @@ class BoundaryProtection:
         return self.modes.request_override(requested_by, to_mode, reason)
 
     def confirm_mode_override(
-        self,
-        request_id: str,
-        confirmation_code: str,
-        confirmed_by: str
+        self, request_id: str, confirmation_code: str, confirmed_by: str
     ) -> ModeTransition:
         """
         Confirm a human override ceremony.
@@ -655,14 +631,12 @@ class BoundaryProtection:
                 BoundaryMode.LOCKDOWN,
                 reason=f"Manual lockdown: {reason}",
                 triggered_by="system",
-                force=True
+                force=True,
             )
 
             if transition.success and self.siem:
                 event = NatLangChainSIEMEvents.lockdown_activated(
-                    reason=reason,
-                    triggered_by="manual",
-                    actions_taken=transition.actions_taken
+                    reason=reason, triggered_by="manual", actions_taken=transition.actions_taken
                 )
                 self.siem.send_event_sync(event)
 
@@ -672,11 +646,7 @@ class BoundaryProtection:
     # AI/Agent Security
     # =========================================================================
 
-    def check_input(
-        self,
-        text: str,
-        context: str = "user_input"
-    ) -> ProtectionResult:
+    def check_input(self, text: str, context: str = "user_input") -> ProtectionResult:
         """
         Check user input for security threats.
 
@@ -694,7 +664,7 @@ class BoundaryProtection:
                 allowed=True,
                 action="skipped",
                 risk_level=RiskLevel.NONE,
-                details={"reason": "Injection detection disabled"}
+                details={"reason": "Injection detection disabled"},
             )
 
         detection = self.agent_security.check_input(text, context)
@@ -706,7 +676,7 @@ class BoundaryProtection:
             if detection.risk_level in (RiskLevel.HIGH, RiskLevel.CRITICAL):
                 self.modes.trigger_tripwire(
                     TripwireType.PROMPT_INJECTION_DETECTED,
-                    f"Injection detected: {detection.category.value}"
+                    f"Injection detected: {detection.category.value}",
                 )
 
         return ProtectionResult(
@@ -716,16 +686,11 @@ class BoundaryProtection:
             details={
                 "category": detection.category.value,
                 "patterns": detection.patterns_matched,
-                "recommendation": detection.recommendation
-            }
+                "recommendation": detection.recommendation,
+            },
         )
 
-    def check_document(
-        self,
-        content: str,
-        document_id: str,
-        source: str
-    ) -> ProtectionResult:
+    def check_document(self, content: str, document_id: str, source: str) -> ProtectionResult:
         """
         Check a document for RAG poisoning.
 
@@ -744,7 +709,7 @@ class BoundaryProtection:
                 allowed=True,
                 action="skipped",
                 risk_level=RiskLevel.NONE,
-                details={"reason": "RAG detection disabled"}
+                details={"reason": "RAG detection disabled"},
             )
 
         detection = self.agent_security.check_document(content, document_id, source)
@@ -760,8 +725,8 @@ class BoundaryProtection:
                 "document_id": document_id,
                 "source": source,
                 "indicators": detection.patterns_matched,
-                "recommendation": detection.recommendation
-            }
+                "recommendation": detection.recommendation,
+            },
         )
 
     def check_response(self, response: str) -> ProtectionResult:
@@ -781,7 +746,7 @@ class BoundaryProtection:
                 allowed=True,
                 action="skipped",
                 risk_level=RiskLevel.NONE,
-                details={"reason": "Guardrails disabled"}
+                details={"reason": "Guardrails disabled"},
             )
 
         detection = self.agent_security.check_response(response)
@@ -790,20 +755,17 @@ class BoundaryProtection:
             self._stats["threats_detected"] += 1
 
         return ProtectionResult(
-            allowed=not detection.detected or detection.risk_level in (RiskLevel.LOW, RiskLevel.MEDIUM),
+            allowed=not detection.detected
+            or detection.risk_level in (RiskLevel.LOW, RiskLevel.MEDIUM),
             action="response_check",
             risk_level=detection.risk_level,
             details={
                 "issues": detection.patterns_matched,
-                "recommendation": detection.recommendation
-            }
+                "recommendation": detection.recommendation,
+            },
         )
 
-    def sanitize_tool_output(
-        self,
-        output: str,
-        tool_name: str = "unknown"
-    ) -> str:
+    def sanitize_tool_output(self, output: str, tool_name: str = "unknown") -> str:
         """
         Sanitize tool output before including in context.
 
@@ -843,17 +805,14 @@ class BoundaryProtection:
         """Get comprehensive status of the protection system."""
         return {
             "running": self._running,
-            "mode": {
-                "current": self.modes.current_mode.value,
-                **self.modes.get_status()
-            },
+            "mode": {"current": self.modes.current_mode.value, **self.modes.get_status()},
             "enforcement": self.enforcement.get_enforcement_status(),
             "siem": {
                 "connected": self.siem._is_connected() if self.siem else False,
-                "stats": self.siem.get_stats() if self.siem else None
+                "stats": self.siem.get_stats() if self.siem else None,
             },
             "agent_security": self.agent_security.get_stats(),
-            "statistics": self._stats
+            "statistics": self._stats,
         }
 
     def get_stats(self) -> dict[str, Any]:
@@ -876,11 +835,7 @@ class BoundaryProtection:
     # SIEM Alerts
     # =========================================================================
 
-    def get_siem_alerts(
-        self,
-        status: str | None = None,
-        limit: int = 100
-    ) -> list[Any]:
+    def get_siem_alerts(self, status: str | None = None, limit: int = 100) -> list[Any]:
         """
         Get alerts from the SIEM.
 
@@ -906,10 +861,7 @@ class BoundaryProtection:
     # =========================================================================
 
     def check_external_recall_gate(
-        self,
-        memory_class: int,
-        purpose: str,
-        requester: str = "NatLangChain"
+        self, memory_class: int, purpose: str, requester: str = "NatLangChain"
     ) -> ProtectionResult:
         """
         Check RecallGate with external Boundary-Daemon.
@@ -927,7 +879,9 @@ class BoundaryProtection:
         """
         if not self.external_daemon:
             # Fall back to local check
-            memory = MemoryClass(memory_class) if 0 <= memory_class <= 5 else MemoryClass.COMPARTMENTED
+            memory = (
+                MemoryClass(memory_class) if 0 <= memory_class <= 5 else MemoryClass.COMPARTMENTED
+            )
             allowed = self.modes.is_memory_class_allowed(memory)
             return ProtectionResult(
                 allowed=allowed,
@@ -936,8 +890,8 @@ class BoundaryProtection:
                 details={
                     "source": "local",
                     "memory_class": memory_class,
-                    "reason": "External daemon not configured"
-                }
+                    "reason": "External daemon not configured",
+                },
             )
 
         response = self.external_daemon.check_recall(memory_class, purpose, requester)
@@ -945,21 +899,20 @@ class BoundaryProtection:
         return ProtectionResult(
             allowed=response.decision == DaemonDecision.ALLOW,
             action="external_recall_gate",
-            risk_level=RiskLevel.NONE if response.decision == DaemonDecision.ALLOW else RiskLevel.HIGH,
+            risk_level=RiskLevel.NONE
+            if response.decision == DaemonDecision.ALLOW
+            else RiskLevel.HIGH,
             details={
                 "source": "external_daemon",
                 "decision": response.decision.value,
                 "reasoning": response.reasoning,
                 "memory_class": memory_class,
-                "metadata": response.metadata
-            }
+                "metadata": response.metadata,
+            },
         )
 
     def check_external_tool_gate(
-        self,
-        tool_name: str,
-        parameters: dict[str, Any],
-        requester: str = "NatLangChain"
+        self, tool_name: str, parameters: dict[str, Any], requester: str = "NatLangChain"
     ) -> ProtectionResult:
         """
         Check ToolGate with external Boundary-Daemon.
@@ -985,8 +938,8 @@ class BoundaryProtection:
                 details={
                     "source": "local",
                     "tool": tool_name,
-                    "reason": "External daemon not configured"
-                }
+                    "reason": "External daemon not configured",
+                },
             )
 
         response = self.external_daemon.check_tool(tool_name, parameters, requester)
@@ -994,21 +947,20 @@ class BoundaryProtection:
         return ProtectionResult(
             allowed=response.decision == DaemonDecision.ALLOW,
             action="external_tool_gate",
-            risk_level=RiskLevel.NONE if response.decision == DaemonDecision.ALLOW else RiskLevel.HIGH,
+            risk_level=RiskLevel.NONE
+            if response.decision == DaemonDecision.ALLOW
+            else RiskLevel.HIGH,
             details={
                 "source": "external_daemon",
                 "decision": response.decision.value,
                 "reasoning": response.reasoning,
                 "tool": tool_name,
-                "metadata": response.metadata
-            }
+                "metadata": response.metadata,
+            },
         )
 
     def forward_event_to_daemon(
-        self,
-        event_type: str,
-        event_data: dict[str, Any],
-        severity: int = 3
+        self, event_type: str, event_data: dict[str, Any], severity: int = 3
     ) -> bool:
         """
         Forward an event to the external Boundary-Daemon for unified audit trail.
@@ -1031,11 +983,7 @@ class BoundaryProtection:
         return response.decision == DaemonDecision.ALLOW
 
     def request_external_ceremony(
-        self,
-        ceremony_type: str,
-        reason: str,
-        target: str,
-        requester: str = "NatLangChain"
+        self, ceremony_type: str, reason: str, target: str, requester: str = "NatLangChain"
     ) -> dict[str, Any]:
         """
         Request a human override ceremony from the external Boundary-Daemon.
@@ -1053,15 +1001,9 @@ class BoundaryProtection:
             Ceremony details including steps required
         """
         if not self.external_daemon:
-            return {
-                "success": False,
-                "error": "External daemon not configured",
-                "source": "local"
-            }
+            return {"success": False, "error": "External daemon not configured", "source": "local"}
 
-        response = self.external_daemon.request_ceremony(
-            ceremony_type, reason, requester, target
-        )
+        response = self.external_daemon.request_ceremony(ceremony_type, reason, requester, target)
 
         if response.decision == DaemonDecision.CONDITIONAL:
             return {
@@ -1069,20 +1011,13 @@ class BoundaryProtection:
                 "ceremony_id": response.metadata.get("ceremony_id"),
                 "steps": response.ceremony_steps or [],
                 "deadline": response.deadline,
-                "source": "external_daemon"
+                "source": "external_daemon",
             }
         else:
-            return {
-                "success": False,
-                "error": response.reasoning,
-                "source": "external_daemon"
-            }
+            return {"success": False, "error": response.reasoning, "source": "external_daemon"}
 
     def confirm_external_ceremony(
-        self,
-        ceremony_id: str,
-        confirmation_code: str,
-        confirmed_by: str
+        self, ceremony_id: str, confirmation_code: str, confirmed_by: str
     ) -> ProtectionResult:
         """
         Confirm a ceremony with the external Boundary-Daemon.
@@ -1100,10 +1035,7 @@ class BoundaryProtection:
                 allowed=False,
                 action="external_ceremony_confirm",
                 risk_level=RiskLevel.MEDIUM,
-                details={
-                    "error": "External daemon not configured",
-                    "source": "local"
-                }
+                details={"error": "External daemon not configured", "source": "local"},
             )
 
         response = self.external_daemon.confirm_ceremony(
@@ -1113,13 +1045,15 @@ class BoundaryProtection:
         return ProtectionResult(
             allowed=response.decision == DaemonDecision.ALLOW,
             action="external_ceremony_confirm",
-            risk_level=RiskLevel.NONE if response.decision == DaemonDecision.ALLOW else RiskLevel.HIGH,
+            risk_level=RiskLevel.NONE
+            if response.decision == DaemonDecision.ALLOW
+            else RiskLevel.HIGH,
             details={
                 "source": "external_daemon",
                 "decision": response.decision.value,
                 "reasoning": response.reasoning,
-                "metadata": response.metadata
-            }
+                "metadata": response.metadata,
+            },
         )
 
     def get_external_daemon_status(self) -> dict[str, Any]:
@@ -1133,22 +1067,17 @@ class BoundaryProtection:
             return {
                 "enabled": False,
                 "connected": False,
-                "reason": "External daemon not configured"
+                "reason": "External daemon not configured",
             }
 
-        return {
-            "enabled": True,
-            **self.external_daemon.health_check()
-        }
+        return {"enabled": True, **self.external_daemon.health_check()}
 
     # =========================================================================
     # Enhanced SIEM Integration
     # =========================================================================
 
     def graphql_query(
-        self,
-        query: str,
-        variables: dict[str, Any] | None = None
+        self, query: str, variables: dict[str, Any] | None = None
     ) -> dict[str, Any] | None:
         """
         Execute a GraphQL query against the external Boundary-SIEM.
@@ -1182,12 +1111,7 @@ class BoundaryProtection:
         return self.siem.get_detection_rules()
 
     def create_custom_detection_rule(
-        self,
-        name: str,
-        query: str,
-        severity: int,
-        description: str,
-        tags: list[str] | None = None
+        self, name: str, query: str, severity: int, description: str, tags: list[str] | None = None
     ) -> dict[str, Any] | None:
         """
         Create a custom detection rule in the external Boundary-SIEM.
@@ -1209,11 +1133,7 @@ class BoundaryProtection:
 
         return self.siem.create_custom_rule(name, query, severity, description, tags)
 
-    def send_events_bulk(
-        self,
-        events: list[SIEMEvent],
-        sync: bool = False
-    ) -> dict[str, Any]:
+    def send_events_bulk(self, events: list[SIEMEvent], sync: bool = False) -> dict[str, Any]:
         """
         Send multiple events to the SIEM in bulk.
 
@@ -1283,10 +1203,8 @@ def shutdown_protection() -> None:
 # Convenience Decorators
 # =============================================================================
 
-def protected_request(
-    source: str = "api",
-    destination: str = "external"
-):
+
+def protected_request(source: str = "api", destination: str = "external"):
     """
     Decorator for protecting outbound requests.
 
@@ -1299,6 +1217,7 @@ def protected_request(
         source: Request source identifier
         destination: Request destination identifier
     """
+
     def decorator(func: Callable):
         def wrapper(*args, **kwargs):
             protection = get_protection()
@@ -1315,7 +1234,9 @@ def protected_request(
                 )
 
             return func(*args, **kwargs)
+
         return wrapper
+
     return decorator
 
 
@@ -1331,6 +1252,7 @@ def protected_input(context: str = "user_input"):
     Args:
         context: Input context
     """
+
     def decorator(func: Callable):
         def wrapper(text: str, *args, **kwargs):
             protection = get_protection()
@@ -1344,5 +1266,7 @@ def protected_input(context: str = "user_input"):
                 )
 
             return func(text, *args, **kwargs)
+
         return wrapper
+
     return decorator

@@ -26,29 +26,31 @@ logger = logging.getLogger(__name__)
 
 # Size limits (in characters)
 DEFAULT_MAX_ENTRY_SIZE = 10000  # ~2500 words, sufficient for detailed contracts
-DEFAULT_MIN_ENTRY_SIZE = 20    # Minimum meaningful content
+DEFAULT_MIN_ENTRY_SIZE = 20  # Minimum meaningful content
 ABSOLUTE_MAX_ENTRY_SIZE = 50000  # Hard cap for exceptional cases
 
 # Repetition thresholds
-REPETITION_THRESHOLD = 0.3     # 30% repeated n-grams triggers warning
-REDUNDANCY_THRESHOLD = 0.5     # 50% repeated content triggers rejection
+REPETITION_THRESHOLD = 0.3  # 30% repeated n-grams triggers warning
+REDUNDANCY_THRESHOLD = 0.5  # 50% repeated content triggers rejection
 
 # Readability targets
-TARGET_SENTENCE_LENGTH = 25    # Average words per sentence
-TARGET_WORD_LENGTH = 6         # Average characters per word
-MAX_PARAGRAPH_LENGTH = 500     # Characters before suggesting a break
+TARGET_SENTENCE_LENGTH = 25  # Average words per sentence
+TARGET_WORD_LENGTH = 6  # Average characters per word
+MAX_PARAGRAPH_LENGTH = 500  # Characters before suggesting a break
 
 
 class QualityDecision(Enum):
     """Quality check decision outcomes."""
-    ACCEPT = "accept"                    # Entry is acceptable
+
+    ACCEPT = "accept"  # Entry is acceptable
     ACCEPT_WITH_SUGGESTIONS = "accept_with_suggestions"  # Acceptable but could be improved
-    NEEDS_REVISION = "needs_revision"    # Should be revised (soft rejection)
-    REJECT = "reject"                    # Rejected (hard rejection)
+    NEEDS_REVISION = "needs_revision"  # Should be revised (soft rejection)
+    REJECT = "reject"  # Rejected (hard rejection)
 
 
 class QualityIssue(Enum):
     """Types of quality issues detected."""
+
     TOO_SHORT = "too_short"
     TOO_LONG = "too_long"
     EXCESSIVE_REPETITION = "excessive_repetition"
@@ -62,6 +64,7 @@ class QualityIssue(Enum):
 @dataclass
 class QualitySuggestion:
     """A suggestion for improving entry quality."""
+
     issue: QualityIssue
     severity: str  # "info", "warning", "error"
     message: str
@@ -72,6 +75,7 @@ class QualitySuggestion:
 @dataclass
 class QualityResult:
     """Result of entry quality analysis."""
+
     decision: QualityDecision
     score: float  # 0.0 to 1.0
     issues: list[QualitySuggestion] = field(default_factory=list)
@@ -187,36 +191,42 @@ class EntryQualityAnalyzer:
         char_count = len(content)
 
         if char_count < self.min_size:
-            issues.append(QualitySuggestion(
-                issue=QualityIssue.TOO_SHORT,
-                severity="error",
-                message=f"Entry too short ({char_count} chars, minimum {self.min_size})",
-                suggestion="Provide more detail about your intent. What are the key terms, "
-                          "parties involved, and expected outcomes?",
-            ))
+            issues.append(
+                QualitySuggestion(
+                    issue=QualityIssue.TOO_SHORT,
+                    severity="error",
+                    message=f"Entry too short ({char_count} chars, minimum {self.min_size})",
+                    suggestion="Provide more detail about your intent. What are the key terms, "
+                    "parties involved, and expected outcomes?",
+                )
+            )
 
         elif char_count > self.max_size:
             excess = char_count - self.max_size
-            issues.append(QualitySuggestion(
-                issue=QualityIssue.TOO_LONG,
-                severity="error",
-                message=f"Entry exceeds size limit ({char_count} chars, maximum {self.max_size})",
-                suggestion=f"Reduce by ~{excess} characters. Consider:\n"
-                          "• Removing redundant explanations\n"
-                          "• Using bullet points instead of paragraphs\n"
-                          "• Splitting into multiple related entries\n"
-                          "• Referencing external documents instead of embedding them",
-            ))
+            issues.append(
+                QualitySuggestion(
+                    issue=QualityIssue.TOO_LONG,
+                    severity="error",
+                    message=f"Entry exceeds size limit ({char_count} chars, maximum {self.max_size})",
+                    suggestion=f"Reduce by ~{excess} characters. Consider:\n"
+                    "• Removing redundant explanations\n"
+                    "• Using bullet points instead of paragraphs\n"
+                    "• Splitting into multiple related entries\n"
+                    "• Referencing external documents instead of embedding them",
+                )
+            )
 
         elif char_count > self.max_size * 0.8:
             # Warning when approaching limit
             remaining = self.max_size - char_count
-            issues.append(QualitySuggestion(
-                issue=QualityIssue.TOO_LONG,
-                severity="warning",
-                message=f"Entry approaching size limit ({remaining} chars remaining)",
-                suggestion="Consider condensing if possible to leave room for amendments",
-            ))
+            issues.append(
+                QualitySuggestion(
+                    issue=QualityIssue.TOO_LONG,
+                    severity="warning",
+                    message=f"Entry approaching size limit ({remaining} chars remaining)",
+                    suggestion="Consider condensing if possible to leave room for amendments",
+                )
+            )
 
         return issues
 
@@ -251,42 +261,48 @@ class EntryQualityAnalyzer:
 
         # Evaluate issues
         if bigram_ratio > self.redundancy_threshold:
-            issues.append(QualitySuggestion(
-                issue=QualityIssue.REDUNDANT_CONTENT,
-                severity="error",
-                message=f"Excessive repetition detected ({bigram_ratio:.0%} of phrases repeat)",
-                suggestion="This entry contains too much repeated content. "
-                          "Remove duplicate phrases and consolidate similar points.",
-            ))
+            issues.append(
+                QualitySuggestion(
+                    issue=QualityIssue.REDUNDANT_CONTENT,
+                    severity="error",
+                    message=f"Excessive repetition detected ({bigram_ratio:.0%} of phrases repeat)",
+                    suggestion="This entry contains too much repeated content. "
+                    "Remove duplicate phrases and consolidate similar points.",
+                )
+            )
 
         elif bigram_ratio > self.repetition_threshold:
-            issues.append(QualitySuggestion(
-                issue=QualityIssue.EXCESSIVE_REPETITION,
-                severity="warning",
-                message=f"High repetition detected ({bigram_ratio:.0%} of phrases repeat)",
-                suggestion="Consider consolidating repeated phrases. "
-                          "Repetition can make contracts harder to match and interpret.",
-            ))
+            issues.append(
+                QualitySuggestion(
+                    issue=QualityIssue.EXCESSIVE_REPETITION,
+                    severity="warning",
+                    message=f"High repetition detected ({bigram_ratio:.0%} of phrases repeat)",
+                    suggestion="Consider consolidating repeated phrases. "
+                    "Repetition can make contracts harder to match and interpret.",
+                )
+            )
 
         if duplicate_sentences:
             dup_count = len(duplicate_sentences)
             if dup_count > 2:
-                issues.append(QualitySuggestion(
-                    issue=QualityIssue.REDUNDANT_CONTENT,
-                    severity="error" if dup_count > 4 else "warning",
-                    message=f"Found {dup_count} duplicate sentences",
-                    suggestion=f"Remove duplicated sentences: {duplicate_sentences[:2]}...",
-                ))
+                issues.append(
+                    QualitySuggestion(
+                        issue=QualityIssue.REDUNDANT_CONTENT,
+                        severity="error" if dup_count > 4 else "warning",
+                        message=f"Found {dup_count} duplicate sentences",
+                        suggestion=f"Remove duplicated sentences: {duplicate_sentences[:2]}...",
+                    )
+                )
 
         return issues, metrics
 
     def _tokenize(self, text: str) -> list[str]:
         """Tokenize text into lowercase words."""
-        return re.findall(r'\b[a-zA-Z]+\b', text.lower())
+        return re.findall(r"\b[a-zA-Z]+\b", text.lower())
 
     def _get_ngrams(self, words: list[str], n: int) -> list[tuple]:
         """Get n-grams from word list."""
-        return [tuple(words[i:i+n]) for i in range(len(words) - n + 1)]
+        return [tuple(words[i : i + n]) for i in range(len(words) - n + 1)]
 
     def _repetition_ratio(self, ngrams: list[tuple]) -> float:
         """Calculate what fraction of n-grams are repeated."""
@@ -336,37 +352,41 @@ class EntryQualityAnalyzer:
 
         # Generate suggestions
         if avg_sentence_length > TARGET_SENTENCE_LENGTH * 1.5:
-            issues.append(QualitySuggestion(
-                issue=QualityIssue.POOR_READABILITY,
-                severity="info",
-                message=f"Long sentences detected (avg {avg_sentence_length:.0f} words)",
-                suggestion="Consider breaking long sentences into shorter ones. "
-                          "Aim for 15-25 words per sentence for clarity.",
-            ))
+            issues.append(
+                QualitySuggestion(
+                    issue=QualityIssue.POOR_READABILITY,
+                    severity="info",
+                    message=f"Long sentences detected (avg {avg_sentence_length:.0f} words)",
+                    suggestion="Consider breaking long sentences into shorter ones. "
+                    "Aim for 15-25 words per sentence for clarity.",
+                )
+            )
 
         if avg_word_length > TARGET_WORD_LENGTH * 1.3:
-            issues.append(QualitySuggestion(
-                issue=QualityIssue.POOR_READABILITY,
-                severity="info",
-                message="Complex vocabulary detected",
-                suggestion="Consider using simpler words where possible. "
-                          "Clearer language improves matching accuracy.",
-            ))
+            issues.append(
+                QualitySuggestion(
+                    issue=QualityIssue.POOR_READABILITY,
+                    severity="info",
+                    message="Complex vocabulary detected",
+                    suggestion="Consider using simpler words where possible. "
+                    "Clearer language improves matching accuracy.",
+                )
+            )
 
         if fk_score > 16:
-            issues.append(QualitySuggestion(
-                issue=QualityIssue.POOR_READABILITY,
-                severity="warning",
-                message=f"High reading level (grade {fk_score:.0f}+)",
-                suggestion="This text requires advanced reading level. "
-                          "Consider simplifying for broader accessibility.",
-            ))
+            issues.append(
+                QualitySuggestion(
+                    issue=QualityIssue.POOR_READABILITY,
+                    severity="warning",
+                    message=f"High reading level (grade {fk_score:.0f}+)",
+                    suggestion="This text requires advanced reading level. "
+                    "Consider simplifying for broader accessibility.",
+                )
+            )
 
         return issues, metrics
 
-    def _flesch_kincaid_grade(
-        self, text: str, words: list[str], sentences: list[str]
-    ) -> float:
+    def _flesch_kincaid_grade(self, text: str, words: list[str], sentences: list[str]) -> float:
         """Calculate approximate Flesch-Kincaid grade level."""
         if not words or not sentences:
             return 0.0
@@ -399,7 +419,7 @@ class EntryQualityAnalyzer:
             prev_was_vowel = is_vowel
 
         # Adjust for silent e
-        if word.endswith('e'):
+        if word.endswith("e"):
             count = max(1, count - 1)
 
         return max(1, count)
@@ -413,39 +433,45 @@ class EntryQualityAnalyzer:
         issues = []
 
         # Check for very long paragraphs
-        paragraphs = content.split('\n\n')
+        paragraphs = content.split("\n\n")
         long_paragraphs = [p for p in paragraphs if len(p) > MAX_PARAGRAPH_LENGTH]
         if long_paragraphs:
-            issues.append(QualitySuggestion(
-                issue=QualityIssue.DENSE_TEXT,
-                severity="info",
-                message=f"Found {len(long_paragraphs)} dense paragraph(s)",
-                suggestion="Consider breaking long paragraphs into smaller sections "
-                          "with clear headings. This improves readability and matching.",
-            ))
+            issues.append(
+                QualitySuggestion(
+                    issue=QualityIssue.DENSE_TEXT,
+                    severity="info",
+                    message=f"Found {len(long_paragraphs)} dense paragraph(s)",
+                    suggestion="Consider breaking long paragraphs into smaller sections "
+                    "with clear headings. This improves readability and matching.",
+                )
+            )
 
         # Check for missing punctuation (wall of text)
         words = content.split()
         if len(words) > 50:
-            punctuation_ratio = sum(1 for c in content if c in '.!?;:') / len(words)
+            punctuation_ratio = sum(1 for c in content if c in ".!?;:") / len(words)
             if punctuation_ratio < 0.02:
-                issues.append(QualitySuggestion(
-                    issue=QualityIssue.MISSING_PUNCTUATION,
-                    severity="warning",
-                    message="Low punctuation density (possible run-on text)",
-                    suggestion="Add proper punctuation to separate ideas. "
-                              "Well-punctuated text is easier to parse and match.",
-                ))
+                issues.append(
+                    QualitySuggestion(
+                        issue=QualityIssue.MISSING_PUNCTUATION,
+                        severity="warning",
+                        message="Low punctuation density (possible run-on text)",
+                        suggestion="Add proper punctuation to separate ideas. "
+                        "Well-punctuated text is easier to parse and match.",
+                    )
+                )
 
         # Check for ambiguous list structures
-        bullet_chars = content.count('•') + content.count('-') + content.count('*')
-        if bullet_chars > 10 and '\n' not in content:
-            issues.append(QualitySuggestion(
-                issue=QualityIssue.AMBIGUOUS_STRUCTURE,
-                severity="info",
-                message="Bullet points without line breaks detected",
-                suggestion="Put each bullet point on its own line for clarity.",
-            ))
+        bullet_chars = content.count("•") + content.count("-") + content.count("*")
+        if bullet_chars > 10 and "\n" not in content:
+            issues.append(
+                QualitySuggestion(
+                    issue=QualityIssue.AMBIGUOUS_STRUCTURE,
+                    severity="info",
+                    message="Bullet points without line breaks detected",
+                    suggestion="Put each bullet point on its own line for clarity.",
+                )
+            )
 
         return issues
 
@@ -460,17 +486,15 @@ class EntryQualityAnalyzer:
     def _split_sentences(self, text: str) -> list[str]:
         """Split text into sentences."""
         # Simple sentence splitting
-        sentences = re.split(r'[.!?]+', text)
+        sentences = re.split(r"[.!?]+", text)
         return [s.strip() for s in sentences if s.strip()]
 
     def _count_paragraphs(self, text: str) -> int:
         """Count paragraphs in text."""
-        paragraphs = text.split('\n\n')
+        paragraphs = text.split("\n\n")
         return len([p for p in paragraphs if p.strip()])
 
-    def _calculate_score(
-        self, issues: list[QualitySuggestion], metrics: dict
-    ) -> float:
+    def _calculate_score(self, issues: list[QualitySuggestion], metrics: dict) -> float:
         """Calculate overall quality score (0-1)."""
         score = 1.0
 
@@ -491,9 +515,7 @@ class EntryQualityAnalyzer:
 
         return max(0.0, min(1.0, score))
 
-    def _determine_decision(
-        self, issues: list[QualitySuggestion], score: float
-    ) -> QualityDecision:
+    def _determine_decision(self, issues: list[QualitySuggestion], score: float) -> QualityDecision:
         """Determine the overall decision based on issues and score."""
         error_count = sum(1 for i in issues if i.severity == "error")
         warning_count = sum(1 for i in issues if i.severity == "warning")
@@ -506,9 +528,7 @@ class EntryQualityAnalyzer:
                 QualityIssue.REDUNDANT_CONTENT,
             }
             has_hard_reject = any(
-                i.issue in hard_reject_issues
-                for i in issues
-                if i.severity == "error"
+                i.issue in hard_reject_issues for i in issues if i.severity == "error"
             )
             if has_hard_reject:
                 return QualityDecision.REJECT

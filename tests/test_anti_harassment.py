@@ -35,7 +35,7 @@ class TestBreachDisputeInitiation(unittest.TestCase):
             contract_ref="CONTRACT-001",
             stake_amount=100.0,
             evidence_refs=[{"type": "drift", "ref": "DRIFT-001"}],
-            description="Semantic drift detected in clause 3"
+            description="Semantic drift detected in clause 3",
         )
 
         self.assertTrue(success)
@@ -53,7 +53,7 @@ class TestBreachDisputeInitiation(unittest.TestCase):
             contract_ref="CONTRACT-001",
             stake_amount=100.0,
             evidence_refs=[],
-            description="Test dispute"
+            description="Test dispute",
         )
 
         escrow_id = result["escrow_id"]
@@ -73,7 +73,7 @@ class TestBreachDisputeInitiation(unittest.TestCase):
             contract_ref="CONTRACT-001",
             stake_amount=100.0,
             evidence_refs=[],
-            description="First dispute"
+            description="First dispute",
         )
         self.assertTrue(success1)
 
@@ -90,7 +90,7 @@ class TestBreachDisputeInitiation(unittest.TestCase):
             contract_ref="CONTRACT-001",
             stake_amount=100.0,
             evidence_refs=[],
-            description="Second dispute"
+            description="Second dispute",
         )
 
         self.assertFalse(success2)
@@ -109,16 +109,14 @@ class TestStakeMatching(unittest.TestCase):
             contract_ref="CONTRACT-001",
             stake_amount=100.0,
             evidence_refs=[],
-            description="Test dispute"
+            description="Test dispute",
         )
         self.escrow_id = result["escrow_id"]
 
     def test_match_stake_success(self):
         """Test successful stake matching."""
         success, result = self.manager.match_stake(
-            escrow_id=self.escrow_id,
-            counterparty="bob",
-            stake_amount=100.0
+            escrow_id=self.escrow_id, counterparty="bob", stake_amount=100.0
         )
 
         self.assertTrue(success)
@@ -128,9 +126,7 @@ class TestStakeMatching(unittest.TestCase):
     def test_match_stake_wrong_counterparty(self):
         """Test that only designated counterparty can match."""
         success, result = self.manager.match_stake(
-            escrow_id=self.escrow_id,
-            counterparty="charlie",
-            stake_amount=100.0
+            escrow_id=self.escrow_id, counterparty="charlie", stake_amount=100.0
         )
 
         self.assertFalse(success)
@@ -140,9 +136,7 @@ class TestStakeMatching(unittest.TestCase):
     def test_match_stake_insufficient_amount(self):
         """Test that stake must match required amount."""
         success, result = self.manager.match_stake(
-            escrow_id=self.escrow_id,
-            counterparty="bob",
-            stake_amount=50.0
+            escrow_id=self.escrow_id, counterparty="bob", stake_amount=50.0
         )
 
         self.assertFalse(success)
@@ -153,9 +147,7 @@ class TestStakeMatching(unittest.TestCase):
     def test_match_stake_escrow_not_found(self):
         """Test error when escrow doesn't exist."""
         success, result = self.manager.match_stake(
-            escrow_id="NONEXISTENT",
-            counterparty="bob",
-            stake_amount=100.0
+            escrow_id="NONEXISTENT", counterparty="bob", stake_amount=100.0
         )
 
         self.assertFalse(success)
@@ -173,16 +165,13 @@ class TestDeclineStake(unittest.TestCase):
             contract_ref="CONTRACT-001",
             stake_amount=100.0,
             evidence_refs=[],
-            description="Test dispute"
+            description="Test dispute",
         )
         self.escrow_id = result["escrow_id"]
 
     def test_decline_stake_success(self):
         """Test successful stake decline triggers fallback."""
-        success, result = self.manager.decline_stake(
-            escrow_id=self.escrow_id,
-            counterparty="bob"
-        )
+        success, result = self.manager.decline_stake(escrow_id=self.escrow_id, counterparty="bob")
 
         self.assertTrue(success)
         self.assertEqual(result["status"], "resolved_fallback")
@@ -195,8 +184,7 @@ class TestDeclineStake(unittest.TestCase):
     def test_decline_stake_wrong_party(self):
         """Test that only counterparty can decline."""
         success, result = self.manager.decline_stake(
-            escrow_id=self.escrow_id,
-            counterparty="charlie"
+            escrow_id=self.escrow_id, counterparty="charlie"
         )
 
         self.assertFalse(success)
@@ -216,7 +204,7 @@ class TestVoluntaryRequests(unittest.TestCase):
             recipient="bob",
             request_type="modification",
             description="I would like to modify clause 3",
-            burn_fee=0.1
+            burn_fee=0.1,
         )
 
         self.assertTrue(success)
@@ -231,7 +219,7 @@ class TestVoluntaryRequests(unittest.TestCase):
             recipient="bob",
             request_type="modification",
             description="Please review",
-            burn_fee=0.1
+            burn_fee=0.1,
         )
 
         self.assertIn("ignore", result["recipient_obligation"].lower())
@@ -244,16 +232,13 @@ class TestVoluntaryRequests(unittest.TestCase):
             recipient="bob",
             request_type="modification",
             description="Please review",
-            burn_fee=0.1
+            burn_fee=0.1,
         )
         request_id = result["request_id"]
 
         # Accept
         success, result = self.manager.respond_to_voluntary_request(
-            request_id=request_id,
-            recipient="bob",
-            accept=True,
-            response="I accept this request"
+            request_id=request_id, recipient="bob", accept=True, response="I accept this request"
         )
 
         self.assertTrue(success)
@@ -267,16 +252,13 @@ class TestVoluntaryRequests(unittest.TestCase):
             recipient="bob",
             request_type="modification",
             description="Please review",
-            burn_fee=0.1
+            burn_fee=0.1,
         )
         request_id = result["request_id"]
 
         # Decline
         success, result = self.manager.respond_to_voluntary_request(
-            request_id=request_id,
-            recipient="bob",
-            accept=False,
-            response="Not interested"
+            request_id=request_id, recipient="bob", accept=False, response="Not interested"
         )
 
         self.assertTrue(success)
@@ -296,7 +278,7 @@ class TestCounterProposalLimits(unittest.TestCase):
             contract_ref="CONTRACT-001",
             stake_amount=100.0,
             evidence_refs=[],
-            description="Test dispute"
+            description="Test dispute",
         )
         self.escrow_id = result["escrow_id"]
         self.dispute_ref = result["dispute_ref"]
@@ -305,9 +287,7 @@ class TestCounterProposalLimits(unittest.TestCase):
     def test_counter_proposal_increments_count(self):
         """Test that counter proposals increment count."""
         success, result = self.manager.submit_counter_proposal(
-            dispute_ref=self.dispute_ref,
-            party="alice",
-            proposal_content="new terms"
+            dispute_ref=self.dispute_ref, party="alice", proposal_content="new terms"
         )
 
         self.assertTrue(success)
@@ -318,9 +298,7 @@ class TestCounterProposalLimits(unittest.TestCase):
         fees = []
         for i in range(3):
             success, result = self.manager.submit_counter_proposal(
-                dispute_ref=self.dispute_ref,
-                party="alice",
-                proposal_content=f"proposal {i+1}"
+                dispute_ref=self.dispute_ref, party="alice", proposal_content=f"proposal {i + 1}"
             )
             fees.append(result.get("fee_burned", 0))
 
@@ -333,16 +311,12 @@ class TestCounterProposalLimits(unittest.TestCase):
         # Submit max counter proposals
         for i in range(self.manager.MAX_COUNTER_PROPOSALS):
             self.manager.submit_counter_proposal(
-                dispute_ref=self.dispute_ref,
-                party="alice",
-                proposal_content=f"proposal {i+1}"
+                dispute_ref=self.dispute_ref, party="alice", proposal_content=f"proposal {i + 1}"
             )
 
         # Next should fail
         success, result = self.manager.submit_counter_proposal(
-            dispute_ref=self.dispute_ref,
-            party="alice",
-            proposal_content="one too many"
+            dispute_ref=self.dispute_ref, party="alice", proposal_content="one too many"
         )
 
         self.assertFalse(success)
@@ -371,7 +345,7 @@ class TestHarassmentScoring(unittest.TestCase):
             contract_ref="CONTRACT-001",
             stake_amount=100.0,
             evidence_refs=[],
-            description="Frivolous dispute"
+            description="Frivolous dispute",
         )
         escrow_id = result["escrow_id"]
         self.manager.decline_stake(escrow_id, "victim")
@@ -401,7 +375,9 @@ class TestHarassmentScoring(unittest.TestCase):
         self.manager._recalculate_harassment_score(profile)
 
         result = self.manager.get_harassment_score("user")
-        self.assertGreaterEqual(result["harassment_score"], self.manager.HARASSMENT_THRESHOLD_MODERATE)
+        self.assertGreaterEqual(
+            result["harassment_score"], self.manager.HARASSMENT_THRESHOLD_MODERATE
+        )
         self.assertLess(result["harassment_score"], self.manager.HARASSMENT_THRESHOLD_HIGH)
         self.assertEqual(result["severity"], "moderate")
 
@@ -421,7 +397,7 @@ class TestStakeTimeouts(unittest.TestCase):
             contract_ref="CONTRACT-001",
             stake_amount=100.0,
             evidence_refs=[],
-            description="Test dispute"
+            description="Test dispute",
         )
         escrow_id = result["escrow_id"]
 
@@ -451,7 +427,7 @@ class TestAuditTrail(unittest.TestCase):
             contract_ref="CONTRACT-001",
             stake_amount=100.0,
             evidence_refs=[],
-            description="Test dispute"
+            description="Test dispute",
         )
 
         trail = self.manager.get_audit_trail()
@@ -468,7 +444,7 @@ class TestAuditTrail(unittest.TestCase):
             contract_ref="CONTRACT-001",
             stake_amount=100.0,
             evidence_refs=[],
-            description="Test dispute"
+            description="Test dispute",
         )
 
         stats = self.manager.get_statistics()
@@ -490,7 +466,7 @@ class TestEscrowDataclass(unittest.TestCase):
             stake_amount=100.0,
             created_at="2024-01-01T00:00:00",
             stake_window_ends="2024-01-04T00:00:00",
-            counterparty="bob"
+            counterparty="bob",
         )
 
         self.assertEqual(escrow.counterparty_stake, 0.0)

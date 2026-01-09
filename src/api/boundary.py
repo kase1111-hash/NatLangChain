@@ -12,7 +12,6 @@ This blueprint provides REST endpoints for the boundary protection system:
 All endpoints are protected by API key authentication.
 """
 
-import json
 import logging
 
 from flask import Blueprint, jsonify, request
@@ -21,22 +20,17 @@ from .utils import (
     DEFAULT_HISTORY_LIMIT,
     DEFAULT_PAGE_LIMIT,
     MAX_PAGE_LIMIT,
-    managers,
     require_api_key,
-    validate_json_schema,
 )
 
 logger = logging.getLogger(__name__)
 
 # Create the blueprint
-boundary_bp = Blueprint('boundary', __name__, url_prefix='/boundary')
+boundary_bp = Blueprint("boundary", __name__, url_prefix="/boundary")
 
 
 def _error_response(
-    message: str,
-    status_code: int = 400,
-    error_type: str = "request_error",
-    details: dict = None
+    message: str, status_code: int = 400, error_type: str = "request_error", details: dict = None
 ):
     """
     Create a structured error response.
@@ -47,21 +41,13 @@ def _error_response(
         error_type: Error classification
         details: Additional error context
     """
-    response = {
-        "error": message,
-        "error_type": error_type,
-        "status": status_code
-    }
+    response = {"error": message, "error_type": error_type, "status": status_code}
     if details:
         response["details"] = details
 
     logger.warning(
         f"API error response: {message}",
-        extra={
-            "status_code": status_code,
-            "error_type": error_type,
-            "details": details
-        }
+        extra={"status_code": status_code, "error_type": error_type, "details": details},
     )
 
     return jsonify(response), status_code
@@ -71,6 +57,7 @@ def _get_protection():
     """Get the boundary protection instance."""
     try:
         from boundary_protection import get_protection
+
         return get_protection()
     except ImportError:
         return None
@@ -80,7 +67,8 @@ def _get_protection():
 # Status and Health
 # =============================================================================
 
-@boundary_bp.route('/status', methods=['GET'])
+
+@boundary_bp.route("/status", methods=["GET"])
 @require_api_key
 def get_status():
     """
@@ -91,18 +79,12 @@ def get_status():
     """
     protection = _get_protection()
     if not protection:
-        return jsonify({
-            "error": "Boundary protection not initialized",
-            "initialized": False
-        }), 503
+        return jsonify({"error": "Boundary protection not initialized", "initialized": False}), 503
 
-    return jsonify({
-        "initialized": True,
-        **protection.get_status()
-    })
+    return jsonify({"initialized": True, **protection.get_status()})
 
 
-@boundary_bp.route('/stats', methods=['GET'])
+@boundary_bp.route("/stats", methods=["GET"])
 @require_api_key
 def get_stats():
     """
@@ -122,7 +104,8 @@ def get_stats():
 # Mode Management
 # =============================================================================
 
-@boundary_bp.route('/mode', methods=['GET'])
+
+@boundary_bp.route("/mode", methods=["GET"])
 @require_api_key
 def get_mode():
     """
@@ -136,14 +119,16 @@ def get_mode():
         return jsonify({"error": "Boundary protection not initialized"}), 503
 
     mode_status = protection.modes.get_status()
-    return jsonify({
-        "current_mode": protection.current_mode.value,
-        "config": mode_status.get("config", {}),
-        "cooldown_remaining": mode_status.get("cooldown_remaining", 0)
-    })
+    return jsonify(
+        {
+            "current_mode": protection.current_mode.value,
+            "config": mode_status.get("config", {}),
+            "cooldown_remaining": mode_status.get("cooldown_remaining", 0),
+        }
+    )
 
 
-@boundary_bp.route('/mode', methods=['PUT'])
+@boundary_bp.route("/mode", methods=["PUT"])
 @require_api_key
 def set_mode():
     """
@@ -165,9 +150,7 @@ def set_mode():
     protection = _get_protection()
     if not protection:
         return _error_response(
-            "Boundary protection not initialized",
-            status_code=503,
-            error_type="service_unavailable"
+            "Boundary protection not initialized", status_code=503, error_type="service_unavailable"
         )
 
     data = request.get_json()
@@ -187,17 +170,15 @@ def set_mode():
         return _error_response(
             f"Invalid mode. Valid modes: {valid_modes}",
             error_type="validation_error",
-            details={"provided_mode": mode_str, "valid_modes": valid_modes}
+            details={"provided_mode": mode_str, "valid_modes": valid_modes},
         )
 
     try:
         from boundary_modes import BoundaryMode
+
         new_mode = BoundaryMode(mode_str.lower())
     except ValueError:
-        return _error_response(
-            f"Invalid mode: {mode_str}",
-            error_type="validation_error"
-        )
+        return _error_response(f"Invalid mode: {mode_str}", error_type="validation_error")
 
     try:
         transition = protection.set_mode(new_mode, reason, triggered_by)
@@ -208,39 +189,39 @@ def set_mode():
                 extra={
                     "transition_id": transition.transition_id,
                     "triggered_by": triggered_by,
-                    "reason": reason
+                    "reason": reason,
+                },
+            )
+            return jsonify(
+                {
+                    "success": True,
+                    "transition_id": transition.transition_id,
+                    "from_mode": transition.from_mode.value,
+                    "to_mode": transition.to_mode.value,
+                    "actions_taken": transition.actions_taken,
                 }
             )
-            return jsonify({
-                "success": True,
-                "transition_id": transition.transition_id,
-                "from_mode": transition.from_mode.value,
-                "to_mode": transition.to_mode.value,
-                "actions_taken": transition.actions_taken
-            })
         else:
             return _error_response(
                 transition.error,
                 error_type="mode_transition_failed",
                 details={
                     "from_mode": transition.from_mode.value,
-                    "to_mode": transition.to_mode.value
-                }
+                    "to_mode": transition.to_mode.value,
+                },
             )
     except Exception as e:
         logger.error(
             f"Mode transition failed unexpectedly: {e}",
             extra={"mode": mode_str, "reason": reason},
-            exc_info=True
+            exc_info=True,
         )
         return _error_response(
-            "Internal error during mode transition",
-            status_code=500,
-            error_type="internal_error"
+            "Internal error during mode transition", status_code=500, error_type="internal_error"
         )
 
 
-@boundary_bp.route('/mode/lockdown', methods=['POST'])
+@boundary_bp.route("/mode/lockdown", methods=["POST"])
 @require_api_key
 def trigger_lockdown():
     """
@@ -257,42 +238,33 @@ def trigger_lockdown():
     protection = _get_protection()
     if not protection:
         return _error_response(
-            "Boundary protection not initialized",
-            status_code=503,
-            error_type="service_unavailable"
+            "Boundary protection not initialized", status_code=503, error_type="service_unavailable"
         )
 
     data = request.get_json() or {}
     reason = data.get("reason", "Manual lockdown via API")
 
     try:
-        logger.warning(
-            f"LOCKDOWN triggered via API",
-            extra={"reason": reason}
-        )
+        logger.warning("LOCKDOWN triggered via API", extra={"reason": reason})
 
         transition = protection.trigger_lockdown(reason)
 
-        return jsonify({
-            "success": transition.success,
-            "transition_id": transition.transition_id,
-            "actions_taken": transition.actions_taken,
-            "error": transition.error
-        })
+        return jsonify(
+            {
+                "success": transition.success,
+                "transition_id": transition.transition_id,
+                "actions_taken": transition.actions_taken,
+                "error": transition.error,
+            }
+        )
     except Exception as e:
-        logger.error(
-            f"Lockdown trigger failed: {e}",
-            extra={"reason": reason},
-            exc_info=True
-        )
+        logger.error(f"Lockdown trigger failed: {e}", extra={"reason": reason}, exc_info=True)
         return _error_response(
-            "Failed to trigger lockdown",
-            status_code=500,
-            error_type="internal_error"
+            "Failed to trigger lockdown", status_code=500, error_type="internal_error"
         )
 
 
-@boundary_bp.route('/mode/history', methods=['GET'])
+@boundary_bp.route("/mode/history", methods=["GET"])
 @require_api_key
 def get_mode_history():
     """
@@ -312,17 +284,15 @@ def get_mode_history():
     limit = min(limit, MAX_PAGE_LIMIT)
 
     history = protection.get_transition_history(limit=limit)
-    return jsonify({
-        "count": len(history),
-        "transitions": history
-    })
+    return jsonify({"count": len(history), "transitions": history})
 
 
 # =============================================================================
 # Human Override Ceremony
 # =============================================================================
 
-@boundary_bp.route('/override/request', methods=['POST'])
+
+@boundary_bp.route("/override/request", methods=["POST"])
 @require_api_key
 def request_override():
     """
@@ -360,23 +330,26 @@ def request_override():
 
     try:
         from boundary_modes import BoundaryMode
+
         to_mode = BoundaryMode(to_mode_str.lower())
     except ValueError:
         return jsonify({"error": f"Invalid mode: {to_mode_str}"}), 400
 
     override_request = protection.request_mode_override(to_mode, reason, requested_by)
 
-    return jsonify({
-        "request_id": override_request.request_id,
-        "from_mode": override_request.from_mode.value,
-        "to_mode": override_request.to_mode.value,
-        "confirmation_code": override_request.confirmation_code,
-        "expires_at": override_request.expires_at,
-        "instructions": "Provide this confirmation_code to /boundary/override/confirm to complete the ceremony"
-    })
+    return jsonify(
+        {
+            "request_id": override_request.request_id,
+            "from_mode": override_request.from_mode.value,
+            "to_mode": override_request.to_mode.value,
+            "confirmation_code": override_request.confirmation_code,
+            "expires_at": override_request.expires_at,
+            "instructions": "Provide this confirmation_code to /boundary/override/confirm to complete the ceremony",
+        }
+    )
 
 
-@boundary_bp.route('/override/confirm', methods=['POST'])
+@boundary_bp.route("/override/confirm", methods=["POST"])
 @require_api_key
 def confirm_override():
     """
@@ -410,25 +383,25 @@ def confirm_override():
     transition = protection.confirm_mode_override(request_id, confirmation_code, confirmed_by)
 
     if transition.success:
-        return jsonify({
-            "success": True,
-            "transition_id": transition.transition_id,
-            "from_mode": transition.from_mode.value,
-            "to_mode": transition.to_mode.value,
-            "actions_taken": transition.actions_taken
-        })
+        return jsonify(
+            {
+                "success": True,
+                "transition_id": transition.transition_id,
+                "from_mode": transition.from_mode.value,
+                "to_mode": transition.to_mode.value,
+                "actions_taken": transition.actions_taken,
+            }
+        )
     else:
-        return jsonify({
-            "success": False,
-            "error": transition.error
-        }), 400
+        return jsonify({"success": False, "error": transition.error}), 400
 
 
 # =============================================================================
 # Security Checks
 # =============================================================================
 
-@boundary_bp.route('/check/input', methods=['POST'])
+
+@boundary_bp.route("/check/input", methods=["POST"])
 @require_api_key
 def check_input():
     """
@@ -446,9 +419,7 @@ def check_input():
     protection = _get_protection()
     if not protection:
         return _error_response(
-            "Boundary protection not initialized",
-            status_code=503,
-            error_type="service_unavailable"
+            "Boundary protection not initialized", status_code=503, error_type="service_unavailable"
         )
 
     data = request.get_json()
@@ -468,13 +439,13 @@ def check_input():
         result_dict = result.to_dict()
         if result_dict.get("blocked", False) or result_dict.get("threat_detected", False):
             logger.warning(
-                f"Threat detected in input check",
+                "Threat detected in input check",
                 extra={
                     "context": context,
                     "text_length": len(text),
                     "risk_level": result_dict.get("risk_level"),
-                    "threat_category": result_dict.get("threat_category")
-                }
+                    "threat_category": result_dict.get("threat_category"),
+                },
             )
 
         return jsonify(result_dict)
@@ -482,17 +453,19 @@ def check_input():
         logger.error(
             f"Input check failed: {e}",
             extra={"context": context, "text_length": len(text)},
-            exc_info=True
+            exc_info=True,
         )
         # Fail-safe: return as blocked when check fails
-        return jsonify({
-            "blocked": True,
-            "error": "Security check failed - treating as blocked for safety",
-            "risk_level": "high"
-        })
+        return jsonify(
+            {
+                "blocked": True,
+                "error": "Security check failed - treating as blocked for safety",
+                "risk_level": "high",
+            }
+        )
 
 
-@boundary_bp.route('/check/document', methods=['POST'])
+@boundary_bp.route("/check/document", methods=["POST"])
 @require_api_key
 def check_document():
     """
@@ -527,7 +500,7 @@ def check_document():
     return jsonify(result.to_dict())
 
 
-@boundary_bp.route('/check/response', methods=['POST'])
+@boundary_bp.route("/check/response", methods=["POST"])
 @require_api_key
 def check_response():
     """
@@ -557,7 +530,7 @@ def check_response():
     return jsonify(result.to_dict())
 
 
-@boundary_bp.route('/check/request', methods=['POST'])
+@boundary_bp.route("/check/request", methods=["POST"])
 @require_api_key
 def check_request():
     """
@@ -594,7 +567,7 @@ def check_request():
     return jsonify(result.to_dict())
 
 
-@boundary_bp.route('/sanitize', methods=['POST'])
+@boundary_bp.route("/sanitize", methods=["POST"])
 @require_api_key
 def sanitize_output():
     """
@@ -624,18 +597,17 @@ def sanitize_output():
         return jsonify({"error": "output is required"}), 400
 
     sanitized = protection.sanitize_tool_output(output, tool_name)
-    return jsonify({
-        "sanitized": sanitized,
-        "original_length": len(output),
-        "sanitized_length": len(sanitized)
-    })
+    return jsonify(
+        {"sanitized": sanitized, "original_length": len(output), "sanitized_length": len(sanitized)}
+    )
 
 
 # =============================================================================
 # Audit and Violations
 # =============================================================================
 
-@boundary_bp.route('/violations', methods=['GET'])
+
+@boundary_bp.route("/violations", methods=["GET"])
 @require_api_key
 def get_violations():
     """
@@ -662,13 +634,10 @@ def get_violations():
     if severity:
         violations = [v for v in violations if v.get("severity") == severity]
 
-    return jsonify({
-        "count": len(violations),
-        "violations": violations
-    })
+    return jsonify({"count": len(violations), "violations": violations})
 
 
-@boundary_bp.route('/audit', methods=['GET'])
+@boundary_bp.route("/audit", methods=["GET"])
 @require_api_key
 def get_audit_log():
     """
@@ -695,17 +664,15 @@ def get_audit_log():
     if event_type:
         audit_log = [e for e in audit_log if e.get("event_type") == event_type]
 
-    return jsonify({
-        "count": len(audit_log),
-        "entries": audit_log
-    })
+    return jsonify({"count": len(audit_log), "entries": audit_log})
 
 
 # =============================================================================
 # SIEM Integration
 # =============================================================================
 
-@boundary_bp.route('/siem/alerts', methods=['GET'])
+
+@boundary_bp.route("/siem/alerts", methods=["GET"])
 @require_api_key
 def get_siem_alerts():
     """
@@ -728,25 +695,27 @@ def get_siem_alerts():
 
     alerts = protection.get_siem_alerts(status=status, limit=limit)
 
-    return jsonify({
-        "count": len(alerts),
-        "alerts": [
-            {
-                "alert_id": a.alert_id,
-                "rule_id": a.rule_id,
-                "rule_name": a.rule_name,
-                "severity": a.severity.value,
-                "status": a.status,
-                "created_at": a.created_at,
-                "description": a.description,
-                "event_count": a.event_count
-            }
-            for a in alerts
-        ]
-    })
+    return jsonify(
+        {
+            "count": len(alerts),
+            "alerts": [
+                {
+                    "alert_id": a.alert_id,
+                    "rule_id": a.rule_id,
+                    "rule_name": a.rule_name,
+                    "severity": a.severity.value,
+                    "status": a.status,
+                    "created_at": a.created_at,
+                    "description": a.description,
+                    "event_count": a.event_count,
+                }
+                for a in alerts
+            ],
+        }
+    )
 
 
-@boundary_bp.route('/siem/alerts/<alert_id>/acknowledge', methods=['POST'])
+@boundary_bp.route("/siem/alerts/<alert_id>/acknowledge", methods=["POST"])
 @require_api_key
 def acknowledge_alert(alert_id):
     """
@@ -779,7 +748,8 @@ def acknowledge_alert(alert_id):
 # Policy Checks
 # =============================================================================
 
-@boundary_bp.route('/policy/tool/<tool_name>', methods=['GET'])
+
+@boundary_bp.route("/policy/tool/<tool_name>", methods=["GET"])
 @require_api_key
 def check_tool_allowed(tool_name):
     """
@@ -793,14 +763,12 @@ def check_tool_allowed(tool_name):
         return jsonify({"error": "Boundary protection not initialized"}), 503
 
     allowed = protection.is_tool_allowed(tool_name)
-    return jsonify({
-        "tool": tool_name,
-        "allowed": allowed,
-        "current_mode": protection.current_mode.value
-    })
+    return jsonify(
+        {"tool": tool_name, "allowed": allowed, "current_mode": protection.current_mode.value}
+    )
 
 
-@boundary_bp.route('/policy/network', methods=['GET'])
+@boundary_bp.route("/policy/network", methods=["GET"])
 @require_api_key
 def check_network_allowed():
     """
@@ -813,17 +781,20 @@ def check_network_allowed():
     if not protection:
         return jsonify({"error": "Boundary protection not initialized"}), 503
 
-    return jsonify({
-        "network_allowed": protection.is_network_allowed(),
-        "current_mode": protection.current_mode.value
-    })
+    return jsonify(
+        {
+            "network_allowed": protection.is_network_allowed(),
+            "current_mode": protection.current_mode.value,
+        }
+    )
 
 
 # =============================================================================
 # Enforcement Status
 # =============================================================================
 
-@boundary_bp.route('/enforcement', methods=['GET'])
+
+@boundary_bp.route("/enforcement", methods=["GET"])
 @require_api_key
 def get_enforcement_status():
     """
@@ -843,7 +814,8 @@ def get_enforcement_status():
 # Dreaming Status
 # =============================================================================
 
-@boundary_bp.route('/dreaming', methods=['GET'])
+
+@boundary_bp.route("/dreaming", methods=["GET"])
 def get_dreaming_status():
     """
     Get the current dreaming status.
@@ -856,11 +828,14 @@ def get_dreaming_status():
     """
     try:
         from dreaming import get_dream_status
+
         return jsonify(get_dream_status())
     except ImportError:
-        return jsonify({
-            "message": "Dreaming module not available",
-            "state": "idle",
-            "duration": 0,
-            "timestamp": None
-        })
+        return jsonify(
+            {
+                "message": "Dreaming module not available",
+                "state": "idle",
+                "duration": 0,
+                "timestamp": None,
+            }
+        )

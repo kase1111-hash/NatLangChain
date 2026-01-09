@@ -31,6 +31,7 @@ from typing import Any
 @dataclass
 class CacheEntry:
     """A cache entry with value and expiration."""
+
     value: Any
     expires_at: float | None = None
 
@@ -348,7 +349,7 @@ class RedisCache(Cache):
         if data is None:
             return None
         if isinstance(data, bytes):
-            data = data.decode('utf-8')
+            data = data.decode("utf-8")
         return json.loads(data)
 
     def get(self, key: str, default: Any = None) -> Any:
@@ -456,9 +457,11 @@ def cached(
         def expensive_computation(x, y):
             return x + y
     """
+
     def decorator(func):
         def wrapper(*args, **kwargs):
             from scaling import get_cache
+
             c = cache or get_cache()
 
             # Build cache key from function name and arguments
@@ -476,5 +479,7 @@ def cached(
             result = func(*args, **kwargs)
             c.set(cache_key, result, ttl=ttl)
             return result
+
         return wrapper
+
     return decorator

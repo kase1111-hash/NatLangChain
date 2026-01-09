@@ -40,10 +40,7 @@ class ContractMatcher:
         self.parser = ContractParser(api_key)
 
     def find_matches(
-        self,
-        blockchain: NatLangChain,
-        pending_entries: list[NaturalLanguageEntry],
-        miner_id: str
+        self, blockchain: NatLangChain, pending_entries: list[NaturalLanguageEntry], miner_id: str
     ) -> list[NaturalLanguageEntry]:
         """
         Find matches for pending contract entries against open contracts.
@@ -86,17 +83,12 @@ class ContractMatcher:
                     pending.metadata.get("terms", {}),
                     existing["content"],
                     existing["intent"],
-                    existing["metadata"].get("terms", {})
+                    existing["metadata"].get("terms", {}),
                 )
 
                 if match_result["score"] >= self.match_threshold:
                     # Generate proposal
-                    proposal = self._generate_proposal(
-                        pending,
-                        existing,
-                        match_result,
-                        miner_id
-                    )
+                    proposal = self._generate_proposal(pending, existing, match_result, miner_id)
                     proposals.append(proposal)
 
         return proposals
@@ -125,15 +117,17 @@ class ContractMatcher:
                     continue
 
                 # Add to list with block info
-                open_contracts.append({
-                    "content": entry.content,
-                    "author": entry.author,
-                    "intent": entry.intent,
-                    "metadata": entry.metadata,
-                    "timestamp": entry.timestamp,
-                    "block_index": block.index,
-                    "block_hash": block.hash
-                })
+                open_contracts.append(
+                    {
+                        "content": entry.content,
+                        "author": entry.author,
+                        "intent": entry.intent,
+                        "metadata": entry.metadata,
+                        "timestamp": entry.timestamp,
+                        "block_index": block.index,
+                        "block_hash": block.hash,
+                    }
+                )
 
         return open_contracts
 
@@ -144,7 +138,7 @@ class ContractMatcher:
         terms1: dict[str, str],
         content2: str,
         intent2: str,
-        terms2: dict[str, str]
+        terms2: dict[str, str],
     ) -> dict[str, Any]:
         """
         Compute semantic match score between two contracts.
@@ -188,15 +182,15 @@ Return JSON:
 }}"""
 
             message = self.client.messages.create(
-                model=self.model,
-                max_tokens=512,
-                messages=[{"role": "user", "content": prompt}]
+                model=self.model, max_tokens=512, messages=[{"role": "user", "content": prompt}]
             )
 
             # Safe access to API response
             if not message.content:
-                raise ValueError("Empty response from API: no content returned during match computation")
-            if not hasattr(message.content[0], 'text'):
+                raise ValueError(
+                    "Empty response from API: no content returned during match computation"
+                )
+            if not hasattr(message.content[0], "text"):
                 raise ValueError("Invalid API response format: missing 'text' attribute")
 
             response_text = message.content[0].text
@@ -218,7 +212,7 @@ Return JSON:
                 "compatibility": "",
                 "conflicts": [f"JSON parsing error: {e!s}"],
                 "recommendation": "NO_MATCH",
-                "reasoning": f"Failed to parse API response: {e!s}"
+                "reasoning": f"Failed to parse API response: {e!s}",
             }
         except ValueError as e:
             print(f"Match computation failed - validation error: {e}")
@@ -227,7 +221,7 @@ Return JSON:
                 "compatibility": "",
                 "conflicts": [str(e)],
                 "recommendation": "NO_MATCH",
-                "reasoning": f"API response validation failed: {e!s}"
+                "reasoning": f"API response validation failed: {e!s}",
             }
         except Exception as e:
             print(f"Match computation failed - unexpected error: {e}")
@@ -236,7 +230,7 @@ Return JSON:
                 "compatibility": "",
                 "conflicts": [str(e)],
                 "recommendation": "NO_MATCH",
-                "reasoning": f"Unexpected error: {e!s}"
+                "reasoning": f"Unexpected error: {e!s}",
             }
 
     def _extract_json_from_response(self, response_text: str) -> str:
@@ -275,7 +269,7 @@ Return JSON:
         pending: NaturalLanguageEntry,
         existing: dict[str, Any],
         match_result: dict[str, Any],
-        miner_id: str
+        miner_id: str,
     ) -> NaturalLanguageEntry:
         """
         Generate a proposal entry for a matched pair.
@@ -295,18 +289,18 @@ Return JSON:
 
 CONTRACT A (Pending):
 {pending.content}
-Terms: {json.dumps(pending.metadata.get('terms', {}), indent=2)}
+Terms: {json.dumps(pending.metadata.get("terms", {}), indent=2)}
 
 CONTRACT B (Existing):
-{existing['content']}
-Terms: {json.dumps(existing['metadata'].get('terms', {}), indent=2)}
+{existing["content"]}
+Terms: {json.dumps(existing["metadata"].get("terms", {}), indent=2)}
 
 MATCH ANALYSIS:
-Score: {match_result['score']}%
-{match_result['compatibility']}
+Score: {match_result["score"]}%
+{match_result["compatibility"]}
 
 Create a natural language proposal that:
-1. References both parties (authors: {pending.author} and {existing['author']})
+1. References both parties (authors: {pending.author} and {existing["author"]})
 2. Synthesizes the compatible terms
 3. Highlights the match compatibility
 4. Suggests next steps for finalization
@@ -314,16 +308,18 @@ Create a natural language proposal that:
 Write in clear, contract-appropriate language."""
 
             message = self.client.messages.create(
-                model=self.model,
-                max_tokens=512,
-                messages=[{"role": "user", "content": prompt}]
+                model=self.model, max_tokens=512, messages=[{"role": "user", "content": prompt}]
             )
 
             # Safe access to API response
             if not message.content:
-                raise ValueError("Empty response from API: no content returned during proposal generation")
-            if not hasattr(message.content[0], 'text'):
-                raise ValueError("Invalid API response format: missing 'text' attribute in proposal generation")
+                raise ValueError(
+                    "Empty response from API: no content returned during proposal generation"
+                )
+            if not hasattr(message.content[0], "text"):
+                raise ValueError(
+                    "Invalid API response format: missing 'text' attribute in proposal generation"
+                )
 
             merged_prose = message.content[0].text.strip()
 
@@ -332,10 +328,10 @@ Write in clear, contract-appropriate language."""
 
             # Merge terms from both contracts
             merged_terms = {}
-            merged_terms.update(existing['metadata'].get('terms', {}))
-            merged_terms.update(pending.metadata.get('terms', {}))
-            merged_terms['miner'] = miner_id
-            merged_terms['match_score'] = str(match_result['score'])
+            merged_terms.update(existing["metadata"].get("terms", {}))
+            merged_terms.update(pending.metadata.get("terms", {}))
+            merged_terms["miner"] = miner_id
+            merged_terms["match_score"] = str(match_result["score"])
 
             # Create the proposal entry
             proposal = NaturalLanguageEntry(
@@ -346,12 +342,12 @@ Write in clear, contract-appropriate language."""
                     "is_contract": True,
                     "contract_type": ContractParser.TYPE_PROPOSAL,
                     "status": ContractParser.STATUS_MATCHED,
-                    "match_score": match_result['score'],
-                    "links": [pending.author, existing['author']],  # Would use hashes in production
+                    "match_score": match_result["score"],
+                    "links": [pending.author, existing["author"]],  # Would use hashes in production
                     "terms": merged_terms,
-                    "compatibility": match_result.get('compatibility', ''),
-                    "conflicts": match_result.get('conflicts', [])
-                }
+                    "compatibility": match_result.get("compatibility", ""),
+                    "conflicts": match_result.get("conflicts", []),
+                },
             )
 
             return proposal
@@ -367,9 +363,9 @@ Write in clear, contract-appropriate language."""
                     "is_contract": True,
                     "contract_type": ContractParser.TYPE_PROPOSAL,
                     "status": ContractParser.STATUS_MATCHED,
-                    "match_score": match_result['score'],
-                    "error": str(e)
-                }
+                    "match_score": match_result["score"],
+                    "error": str(e),
+                },
             )
 
     def mediate_negotiation(
@@ -378,7 +374,7 @@ Write in clear, contract-appropriate language."""
         original_terms: dict[str, str],
         counter_response: str,
         counter_terms: dict[str, str],
-        round_number: int
+        round_number: int,
     ) -> dict[str, Any]:
         """
         Mediate between original proposal and counter-response.
@@ -421,16 +417,16 @@ Return JSON:
 }}"""
 
             message = self.client.messages.create(
-                model=self.model,
-                max_tokens=512,
-                messages=[{"role": "user", "content": prompt}]
+                model=self.model, max_tokens=512, messages=[{"role": "user", "content": prompt}]
             )
 
             # Safe access to API response
             if not message.content:
                 raise ValueError("Empty response from API: no content returned during mediation")
-            if not hasattr(message.content[0], 'text'):
-                raise ValueError("Invalid API response format: missing 'text' attribute in mediation")
+            if not hasattr(message.content[0], "text"):
+                raise ValueError(
+                    "Invalid API response format: missing 'text' attribute in mediation"
+                )
 
             response_text = message.content[0].text
 
@@ -440,7 +436,9 @@ Return JSON:
             try:
                 result = json.loads(response_text)
             except json.JSONDecodeError as e:
-                raise ValueError(f"Failed to parse mediation result JSON: {e.msg} at position {e.pos}")
+                raise ValueError(
+                    f"Failed to parse mediation result JSON: {e.msg} at position {e.pos}"
+                )
 
             return result
 
@@ -452,7 +450,7 @@ Return JSON:
                 "suggested_compromise": "",
                 "recommended_action": "TERMINATE",
                 "reasoning": f"JSON parsing error: {e!s}",
-                "revised_terms": {}
+                "revised_terms": {},
             }
         except ValueError as e:
             print(f"Mediation failed - validation error: {e}")
@@ -462,7 +460,7 @@ Return JSON:
                 "suggested_compromise": "",
                 "recommended_action": "TERMINATE",
                 "reasoning": f"Validation error: {e!s}",
-                "revised_terms": {}
+                "revised_terms": {},
             }
         except Exception as e:
             print(f"Mediation failed - unexpected error: {e}")
@@ -472,5 +470,5 @@ Return JSON:
                 "suggested_compromise": "",
                 "recommended_action": "TERMINATE",
                 "reasoning": f"Unexpected error: {e!s}",
-                "revised_terms": {}
+                "revised_terms": {},
             }

@@ -5,10 +5,13 @@ Tests priority queue, fee extraction, zero-fee processing,
 community pool, and mediator incentives.
 """
 
-import pytest
 from datetime import datetime, timedelta
 
+import pytest
+
 from src.voluntary_fees import (
+    COMMUNITY_POOL_PERCENTAGE,
+    ZERO_FEE_REPUTATION_BONUS,
     CommunityPool,
     FeeExtractor,
     FeeInfo,
@@ -18,13 +21,10 @@ from src.voluntary_fees import (
     ProcessingStatus,
     QueuedContract,
     VoluntaryProcessingQueue,
-    ZERO_FEE_REPUTATION_BONUS,
-    COMMUNITY_POOL_PERCENTAGE,
     get_fee_system_config,
     get_processing_queue,
     reset_processing_queue,
 )
-
 
 # =============================================================================
 # Fee Extraction Tests
@@ -112,8 +112,7 @@ class TestPriorityQueue:
         queue = VoluntaryProcessingQueue()
 
         contract = queue.submit_contract(
-            content="Agreement with processing fee: $100",
-            submitter_id="alice"
+            content="Agreement with processing fee: $100", submitter_id="alice"
         )
 
         assert contract.contract_id.startswith("CONTRACT_")
@@ -126,8 +125,7 @@ class TestPriorityQueue:
         queue = VoluntaryProcessingQueue()
 
         contract = queue.submit_contract(
-            content="Simple agreement between Alice and Bob.",
-            submitter_id="bob"
+            content="Simple agreement between Alice and Bob.", submitter_id="bob"
         )
 
         assert contract.fee.amount == 0.0
@@ -197,9 +195,7 @@ class TestClaimAndProcess:
         contract = queue.submit_contract("Agreement. Fee: $50", "alice")
 
         success, msg = queue.claim_contract(
-            contract.contract_id,
-            "mediator1",
-            ProcessingReason.FEE_INCENTIVE
+            contract.contract_id, "mediator1", ProcessingReason.FEE_INCENTIVE
         )
 
         assert success
@@ -223,9 +219,7 @@ class TestClaimAndProcess:
         contract = queue.submit_contract("Agreement. Fee: $100", "alice")
         queue.claim_contract(contract.contract_id, "mediator1")
 
-        success, result = queue.complete_processing(
-            contract.contract_id, "mediator1"
-        )
+        success, result = queue.complete_processing(contract.contract_id, "mediator1")
 
         assert success
         assert contract.status == ProcessingStatus.COMPLETED
@@ -239,9 +233,7 @@ class TestClaimAndProcess:
         contract = queue.submit_contract("Free agreement.", "alice")
         queue.claim_contract(contract.contract_id, "mediator1")
 
-        success, result = queue.complete_processing(
-            contract.contract_id, "mediator1"
-        )
+        success, result = queue.complete_processing(contract.contract_id, "mediator1")
 
         assert success
         assert result["is_zero_fee"] is True
@@ -300,9 +292,7 @@ class TestCommunityPool:
         queue.claim_contract(contract.contract_id, "mediator1")
 
         success, result = queue.complete_processing(
-            contract.contract_id,
-            "mediator1",
-            apply_community_subsidy=True
+            contract.contract_id, "mediator1", apply_community_subsidy=True
         )
 
         assert success
@@ -542,8 +532,7 @@ class TestIntegration:
 
         # Submit
         contract = queue.submit_contract(
-            "Alice agrees to pay Bob $1000. Processing fee: $25",
-            "alice"
+            "Alice agrees to pay Bob $1000. Processing fee: $25", "alice"
         )
         assert contract.fee.amount == 25.0
 
@@ -553,16 +542,12 @@ class TestIntegration:
 
         # Claim
         success, _ = queue.claim_contract(
-            contract.contract_id,
-            "mediator1",
-            ProcessingReason.FEE_INCENTIVE
+            contract.contract_id, "mediator1", ProcessingReason.FEE_INCENTIVE
         )
         assert success
 
         # Complete
-        success, result = queue.complete_processing(
-            contract.contract_id, "mediator1"
-        )
+        success, result = queue.complete_processing(contract.contract_id, "mediator1")
         assert success
         assert result["fee_earned"] > 0
 
@@ -579,25 +564,18 @@ class TestIntegration:
         queue.fund_community_pool(50.0, "benefactor")
 
         # Submit zero-fee
-        contract = queue.submit_contract(
-            "Simple agreement between friends.",
-            "alice"
-        )
+        contract = queue.submit_contract("Simple agreement between friends.", "alice")
         assert contract.fee.amount == 0.0
 
         # Claim for reputation building
         success, _ = queue.claim_contract(
-            contract.contract_id,
-            "new_mediator",
-            ProcessingReason.REPUTATION
+            contract.contract_id, "new_mediator", ProcessingReason.REPUTATION
         )
         assert success
 
         # Complete with subsidy
         success, result = queue.complete_processing(
-            contract.contract_id,
-            "new_mediator",
-            apply_community_subsidy=True
+            contract.contract_id, "new_mediator", apply_community_subsidy=True
         )
         assert success
         assert result["is_zero_fee"]

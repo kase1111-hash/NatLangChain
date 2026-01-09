@@ -21,6 +21,7 @@ import yaml
 
 class TermClass(Enum):
     """Classification of terms per NCIP-001."""
+
     CORE = "core"
     PROTOCOL_BOUND = "protocol-bound"
     EXTENSION = "extension"
@@ -28,6 +29,7 @@ class TermClass(Enum):
 
 class TermStatus(Enum):
     """Status of a term lookup result."""
+
     CANONICAL = "canonical"
     SYNONYM = "synonym"
     DEPRECATED = "deprecated"
@@ -37,6 +39,7 @@ class TermStatus(Enum):
 @dataclass
 class TermDefinition:
     """A canonical term definition from the registry."""
+
     term: str
     term_class: TermClass
     definition: str
@@ -60,6 +63,7 @@ class TermDefinition:
 @dataclass
 class TermLookupResult:
     """Result of looking up a term in the registry."""
+
     status: TermStatus
     canonical_term: str | None = None
     definition: TermDefinition | None = None
@@ -69,6 +73,7 @@ class TermLookupResult:
 @dataclass
 class TermValidationResult:
     """Result of validating text against the term registry."""
+
     unknown_terms: list[str] = field(default_factory=list)
     deprecated_terms: list[str] = field(default_factory=list)
     synonym_usage: list[tuple[str, str]] = field(default_factory=list)  # (used, canonical)
@@ -131,7 +136,7 @@ class CanonicalTermRegistry:
             )
 
         try:
-            with open(self.registry_path, encoding='utf-8') as f:
+            with open(self.registry_path, encoding="utf-8") as f:
                 data = yaml.safe_load(f)
         except yaml.YAMLError as e:
             raise ValueError(f"Invalid YAML in term registry: {e}")
@@ -181,7 +186,7 @@ class CanonicalTermRegistry:
             governance=term_data.get("governance", {}),
             synonyms=term_data.get("synonyms", []),
             notes=term_data.get("notes"),
-            governed_by=term_data.get("governed_by")
+            governed_by=term_data.get("governed_by"),
         )
 
         # Store by canonical name (case-insensitive lookup)
@@ -211,10 +216,7 @@ class CanonicalTermRegistry:
 
         # Check for deprecated
         if term_lower in self._deprecated:
-            return TermLookupResult(
-                status=TermStatus.DEPRECATED,
-                matched_as=term
-            )
+            return TermLookupResult(status=TermStatus.DEPRECATED, matched_as=term)
 
         # Check for canonical term
         if term_lower in self._terms:
@@ -223,7 +225,7 @@ class CanonicalTermRegistry:
                 status=TermStatus.CANONICAL,
                 canonical_term=definition.term,
                 definition=definition,
-                matched_as=term
+                matched_as=term,
             )
 
         # Check for synonym
@@ -234,14 +236,11 @@ class CanonicalTermRegistry:
                 status=TermStatus.SYNONYM,
                 canonical_term=canonical,
                 definition=definition,
-                matched_as=term
+                matched_as=term,
             )
 
         # Unknown term
-        return TermLookupResult(
-            status=TermStatus.UNKNOWN,
-            matched_as=term
-        )
+        return TermLookupResult(status=TermStatus.UNKNOWN, matched_as=term)
 
     def get_canonical(self, term: str) -> str | None:
         """
@@ -358,7 +357,7 @@ class CanonicalTermRegistry:
         # Check each known term/synonym
         for term_key in sorted(all_terms, key=len, reverse=True):
             # Use word boundary matching
-            pattern = r'\b' + re.escape(term_key) + r'\b'
+            pattern = r"\b" + re.escape(term_key) + r"\b"
             if re.search(pattern, text_lower, re.IGNORECASE):
                 lookup_result = self.lookup(term_key)
 
@@ -394,9 +393,7 @@ class CanonicalTermRegistry:
                 result.extension_terms_found.append(term)
 
     def extract_unknown_terms(
-        self,
-        text: str,
-        candidate_terms: list[str] | None = None
+        self, text: str, candidate_terms: list[str] | None = None
     ) -> list[str]:
         """
         Extract terms from text that are not in the registry.
@@ -422,7 +419,7 @@ class CanonicalTermRegistry:
         else:
             # Extract capitalized phrases as potential terms
             # Match Title Case words/phrases
-            pattern = r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b'
+            pattern = r"\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b"
             matches = re.findall(pattern, text)
 
             for match in matches:
@@ -472,11 +469,19 @@ def validate_entry_terms(content: str, intent: str) -> TermValidationResult:
     # Merge results
     combined = TermValidationResult()
     combined.unknown_terms = list(set(content_result.unknown_terms + intent_result.unknown_terms))
-    combined.deprecated_terms = list(set(content_result.deprecated_terms + intent_result.deprecated_terms))
+    combined.deprecated_terms = list(
+        set(content_result.deprecated_terms + intent_result.deprecated_terms)
+    )
     combined.synonym_usage = list(set(content_result.synonym_usage + intent_result.synonym_usage))
-    combined.core_terms_found = list(set(content_result.core_terms_found + intent_result.core_terms_found))
-    combined.protocol_terms_found = list(set(content_result.protocol_terms_found + intent_result.protocol_terms_found))
-    combined.extension_terms_found = list(set(content_result.extension_terms_found + intent_result.extension_terms_found))
+    combined.core_terms_found = list(
+        set(content_result.core_terms_found + intent_result.core_terms_found)
+    )
+    combined.protocol_terms_found = list(
+        set(content_result.protocol_terms_found + intent_result.protocol_terms_found)
+    )
+    combined.extension_terms_found = list(
+        set(content_result.extension_terms_found + intent_result.extension_terms_found)
+    )
 
     return combined
 

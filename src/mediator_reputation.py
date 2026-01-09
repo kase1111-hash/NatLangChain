@@ -27,12 +27,12 @@ from typing import Any
 
 # Default CTS weights (protocol-defined, may evolve via NCIP-008 precedent)
 CTS_WEIGHTS = {
-    "acceptance_rate": 0.20,       # w1
-    "semantic_accuracy": 0.25,     # w2
-    "appeal_survival": 0.15,       # w3
-    "dispute_avoidance": 0.15,     # w4
-    "coercion_signal": 0.15,       # w5 (penalty)
-    "latency_discipline": 0.10    # w6 (penalty for late)
+    "acceptance_rate": 0.20,  # w1
+    "semantic_accuracy": 0.25,  # w2
+    "appeal_survival": 0.15,  # w3
+    "dispute_avoidance": 0.15,  # w4
+    "coercion_signal": 0.15,  # w5 (penalty)
+    "latency_discipline": 0.10,  # w6 (penalty for late)
 }
 
 # Slashing percentages by offense
@@ -41,7 +41,7 @@ SLASHING_RATES = {
     "repeated_invalid_proposals": (0.05, 0.15),  # 5-15% for 3x rejected
     "coercive_framing": (0.15, 0.15),  # Fixed 15%
     "appeal_reversal": (0.05, 0.20),  # 5-20%
-    "collusion_signals": (0.05, 0.50)  # Progressive up to 50%
+    "collusion_signals": (0.05, 0.50),  # Progressive up to 50%
 }
 
 # Cooldown durations by offense type
@@ -50,7 +50,7 @@ COOLDOWN_DURATIONS = {
     "repeated_invalid_proposals": 7,
     "coercive_framing": 21,
     "appeal_reversal": 14,
-    "collusion_signals": 60
+    "collusion_signals": 60,
 }
 
 # Maximum active proposals during cooldown
@@ -70,8 +70,10 @@ DEFAULT_STAKING_CURRENCY = "USDC"  # Can be ETH, USDC, DAI, etc.
 # Enums
 # =============================================================================
 
+
 class SlashingOffense(Enum):
     """Types of slashable offenses per NCIP-010 Section 6."""
+
     SEMANTIC_MANIPULATION = "semantic_manipulation"
     REPEATED_INVALID_PROPOSALS = "repeated_invalid_proposals"
     COERCIVE_FRAMING = "coercive_framing"
@@ -81,6 +83,7 @@ class SlashingOffense(Enum):
 
 class CooldownReason(Enum):
     """Reasons for mediator cooldown."""
+
     SLASHING = "slashing"
     APPEAL_REVERSAL = "appeal_reversal"
     VOLUNTARY = "voluntary"
@@ -89,6 +92,7 @@ class CooldownReason(Enum):
 
 class ProposalStatus(Enum):
     """Status of a mediator proposal."""
+
     PENDING = "pending"
     ACCEPTED = "accepted"
     REJECTED = "rejected"
@@ -98,6 +102,7 @@ class ProposalStatus(Enum):
 
 class MediatorStatus(Enum):
     """Status of a mediator in the system."""
+
     ACTIVE = "active"
     COOLDOWN = "cooldown"
     SUSPENDED = "suspended"
@@ -108,11 +113,13 @@ class MediatorStatus(Enum):
 # Data Classes
 # =============================================================================
 
+
 @dataclass
 class ReputationScores:
     """
     Reputation is a vector, not a scalar (NCIP-010 Section 4).
     """
+
     acceptance_rate: float = 0.5  # AR: % of proposals ratified
     semantic_accuracy: float = 0.5  # SA: Validator-measured drift score
     appeal_survival: float = 1.0  # AS: % surviving appeals (starts at 100%)
@@ -128,13 +135,14 @@ class ReputationScores:
             "appeal_survival": self.appeal_survival,
             "dispute_avoidance": self.dispute_avoidance,
             "coercion_signal": self.coercion_signal,
-            "latency_discipline": self.latency_discipline
+            "latency_discipline": self.latency_discipline,
         }
 
 
 @dataclass
 class Bond:
     """Mediator stake bond in configured staking currency."""
+
     amount: float
     token: str = DEFAULT_STAKING_CURRENCY  # Configurable per deployment
     locked: bool = True
@@ -148,13 +156,16 @@ class Bond:
             "token": self.token,
             "locked": self.locked,
             "locked_at": self.locked_at.isoformat(),
-            "unlock_requested_at": self.unlock_requested_at.isoformat() if self.unlock_requested_at else None
+            "unlock_requested_at": self.unlock_requested_at.isoformat()
+            if self.unlock_requested_at
+            else None,
         }
 
 
 @dataclass
 class Cooldown:
     """Active cooldown period."""
+
     cooldown_id: str
     reason: CooldownReason
     offense: SlashingOffense | None = None
@@ -189,13 +200,14 @@ class Cooldown:
             "duration_days": self.duration_days,
             "ends_at": self.ends_at.isoformat(),
             "is_active": self.is_active,
-            "max_active_proposals": self.max_active_proposals
+            "max_active_proposals": self.max_active_proposals,
         }
 
 
 @dataclass
 class SlashingEvent:
     """Record of a slashing event."""
+
     event_id: str
     mediator_id: str
     offense: SlashingOffense
@@ -216,13 +228,14 @@ class SlashingEvent:
             "percentage": self.percentage,
             "timestamp": self.timestamp.isoformat(),
             "treasury_portion": self.treasury_portion,
-            "affected_party_portion": self.affected_party_portion
+            "affected_party_portion": self.affected_party_portion,
         }
 
 
 @dataclass
 class MediatorProposal:
     """A proposal submitted by a mediator."""
+
     proposal_id: str
     mediator_id: str
     contract_id: str
@@ -241,7 +254,7 @@ class MediatorProposal:
             "status": self.status.value,
             "created_at": self.created_at.isoformat(),
             "responded_at": self.responded_at.isoformat() if self.responded_at else None,
-            "response_latency_seconds": self.response_latency_seconds
+            "response_latency_seconds": self.response_latency_seconds,
         }
 
 
@@ -250,6 +263,7 @@ class MediatorProfile:
     """
     Full mediator profile with reputation, bonding, and status.
     """
+
     mediator_id: str
     bond: Bond
     scores: ReputationScores = field(default_factory=ReputationScores)
@@ -286,13 +300,14 @@ class MediatorProfile:
             "accepted_count": self.accepted_count,
             "rejected_count": self.rejected_count,
             "appeal_count": self.appeal_count,
-            "appeal_losses": self.appeal_losses
+            "appeal_losses": self.appeal_losses,
         }
 
 
 # =============================================================================
 # Mediator Reputation Manager
 # =============================================================================
+
 
 class MediatorReputationManager:
     """
@@ -325,7 +340,7 @@ class MediatorReputationManager:
         mediator_id: str,
         stake_amount: float = DEFAULT_BOND,
         supported_domains: list[str] | None = None,
-        models_used: list[str] | None = None
+        models_used: list[str] | None = None,
     ) -> MediatorProfile:
         """
         Register a new mediator with required bond.
@@ -351,9 +366,7 @@ class MediatorReputationManager:
             raise ValueError(f"Mediator {mediator_id} already registered")
 
         if stake_amount < MINIMUM_BOND:
-            raise ValueError(
-                f"Bond amount {stake_amount} below minimum {MINIMUM_BOND}"
-            )
+            raise ValueError(f"Bond amount {stake_amount} below minimum {MINIMUM_BOND}")
 
         bond = Bond(amount=stake_amount)
 
@@ -361,7 +374,7 @@ class MediatorReputationManager:
             mediator_id=mediator_id,
             bond=bond,
             supported_domains=supported_domains or [],
-            models_used=models_used or []
+            models_used=models_used or [],
         )
 
         # Calculate initial CTS
@@ -408,7 +421,8 @@ class MediatorReputationManager:
         if active_cooldowns:
             # Count active proposals
             active_proposals = sum(
-                1 for p in self.proposals.values()
+                1
+                for p in self.proposals.values()
                 if p.mediator_id == mediator_id and p.status == ProposalStatus.PENDING
             )
             max_allowed = min(c.max_active_proposals for c in active_cooldowns)
@@ -431,23 +445,18 @@ class MediatorReputationManager:
         weights = CTS_WEIGHTS
 
         cts = (
-            weights["acceptance_rate"] * scores.acceptance_rate +
-            weights["semantic_accuracy"] * scores.semantic_accuracy +
-            weights["appeal_survival"] * scores.appeal_survival +
-            weights["dispute_avoidance"] * scores.dispute_avoidance -
-            weights["coercion_signal"] * scores.coercion_signal -
-            weights["latency_discipline"] * (1.0 - scores.latency_discipline)
+            weights["acceptance_rate"] * scores.acceptance_rate
+            + weights["semantic_accuracy"] * scores.semantic_accuracy
+            + weights["appeal_survival"] * scores.appeal_survival
+            + weights["dispute_avoidance"] * scores.dispute_avoidance
+            - weights["coercion_signal"] * scores.coercion_signal
+            - weights["latency_discipline"] * (1.0 - scores.latency_discipline)
         )
 
         # Clamp to [0, 1]
         return max(0.0, min(1.0, cts))
 
-    def update_reputation(
-        self,
-        mediator_id: str,
-        dimension: str,
-        value: float
-    ) -> float | None:
+    def update_reputation(self, mediator_id: str, dimension: str, value: float) -> float | None:
         """
         Update a specific reputation dimension.
 
@@ -494,7 +503,7 @@ class MediatorReputationManager:
         accepted: bool,
         semantic_drift_score: float | None = None,
         latency_seconds: float | None = None,
-        coercion_detected: bool = False
+        coercion_detected: bool = False,
     ) -> dict[str, Any]:
         """
         Record the outcome of a proposal and update reputation.
@@ -550,14 +559,10 @@ class MediatorReputationManager:
 
         # Update coercion signal if detected
         if coercion_detected:
-            profile.scores.coercion_signal = min(
-                1.0, profile.scores.coercion_signal + 0.1
-            )
+            profile.scores.coercion_signal = min(1.0, profile.scores.coercion_signal + 0.1)
         else:
             # Slowly decay coercion signal
-            profile.scores.coercion_signal = max(
-                0.0, profile.scores.coercion_signal - 0.01
-            )
+            profile.scores.coercion_signal = max(0.0, profile.scores.coercion_signal - 0.01)
 
         # Recalculate CTS
         profile.composite_trust_score = self._calculate_cts(profile)
@@ -568,14 +573,10 @@ class MediatorReputationManager:
             "new_cts": profile.composite_trust_score,
             "scores": profile.scores.to_dict(),
             "proposal_count": profile.proposal_count,
-            "accepted_count": profile.accepted_count
+            "accepted_count": profile.accepted_count,
         }
 
-    def record_appeal_outcome(
-        self,
-        mediator_id: str,
-        appeal_survived: bool
-    ) -> dict[str, Any]:
+    def record_appeal_outcome(self, mediator_id: str, appeal_survived: bool) -> dict[str, Any]:
         """
         Record the outcome of an appeal affecting a mediator.
 
@@ -596,9 +597,7 @@ class MediatorReputationManager:
 
         # Update appeal survival rate
         if profile.appeal_count > 0:
-            profile.scores.appeal_survival = (
-                1.0 - (profile.appeal_losses / profile.appeal_count)
-            )
+            profile.scores.appeal_survival = 1.0 - (profile.appeal_losses / profile.appeal_count)
 
         # Recalculate CTS
         profile.composite_trust_score = self._calculate_cts(profile)
@@ -607,14 +606,10 @@ class MediatorReputationManager:
             "mediator_id": mediator_id,
             "appeal_survived": appeal_survived,
             "appeal_survival_rate": profile.scores.appeal_survival,
-            "new_cts": profile.composite_trust_score
+            "new_cts": profile.composite_trust_score,
         }
 
-    def record_downstream_dispute(
-        self,
-        mediator_id: str,
-        dispute_occurred: bool
-    ) -> dict[str, Any]:
+    def record_downstream_dispute(self, mediator_id: str, dispute_occurred: bool) -> dict[str, Any]:
         """
         Record whether a downstream dispute occurred after mediation.
 
@@ -641,7 +636,7 @@ class MediatorReputationManager:
         return {
             "mediator_id": mediator_id,
             "dispute_avoidance": profile.scores.dispute_avoidance,
-            "new_cts": profile.composite_trust_score
+            "new_cts": profile.composite_trust_score,
         }
 
     # =========================================================================
@@ -654,7 +649,7 @@ class MediatorReputationManager:
         offense: SlashingOffense,
         severity: float = 0.5,
         evidence: dict[str, Any] | None = None,
-        affected_party_id: str | None = None
+        affected_party_id: str | None = None,
     ) -> SlashingEvent | None:
         """
         Slash a mediator's bond for an offense.
@@ -676,9 +671,7 @@ class MediatorReputationManager:
             return None
 
         # Calculate slash percentage based on offense and severity
-        min_pct, max_pct = SLASHING_RATES.get(
-            offense.value, (0.05, 0.15)
-        )
+        min_pct, max_pct = SLASHING_RATES.get(offense.value, (0.05, 0.15))
         slash_percentage = min_pct + severity * (max_pct - min_pct)
 
         # Calculate amount to slash
@@ -709,7 +702,7 @@ class MediatorReputationManager:
             percentage=slash_percentage,
             evidence=evidence or {},
             treasury_portion=treasury_portion,
-            affected_party_portion=affected_party_portion
+            affected_party_portion=affected_party_portion,
         )
 
         profile.slashing_history.append(event)
@@ -723,11 +716,7 @@ class MediatorReputationManager:
 
         return event
 
-    def _apply_cooldown(
-        self,
-        profile: MediatorProfile,
-        offense: SlashingOffense
-    ) -> Cooldown:
+    def _apply_cooldown(self, profile: MediatorProfile, offense: SlashingOffense) -> Cooldown:
         """Apply a cooldown period after slashing."""
         duration = COOLDOWN_DURATIONS.get(offense.value, 14)
 
@@ -735,7 +724,7 @@ class MediatorReputationManager:
             cooldown_id=self._generate_id("cooldown"),
             reason=CooldownReason.SLASHING,
             offense=offense,
-            duration_days=duration
+            duration_days=duration,
         )
 
         profile.active_cooldowns.append(cooldown)
@@ -745,9 +734,7 @@ class MediatorReputationManager:
         return cooldown
 
     def check_repeated_invalid_proposals(
-        self,
-        mediator_id: str,
-        window_days: int = 30
+        self, mediator_id: str, window_days: int = 30
     ) -> tuple[bool, int]:
         """
         Check if mediator has 3+ rejected proposals in the window.
@@ -766,7 +753,8 @@ class MediatorReputationManager:
         cutoff = datetime.utcnow() - timedelta(days=window_days)
 
         rejected_count = sum(
-            1 for p in self.proposals.values()
+            1
+            for p in self.proposals.values()
             if p.mediator_id == mediator_id
             and p.status == ProposalStatus.REJECTED
             and p.created_at > cutoff
@@ -779,10 +767,7 @@ class MediatorReputationManager:
     # =========================================================================
 
     def get_proposal_ranking(
-        self,
-        mediator_ids: list[str],
-        include_cts: bool = True,
-        diversity_weight: float = 0.2
+        self, mediator_ids: list[str], include_cts: bool = True, diversity_weight: float = 0.2
     ) -> list[dict[str, Any]]:
         """
         Rank mediator proposals by CTS with diversity weighting.
@@ -824,25 +809,23 @@ class MediatorReputationManager:
 
             final_score = base_score * volume_factor + diversity_bonus
 
-            rankings.append({
-                "mediator_id": mid,
-                "final_score": final_score,
-                "cts": profile.composite_trust_score if include_cts else None,
-                "volume_factor": volume_factor,
-                "diversity_bonus": diversity_bonus,
-                "status": profile.status.value
-            })
+            rankings.append(
+                {
+                    "mediator_id": mid,
+                    "final_score": final_score,
+                    "cts": profile.composite_trust_score if include_cts else None,
+                    "volume_factor": volume_factor,
+                    "diversity_bonus": diversity_bonus,
+                    "status": profile.status.value,
+                }
+            )
 
         # Sort by final score descending
         rankings.sort(key=lambda x: x["final_score"], reverse=True)
 
         return rankings
 
-    def sample_proposals_by_trust(
-        self,
-        mediator_ids: list[str],
-        sample_size: int = 3
-    ) -> list[str]:
+    def sample_proposals_by_trust(self, mediator_ids: list[str], sample_size: int = 3) -> list[str]:
         """
         Sample mediators proportional to their trust scores.
 
@@ -917,11 +900,7 @@ class MediatorReputationManager:
         """Get the current treasury balance from slashing."""
         return self.treasury_balance
 
-    def allocate_defensive_subsidy(
-        self,
-        amount: float,
-        purpose: str
-    ) -> dict[str, Any]:
+    def allocate_defensive_subsidy(self, amount: float, purpose: str) -> dict[str, Any]:
         """
         Allocate treasury funds for defensive purposes.
 
@@ -940,7 +919,7 @@ class MediatorReputationManager:
         if amount > self.treasury_balance:
             return {
                 "success": False,
-                "message": f"Insufficient treasury balance: {self.treasury_balance} < {amount}"
+                "message": f"Insufficient treasury balance: {self.treasury_balance} < {amount}",
             }
 
         self.treasury_balance -= amount
@@ -949,7 +928,7 @@ class MediatorReputationManager:
             "success": True,
             "amount": amount,
             "purpose": purpose,
-            "remaining_balance": self.treasury_balance
+            "remaining_balance": self.treasury_balance,
         }
 
     # =========================================================================
@@ -972,18 +951,17 @@ class MediatorReputationManager:
             "scores": profile.scores.to_dict(),
             "total_proposals": profile.proposal_count,
             "acceptance_rate": (
-                profile.accepted_count / profile.proposal_count
-                if profile.proposal_count > 0 else 0
+                profile.accepted_count / profile.proposal_count if profile.proposal_count > 0 else 0
             ),
             "total_slashed": profile.total_slashed,
-            "active_cooldowns": len([c for c in profile.active_cooldowns if c.is_active])
+            "active_cooldowns": len([c for c in profile.active_cooldowns if c.is_active]),
         }
 
     def list_mediators(
         self,
         min_cts: float | None = None,
         status: MediatorStatus | None = None,
-        domain: str | None = None
+        domain: str | None = None,
     ) -> list[dict[str, Any]]:
         """
         List mediators matching criteria.
@@ -1012,10 +990,7 @@ class MediatorReputationManager:
             results.append(self.get_mediator_summary(mid))
 
         # Sort by CTS descending
-        results.sort(
-            key=lambda x: x.get("composite_trust_score", 0),
-            reverse=True
-        )
+        results.sort(key=lambda x: x.get("composite_trust_score", 0), reverse=True)
 
         return results
 
@@ -1030,9 +1005,7 @@ class MediatorReputationManager:
 
         for profile in self.mediators.values():
             original_count = len(profile.active_cooldowns)
-            profile.active_cooldowns = [
-                c for c in profile.active_cooldowns if c.is_active
-            ]
+            profile.active_cooldowns = [c for c in profile.active_cooldowns if c.is_active]
             removed += original_count - len(profile.active_cooldowns)
 
             # Update status if no more cooldowns
@@ -1071,12 +1044,9 @@ def get_ncip_010_config() -> dict[str, Any]:
     return {
         "version": "1.0",
         "cts_weights": CTS_WEIGHTS,
-        "slashing_rates": {
-            k: {"min": v[0], "max": v[1]}
-            for k, v in SLASHING_RATES.items()
-        },
+        "slashing_rates": {k: {"min": v[0], "max": v[1]} for k, v in SLASHING_RATES.items()},
         "cooldown_durations": COOLDOWN_DURATIONS,
         "minimum_bond": MINIMUM_BOND,
         "default_bond": DEFAULT_BOND,
-        "cooldown_max_proposals": COOLDOWN_MAX_PROPOSALS
+        "cooldown_max_proposals": COOLDOWN_MAX_PROPOSALS,
     }

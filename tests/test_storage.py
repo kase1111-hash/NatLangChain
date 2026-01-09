@@ -2,13 +2,13 @@
 Tests for storage backends.
 """
 
+import json
 import os
 import sys
-import json
 import tempfile
 import threading
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 import pytest
 
@@ -16,7 +16,6 @@ from storage import StorageBackend, StorageError, get_storage_backend
 from storage.base import StorageReadError, StorageWriteError
 from storage.json_file import JSONFileStorage
 from storage.memory import MemoryStorage
-
 
 # Sample chain data for testing
 SAMPLE_CHAIN_DATA = {
@@ -198,7 +197,7 @@ class TestJSONFileStorage:
             storage = JSONFileStorage(filepath, compression_enabled=False)
             storage.save_chain(SAMPLE_CHAIN_DATA)
 
-            with open(filepath, 'r') as f:
+            with open(filepath) as f:
                 data = json.load(f)
 
             assert data["difficulty"] == 2
@@ -208,7 +207,7 @@ class TestJSONFileStorage:
         """Test loading from empty file returns None."""
         with tempfile.TemporaryDirectory() as tmpdir:
             filepath = os.path.join(tmpdir, "empty.json")
-            with open(filepath, 'w') as f:
+            with open(filepath, "w") as f:
                 f.write("")
 
             storage = JSONFileStorage(filepath)
@@ -218,7 +217,7 @@ class TestJSONFileStorage:
         """Test that invalid JSON raises error."""
         with tempfile.TemporaryDirectory() as tmpdir:
             filepath = os.path.join(tmpdir, "invalid.json")
-            with open(filepath, 'w') as f:
+            with open(filepath, "w") as f:
                 f.write("not valid json {{{")
 
             storage = JSONFileStorage(filepath)
@@ -280,7 +279,7 @@ class TestJSONFileStorage:
             assert result == backup_path
             assert os.path.exists(backup_path)
 
-            with open(backup_path, 'r') as f:
+            with open(backup_path) as f:
                 data = json.load(f)
             assert len(data["chain"]) == 2
 
@@ -304,20 +303,27 @@ class TestJSONFileStorage:
             storage = JSONFileStorage(filepath)
 
             unicode_data = {
-                "chain": [{
-                    "index": 0,
-                    "entries": [{
-                        "content": "Unicode: caf\u00e9 \u2014 \u4e2d\u6587 \U0001f604",
-                        "author": "test"
-                    }]
-                }],
+                "chain": [
+                    {
+                        "index": 0,
+                        "entries": [
+                            {
+                                "content": "Unicode: caf\u00e9 \u2014 \u4e2d\u6587 \U0001f604",
+                                "author": "test",
+                            }
+                        ],
+                    }
+                ],
                 "pending_entries": [],
             }
 
             storage.save_chain(unicode_data)
             loaded = storage.load_chain()
 
-            assert loaded["chain"][0]["entries"][0]["content"] == "Unicode: caf\u00e9 \u2014 \u4e2d\u6587 \U0001f604"
+            assert (
+                loaded["chain"][0]["entries"][0]["content"]
+                == "Unicode: caf\u00e9 \u2014 \u4e2d\u6587 \U0001f604"
+            )
 
 
 class TestStorageBackendInterface:

@@ -15,12 +15,13 @@ from .state import blockchain
 from .utils import managers, require_api_key, validate_json_schema
 
 # Create the blueprint
-search_bp = Blueprint('search', __name__)
+search_bp = Blueprint("search", __name__)
 
 
 # ========== Semantic Search Endpoints ==========
 
-@search_bp.route('/search/semantic', methods=['POST'])
+
+@search_bp.route("/search/semantic", methods=["POST"])
 def semantic_search():
     """
     Perform semantic search across blockchain entries.
@@ -37,17 +38,14 @@ def semantic_search():
         List of semantically similar entries
     """
     if not managers.search_engine:
-        return jsonify({
-            "error": "Semantic search not available",
-            "reason": "Search engine not initialized"
-        }), 503
+        return jsonify(
+            {"error": "Semantic search not available", "reason": "Search engine not initialized"}
+        ), 503
 
     data = request.get_json()
 
     if not data or "query" not in data:
-        return jsonify({
-            "error": "Missing required field: query"
-        }), 400
+        return jsonify({"error": "Missing required field: query"}), 400
 
     query = data["query"]
     top_k = data.get("top_k", 5)
@@ -64,21 +62,13 @@ def semantic_search():
                 blockchain, query, top_k=top_k, min_score=min_score
             )
 
-        return jsonify({
-            "query": query,
-            "field": field,
-            "count": len(results),
-            "results": results
-        })
+        return jsonify({"query": query, "field": field, "count": len(results), "results": results})
 
     except Exception as e:
-        return jsonify({
-            "error": "Search failed",
-            "reason": str(e)
-        }), 500
+        return jsonify({"error": "Search failed", "reason": str(e)}), 500
 
 
-@search_bp.route('/search/similar', methods=['POST'])
+@search_bp.route("/search/similar", methods=["POST"])
 def find_similar():
     """
     Find entries similar to a given content.
@@ -94,16 +84,12 @@ def find_similar():
         List of similar entries
     """
     if not managers.search_engine:
-        return jsonify({
-            "error": "Semantic search not available"
-        }), 503
+        return jsonify({"error": "Semantic search not available"}), 503
 
     data = request.get_json()
 
     if not data or "content" not in data:
-        return jsonify({
-            "error": "Missing required field: content"
-        }), 400
+        return jsonify({"error": "Missing required field: content"}), 400
 
     content = data["content"]
     top_k = data.get("top_k", 5)
@@ -114,22 +100,16 @@ def find_similar():
             blockchain, content, top_k=top_k, exclude_exact=exclude_exact
         )
 
-        return jsonify({
-            "content": content,
-            "count": len(results),
-            "similar_entries": results
-        })
+        return jsonify({"content": content, "count": len(results), "similar_entries": results})
 
     except Exception as e:
-        return jsonify({
-            "error": "Search failed",
-            "reason": str(e)
-        }), 500
+        return jsonify({"error": "Search failed", "reason": str(e)}), 500
 
 
 # ========== Semantic Drift Detection Endpoints ==========
 
-@search_bp.route('/drift/check', methods=['POST'])
+
+@search_bp.route("/drift/check", methods=["POST"])
 def check_drift():
     """
     Check semantic drift between intent and execution.
@@ -144,10 +124,9 @@ def check_drift():
         Drift analysis with score and recommendations
     """
     if not managers.drift_detector:
-        return jsonify({
-            "error": "Drift detection not available",
-            "reason": "ANTHROPIC_API_KEY not configured"
-        }), 503
+        return jsonify(
+            {"error": "Drift detection not available", "reason": "ANTHROPIC_API_KEY not configured"}
+        ), 503
 
     data = request.get_json()
 
@@ -158,17 +137,16 @@ def check_drift():
     execution_log = data.get("execution_log")
 
     if not all([on_chain_intent, execution_log]):
-        return jsonify({
-            "error": "Missing required fields",
-            "required": ["on_chain_intent", "execution_log"]
-        }), 400
+        return jsonify(
+            {"error": "Missing required fields", "required": ["on_chain_intent", "execution_log"]}
+        ), 400
 
     result = managers.drift_detector.check_alignment(on_chain_intent, execution_log)
 
     return jsonify(result)
 
 
-@search_bp.route('/drift/entry/<int:block_index>/<int:entry_index>', methods=['POST'])
+@search_bp.route("/drift/entry/<int:block_index>/<int:entry_index>", methods=["POST"])
 def check_entry_drift(block_index: int, entry_index: int):
     """
     Check drift for a specific blockchain entry against an execution log.
@@ -186,34 +164,28 @@ def check_entry_drift(block_index: int, entry_index: int):
         Drift analysis for the specific entry
     """
     if not managers.drift_detector:
-        return jsonify({
-            "error": "Drift detection not available"
-        }), 503
+        return jsonify({"error": "Drift detection not available"}), 503
 
     # Validate block index
     if block_index < 0 or block_index >= len(blockchain.chain):
-        return jsonify({
-            "error": "Block not found",
-            "valid_range": f"0-{len(blockchain.chain) - 1}"
-        }), 404
+        return jsonify(
+            {"error": "Block not found", "valid_range": f"0-{len(blockchain.chain) - 1}"}
+        ), 404
 
     block = blockchain.chain[block_index]
 
     # Validate entry index
     if entry_index < 0 or entry_index >= len(block.entries):
-        return jsonify({
-            "error": "Entry not found",
-            "valid_range": f"0-{len(block.entries) - 1}"
-        }), 404
+        return jsonify(
+            {"error": "Entry not found", "valid_range": f"0-{len(block.entries) - 1}"}
+        ), 404
 
     entry = block.entries[entry_index]
 
     # Get execution log from request
     data = request.get_json()
     if not data or "execution_log" not in data:
-        return jsonify({
-            "error": "Missing required field: execution_log"
-        }), 400
+        return jsonify({"error": "Missing required field: execution_log"}), 400
 
     execution_log = data["execution_log"]
 
@@ -226,7 +198,7 @@ def check_entry_drift(block_index: int, entry_index: int):
         "block_index": block_index,
         "entry_index": entry_index,
         "author": entry.author,
-        "intent": entry.intent
+        "intent": entry.intent,
     }
 
     return jsonify(result)
@@ -234,7 +206,8 @@ def check_entry_drift(block_index: int, entry_index: int):
 
 # ========== Dialectic Consensus Endpoint ==========
 
-@search_bp.route('/validate/dialectic', methods=['POST'])
+
+@search_bp.route("/validate/dialectic", methods=["POST"])
 def validate_dialectic():
     """
     Validate an entry using dialectic consensus (Skeptic/Facilitator debate).
@@ -250,10 +223,12 @@ def validate_dialectic():
         Dialectic validation result with both perspectives
     """
     if not managers.dialectic_validator:
-        return jsonify({
-            "error": "Dialectic consensus not available",
-            "reason": "ANTHROPIC_API_KEY not configured"
-        }), 503
+        return jsonify(
+            {
+                "error": "Dialectic consensus not available",
+                "reason": "ANTHROPIC_API_KEY not configured",
+            }
+        ), 503
 
     data = request.get_json()
 
@@ -265,10 +240,9 @@ def validate_dialectic():
     intent = data.get("intent")
 
     if not all([content, author, intent]):
-        return jsonify({
-            "error": "Missing required fields",
-            "required": ["content", "author", "intent"]
-        }), 400
+        return jsonify(
+            {"error": "Missing required fields", "required": ["content", "author", "intent"]}
+        ), 400
 
     result = managers.dialectic_validator.validate_entry(content, intent, author)
 
@@ -277,7 +251,8 @@ def validate_dialectic():
 
 # ========== Oracle Verification Endpoint ==========
 
-@search_bp.route('/oracle/verify', methods=['POST'])
+
+@search_bp.route("/oracle/verify", methods=["POST"])
 @require_api_key
 def verify_oracle_event():
     """
@@ -295,10 +270,12 @@ def verify_oracle_event():
         Oracle verification results
     """
     if not managers.semantic_oracle:
-        return jsonify({
-            "error": "Semantic oracles not available",
-            "reason": "ANTHROPIC_API_KEY not configured"
-        }), 503
+        return jsonify(
+            {
+                "error": "Semantic oracles not available",
+                "reason": "ANTHROPIC_API_KEY not configured",
+            }
+        ), 503
 
     data = request.get_json()
 
@@ -309,7 +286,7 @@ def verify_oracle_event():
         data,
         required_fields={"event_description": str, "claimed_outcome": str},
         optional_fields={"evidence": dict, "validators": list},
-        max_lengths={"event_description": 10000, "claimed_outcome": 5000}
+        max_lengths={"event_description": 10000, "claimed_outcome": 5000},
     )
 
     if not is_valid:
@@ -323,18 +300,18 @@ def verify_oracle_event():
     if managers.circuit_breaker:
         if not managers.circuit_breaker.should_allow_request():
             circuit_status = managers.circuit_breaker.get_status()
-            return jsonify({
-                "error": "Oracle circuit breaker open",
-                "reason": "Too many failures - oracle temporarily unavailable",
-                "circuit_status": circuit_status,
-                "retry_after": circuit_status.get("time_until_half_open", 60)
-            }), 503
+            return jsonify(
+                {
+                    "error": "Oracle circuit breaker open",
+                    "reason": "Too many failures - oracle temporarily unavailable",
+                    "circuit_status": circuit_status,
+                    "retry_after": circuit_status.get("time_until_half_open", 60),
+                }
+            ), 503
 
     try:
         result = managers.semantic_oracle.verify_event(
-            event_description=event_description,
-            claimed_outcome=claimed_outcome,
-            evidence=evidence
+            event_description=event_description, claimed_outcome=claimed_outcome, evidence=evidence
         )
 
         # Record success with circuit breaker
@@ -348,7 +325,4 @@ def verify_oracle_event():
         if managers.circuit_breaker:
             managers.circuit_breaker.record_failure()
 
-        return jsonify({
-            "error": "Oracle verification failed",
-            "reason": str(e)
-        }), 500
+        return jsonify({"error": "Oracle verification failed", "reason": str(e)}), 500

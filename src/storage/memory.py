@@ -59,11 +59,13 @@ class MemoryStorage(StorageBackend):
         """Get storage backend information."""
         info = super().get_info()
         with self._lock:
-            info.update({
-                "has_data": self._data is not None,
-                "block_count": self.get_block_count(),
-                "entry_count": self.get_entry_count(),
-            })
+            info.update(
+                {
+                    "has_data": self._data is not None,
+                    "block_count": self.get_block_count(),
+                    "entry_count": self.get_entry_count(),
+                }
+            )
         return info
 
     def clear(self) -> None:
@@ -82,8 +84,5 @@ class MemoryStorage(StorageBackend):
         """Get total number of entries."""
         with self._lock:
             if self._data and "chain" in self._data:
-                return sum(
-                    len(block.get("entries", []))
-                    for block in self._data["chain"]
-                )
+                return sum(len(block.get("entries", [])) for block in self._data["chain"])
             return 0

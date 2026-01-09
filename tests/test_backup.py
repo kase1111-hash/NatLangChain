@@ -15,12 +15,12 @@ import tempfile
 import unittest
 from datetime import datetime, timedelta
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from backup import (
     BackupBackend,
-    BackupType,
     BackupConfig,
+    BackupType,
 )
 
 
@@ -71,7 +71,7 @@ class TestBackupConfig(unittest.TestCase):
             backend="s3",
             s3_bucket="my-backups",
             s3_prefix="natlangchain/prod/",
-            s3_region="eu-west-1"
+            s3_region="eu-west-1",
         )
 
         self.assertEqual(config.backend, "s3")
@@ -81,11 +81,7 @@ class TestBackupConfig(unittest.TestCase):
 
     def test_gcs_config(self):
         """Test GCS configuration."""
-        config = BackupConfig(
-            backend="gcs",
-            gcs_bucket="my-gcs-bucket",
-            gcs_prefix="backups/"
-        )
+        config = BackupConfig(backend="gcs", gcs_bucket="my-gcs-bucket", gcs_prefix="backups/")
 
         self.assertEqual(config.backend, "gcs")
         self.assertEqual(config.gcs_bucket, "my-gcs-bucket")
@@ -93,11 +89,7 @@ class TestBackupConfig(unittest.TestCase):
 
     def test_custom_retention(self):
         """Test custom retention configuration."""
-        config = BackupConfig(
-            retention_daily=14,
-            retention_weekly=8,
-            retention_monthly=24
-        )
+        config = BackupConfig(retention_daily=14, retention_weekly=8, retention_monthly=24)
 
         self.assertEqual(config.retention_daily, 14)
         self.assertEqual(config.retention_weekly, 8)
@@ -131,9 +123,9 @@ class TestLocalBackupIntegration(unittest.TestCase):
         self.sample_data = {
             "chain": [
                 {"index": 0, "entries": [], "hash": "genesis"},
-                {"index": 1, "entries": [{"content": "test"}], "hash": "abc123"}
+                {"index": 1, "entries": [{"content": "test"}], "hash": "abc123"},
             ],
-            "difficulty": 2
+            "difficulty": 2,
         }
 
         # Write sample data file
@@ -147,10 +139,7 @@ class TestLocalBackupIntegration(unittest.TestCase):
 
     def test_backup_config_local_path(self):
         """Test local path configuration."""
-        config = BackupConfig(
-            backend="local",
-            local_path=self.backup_dir
-        )
+        config = BackupConfig(backend="local", local_path=self.backup_dir)
 
         self.assertEqual(config.local_path, self.backup_dir)
         self.assertTrue(os.path.exists(self.backup_dir))
@@ -191,7 +180,9 @@ class TestLocalBackupIntegration(unittest.TestCase):
         backup_type = BackupType.DAILY
 
         # Expected format: natlangchain_backup_YYYYMMDD_HHMMSS_type.json.gz
-        filename = f"natlangchain_backup_{timestamp.strftime('%Y%m%d_%H%M%S')}_{backup_type.value}.json.gz"
+        filename = (
+            f"natlangchain_backup_{timestamp.strftime('%Y%m%d_%H%M%S')}_{backup_type.value}.json.gz"
+        )
 
         self.assertIn("natlangchain_backup", filename)
         self.assertIn("daily", filename)
@@ -211,7 +202,7 @@ class TestBackupMetadata(unittest.TestCase):
             "checksum": "sha256:abc123...",
             "size_bytes": 1024,
             "entries_count": 100,
-            "blocks_count": 10
+            "blocks_count": 10,
         }
 
         self.assertIn("backup_id", metadata)
@@ -245,11 +236,7 @@ class TestRetentionPolicy(unittest.TestCase):
 
     def test_retention_config(self):
         """Test retention configuration."""
-        config = BackupConfig(
-            retention_daily=7,
-            retention_weekly=4,
-            retention_monthly=12
-        )
+        config = BackupConfig(retention_daily=7, retention_weekly=4, retention_monthly=12)
 
         # Daily: keep 7 days
         self.assertEqual(config.retention_daily, 7)

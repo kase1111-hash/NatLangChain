@@ -27,51 +27,56 @@ class RegulatoryRegime(Enum):
     """
     Supported regulatory regimes per NCIP-009 Section 3.
     """
-    SEC_17A_4 = "SEC-17a-4"      # SEC Rule 17a-4 (broker-dealer records)
-    GDPR = "GDPR"                 # EU General Data Protection Regulation
-    HIPAA = "HIPAA"               # Health Insurance Portability and Accountability Act
-    SOX = "SOX"                   # Sarbanes-Oxley Act
-    CCPA = "CCPA"                 # California Consumer Privacy Act
-    PCI_DSS = "PCI-DSS"           # Payment Card Industry Data Security Standard
-    FINRA = "FINRA"               # Financial Industry Regulatory Authority
-    MiFID_II = "MiFID-II"         # Markets in Financial Instruments Directive II
+
+    SEC_17A_4 = "SEC-17a-4"  # SEC Rule 17a-4 (broker-dealer records)
+    GDPR = "GDPR"  # EU General Data Protection Regulation
+    HIPAA = "HIPAA"  # Health Insurance Portability and Accountability Act
+    SOX = "SOX"  # Sarbanes-Oxley Act
+    CCPA = "CCPA"  # California Consumer Privacy Act
+    PCI_DSS = "PCI-DSS"  # Payment Card Industry Data Security Standard
+    FINRA = "FINRA"  # Financial Industry Regulatory Authority
+    MiFID_II = "MiFID-II"  # Markets in Financial Instruments Directive II
 
 
 class ComplianceClaimType(Enum):
     """
     Compliance proof claim types per NCIP-009 Section 4.
     """
-    IMMUTABILITY = "immutability"      # Record Immutability (Temporal Fixity + hash chains)
-    RETENTION = "retention"            # Retention (WORM export certificates)
-    CONSENT = "consent"                # Consent (Ratified PoUs)
+
+    IMMUTABILITY = "immutability"  # Record Immutability (Temporal Fixity + hash chains)
+    RETENTION = "retention"  # Retention (WORM export certificates)
+    CONSENT = "consent"  # Consent (Ratified PoUs)
     ACCESS_CONTROL = "access_control"  # Access Control (Boundary Daemon logs)
-    PRIVACY = "privacy"                # Privacy (ZK proofs)
-    AUTHORSHIP = "authorship"          # Authorship verification
-    INTEGRITY = "integrity"            # Data integrity
-    AUDIT_TRAIL = "audit_trail"        # Complete audit trail
+    PRIVACY = "privacy"  # Privacy (ZK proofs)
+    AUTHORSHIP = "authorship"  # Authorship verification
+    INTEGRITY = "integrity"  # Data integrity
+    AUDIT_TRAIL = "audit_trail"  # Complete audit trail
 
 
 class ProofMechanism(Enum):
     """Mechanisms used to generate proofs."""
-    HASH_CHAIN = "hash_chain"                # Temporal fixity via hash chains
-    WORM_CERTIFICATE = "worm_certificate"    # Write-Once-Read-Many export
-    RATIFIED_POU = "ratified_pou"            # Proof of Understanding ratification
-    BOUNDARY_LOG = "boundary_log"            # Boundary Daemon access logs
-    ZERO_KNOWLEDGE = "zero_knowledge"        # ZK proofs for privacy
-    MERKLE_PROOF = "merkle_proof"            # Merkle tree inclusion proof
-    SIGNATURE = "signature"                   # Digital signature
+
+    HASH_CHAIN = "hash_chain"  # Temporal fixity via hash chains
+    WORM_CERTIFICATE = "worm_certificate"  # Write-Once-Read-Many export
+    RATIFIED_POU = "ratified_pou"  # Proof of Understanding ratification
+    BOUNDARY_LOG = "boundary_log"  # Boundary Daemon access logs
+    ZERO_KNOWLEDGE = "zero_knowledge"  # ZK proofs for privacy
+    MERKLE_PROOF = "merkle_proof"  # Merkle tree inclusion proof
+    SIGNATURE = "signature"  # Digital signature
 
 
 class DisclosureScope(Enum):
     """Scope of proof disclosure."""
-    REGULATOR_ONLY = "regulator_only"    # Only to specific regulator
-    AUDITOR_ONLY = "auditor_only"        # Only to authorized auditor
-    COURT_ORDER = "court_order"          # Only under court order
-    PUBLIC = "public"                    # Publicly verifiable (privacy-preserving)
+
+    REGULATOR_ONLY = "regulator_only"  # Only to specific regulator
+    AUDITOR_ONLY = "auditor_only"  # Only to authorized auditor
+    COURT_ORDER = "court_order"  # Only under court order
+    PUBLIC = "public"  # Publicly verifiable (privacy-preserving)
 
 
 class ProofStatus(Enum):
     """Status of a compliance proof."""
+
     PENDING = "pending"
     GENERATED = "generated"
     VERIFIED = "verified"
@@ -87,11 +92,12 @@ class ZKProof:
 
     Proves compliance claims without revealing underlying data.
     """
+
     proof_id: str
     claim_type: ComplianceClaimType
-    commitment: str         # Cryptographic commitment
-    challenge: str          # Challenge value
-    response: str           # Response (proof)
+    commitment: str  # Cryptographic commitment
+    challenge: str  # Challenge value
+    response: str  # Response (proof)
     public_inputs: list[str] = field(default_factory=list)
 
     # Verification
@@ -116,7 +122,7 @@ class ZKProof:
             "claim_type": self.claim_type.value,
             "commitment": self.commitment,
             "verified": self.verified,
-            "expires_at": self.expires_at.isoformat() if self.expires_at else None
+            "expires_at": self.expires_at.isoformat() if self.expires_at else None,
         }
 
 
@@ -125,8 +131,9 @@ class ComplianceArtifact:
     """
     An artifact included in a compliance proof package.
     """
+
     artifact_id: str
-    artifact_type: str      # e.g., "t0_snapshot_hash", "chain_segment_hash", "pou_hash"
+    artifact_type: str  # e.g., "t0_snapshot_hash", "chain_segment_hash", "pou_hash"
     hash_value: str
     timestamp: datetime = field(default_factory=datetime.utcnow)
     metadata: dict[str, Any] = field(default_factory=dict)
@@ -137,6 +144,7 @@ class WORMCertificate:
     """
     Write-Once-Read-Many export certificate for retention proof.
     """
+
     certificate_id: str
     entry_ids: list[str]
     export_hash: str
@@ -164,10 +172,11 @@ class AccessLogEntry:
     """
     Boundary Daemon access log entry for access control proof.
     """
+
     log_id: str
     entry_id: str
     accessor_id: str
-    access_type: str        # read, write, delete, etc.
+    access_type: str  # read, write, delete, etc.
     timestamp: datetime
     authorized: bool
     authorization_proof: str | None = None
@@ -182,6 +191,7 @@ class ComplianceProof:
     Proofs MUST be: Minimal, Purpose-bound, Non-semantic
     Proofs MUST NOT: Reveal unrelated intents, Introduce reinterpretation, Persist beyond scope
     """
+
     proof_id: str
     regime: RegulatoryRegime
     claims: list[ComplianceClaimType]
@@ -256,18 +266,18 @@ class ComplianceProof:
                     {
                         "type": a.artifact_type,
                         "hash": a.hash_value,
-                        "timestamp": a.timestamp.isoformat()
+                        "timestamp": a.timestamp.isoformat(),
                     }
                     for a in self.artifacts
                 ],
                 "privacy": {
                     "method": self.privacy_method.value,
-                    "disclosure_scope": self.disclosure_scope.value
+                    "disclosure_scope": self.disclosure_scope.value,
                 },
                 "status": self.status.value,
                 "created_at": self.created_at.isoformat(),
                 "expires_at": self.expires_at.isoformat() if self.expires_at else None,
-                "validator_signatures": self.validator_signatures
+                "validator_signatures": self.validator_signatures,
             }
         }
 
@@ -279,6 +289,7 @@ class RegulatoryInterfaceModule:
 
     A RIM is a scoped adapter that generates compliance proofs for a specific regime.
     """
+
     rim_id: str
     regime: RegulatoryRegime
     description: str
@@ -313,14 +324,14 @@ class RegulatoryInterfaceManager:
 
     # Default retention periods by regime
     RETENTION_PERIODS = {
-        RegulatoryRegime.SEC_17A_4: 7,   # 7 years
-        RegulatoryRegime.GDPR: 6,        # Variable, using 6 as default
-        RegulatoryRegime.HIPAA: 6,       # 6 years
-        RegulatoryRegime.SOX: 7,         # 7 years
-        RegulatoryRegime.CCPA: 2,        # 2 years
-        RegulatoryRegime.PCI_DSS: 1,     # 1 year minimum
-        RegulatoryRegime.FINRA: 6,       # 6 years
-        RegulatoryRegime.MiFID_II: 5,    # 5 years
+        RegulatoryRegime.SEC_17A_4: 7,  # 7 years
+        RegulatoryRegime.GDPR: 6,  # Variable, using 6 as default
+        RegulatoryRegime.HIPAA: 6,  # 6 years
+        RegulatoryRegime.SOX: 7,  # 7 years
+        RegulatoryRegime.CCPA: 2,  # 2 years
+        RegulatoryRegime.PCI_DSS: 1,  # 1 year minimum
+        RegulatoryRegime.FINRA: 6,  # 6 years
+        RegulatoryRegime.MiFID_II: 5,  # 5 years
     }
 
     # Proof validity period (days)
@@ -343,18 +354,46 @@ class RegulatoryInterfaceManager:
     def _initialize_default_rims(self):
         """Initialize RIMs for common regulatory regimes."""
         default_rims = [
-            (RegulatoryRegime.SEC_17A_4, "SEC Rule 17a-4 Broker-Dealer Records",
-             [ComplianceClaimType.IMMUTABILITY, ComplianceClaimType.RETENTION,
-              ComplianceClaimType.AUTHORSHIP, ComplianceClaimType.AUDIT_TRAIL]),
-            (RegulatoryRegime.GDPR, "EU General Data Protection Regulation",
-             [ComplianceClaimType.CONSENT, ComplianceClaimType.PRIVACY,
-              ComplianceClaimType.ACCESS_CONTROL, ComplianceClaimType.RETENTION]),
-            (RegulatoryRegime.HIPAA, "Health Insurance Portability and Accountability Act",
-             [ComplianceClaimType.PRIVACY, ComplianceClaimType.ACCESS_CONTROL,
-              ComplianceClaimType.INTEGRITY, ComplianceClaimType.AUDIT_TRAIL]),
-            (RegulatoryRegime.SOX, "Sarbanes-Oxley Act",
-             [ComplianceClaimType.IMMUTABILITY, ComplianceClaimType.INTEGRITY,
-              ComplianceClaimType.AUTHORSHIP, ComplianceClaimType.AUDIT_TRAIL]),
+            (
+                RegulatoryRegime.SEC_17A_4,
+                "SEC Rule 17a-4 Broker-Dealer Records",
+                [
+                    ComplianceClaimType.IMMUTABILITY,
+                    ComplianceClaimType.RETENTION,
+                    ComplianceClaimType.AUTHORSHIP,
+                    ComplianceClaimType.AUDIT_TRAIL,
+                ],
+            ),
+            (
+                RegulatoryRegime.GDPR,
+                "EU General Data Protection Regulation",
+                [
+                    ComplianceClaimType.CONSENT,
+                    ComplianceClaimType.PRIVACY,
+                    ComplianceClaimType.ACCESS_CONTROL,
+                    ComplianceClaimType.RETENTION,
+                ],
+            ),
+            (
+                RegulatoryRegime.HIPAA,
+                "Health Insurance Portability and Accountability Act",
+                [
+                    ComplianceClaimType.PRIVACY,
+                    ComplianceClaimType.ACCESS_CONTROL,
+                    ComplianceClaimType.INTEGRITY,
+                    ComplianceClaimType.AUDIT_TRAIL,
+                ],
+            ),
+            (
+                RegulatoryRegime.SOX,
+                "Sarbanes-Oxley Act",
+                [
+                    ComplianceClaimType.IMMUTABILITY,
+                    ComplianceClaimType.INTEGRITY,
+                    ComplianceClaimType.AUTHORSHIP,
+                    ComplianceClaimType.AUDIT_TRAIL,
+                ],
+            ),
         ]
 
         for regime, description, claims in default_rims:
@@ -368,7 +407,7 @@ class RegulatoryInterfaceManager:
         self,
         regime: RegulatoryRegime,
         description: str,
-        supported_claims: list[ComplianceClaimType]
+        supported_claims: list[ComplianceClaimType],
     ) -> RegulatoryInterfaceModule:
         """Register a new Regulatory Interface Module."""
         self.rim_counter += 1
@@ -381,7 +420,7 @@ class RegulatoryInterfaceManager:
             regime=regime,
             description=description,
             supported_claims=supported_claims,
-            retention_years=retention_years
+            retention_years=retention_years,
         )
 
         self.rims[rim_id] = rim
@@ -410,7 +449,7 @@ class RegulatoryInterfaceManager:
         entry_hashes: dict[str, str],
         pou_hashes: list[str] | None = None,
         disclosure_scope: DisclosureScope = DisclosureScope.REGULATOR_ONLY,
-        validity_days: int | None = None
+        validity_days: int | None = None,
     ) -> tuple[ComplianceProof | None, list[str]]:
         """
         Generate a compliance proof per NCIP-009.
@@ -428,7 +467,9 @@ class RegulatoryInterfaceManager:
         # Validate claims are supported by RIM
         unsupported = [c for c in claims if c not in rim.supported_claims]
         if unsupported:
-            errors.append(f"Unsupported claims for {regime.value}: {[c.value for c in unsupported]}")
+            errors.append(
+                f"Unsupported claims for {regime.value}: {[c.value for c in unsupported]}"
+            )
             return (None, errors)
 
         if not entry_ids:
@@ -448,7 +489,7 @@ class RegulatoryInterfaceManager:
             privacy_method=ProofMechanism.ZERO_KNOWLEDGE,
             disclosure_scope=disclosure_scope,
             expires_at=expires_at,
-            entry_ids_covered=entry_ids
+            entry_ids_covered=entry_ids,
         )
 
         # Generate artifacts based on claims
@@ -460,11 +501,7 @@ class RegulatoryInterfaceManager:
 
         # Generate ZK proofs for privacy claims
         if ComplianceClaimType.PRIVACY in claims:
-            zk_proof = self._generate_zk_proof(
-                ComplianceClaimType.PRIVACY,
-                entry_ids,
-                entry_hashes
-            )
+            zk_proof = self._generate_zk_proof(ComplianceClaimType.PRIVACY, entry_ids, entry_hashes)
             proof.zk_proofs.append(zk_proof)
 
         # Generate WORM certificate for retention claims
@@ -495,7 +532,7 @@ class RegulatoryInterfaceManager:
         claims: list[ComplianceClaimType],
         entry_ids: list[str],
         entry_hashes: dict[str, str],
-        pou_hashes: list[str] | None
+        pou_hashes: list[str] | None,
     ) -> list[ComplianceArtifact]:
         """Generate artifacts for claims."""
         artifacts = []
@@ -506,86 +543,104 @@ class RegulatoryInterfaceManager:
                 # T0 snapshot hash
                 artifact_counter += 1
                 t0_hash = self._compute_chain_hash(list(entry_hashes.values()))
-                artifacts.append(ComplianceArtifact(
-                    artifact_id=f"ART-{artifact_counter:04d}",
-                    artifact_type="t0_snapshot_hash",
-                    hash_value=t0_hash
-                ))
+                artifacts.append(
+                    ComplianceArtifact(
+                        artifact_id=f"ART-{artifact_counter:04d}",
+                        artifact_type="t0_snapshot_hash",
+                        hash_value=t0_hash,
+                    )
+                )
 
                 # Chain segment hash
                 artifact_counter += 1
                 chain_hash = self._compute_chain_hash(entry_ids)
-                artifacts.append(ComplianceArtifact(
-                    artifact_id=f"ART-{artifact_counter:04d}",
-                    artifact_type="chain_segment_hash",
-                    hash_value=chain_hash
-                ))
+                artifacts.append(
+                    ComplianceArtifact(
+                        artifact_id=f"ART-{artifact_counter:04d}",
+                        artifact_type="chain_segment_hash",
+                        hash_value=chain_hash,
+                    )
+                )
 
             elif claim == ComplianceClaimType.RETENTION:
                 artifact_counter += 1
                 retention_hash = self._compute_retention_hash(entry_ids)
-                artifacts.append(ComplianceArtifact(
-                    artifact_id=f"ART-{artifact_counter:04d}",
-                    artifact_type="retention_hash",
-                    hash_value=retention_hash
-                ))
+                artifacts.append(
+                    ComplianceArtifact(
+                        artifact_id=f"ART-{artifact_counter:04d}",
+                        artifact_type="retention_hash",
+                        hash_value=retention_hash,
+                    )
+                )
 
             elif claim == ComplianceClaimType.CONSENT:
                 if pou_hashes:
                     for pou_hash in pou_hashes:
                         artifact_counter += 1
-                        artifacts.append(ComplianceArtifact(
-                            artifact_id=f"ART-{artifact_counter:04d}",
-                            artifact_type="pou_hash",
-                            hash_value=pou_hash
-                        ))
+                        artifacts.append(
+                            ComplianceArtifact(
+                                artifact_id=f"ART-{artifact_counter:04d}",
+                                artifact_type="pou_hash",
+                                hash_value=pou_hash,
+                            )
+                        )
 
             elif claim == ComplianceClaimType.ACCESS_CONTROL:
                 artifact_counter += 1
                 access_hash = self._compute_access_log_hash(entry_ids)
-                artifacts.append(ComplianceArtifact(
-                    artifact_id=f"ART-{artifact_counter:04d}",
-                    artifact_type="access_log_hash",
-                    hash_value=access_hash
-                ))
+                artifacts.append(
+                    ComplianceArtifact(
+                        artifact_id=f"ART-{artifact_counter:04d}",
+                        artifact_type="access_log_hash",
+                        hash_value=access_hash,
+                    )
+                )
 
             elif claim == ComplianceClaimType.PRIVACY:
                 artifact_counter += 1
                 commitment = self._generate_commitment(entry_ids)
-                artifacts.append(ComplianceArtifact(
-                    artifact_id=f"ART-{artifact_counter:04d}",
-                    artifact_type="commitment_hash",
-                    hash_value=commitment
-                ))
+                artifacts.append(
+                    ComplianceArtifact(
+                        artifact_id=f"ART-{artifact_counter:04d}",
+                        artifact_type="commitment_hash",
+                        hash_value=commitment,
+                    )
+                )
 
             elif claim == ComplianceClaimType.AUTHORSHIP:
                 for entry_id in entry_ids:
                     if entry_id in entry_hashes:
                         artifact_counter += 1
-                        artifacts.append(ComplianceArtifact(
-                            artifact_id=f"ART-{artifact_counter:04d}",
-                            artifact_type="author_signature_hash",
-                            hash_value=entry_hashes[entry_id],
-                            metadata={"entry_id": entry_id}
-                        ))
+                        artifacts.append(
+                            ComplianceArtifact(
+                                artifact_id=f"ART-{artifact_counter:04d}",
+                                artifact_type="author_signature_hash",
+                                hash_value=entry_hashes[entry_id],
+                                metadata={"entry_id": entry_id},
+                            )
+                        )
 
             elif claim == ComplianceClaimType.INTEGRITY:
                 artifact_counter += 1
                 merkle_root = self._compute_merkle_root(list(entry_hashes.values()))
-                artifacts.append(ComplianceArtifact(
-                    artifact_id=f"ART-{artifact_counter:04d}",
-                    artifact_type="merkle_root",
-                    hash_value=merkle_root
-                ))
+                artifacts.append(
+                    ComplianceArtifact(
+                        artifact_id=f"ART-{artifact_counter:04d}",
+                        artifact_type="merkle_root",
+                        hash_value=merkle_root,
+                    )
+                )
 
             elif claim == ComplianceClaimType.AUDIT_TRAIL:
                 artifact_counter += 1
                 audit_hash = self._compute_audit_trail_hash(entry_ids)
-                artifacts.append(ComplianceArtifact(
-                    artifact_id=f"ART-{artifact_counter:04d}",
-                    artifact_type="audit_log_hash",
-                    hash_value=audit_hash
-                ))
+                artifacts.append(
+                    ComplianceArtifact(
+                        artifact_id=f"ART-{artifact_counter:04d}",
+                        artifact_type="audit_log_hash",
+                        hash_value=audit_hash,
+                    )
+                )
 
         return artifacts
 
@@ -650,10 +705,7 @@ class RegulatoryInterfaceManager:
     # -------------------------------------------------------------------------
 
     def _generate_zk_proof(
-        self,
-        claim_type: ComplianceClaimType,
-        entry_ids: list[str],
-        entry_hashes: dict[str, str]
+        self, claim_type: ComplianceClaimType, entry_ids: list[str], entry_hashes: dict[str, str]
     ) -> ZKProof:
         """
         Generate a Zero-Knowledge Proof per NCIP-009 Section 4.
@@ -681,7 +733,7 @@ class RegulatoryInterfaceManager:
         public_inputs = [
             f"claim:{claim_type.value}",
             f"entry_count:{len(entry_ids)}",
-            f"timestamp:{datetime.utcnow().isoformat()}"
+            f"timestamp:{datetime.utcnow().isoformat()}",
         ]
 
         zk_proof = ZKProof(
@@ -691,7 +743,7 @@ class RegulatoryInterfaceManager:
             challenge=challenge,
             response=response,
             public_inputs=public_inputs,
-            expires_at=datetime.utcnow() + timedelta(days=self.DEFAULT_PROOF_VALIDITY_DAYS)
+            expires_at=datetime.utcnow() + timedelta(days=self.DEFAULT_PROOF_VALIDITY_DAYS),
         )
 
         self.zk_proofs[proof_id] = zk_proof
@@ -705,16 +757,10 @@ class RegulatoryInterfaceManager:
         """
         zk_proof = self.zk_proofs.get(proof_id)
         if not zk_proof:
-            return {
-                "valid": False,
-                "reason": f"ZK proof {proof_id} not found"
-            }
+            return {"valid": False, "reason": f"ZK proof {proof_id} not found"}
 
         if zk_proof.is_expired():
-            return {
-                "valid": False,
-                "reason": "ZK proof has expired"
-            }
+            return {"valid": False, "reason": "ZK proof has expired"}
 
         # Simplified verification (in production: actual ZK verification)
         # Verify challenge was correctly derived
@@ -722,10 +768,7 @@ class RegulatoryInterfaceManager:
         expected_challenge = hashlib.sha256(expected_challenge_input.encode()).hexdigest()[:16]
 
         if zk_proof.challenge != expected_challenge:
-            return {
-                "valid": False,
-                "reason": "Challenge verification failed"
-            }
+            return {"valid": False, "reason": "Challenge verification failed"}
 
         zk_proof.verified = True
         zk_proof.verified_at = datetime.utcnow()
@@ -735,7 +778,7 @@ class RegulatoryInterfaceManager:
             "proof_id": proof_id,
             "claim_type": zk_proof.claim_type.value,
             "verified_at": zk_proof.verified_at.isoformat(),
-            "message": "ZK proof verified - compliance proven without data disclosure"
+            "message": "ZK proof verified - compliance proven without data disclosure",
         }
 
     # -------------------------------------------------------------------------
@@ -743,9 +786,7 @@ class RegulatoryInterfaceManager:
     # -------------------------------------------------------------------------
 
     def _generate_worm_certificate(
-        self,
-        entry_ids: list[str],
-        retention_years: int
+        self, entry_ids: list[str], retention_years: int
     ) -> WORMCertificate:
         """Generate WORM (Write-Once-Read-Many) export certificate."""
         cert_id = f"WORM-{secrets.token_hex(8).upper()}"
@@ -760,7 +801,7 @@ class RegulatoryInterfaceManager:
             retention_start=datetime.utcnow(),
             retention_period_years=retention_years,
             storage_location=f"worm://storage/{cert_id}",
-            immutable=True
+            immutable=True,
         )
 
     # -------------------------------------------------------------------------
@@ -773,7 +814,7 @@ class RegulatoryInterfaceManager:
         accessor_id: str,
         access_type: str,
         authorized: bool,
-        authorization_proof: str | None = None
+        authorization_proof: str | None = None,
     ) -> AccessLogEntry:
         """Record an access event for compliance proof."""
         log_id = f"LOG-{secrets.token_hex(8).upper()}"
@@ -788,7 +829,7 @@ class RegulatoryInterfaceManager:
             authorization_proof=authorization_proof,
             boundary_daemon_signature=hashlib.sha256(
                 f"{log_id}:{entry_id}:{accessor_id}:{access_type}".encode()
-            ).hexdigest()[:32]
+            ).hexdigest()[:32],
         )
 
         if entry_id not in self.access_logs:
@@ -801,11 +842,7 @@ class RegulatoryInterfaceManager:
     # Proof Verification
     # -------------------------------------------------------------------------
 
-    def verify_compliance_proof(
-        self,
-        proof_id: str,
-        validator_id: str
-    ) -> dict[str, Any]:
+    def verify_compliance_proof(self, proof_id: str, validator_id: str) -> dict[str, Any]:
         """
         Verify a compliance proof per NCIP-009 Section 7.
 
@@ -818,10 +855,7 @@ class RegulatoryInterfaceManager:
         """
         proof = self.proofs.get(proof_id)
         if not proof:
-            return {
-                "valid": False,
-                "reason": f"Proof {proof_id} not found"
-            }
+            return {"valid": False, "reason": f"Proof {proof_id} not found"}
 
         issues = []
 
@@ -856,7 +890,7 @@ class RegulatoryInterfaceManager:
                 "proof_id": proof_id,
                 "issues": issues,
                 "validator_id": validator_id,
-                "action": "REJECT - overbroad or invalid proof"
+                "action": "REJECT - overbroad or invalid proof",
             }
 
         # Add validator signature
@@ -864,11 +898,13 @@ class RegulatoryInterfaceManager:
             f"{proof_id}:{validator_id}:{datetime.utcnow().isoformat()}".encode()
         ).hexdigest()
 
-        proof.validator_signatures.append({
-            "validator_id": validator_id,
-            "signature": signature,
-            "timestamp": datetime.utcnow().isoformat()
-        })
+        proof.validator_signatures.append(
+            {
+                "validator_id": validator_id,
+                "signature": signature,
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+        )
 
         proof.status = ProofStatus.VERIFIED
         proof.verified_at = datetime.utcnow()
@@ -885,14 +921,11 @@ class RegulatoryInterfaceManager:
             "claims": [c.value for c in proof.claims],
             "validator_id": validator_id,
             "verified_at": proof.verified_at.isoformat(),
-            "message": "Proof verified - compliance confirmed cryptographically"
+            "message": "Proof verified - compliance confirmed cryptographically",
         }
 
     def reject_overbroad_proof(
-        self,
-        proof_id: str,
-        reason: str,
-        validator_id: str
+        self, proof_id: str, reason: str, validator_id: str
     ) -> dict[str, Any]:
         """
         Reject an overbroad proof per NCIP-009 Section 7.
@@ -901,10 +934,7 @@ class RegulatoryInterfaceManager:
         """
         proof = self.proofs.get(proof_id)
         if not proof:
-            return {
-                "status": "error",
-                "message": f"Proof {proof_id} not found"
-            }
+            return {"status": "error", "message": f"Proof {proof_id} not found"}
 
         proof.status = ProofStatus.REJECTED
 
@@ -914,7 +944,7 @@ class RegulatoryInterfaceManager:
             "reason": reason,
             "validator_id": validator_id,
             "timestamp": datetime.utcnow().isoformat(),
-            "rule": "Validators MUST reject overbroad proofs per NCIP-009 Section 7"
+            "rule": "Validators MUST reject overbroad proofs per NCIP-009 Section 7",
         }
 
     # -------------------------------------------------------------------------
@@ -922,10 +952,7 @@ class RegulatoryInterfaceManager:
     # -------------------------------------------------------------------------
 
     def check_abuse_patterns(
-        self,
-        requester_id: str,
-        regime: RegulatoryRegime,
-        entry_ids: list[str]
+        self, requester_id: str, regime: RegulatoryRegime, entry_ids: list[str]
     ) -> dict[str, Any]:
         """
         Check for abuse patterns per NCIP-009 Section 8.
@@ -940,31 +967,36 @@ class RegulatoryInterfaceManager:
 
         # Check for fishing expedition (requesting too many entries)
         if len(entry_ids) > 100:
-            warnings.append({
-                "type": "fishing_expedition",
-                "message": f"Request covers {len(entry_ids)} entries - possible fishing expedition"
-            })
+            warnings.append(
+                {
+                    "type": "fishing_expedition",
+                    "message": f"Request covers {len(entry_ids)} entries - possible fishing expedition",
+                }
+            )
 
         # Check for repeated requests
         requester_proofs = [
-            p for p in self.proofs.values()
-            if requester_id in str(p.validator_signatures)
+            p for p in self.proofs.values() if requester_id in str(p.validator_signatures)
         ]
         if len(requester_proofs) > 10:
-            warnings.append({
-                "type": "excessive_requests",
-                "message": "Requester has made many proof requests - monitor for abuse"
-            })
+            warnings.append(
+                {
+                    "type": "excessive_requests",
+                    "message": "Requester has made many proof requests - monitor for abuse",
+                }
+            )
 
         # Check scope overlap with existing proofs
         for proof in self.proofs.values():
             if proof.regime == regime:
                 overlap = set(entry_ids) & set(proof.entry_ids_covered)
                 if len(overlap) > 0 and proof.status == ProofStatus.VERIFIED:
-                    warnings.append({
-                        "type": "duplicate_scope",
-                        "message": f"Overlapping scope with existing proof {proof.proof_id}"
-                    })
+                    warnings.append(
+                        {
+                            "type": "duplicate_scope",
+                            "message": f"Overlapping scope with existing proof {proof.proof_id}",
+                        }
+                    )
 
         return {
             "requester_id": requester_id,
@@ -972,13 +1004,12 @@ class RegulatoryInterfaceManager:
             "entry_count": len(entry_ids),
             "warnings": warnings,
             "allow": len(warnings) == 0,
-            "message": "Abuse check complete" if not warnings else "Review warnings before proceeding"
+            "message": "Abuse check complete"
+            if not warnings
+            else "Review warnings before proceeding",
         }
 
-    def prevent_semantic_leakage(
-        self,
-        proof_id: str
-    ) -> dict[str, Any]:
+    def prevent_semantic_leakage(self, proof_id: str) -> dict[str, Any]:
         """
         Verify proof does not leak semantic content.
 
@@ -986,10 +1017,7 @@ class RegulatoryInterfaceManager:
         """
         proof = self.proofs.get(proof_id)
         if not proof:
-            return {
-                "status": "error",
-                "message": f"Proof {proof_id} not found"
-            }
+            return {"status": "error", "message": f"Proof {proof_id} not found"}
 
         leakage_detected = False
         issues = []
@@ -1016,7 +1044,7 @@ class RegulatoryInterfaceManager:
             "leakage_detected": leakage_detected,
             "issues": issues,
             "status": "BLOCKED" if leakage_detected else "SAFE",
-            "rule": "Proofs MUST NOT reveal unrelated intents per NCIP-009 Section 5"
+            "rule": "Proofs MUST NOT reveal unrelated intents per NCIP-009 Section 5",
         }
 
     # -------------------------------------------------------------------------
@@ -1041,7 +1069,7 @@ class RegulatoryInterfaceManager:
                 "proof_id": proof_id,
                 "expired": True,
                 "expired_at": proof.expires_at.isoformat(),
-                "message": "Proof has expired - cannot be used for compliance"
+                "message": "Proof has expired - cannot be used for compliance",
             }
 
         remaining_days = (proof.expires_at - now).days if proof.expires_at else None
@@ -1051,14 +1079,10 @@ class RegulatoryInterfaceManager:
             "expired": False,
             "expires_at": proof.expires_at.isoformat() if proof.expires_at else None,
             "remaining_days": remaining_days,
-            "status": proof.status.value
+            "status": proof.status.value,
         }
 
-    def revoke_proof(
-        self,
-        proof_id: str,
-        reason: str
-    ) -> dict[str, Any]:
+    def revoke_proof(self, proof_id: str, reason: str) -> dict[str, Any]:
         """Revoke a compliance proof."""
         proof = self.proofs.get(proof_id)
         if not proof:
@@ -1070,7 +1094,7 @@ class RegulatoryInterfaceManager:
             "proof_id": proof_id,
             "status": "revoked",
             "reason": reason,
-            "revoked_at": datetime.utcnow().isoformat()
+            "revoked_at": datetime.utcnow().isoformat(),
         }
 
     # -------------------------------------------------------------------------
@@ -1104,23 +1128,18 @@ class RegulatoryInterfaceManager:
             "total_worm_certificates": len(self.worm_certificates),
             "status_counts": status_counts,
             "regime_counts": regime_counts,
-            "principle": "Compliance is proven cryptographically, not narratively."
+            "principle": "Compliance is proven cryptographically, not narratively.",
         }
 
     def generate_compliance_report(
-        self,
-        regime: RegulatoryRegime,
-        date_range: tuple[datetime, datetime] | None = None
+        self, regime: RegulatoryRegime, date_range: tuple[datetime, datetime] | None = None
     ) -> dict[str, Any]:
         """Generate compliance report for a regime."""
         proofs = self.get_proofs_by_regime(regime)
 
         if date_range:
             start_date, end_date = date_range
-            proofs = [
-                p for p in proofs
-                if start_date <= p.created_at <= end_date
-            ]
+            proofs = [p for p in proofs if start_date <= p.created_at <= end_date]
 
         verified = [p for p in proofs if p.status == ProofStatus.VERIFIED]
         rejected = [p for p in proofs if p.status == ProofStatus.REJECTED]
@@ -1130,13 +1149,15 @@ class RegulatoryInterfaceManager:
             "report_generated_at": datetime.utcnow().isoformat(),
             "date_range": {
                 "start": date_range[0].isoformat() if date_range else None,
-                "end": date_range[1].isoformat() if date_range else None
-            } if date_range else None,
+                "end": date_range[1].isoformat() if date_range else None,
+            }
+            if date_range
+            else None,
             "summary": {
                 "total_proofs": len(proofs),
                 "verified": len(verified),
                 "rejected": len(rejected),
-                "verification_rate": len(verified) / len(proofs) if proofs else 0
+                "verification_rate": len(verified) / len(proofs) if proofs else 0,
             },
-            "guarantee": "Regulators can verify that rules were followed without being able to decide what was meant."
+            "guarantee": "Regulators can verify that rules were followed without being able to decide what was meant.",
         }

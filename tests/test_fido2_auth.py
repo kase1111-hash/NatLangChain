@@ -34,9 +34,7 @@ class TestCredentialRegistration(unittest.TestCase):
     def test_begin_registration_returns_options(self):
         """Test that begin_registration returns proper options."""
         result = self.manager.begin_registration(
-            user_id="user123",
-            user_name="alice@example.com",
-            user_display_name="Alice"
+            user_id="user123", user_name="alice@example.com", user_display_name="Alice"
         )
 
         self.assertIn("challenge_id", result)
@@ -48,27 +46,18 @@ class TestCredentialRegistration(unittest.TestCase):
     def test_begin_registration_generates_challenge(self):
         """Test that a unique challenge is generated."""
         result1 = self.manager.begin_registration(
-            user_id="user1",
-            user_name="alice@example.com",
-            user_display_name="Alice"
+            user_id="user1", user_name="alice@example.com", user_display_name="Alice"
         )
         result2 = self.manager.begin_registration(
-            user_id="user2",
-            user_name="bob@example.com",
-            user_display_name="Bob"
+            user_id="user2", user_name="bob@example.com", user_display_name="Bob"
         )
 
-        self.assertNotEqual(
-            result1["publicKey"]["challenge"],
-            result2["publicKey"]["challenge"]
-        )
+        self.assertNotEqual(result1["publicKey"]["challenge"], result2["publicKey"]["challenge"])
 
     def test_begin_registration_stores_challenge(self):
         """Test that challenge is stored for verification."""
         result = self.manager.begin_registration(
-            user_id="user123",
-            user_name="alice@example.com",
-            user_display_name="Alice"
+            user_id="user123", user_name="alice@example.com", user_display_name="Alice"
         )
 
         challenge_id = result["challenge_id"]
@@ -80,7 +69,7 @@ class TestCredentialRegistration(unittest.TestCase):
             user_id="user123",
             user_name="alice@example.com",
             user_display_name="Alice",
-            authenticator_attachment=AuthenticatorAttachment.PLATFORM
+            authenticator_attachment=AuthenticatorAttachment.PLATFORM,
         )
 
         auth_selection = result["publicKey"]["authenticatorSelection"]
@@ -92,7 +81,7 @@ class TestCredentialRegistration(unittest.TestCase):
             user_id="user123",
             user_name="alice@example.com",
             user_display_name="Alice",
-            require_resident_key=True
+            require_resident_key=True,
         )
 
         auth_selection = result["publicKey"]["authenticatorSelection"]
@@ -112,14 +101,12 @@ class TestCredentialRegistration(unittest.TestCase):
                 public_key="test_key",
                 public_key_algorithm=-7,
                 sign_count=0,
-                created_at=datetime.utcnow().isoformat()
+                created_at=datetime.utcnow().isoformat(),
             )
 
         # Next should fail
         result = self.manager.begin_registration(
-            user_id=user_id,
-            user_name="alice@example.com",
-            user_display_name="Alice"
+            user_id=user_id, user_name="alice@example.com", user_display_name="Alice"
         )
 
         self.assertIn("error", result)
@@ -129,9 +116,7 @@ class TestCredentialRegistration(unittest.TestCase):
         """Test successful credential registration completion."""
         # Begin registration
         begin_result = self.manager.begin_registration(
-            user_id="user123",
-            user_name="alice@example.com",
-            user_display_name="Alice"
+            user_id="user123", user_name="alice@example.com", user_display_name="Alice"
         )
         challenge_id = begin_result["challenge_id"]
 
@@ -144,7 +129,7 @@ class TestCredentialRegistration(unittest.TestCase):
             authenticator_data=base64.b64encode(b"auth_data").decode(),
             client_data_json=base64.b64encode(b"{}").decode(),
             transports=["usb"],
-            device_name="My YubiKey"
+            device_name="My YubiKey",
         )
 
         self.assertTrue(success)
@@ -159,7 +144,7 @@ class TestCredentialRegistration(unittest.TestCase):
             public_key="key",
             public_key_algorithm=-7,
             authenticator_data="data",
-            client_data_json="{}"
+            client_data_json="{}",
         )
 
         self.assertFalse(success)
@@ -169,9 +154,7 @@ class TestCredentialRegistration(unittest.TestCase):
         """Test that expired challenge is rejected."""
         # Begin registration
         begin_result = self.manager.begin_registration(
-            user_id="user123",
-            user_name="alice@example.com",
-            user_display_name="Alice"
+            user_id="user123", user_name="alice@example.com", user_display_name="Alice"
         )
         challenge_id = begin_result["challenge_id"]
 
@@ -186,7 +169,7 @@ class TestCredentialRegistration(unittest.TestCase):
             public_key=base64.b64encode(b"key").decode(),
             public_key_algorithm=-7,
             authenticator_data=base64.b64encode(b"data").decode(),
-            client_data_json=base64.b64encode(b"{}").decode()
+            client_data_json=base64.b64encode(b"{}").decode(),
         )
 
         self.assertFalse(success)
@@ -195,9 +178,7 @@ class TestCredentialRegistration(unittest.TestCase):
     def test_complete_registration_unsupported_algorithm(self):
         """Test that unsupported algorithms are rejected."""
         begin_result = self.manager.begin_registration(
-            user_id="user123",
-            user_name="alice@example.com",
-            user_display_name="Alice"
+            user_id="user123", user_name="alice@example.com", user_display_name="Alice"
         )
         challenge_id = begin_result["challenge_id"]
 
@@ -207,7 +188,7 @@ class TestCredentialRegistration(unittest.TestCase):
             public_key=base64.b64encode(b"key").decode(),
             public_key_algorithm=-999,  # Unsupported
             authenticator_data=base64.b64encode(b"data").decode(),
-            client_data_json=base64.b64encode(b"{}").decode()
+            client_data_json=base64.b64encode(b"{}").decode(),
         )
 
         self.assertFalse(success)
@@ -231,7 +212,7 @@ class TestAuthentication(unittest.TestCase):
             public_key_algorithm=-7,
             sign_count=0,
             created_at=datetime.utcnow().isoformat(),
-            transports=["usb"]
+            transports=["usb"],
         )
         self.manager.credentials[cred_id] = credential
         self.manager.user_credentials.setdefault(user_id, []).append(cred_id)
@@ -272,7 +253,7 @@ class TestAuthentication(unittest.TestCase):
             authenticator_data=base64.b64encode(b"auth_data").decode(),
             client_data_json=base64.b64encode(b"{}").decode(),
             signature=base64.b64encode(b"signature").decode(),
-            user_handle=base64.urlsafe_b64encode(b"user123").decode().rstrip('=')
+            user_handle=base64.urlsafe_b64encode(b"user123").decode().rstrip("="),
         )
 
         self.assertTrue(success)
@@ -289,7 +270,7 @@ class TestAuthentication(unittest.TestCase):
             credential_id="nonexistent",
             authenticator_data=base64.b64encode(b"data").decode(),
             client_data_json=base64.b64encode(b"{}").decode(),
-            signature=base64.b64encode(b"sig").decode()
+            signature=base64.b64encode(b"sig").decode(),
         )
 
         self.assertFalse(success)
@@ -308,7 +289,7 @@ class TestSigning(unittest.TestCase):
             public_key=base64.b64encode(b"test_key").decode(),
             public_key_algorithm=-7,
             sign_count=0,
-            created_at=datetime.utcnow().isoformat()
+            created_at=datetime.utcnow().isoformat(),
         )
         self.manager.credentials["cred123"] = credential
         self.manager.user_credentials["user123"] = ["cred123"]
@@ -319,7 +300,7 @@ class TestSigning(unittest.TestCase):
             user_id="user123",
             dispute_id="DISPUTE-001",
             proposal_action="accept",
-            proposal_hash="abc123"
+            proposal_hash="abc123",
         )
 
         self.assertIn("challenge_id", result)
@@ -328,9 +309,7 @@ class TestSigning(unittest.TestCase):
     def test_begin_sign_contract(self):
         """Test beginning a contract signing flow."""
         result = self.manager.sign_contract(
-            user_id="user123",
-            contract_hash="contract_hash_123",
-            counterparty="bob"
+            user_id="user123", contract_hash="contract_hash_123", counterparty="bob"
         )
 
         self.assertIn("challenge_id", result)
@@ -343,7 +322,7 @@ class TestSigning(unittest.TestCase):
             user_id="user123",
             dispute_id="DISPUTE-001",
             proposal_action="accept",
-            proposal_hash="abc123"
+            proposal_hash="abc123",
         )
         challenge_id = begin_result["challenge_id"]
 
@@ -353,7 +332,7 @@ class TestSigning(unittest.TestCase):
             credential_id="cred123",
             authenticator_data=base64.b64encode(b"auth_data").decode(),
             client_data_json=base64.b64encode(b"{}").decode(),
-            signature=base64.b64encode(b"signature").decode()
+            signature=base64.b64encode(b"signature").decode(),
         )
 
         self.assertTrue(success)
@@ -373,7 +352,7 @@ class TestAgentDelegation(unittest.TestCase):
             public_key=base64.b64encode(b"key").decode(),
             public_key_algorithm=-7,
             sign_count=0,
-            created_at=datetime.utcnow().isoformat()
+            created_at=datetime.utcnow().isoformat(),
         )
         self.manager.credentials["principal_cred"] = credential
         self.manager.user_credentials["principal"] = ["principal_cred"]
@@ -384,7 +363,7 @@ class TestAgentDelegation(unittest.TestCase):
             principal_user_id="principal",
             agent_id="agent001",
             permissions=["read_contracts", "propose_settlements"],
-            duration_hours=24
+            duration_hours=24,
         )
 
         self.assertIn("challenge_id", result)
@@ -398,7 +377,7 @@ class TestAgentDelegation(unittest.TestCase):
             principal_user_id="principal",
             agent_id="agent001",
             permissions=["read_contracts"],
-            duration_hours=24
+            duration_hours=24,
         )
         challenge_id = begin_result["challenge_id"]
 
@@ -408,7 +387,7 @@ class TestAgentDelegation(unittest.TestCase):
             credential_id="principal_cred",
             authenticator_data=base64.b64encode(b"auth_data").decode(),
             client_data_json=base64.b64encode(b"{}").decode(),
-            signature=base64.b64encode(b"sig").decode()
+            signature=base64.b64encode(b"sig").decode(),
         )
 
         self.assertTrue(success)
@@ -421,21 +400,19 @@ class TestAgentDelegation(unittest.TestCase):
             principal_user_id="principal",
             agent_id="agent001",
             permissions=["read_contracts"],
-            duration_hours=24
+            duration_hours=24,
         )
         self.manager.complete_agent_delegation(
             challenge_id=begin_result["challenge_id"],
             credential_id="principal_cred",
             authenticator_data=base64.b64encode(b"data").decode(),
             client_data_json=base64.b64encode(b"{}").decode(),
-            signature=base64.b64encode(b"sig").decode()
+            signature=base64.b64encode(b"sig").decode(),
         )
 
         # Verify permission
         is_valid, delegation_id = self.manager.verify_agent_permission(
-            agent_id="agent001",
-            permission="read_contracts",
-            principal_user_id="principal"
+            agent_id="agent001", permission="read_contracts", principal_user_id="principal"
         )
 
         self.assertTrue(is_valid)
@@ -447,21 +424,21 @@ class TestAgentDelegation(unittest.TestCase):
             principal_user_id="principal",
             agent_id="agent001",
             permissions=["read_contracts"],
-            duration_hours=24
+            duration_hours=24,
         )
         self.manager.complete_agent_delegation(
             challenge_id=begin_result["challenge_id"],
             credential_id="principal_cred",
             authenticator_data=base64.b64encode(b"data").decode(),
             client_data_json=base64.b64encode(b"{}").decode(),
-            signature=base64.b64encode(b"sig").decode()
+            signature=base64.b64encode(b"sig").decode(),
         )
 
         # Try permission outside scope
         is_valid, delegation_id = self.manager.verify_agent_permission(
             agent_id="agent001",
             permission="delete_contracts",  # Not in scope
-            principal_user_id="principal"
+            principal_user_id="principal",
         )
 
         self.assertFalse(is_valid)
@@ -482,7 +459,7 @@ class TestCredentialManagement(unittest.TestCase):
                 public_key_algorithm=-7,
                 sign_count=i * 10,
                 created_at=datetime.utcnow().isoformat(),
-                device_name=f"YubiKey {i}"
+                device_name=f"YubiKey {i}",
             )
             self.manager.credentials[f"cred_{i}"] = cred
             self.manager.user_credentials.setdefault("user123", []).append(f"cred_{i}")
@@ -502,10 +479,7 @@ class TestCredentialManagement(unittest.TestCase):
 
     def test_remove_credential(self):
         """Test credential removal."""
-        success, result = self.manager.remove_credential(
-            credential_id="cred_0",
-            user_id="user123"
-        )
+        success, result = self.manager.remove_credential(credential_id="cred_0", user_id="user123")
 
         self.assertTrue(success)
         self.assertEqual(result["status"], "removed")
@@ -532,9 +506,7 @@ class TestStatisticsAndAudit(unittest.TestCase):
         """Test that events are recorded in audit trail."""
         # Perform an action
         self.manager.begin_registration(
-            user_id="user123",
-            user_name="alice@example.com",
-            user_display_name="Alice"
+            user_id="user123", user_name="alice@example.com", user_display_name="Alice"
         )
 
         trail = self.manager.get_audit_trail()
@@ -554,7 +526,7 @@ class TestDataclasses(unittest.TestCase):
             public_key="key",
             public_key_algorithm=-7,
             sign_count=0,
-            created_at="2024-01-01T00:00:00"
+            created_at="2024-01-01T00:00:00",
         )
 
         self.assertIsNone(cred.last_used_at)
@@ -571,7 +543,7 @@ class TestDataclasses(unittest.TestCase):
             signature_type="login",
             message_hash=None,
             created_at="2024-01-01T00:00:00",
-            expires_at="2024-01-01T00:05:00"
+            expires_at="2024-01-01T00:05:00",
         )
 
         self.assertFalse(challenge.used)

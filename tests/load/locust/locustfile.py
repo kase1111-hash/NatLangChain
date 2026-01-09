@@ -10,14 +10,14 @@ Web UI: http://localhost:8089
 Headless: locust -f locustfile.py --host=http://localhost:5000 --headless -u 100 -r 10 -t 5m
 """
 
-import os
 import json
+import os
 import random
 import time
 from datetime import datetime
-from locust import HttpUser, task, between, events, tag
-from locust.runners import MasterRunner, WorkerRunner
 
+from locust import HttpUser, between, events, tag, task
+from locust.runners import MasterRunner, WorkerRunner
 
 # Configuration
 API_KEY = os.getenv("NATLANGCHAIN_API_KEY", "test-api-key")
@@ -206,7 +206,9 @@ def on_test_stop(environment, **kwargs):
     print("=" * 60)
     print(f"Total Requests: {stats.total.num_requests}")
     print(f"Failed Requests: {stats.total.num_failures}")
-    print(f"Failure Rate: {(stats.total.num_failures / max(stats.total.num_requests, 1) * 100):.2f}%")
+    print(
+        f"Failure Rate: {(stats.total.num_failures / max(stats.total.num_requests, 1) * 100):.2f}%"
+    )
     print(f"Requests/sec: {stats.total.total_rps:.2f}")
     print(f"Avg Response Time: {stats.total.avg_response_time:.2f}ms")
     print(f"P50 Response Time: {stats.total.get_response_time_percentile(0.5):.2f}ms")
@@ -253,7 +255,9 @@ def on_test_stop(environment, **kwargs):
 
 
 @events.request.add_listener
-def on_request(request_type, name, response_time, response_length, response, context, exception, **kwargs):
+def on_request(
+    request_type, name, response_time, response_length, response, context, exception, **kwargs
+):
     """Track individual requests for detailed analysis."""
     # Could add custom metrics here
     pass

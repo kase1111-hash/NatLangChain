@@ -8,13 +8,14 @@ and exception handling.
 import os
 import sys
 import unittest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import MagicMock, Mock, patch
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 # Try to import numpy - needed for semantic search tests
 try:
     import numpy as np
+
     NUMPY_AVAILABLE = True
 except ImportError:
     NUMPY_AVAILABLE = False
@@ -22,11 +23,12 @@ except ImportError:
 # Try to import semantic search module
 try:
     from semantic_search import (
-        SemanticSearchError,
-        ModelLoadError,
-        EncodingError,
         SENTENCE_TRANSFORMERS_AVAILABLE,
+        EncodingError,
+        ModelLoadError,
+        SemanticSearchError,
     )
+
     SEMANTIC_SEARCH_AVAILABLE = True
 except ImportError:
     SEMANTIC_SEARCH_AVAILABLE = False
@@ -79,16 +81,14 @@ class TestSentenceTransformersAvailability(unittest.TestCase):
         self.assertIsInstance(SENTENCE_TRANSFORMERS_AVAILABLE, bool)
 
 
-@unittest.skipUnless(
-    SENTENCE_TRANSFORMERS_AVAILABLE,
-    "sentence-transformers not installed"
-)
+@unittest.skipUnless(SENTENCE_TRANSFORMERS_AVAILABLE, "sentence-transformers not installed")
 class TestSemanticSearchEngine(unittest.TestCase):
     """Tests for SemanticSearchEngine (requires sentence-transformers)."""
 
     def test_import_with_transformers(self):
         """Test that SemanticSearchEngine can be imported."""
         from semantic_search import SemanticSearchEngine
+
         self.assertIsNotNone(SemanticSearchEngine)
 
 
@@ -117,6 +117,7 @@ class TestSemanticSearchUtilities(unittest.TestCase):
 
     def test_cosine_similarity_calculation(self):
         """Test cosine similarity calculation."""
+
         # Simple cosine similarity implementation for testing
         def cosine_similarity(a, b):
             return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
@@ -168,10 +169,7 @@ class TestSearchResultRanking(unittest.TestCase):
 
     def test_top_k_filtering(self):
         """Test top-k result filtering."""
-        results = [
-            {"entry": f"Entry {i}", "score": i * 0.1}
-            for i in range(10)
-        ]
+        results = [{"entry": f"Entry {i}", "score": i * 0.1} for i in range(10)]
 
         # Get top 3
         sorted_results = sorted(results, key=lambda x: x["score"], reverse=True)

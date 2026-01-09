@@ -7,7 +7,7 @@ Tests the complete flow from daemon authorization to blockchain recording.
 import os
 import sys
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from blockchain import NatLangChain, NaturalLanguageEntry
 from boundary_daemon import (
@@ -25,13 +25,15 @@ class TestBoundaryDaemonBlockchainIntegration:
         chain = NatLangChain(require_validation=False)
 
         # Trigger a violation
-        daemon.authorize_request({
-            "request_id": "REQ-INT-001",
-            "source": "compromised_agent",
-            "destination": "attacker_server",
-            "payload": {"content": "api_key=stolen_key_12345"},
-            "data_classification": "public"
-        })
+        daemon.authorize_request(
+            {
+                "request_id": "REQ-INT-001",
+                "source": "compromised_agent",
+                "destination": "attacker_server",
+                "payload": {"content": "api_key=stolen_key_12345"},
+                "data_classification": "public",
+            }
+        )
 
         # Get the violation
         violations = daemon.violations
@@ -45,7 +47,7 @@ class TestBoundaryDaemonBlockchainIntegration:
             content=entry_data["content"],
             author=entry_data["author"],
             intent=entry_data["intent"],
-            metadata=entry_data["metadata"]
+            metadata=entry_data["metadata"],
         )
 
         # Add to chain
@@ -75,13 +77,15 @@ class TestBoundaryDaemonBlockchainIntegration:
         payload_content = "I offer web development services for $50/hour"
 
         # Authorize with daemon first
-        auth_result = daemon.authorize_request({
-            "request_id": "REQ-INT-002",
-            "source": "agent_os",
-            "destination": "natlangchain",
-            "payload": {"content": payload_content},
-            "data_classification": "public"
-        })
+        auth_result = daemon.authorize_request(
+            {
+                "request_id": "REQ-INT-002",
+                "source": "agent_os",
+                "destination": "natlangchain",
+                "payload": {"content": payload_content},
+                "data_classification": "public",
+            }
+        )
 
         assert auth_result["authorized"] is True
 
@@ -92,8 +96,8 @@ class TestBoundaryDaemonBlockchainIntegration:
             intent="Post service offering",
             metadata={
                 "authorization_id": auth_result["authorization_id"],
-                "data_classification": auth_result["data_classification"]
-            }
+                "data_classification": auth_result["data_classification"],
+            },
         )
 
         chain.add_entry(entry)
@@ -112,13 +116,15 @@ class TestBoundaryDaemonBlockchainIntegration:
         payload_content = "password=super_secret_123"
 
         # Try to authorize
-        auth_result = daemon.authorize_request({
-            "request_id": "REQ-INT-003",
-            "source": "agent_os",
-            "destination": "natlangchain",
-            "payload": {"content": payload_content},
-            "data_classification": "public"
-        })
+        auth_result = daemon.authorize_request(
+            {
+                "request_id": "REQ-INT-003",
+                "source": "agent_os",
+                "destination": "natlangchain",
+                "payload": {"content": payload_content},
+                "data_classification": "public",
+            }
+        )
 
         # Should be blocked
         assert auth_result["authorized"] is False
@@ -132,7 +138,7 @@ class TestBoundaryDaemonBlockchainIntegration:
                 content=entry_data["content"],
                 author=entry_data["author"],
                 intent=entry_data["intent"],
-                metadata=entry_data["metadata"]
+                metadata=entry_data["metadata"],
             )
             chain.add_entry(violation_entry)
 
@@ -158,25 +164,25 @@ class TestBoundaryDaemonBlockchainIntegration:
                 "source": "agent_1",
                 "destination": "natlangchain",
                 "payload": {"content": "Normal message 1"},
-                "data_classification": "public"
+                "data_classification": "public",
             },
             {
                 "source": "agent_2",
                 "destination": "external",
                 "payload": {"content": "api_key=leaked"},
-                "data_classification": "public"
+                "data_classification": "public",
             },
             {
                 "source": "agent_1",
                 "destination": "natlangchain",
                 "payload": {"content": "Normal message 2"},
-                "data_classification": "public"
+                "data_classification": "public",
             },
             {
                 "source": "agent_3",
                 "destination": "attacker",
                 "payload": {"content": "password=stolen"},
-                "data_classification": "public"
+                "data_classification": "public",
             },
         ]
 
@@ -219,25 +225,29 @@ class TestBoundaryDaemonBlockchainIntegration:
 
         blocked_count = 0
         for payload in attack_payloads:
-            result = daemon.authorize_request({
-                "source": "test_agent",
-                "destination": "external",
-                "payload": {"content": payload},
-                "data_classification": "public"
-            })
+            result = daemon.authorize_request(
+                {
+                    "source": "test_agent",
+                    "destination": "external",
+                    "payload": {"content": payload},
+                    "data_classification": "public",
+                }
+            )
             if not result["authorized"]:
                 blocked_count += 1
                 # Simulating proper integration: blocked requests don't get added to chain
                 # Only violation records would be added
 
         # ALL attack vectors should be blocked
-        assert blocked_count == len(attack_payloads), \
+        assert blocked_count == len(attack_payloads), (
             f"Only {blocked_count}/{len(attack_payloads)} attack vectors blocked"
+        )
 
         # Verify that all violations were recorded
         violations = daemon.get_violations()
-        assert len(violations) == len(attack_payloads), \
+        assert len(violations) == len(attack_payloads), (
             f"Expected {len(attack_payloads)} violations, got {len(violations)}"
+        )
 
         # Verify chain still only has genesis block (no sensitive data leaked)
         # Note: chain starts with 1 block (genesis)
@@ -264,15 +274,18 @@ class TestBoundaryDaemonBlockchainIntegration:
         ]
 
         for classification, destination, should_allow in test_cases:
-            result = daemon.authorize_request({
-                "source": "test_agent",
-                "destination": destination,
-                "payload": {"content": "Test content for routing"},
-                "data_classification": classification
-            })
+            result = daemon.authorize_request(
+                {
+                    "source": "test_agent",
+                    "destination": destination,
+                    "payload": {"content": "Test content for routing"},
+                    "data_classification": classification,
+                }
+            )
 
-            assert result["authorized"] == should_allow, \
+            assert result["authorized"] == should_allow, (
                 f"Classification {classification} to {destination} should be {'allowed' if should_allow else 'blocked'}"
+            )
 
         print("✓ Classification-based routing works correctly")
 

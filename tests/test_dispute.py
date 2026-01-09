@@ -6,7 +6,7 @@ Tests dispute filing, evidence handling, escalation, and resolution
 import os
 import sys
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 import unittest
 
@@ -26,7 +26,7 @@ class TestDisputeManager(unittest.TestCase):
             enable_rate_limiting=False,
             enable_timestamp_validation=False,
             enable_metadata_sanitization=False,
-            enable_quality_checks=False
+            enable_quality_checks=False,
         )
         self.dispute_manager = DisputeManager()  # No LLM for basic tests
 
@@ -35,7 +35,7 @@ class TestDisputeManager(unittest.TestCase):
             content="I offer web development services at $100/hour",
             author="alice",
             intent="Offer services",
-            metadata={"is_contract": True, "contract_type": "offer"}
+            metadata={"is_contract": True, "contract_type": "offer"},
         )
         entry1.validation_status = "valid"
         self.blockchain.add_entry(entry1)
@@ -50,7 +50,7 @@ class TestDisputeManager(unittest.TestCase):
             respondent="alice",
             contested_refs=contested_refs,
             description="I dispute the service terms. The agreed rate was $80/hour, not $100/hour.",
-            escalation_path=DisputeManager.ESCALATION_MEDIATOR
+            escalation_path=DisputeManager.ESCALATION_MEDIATOR,
         )
 
         self.assertIn("dispute_id", dispute_data)
@@ -68,14 +68,14 @@ class TestDisputeManager(unittest.TestCase):
             claimant="bob",
             respondent="alice",
             contested_refs=contested_refs,
-            description="First dispute about terms"
+            description="First dispute about terms",
         )
 
         dispute2 = self.dispute_manager.create_dispute(
             claimant="charlie",
             respondent="alice",
             contested_refs=contested_refs,
-            description="Second dispute about terms"
+            description="Second dispute about terms",
         )
 
         self.assertNotEqual(dispute1["dispute_id"], dispute2["dispute_id"])
@@ -88,7 +88,7 @@ class TestDisputeManager(unittest.TestCase):
             claimant="bob",
             respondent="alice",
             contested_refs=contested_refs,
-            description="I dispute this contract entry."
+            description="I dispute this contract entry.",
         )
 
         is_frozen, dispute_id = self.dispute_manager.is_entry_frozen(1, 0)
@@ -103,14 +103,14 @@ class TestDisputeManager(unittest.TestCase):
             claimant="bob",
             respondent="alice",
             contested_refs=contested_refs,
-            description="I dispute the terms."
+            description="I dispute the terms.",
         )
 
         evidence_data = self.dispute_manager.add_evidence(
             dispute_id=dispute_data["dispute_id"],
             author="bob",
             evidence_content="Email chain showing agreed rate of $80/hour",
-            evidence_type="document"
+            evidence_type="document",
         )
 
         self.assertEqual(evidence_data["dispute_type"], DisputeManager.TYPE_EVIDENCE)
@@ -125,14 +125,14 @@ class TestDisputeManager(unittest.TestCase):
             claimant="bob",
             respondent="alice",
             contested_refs=contested_refs,
-            description="I dispute the terms."
+            description="I dispute the terms.",
         )
 
         escalation_data = self.dispute_manager.escalate_dispute(
             dispute_id=dispute_data["dispute_id"],
             escalating_party="bob",
             escalation_path=DisputeManager.ESCALATION_ARBITRATOR,
-            escalation_reason="Mediation failed, need arbitration"
+            escalation_reason="Mediation failed, need arbitration",
         )
 
         self.assertEqual(escalation_data["dispute_type"], DisputeManager.TYPE_ESCALATION)
@@ -147,7 +147,7 @@ class TestDisputeManager(unittest.TestCase):
             claimant="bob",
             respondent="alice",
             contested_refs=contested_refs,
-            description="I dispute the terms."
+            description="I dispute the terms.",
         )
 
         # Verify entry is frozen
@@ -161,7 +161,7 @@ class TestDisputeManager(unittest.TestCase):
             resolution_type="settled",
             resolution_content="Parties agreed to $90/hour rate as compromise.",
             findings={"agreed_rate": "$90/hour"},
-            remedies=["Update contract to reflect $90/hour"]
+            remedies=["Update contract to reflect $90/hour"],
         )
 
         self.assertEqual(resolution_data["dispute_type"], DisputeManager.TYPE_RESOLUTION)
@@ -179,14 +179,14 @@ class TestDisputeManager(unittest.TestCase):
             claimant="bob",
             respondent="alice",
             contested_refs=contested_refs,
-            description="I dispute the terms."
+            description="I dispute the terms.",
         )
 
         clarification_data = self.dispute_manager.request_clarification(
             dispute_id=dispute_data["dispute_id"],
             author="mediator",
             clarification_request="Please provide the original email with rate discussion.",
-            directed_to="bob"
+            directed_to="bob",
         )
 
         self.assertEqual(clarification_data["dispute_type"], DisputeManager.TYPE_CLARIFICATION)
@@ -197,9 +197,7 @@ class TestDisputeManager(unittest.TestCase):
         """Test generating a dispute package for external arbitration."""
         # Add entry to blockchain
         entry = NaturalLanguageEntry(
-            content="Test service agreement",
-            author="alice",
-            intent="Agreement"
+            content="Test service agreement", author="alice", intent="Agreement"
         )
         entry.validation_status = "valid"
         self.blockchain.add_entry(entry)
@@ -211,7 +209,7 @@ class TestDisputeManager(unittest.TestCase):
             claimant="bob",
             respondent="alice",
             contested_refs=contested_refs,
-            description="I dispute this agreement."
+            description="I dispute this agreement.",
         )
 
         # Add the dispute entry to blockchain
@@ -219,7 +217,7 @@ class TestDisputeManager(unittest.TestCase):
             content="[DISPUTE: DISPUTE_DECLARATION] I dispute this agreement.",
             author="bob",
             intent="File dispute",
-            metadata=dispute_data
+            metadata=dispute_data,
         )
         self.blockchain.add_entry(dispute_entry)
         self.blockchain.mine_pending_entries()
@@ -228,7 +226,7 @@ class TestDisputeManager(unittest.TestCase):
         package = self.dispute_manager.generate_dispute_package(
             dispute_id=dispute_data["dispute_id"],
             blockchain=self.blockchain,
-            include_frozen_entries=True
+            include_frozen_entries=True,
         )
 
         self.assertIn("package_id", package)
@@ -244,7 +242,7 @@ class TestDisputeManager(unittest.TestCase):
             claimant="bob",
             respondent="alice",
             contested_refs=contested_refs,
-            description="I dispute the terms."
+            description="I dispute the terms.",
         )
 
         # Add the dispute entry to blockchain
@@ -252,14 +250,13 @@ class TestDisputeManager(unittest.TestCase):
             content="[DISPUTE: DISPUTE_DECLARATION] I dispute the terms.",
             author="bob",
             intent="File dispute",
-            metadata=dispute_data
+            metadata=dispute_data,
         )
         self.blockchain.add_entry(dispute_entry)
         self.blockchain.mine_pending_entries()
 
         status = self.dispute_manager.get_dispute_status(
-            dispute_data["dispute_id"],
-            self.blockchain
+            dispute_data["dispute_id"], self.blockchain
         )
 
         self.assertIsNotNone(status)
@@ -291,9 +288,7 @@ class TestDisputeManager(unittest.TestCase):
     def test_format_dispute_entry(self):
         """Test dispute entry formatting."""
         formatted = self.dispute_manager.format_dispute_entry(
-            DisputeManager.TYPE_DECLARATION,
-            "I dispute this contract.",
-            "DISPUTE-ABC123"
+            DisputeManager.TYPE_DECLARATION, "I dispute this contract.", "DISPUTE-ABC123"
         )
 
         self.assertIn("[DISPUTE: DISPUTE_DECLARATION]", formatted)
@@ -327,5 +322,5 @@ class TestDisputeTypes(unittest.TestCase):
         self.assertEqual(DisputeManager.ESCALATION_COURT, "legal_court")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

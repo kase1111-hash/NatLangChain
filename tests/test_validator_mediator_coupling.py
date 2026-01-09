@@ -15,7 +15,7 @@ import os
 import sys
 from datetime import datetime, timedelta
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from validator_mediator_coupling import (
     ActorRole,
@@ -107,7 +107,7 @@ class TestWeightDomains:
             historical_accuracy=0.8,
             drift_precision=0.9,
             pou_consistency=0.85,
-            appeal_survival_rate=0.75
+            appeal_survival_rate=0.75,
         )
 
         expected = 0.8 * 0.25 + 0.9 * 0.25 + 0.85 * 0.25 + 0.75 * 0.25
@@ -119,7 +119,7 @@ class TestWeightDomains:
             acceptance_rate=0.7,
             settlement_completion=0.8,
             post_settlement_dispute_frequency=0.2,  # Lower is better
-            time_efficiency=0.9
+            time_efficiency=0.9,
         )
 
         # post_settlement_dispute_frequency is inverted
@@ -158,7 +158,7 @@ class TestSemanticConsistencyScoring:
             intent_alignment=0.9,
             term_registry_consistency=0.85,
             drift_risk_projection=0.1,  # Low risk
-            pou_symmetry=0.8
+            pou_symmetry=0.8,
         )
 
         # Expected: 0.9*0.30 + 0.85*0.25 + 0.9*0.25 + 0.8*0.20
@@ -172,7 +172,7 @@ class TestSemanticConsistencyScoring:
             intent_alignment=0.8,
             term_registry_consistency=0.8,
             drift_risk_projection=0.1,
-            pou_symmetry=0.8
+            pou_symmetry=0.8,
         )
 
         score_high_risk = SemanticConsistencyScore(
@@ -181,7 +181,7 @@ class TestSemanticConsistencyScoring:
             intent_alignment=0.8,
             term_registry_consistency=0.8,
             drift_risk_projection=0.9,  # High risk
-            pou_symmetry=0.8
+            pou_symmetry=0.8,
         )
 
         assert score_low_risk.score > score_high_risk.score
@@ -193,23 +193,39 @@ class TestInfluenceGate:
     def test_proposal_passes_gate(self):
         coupling = ValidatorMediatorCoupling()
         coupling.register_mediator("m1")
-        coupling.register_validator("v1", historical_accuracy=0.9, drift_precision=0.9,
-                                   pou_consistency=0.9, appeal_survival_rate=0.9)
-        coupling.register_validator("v2", historical_accuracy=0.85, drift_precision=0.85,
-                                   pou_consistency=0.85, appeal_survival_rate=0.85)
+        coupling.register_validator(
+            "v1",
+            historical_accuracy=0.9,
+            drift_precision=0.9,
+            pou_consistency=0.9,
+            appeal_survival_rate=0.9,
+        )
+        coupling.register_validator(
+            "v2",
+            historical_accuracy=0.85,
+            drift_precision=0.85,
+            pou_consistency=0.85,
+            appeal_survival_rate=0.85,
+        )
 
         proposal, _ = coupling.submit_proposal("m1", "alignment", "Good proposal")
 
         # Add high consistency scores
         coupling.compute_semantic_consistency(
-            proposal.proposal_id, "v1",
-            intent_alignment=0.9, term_registry_consistency=0.9,
-            drift_risk_projection=0.1, pou_symmetry=0.9
+            proposal.proposal_id,
+            "v1",
+            intent_alignment=0.9,
+            term_registry_consistency=0.9,
+            drift_risk_projection=0.1,
+            pou_symmetry=0.9,
         )
         coupling.compute_semantic_consistency(
-            proposal.proposal_id, "v2",
-            intent_alignment=0.85, term_registry_consistency=0.85,
-            drift_risk_projection=0.15, pou_symmetry=0.85
+            proposal.proposal_id,
+            "v2",
+            intent_alignment=0.85,
+            term_registry_consistency=0.85,
+            drift_risk_projection=0.15,
+            pou_symmetry=0.85,
         )
 
         result = coupling.check_influence_gate(proposal.proposal_id)
@@ -221,16 +237,24 @@ class TestInfluenceGate:
     def test_proposal_fails_gate(self):
         coupling = ValidatorMediatorCoupling()
         coupling.register_mediator("m1")
-        coupling.register_validator("v1", historical_accuracy=0.3, drift_precision=0.3,
-                                   pou_consistency=0.3, appeal_survival_rate=0.3)
+        coupling.register_validator(
+            "v1",
+            historical_accuracy=0.3,
+            drift_precision=0.3,
+            pou_consistency=0.3,
+            appeal_survival_rate=0.3,
+        )
 
         proposal, _ = coupling.submit_proposal("m1", "alignment", "Weak proposal")
 
         # Add low consistency score
         coupling.compute_semantic_consistency(
-            proposal.proposal_id, "v1",
-            intent_alignment=0.3, term_registry_consistency=0.3,
-            drift_risk_projection=0.8, pou_symmetry=0.3
+            proposal.proposal_id,
+            "v1",
+            intent_alignment=0.3,
+            term_registry_consistency=0.3,
+            drift_risk_projection=0.8,
+            pou_symmetry=0.3,
         )
 
         result = coupling.check_influence_gate(proposal.proposal_id)
@@ -244,15 +268,23 @@ class TestInfluenceGate:
         coupling.gate_threshold = 0.4  # Lower threshold
 
         coupling.register_mediator("m1")
-        coupling.register_validator("v1", historical_accuracy=0.6, drift_precision=0.6,
-                                   pou_consistency=0.6, appeal_survival_rate=0.6)
+        coupling.register_validator(
+            "v1",
+            historical_accuracy=0.6,
+            drift_precision=0.6,
+            pou_consistency=0.6,
+            appeal_survival_rate=0.6,
+        )
 
         proposal, _ = coupling.submit_proposal("m1", "alignment", "Medium proposal")
 
         coupling.compute_semantic_consistency(
-            proposal.proposal_id, "v1",
-            intent_alignment=0.7, term_registry_consistency=0.7,
-            drift_risk_projection=0.3, pou_symmetry=0.7
+            proposal.proposal_id,
+            "v1",
+            intent_alignment=0.7,
+            term_registry_consistency=0.7,
+            drift_risk_projection=0.3,
+            pou_symmetry=0.7,
         )
 
         result = coupling.check_influence_gate(proposal.proposal_id)
@@ -267,15 +299,30 @@ class TestCompetitiveMediation:
 
     def test_visible_proposals_sorted_by_weight(self):
         coupling = ValidatorMediatorCoupling()
-        coupling.register_validator("v1", historical_accuracy=0.9, drift_precision=0.9,
-                                   pou_consistency=0.9, appeal_survival_rate=0.9)
+        coupling.register_validator(
+            "v1",
+            historical_accuracy=0.9,
+            drift_precision=0.9,
+            pou_consistency=0.9,
+            appeal_survival_rate=0.9,
+        )
 
         # Mediator with higher weight
-        coupling.register_mediator("m1", acceptance_rate=0.9, settlement_completion=0.9,
-                                  post_settlement_dispute_frequency=0.1, time_efficiency=0.9)
+        coupling.register_mediator(
+            "m1",
+            acceptance_rate=0.9,
+            settlement_completion=0.9,
+            post_settlement_dispute_frequency=0.1,
+            time_efficiency=0.9,
+        )
         # Mediator with lower weight
-        coupling.register_mediator("m2", acceptance_rate=0.5, settlement_completion=0.5,
-                                  post_settlement_dispute_frequency=0.5, time_efficiency=0.5)
+        coupling.register_mediator(
+            "m2",
+            acceptance_rate=0.5,
+            settlement_completion=0.5,
+            post_settlement_dispute_frequency=0.5,
+            time_efficiency=0.5,
+        )
 
         # Submit proposals
         p1, _ = coupling.submit_proposal("m1", "alignment", "High weight proposal")
@@ -284,8 +331,12 @@ class TestCompetitiveMediation:
         # Add consistency scores
         for pid in [p1.proposal_id, p2.proposal_id]:
             coupling.compute_semantic_consistency(
-                pid, "v1", intent_alignment=0.9, term_registry_consistency=0.9,
-                drift_risk_projection=0.1, pou_symmetry=0.9
+                pid,
+                "v1",
+                intent_alignment=0.9,
+                term_registry_consistency=0.9,
+                drift_risk_projection=0.1,
+                pou_symmetry=0.9,
             )
             coupling.check_influence_gate(pid)
 
@@ -301,15 +352,23 @@ class TestCompetitiveMediation:
     def test_hidden_proposals_not_visible(self):
         coupling = ValidatorMediatorCoupling()
         coupling.register_mediator("m1")
-        coupling.register_validator("v1", historical_accuracy=0.2, drift_precision=0.2,
-                                   pou_consistency=0.2, appeal_survival_rate=0.2)
+        coupling.register_validator(
+            "v1",
+            historical_accuracy=0.2,
+            drift_precision=0.2,
+            pou_consistency=0.2,
+            appeal_survival_rate=0.2,
+        )
 
         proposal, _ = coupling.submit_proposal("m1", "alignment", "Will fail gate")
 
         coupling.compute_semantic_consistency(
-            proposal.proposal_id, "v1",
-            intent_alignment=0.2, term_registry_consistency=0.2,
-            drift_risk_projection=0.9, pou_symmetry=0.2
+            proposal.proposal_id,
+            "v1",
+            intent_alignment=0.2,
+            term_registry_consistency=0.2,
+            drift_risk_projection=0.9,
+            pou_symmetry=0.2,
         )
         coupling.check_influence_gate(proposal.proposal_id)
 
@@ -319,15 +378,23 @@ class TestCompetitiveMediation:
     def test_human_selection(self):
         coupling = ValidatorMediatorCoupling()
         coupling.register_mediator("m1")
-        coupling.register_validator("v1", historical_accuracy=0.9, drift_precision=0.9,
-                                   pou_consistency=0.9, appeal_survival_rate=0.9)
+        coupling.register_validator(
+            "v1",
+            historical_accuracy=0.9,
+            drift_precision=0.9,
+            pou_consistency=0.9,
+            appeal_survival_rate=0.9,
+        )
 
         proposal, _ = coupling.submit_proposal("m1", "alignment", "Good proposal")
 
         coupling.compute_semantic_consistency(
-            proposal.proposal_id, "v1",
-            intent_alignment=0.9, term_registry_consistency=0.9,
-            drift_risk_projection=0.1, pou_symmetry=0.9
+            proposal.proposal_id,
+            "v1",
+            intent_alignment=0.9,
+            term_registry_consistency=0.9,
+            drift_risk_projection=0.1,
+            pou_symmetry=0.9,
         )
         coupling.check_influence_gate(proposal.proposal_id)
 
@@ -397,9 +464,7 @@ class TestWeightUpdates:
         coupling.register_validator("v1", historical_accuracy=0.5)
 
         update = coupling.schedule_weight_update(
-            "v1", ActorRole.VALIDATOR,
-            "historical_accuracy", 0.7,
-            "Improved accuracy"
+            "v1", ActorRole.VALIDATOR, "historical_accuracy", 0.7, "Improved accuracy"
         )
 
         assert update is not None
@@ -413,9 +478,7 @@ class TestWeightUpdates:
         coupling.register_validator("v1", historical_accuracy=0.5)
 
         coupling.schedule_weight_update(
-            "v1", ActorRole.VALIDATOR,
-            "historical_accuracy", 0.7,
-            "Should not apply yet"
+            "v1", ActorRole.VALIDATOR, "historical_accuracy", 0.7, "Should not apply yet"
         )
 
         # Weight should still be old value
@@ -426,9 +489,7 @@ class TestWeightUpdates:
         coupling.register_validator("v1", historical_accuracy=0.5)
 
         update = coupling.schedule_weight_update(
-            "v1", ActorRole.VALIDATOR,
-            "historical_accuracy", 0.7,
-            "Will be applied"
+            "v1", ActorRole.VALIDATOR, "historical_accuracy", 0.7, "Will be applied"
         )
 
         # Manually set apply_after to past
@@ -473,17 +534,25 @@ class TestCollusionResistance:
 
     def test_detect_high_pass_rate(self):
         coupling = ValidatorMediatorCoupling()
-        coupling.register_validator("v1", historical_accuracy=0.9, drift_precision=0.9,
-                                   pou_consistency=0.9, appeal_survival_rate=0.9)
+        coupling.register_validator(
+            "v1",
+            historical_accuracy=0.9,
+            drift_precision=0.9,
+            pou_consistency=0.9,
+            appeal_survival_rate=0.9,
+        )
         coupling.register_mediator("m1")
 
         # Create multiple proposals from same mediator, all passed by same validator
         for i in range(6):
             proposal, _ = coupling.submit_proposal("m1", "alignment", f"Proposal {i}")
             coupling.compute_semantic_consistency(
-                proposal.proposal_id, "v1",
-                intent_alignment=0.9, term_registry_consistency=0.9,
-                drift_risk_projection=0.1, pou_symmetry=0.9
+                proposal.proposal_id,
+                "v1",
+                intent_alignment=0.9,
+                term_registry_consistency=0.9,
+                drift_risk_projection=0.1,
+                pou_symmetry=0.9,
             )
 
         result = coupling.detect_collusion_signals("v1", "m1")
@@ -560,9 +629,7 @@ class TestProtocolViolations:
     def test_violation_details(self):
         coupling = ValidatorMediatorCoupling()
 
-        _, violation = coupling.check_role_permission(
-            "v1", ActorRole.VALIDATOR, "propose_terms"
-        )
+        _, violation = coupling.check_role_permission("v1", ActorRole.VALIDATOR, "propose_terms")
 
         assert violation.actor_id == "v1"
         assert violation.actor_role == ActorRole.VALIDATOR

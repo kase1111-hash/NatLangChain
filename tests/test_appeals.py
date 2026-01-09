@@ -15,7 +15,7 @@ import os
 import sys
 from datetime import datetime, timedelta
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from appeals import (
     AppealableItem,
@@ -79,7 +79,7 @@ class TestAppealCreation:
             validator_decision_id="VAL-DEC-001",
             drift_classification=DriftLevel.D3,
             disputed_terms=["uptime", "commercially_reasonable"],
-            appeal_rationale="Validator over-weighted industry-default uptime"
+            appeal_rationale="Validator over-weighted industry-default uptime",
         )
 
         assert appeal is not None
@@ -98,7 +98,7 @@ class TestAppealCreation:
             validator_decision_id="VAL-DEC-001",
             drift_classification=DriftLevel.D3,
             disputed_terms=["uptime"],
-            appeal_rationale="Test"
+            appeal_rationale="Test",
         )
 
         assert appeal is None
@@ -114,7 +114,7 @@ class TestAppealCreation:
             validator_decision_id="VAL-DEC-001",
             drift_classification=DriftLevel.D3,
             disputed_terms=[],  # Empty
-            appeal_rationale="Test"
+            appeal_rationale="Test",
         )
 
         assert appeal is None
@@ -130,7 +130,7 @@ class TestAppealCreation:
             validator_decision_id="VAL-DEC-001",
             drift_classification=DriftLevel.D2,
             disputed_terms=["term1"],
-            appeal_rationale="Test"
+            appeal_rationale="Test",
         )
 
         assert appeal.burn_fee_paid == manager.BASE_BURN_FEE
@@ -142,10 +142,7 @@ class TestReviewPanel:
 
     def test_panel_requires_minimum_3_members(self):
         panel = ReviewPanel()
-        panel.members = [
-            ReviewPanelMember("v1", "llm"),
-            ReviewPanelMember("v2", "hybrid")
-        ]
+        panel.members = [ReviewPanelMember("v1", "llm"), ReviewPanelMember("v2", "hybrid")]
         assert panel.is_valid is False
 
     def test_panel_requires_distinct_implementations(self):
@@ -153,7 +150,7 @@ class TestReviewPanel:
         panel.members = [
             ReviewPanelMember("v1", "llm"),
             ReviewPanelMember("v2", "llm"),
-            ReviewPanelMember("v3", "llm")
+            ReviewPanelMember("v3", "llm"),
         ]
         assert panel.is_valid is False
 
@@ -162,7 +159,7 @@ class TestReviewPanel:
         panel.members = [
             ReviewPanelMember("v3", "llm"),
             ReviewPanelMember("v4", "hybrid"),
-            ReviewPanelMember("v5", "symbolic")
+            ReviewPanelMember("v5", "symbolic"),
         ]
         assert panel.is_valid is True
 
@@ -176,7 +173,7 @@ class TestReviewPanel:
         panel.members = [
             ReviewPanelMember("v1", "llm", 0.8),
             ReviewPanelMember("v2", "hybrid", 0.9),
-            ReviewPanelMember("v3", "human", 0.95)
+            ReviewPanelMember("v3", "human", 0.95),
         ]
         assert panel.is_valid is True
 
@@ -194,7 +191,7 @@ class TestSemanticLock:
             validator_decision_id="VAL-DEC-001",
             drift_classification=DriftLevel.D3,
             disputed_terms=["uptime", "sla"],
-            appeal_rationale="Test"
+            appeal_rationale="Test",
         )
 
         result = manager.apply_scoped_lock(appeal, "LOCK-001")
@@ -214,7 +211,7 @@ class TestSemanticLock:
             validator_decision_id="VAL-DEC-001",
             drift_classification=DriftLevel.D3,
             disputed_terms=["term1"],
-            appeal_rationale="Test"
+            appeal_rationale="Test",
         )
 
         manager.apply_scoped_lock(appeal, "LOCK-001")
@@ -224,7 +221,7 @@ class TestSemanticLock:
         panel.members = [
             ReviewPanelMember("v1", "llm"),
             ReviewPanelMember("v2", "hybrid"),
-            ReviewPanelMember("v3", "human")
+            ReviewPanelMember("v3", "human"),
         ]
         manager.begin_review(appeal)
 
@@ -234,7 +231,7 @@ class TestSemanticLock:
             AppealOutcome.OVERTURNED,
             DriftLevel.D1,
             "Classification revised",
-            "ratifier-001"
+            "ratifier-001",
         )
 
         assert appeal.semantic_lock_id is None
@@ -254,7 +251,7 @@ class TestSemanticCaseRecord:
             validator_decision_id="VAL-DEC-001",
             drift_classification=DriftLevel.D3,
             disputed_terms=["uptime", "commercially_reasonable"],
-            appeal_rationale="Validator over-weighted industry-default"
+            appeal_rationale="Validator over-weighted industry-default",
         )
 
         # Setup and complete review
@@ -262,7 +259,7 @@ class TestSemanticCaseRecord:
         panel.members = [
             ReviewPanelMember("v1", "llm"),
             ReviewPanelMember("v2", "hybrid"),
-            ReviewPanelMember("v3", "human")
+            ReviewPanelMember("v3", "human"),
         ]
         manager.begin_review(appeal)
 
@@ -272,7 +269,7 @@ class TestSemanticCaseRecord:
             DriftLevel.D1,
             "Validator over-weighted industry-default uptime rather than contract-scoped definition.",
             "ratifier-001",
-            prior_cases=["SCR-2024-0091", "SCR-2025-0033"]
+            prior_cases=["SCR-2024-0091", "SCR-2025-0033"],
         )
 
         assert scr is not None
@@ -296,7 +293,7 @@ class TestSemanticCaseRecord:
             rationale_summary="Validator over-weighted industry-default uptime",
             canonical_terms_version="1.2",
             prior_cases=["SCR-2024-0091"],
-            human_ratification=True
+            human_ratification=True,
         )
 
         yaml_dict = scr.to_yaml_dict()
@@ -315,7 +312,7 @@ class TestSemanticCaseRecord:
             disputed_terms=["term1"],
             outcome=AppealOutcome.UPHELD,
             upheld=True,
-            rationale_summary="Original classification correct"
+            rationale_summary="Original classification correct",
         )
 
         assert scr.verify_integrity() is True
@@ -333,7 +330,7 @@ class TestPrecedentWeightDecay:
             outcome=AppealOutcome.OVERTURNED,
             upheld=False,
             canonical_terms_version="1.0",
-            resolution_timestamp=datetime.utcnow() - timedelta(days=30)  # 1 month ago
+            resolution_timestamp=datetime.utcnow() - timedelta(days=30),  # 1 month ago
         )
 
         entry = PrecedentEntry(scr=scr, weight=PrecedentWeight.HIGH)
@@ -350,7 +347,7 @@ class TestPrecedentWeightDecay:
             outcome=AppealOutcome.OVERTURNED,
             upheld=False,
             canonical_terms_version="1.0",
-            resolution_timestamp=datetime.utcnow() - timedelta(days=180)  # 6 months ago
+            resolution_timestamp=datetime.utcnow() - timedelta(days=180),  # 6 months ago
         )
 
         entry = PrecedentEntry(scr=scr, weight=PrecedentWeight.HIGH)
@@ -367,7 +364,7 @@ class TestPrecedentWeightDecay:
             outcome=AppealOutcome.OVERTURNED,
             upheld=False,
             canonical_terms_version="1.0",
-            resolution_timestamp=datetime.utcnow() - timedelta(days=400)  # 13+ months ago
+            resolution_timestamp=datetime.utcnow() - timedelta(days=400),  # 13+ months ago
         )
 
         entry = PrecedentEntry(scr=scr, weight=PrecedentWeight.HIGH)
@@ -384,7 +381,7 @@ class TestPrecedentWeightDecay:
             outcome=AppealOutcome.OVERTURNED,
             upheld=False,
             canonical_terms_version="1.0",  # Old version
-            resolution_timestamp=datetime.utcnow() - timedelta(days=30)
+            resolution_timestamp=datetime.utcnow() - timedelta(days=30),
         )
 
         entry = PrecedentEntry(scr=scr, weight=PrecedentWeight.HIGH)
@@ -407,20 +404,23 @@ class TestPrecedentQuerying:
             validator_decision_id="VAL-DEC-001",
             drift_classification=DriftLevel.D3,
             disputed_terms=["uptime"],
-            appeal_rationale="Test"
+            appeal_rationale="Test",
         )
 
         panel = manager.create_review_panel(appeal, ["orig1"])
         panel.members = [
             ReviewPanelMember("v1", "llm"),
             ReviewPanelMember("v2", "hybrid"),
-            ReviewPanelMember("v3", "human")
+            ReviewPanelMember("v3", "human"),
         ]
         manager.begin_review(appeal)
 
         manager.resolve_appeal(
-            appeal, AppealOutcome.OVERTURNED, DriftLevel.D1,
-            "Classification revised", "ratifier-001"
+            appeal,
+            AppealOutcome.OVERTURNED,
+            DriftLevel.D1,
+            "Classification revised",
+            "ratifier-001",
         )
 
         # Query
@@ -448,20 +448,23 @@ class TestPrecedentQuerying:
             validator_decision_id="VAL-DEC-001",
             drift_classification=DriftLevel.D3,
             disputed_terms=["uptime"],
-            appeal_rationale="Test"
+            appeal_rationale="Test",
         )
 
         panel = manager.create_review_panel(appeal, ["orig1"])
         panel.members = [
             ReviewPanelMember("v1", "llm"),
             ReviewPanelMember("v2", "hybrid"),
-            ReviewPanelMember("v3", "human")
+            ReviewPanelMember("v3", "human"),
         ]
         manager.begin_review(appeal)
 
         manager.resolve_appeal(
-            appeal, AppealOutcome.OVERTURNED, DriftLevel.D1,
-            "Classification revised", "ratifier-001"
+            appeal,
+            AppealOutcome.OVERTURNED,
+            DriftLevel.D1,
+            "Classification revised",
+            "ratifier-001",
         )
 
         signal = manager.get_precedent_signal("uptime", DriftLevel.D3)
@@ -486,21 +489,20 @@ class TestAbusePreention:
             validator_decision_id="VAL-DEC-001",
             drift_classification=DriftLevel.D3,
             disputed_terms=["term1"],
-            appeal_rationale="Test"
+            appeal_rationale="Test",
         )
 
         panel = manager.create_review_panel(appeal, ["orig1"])
         panel.members = [
             ReviewPanelMember("v1", "llm"),
             ReviewPanelMember("v2", "hybrid"),
-            ReviewPanelMember("v3", "human")
+            ReviewPanelMember("v3", "human"),
         ]
         manager.begin_review(appeal)
 
         # Resolve as upheld (appeal fails)
         manager.resolve_appeal(
-            appeal, AppealOutcome.UPHELD, None,
-            "Original classification correct", "ratifier-001"
+            appeal, AppealOutcome.UPHELD, None, "Original classification correct", "ratifier-001"
         )
 
         # Try to appeal again - should be in cooldown
@@ -511,7 +513,7 @@ class TestAbusePreention:
             validator_decision_id="VAL-DEC-002",
             drift_classification=DriftLevel.D3,
             disputed_terms=["term1"],
-            appeal_rationale="Try again"
+            appeal_rationale="Try again",
         )
 
         assert appeal2 is None
@@ -523,6 +525,7 @@ class TestAbusePreention:
         # Manually set up cooldown with failed appeals
         cooldown_key = "user-001:ENTRY-001"
         from appeals import AppealCooldown
+
         cooldown = AppealCooldown(appellant_id="user-001", entry_id="ENTRY-001")
         cooldown.failed_appeals = 2
         cooldown.cooldown_until = datetime.utcnow() - timedelta(days=1)  # Expired
@@ -531,7 +534,7 @@ class TestAbusePreention:
         # Calculate fee
         fee = manager._calculate_burn_fee("user-001", "ENTRY-001")
 
-        expected = manager.BASE_BURN_FEE * (manager.ESCALATING_FEE_MULTIPLIER ** 2)
+        expected = manager.BASE_BURN_FEE * (manager.ESCALATING_FEE_MULTIPLIER**2)
         assert fee == expected
 
     def test_rejection_triggers_cooldown(self):
@@ -544,7 +547,7 @@ class TestAbusePreention:
             validator_decision_id="VAL-DEC-001",
             drift_classification=DriftLevel.D3,
             disputed_terms=["term1"],
-            appeal_rationale="Test"
+            appeal_rationale="Test",
         )
 
         manager.reject_appeal(appeal, "Frivolous appeal")
@@ -568,7 +571,7 @@ class TestAppealLifecycle:
             validator_decision_id="VAL-DEC-001",
             drift_classification=DriftLevel.D3,
             disputed_terms=["uptime", "commercially_reasonable"],
-            appeal_rationale="Validator over-weighted industry-default uptime"
+            appeal_rationale="Validator over-weighted industry-default uptime",
         )
         assert appeal.status == AppealStatus.DECLARED
 
@@ -601,7 +604,7 @@ class TestAppealLifecycle:
             DriftLevel.D1,
             "Validator over-weighted industry-default uptime rather than contract-scoped definition.",
             "ratifier-001",
-            prior_cases=["SCR-2024-0091"]
+            prior_cases=["SCR-2024-0091"],
         )
 
         assert appeal.status == AppealStatus.RESOLVED
@@ -650,20 +653,23 @@ class TestValidatorBehavior:
             validator_decision_id="VAL-DEC-001",
             drift_classification=DriftLevel.D3,
             disputed_terms=["uptime"],
-            appeal_rationale="Test"
+            appeal_rationale="Test",
         )
 
         panel = manager.create_review_panel(appeal, ["orig1"])
         panel.members = [
             ReviewPanelMember("v1", "llm"),
             ReviewPanelMember("v2", "hybrid"),
-            ReviewPanelMember("v3", "human")
+            ReviewPanelMember("v3", "human"),
         ]
         manager.begin_review(appeal)
 
         manager.resolve_appeal(
-            appeal, AppealOutcome.OVERTURNED, DriftLevel.D1,
-            "Classification revised", "ratifier-001"
+            appeal,
+            AppealOutcome.OVERTURNED,
+            DriftLevel.D1,
+            "Classification revised",
+            "ratifier-001",
         )
 
         # Check for divergence warning
@@ -684,20 +690,23 @@ class TestValidatorBehavior:
             validator_decision_id="VAL-DEC-001",
             drift_classification=DriftLevel.D3,
             disputed_terms=["uptime"],
-            appeal_rationale="Test"
+            appeal_rationale="Test",
         )
 
         panel = manager.create_review_panel(appeal, ["orig1"])
         panel.members = [
             ReviewPanelMember("v1", "llm"),
             ReviewPanelMember("v2", "hybrid"),
-            ReviewPanelMember("v3", "human")
+            ReviewPanelMember("v3", "human"),
         ]
         manager.begin_review(appeal)
 
         manager.resolve_appeal(
-            appeal, AppealOutcome.OVERTURNED, DriftLevel.D1,
-            "Classification revised", "ratifier-001"
+            appeal,
+            AppealOutcome.OVERTURNED,
+            DriftLevel.D1,
+            "Classification revised",
+            "ratifier-001",
         )
 
         # Check for divergence - should be None when matching
@@ -729,7 +738,7 @@ class TestStatusSummary:
                 validator_decision_id=f"VAL-DEC-{i}",
                 drift_classification=DriftLevel.D3,
                 disputed_terms=[f"term{i}"],
-                appeal_rationale="Test"
+                appeal_rationale="Test",
             )
 
         summary = manager.get_status_summary()

@@ -28,13 +28,13 @@ import time
 import uuid
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
-from dataclasses import dataclass, field
-from typing import Any
+from dataclasses import dataclass
 
 
 @dataclass
 class LockInfo:
     """Information about a held lock."""
+
     name: str
     holder_id: str
     acquired_at: float
@@ -360,11 +360,15 @@ def with_lock(
         def mine_block():
             ...
     """
+
     def decorator(func):
         def wrapper(*args, **kwargs):
             from scaling import get_lock_manager
+
             manager = lock_manager or get_lock_manager()
             with manager.lock(name, timeout=timeout, ttl=ttl):
                 return func(*args, **kwargs)
+
         return wrapper
+
     return decorator

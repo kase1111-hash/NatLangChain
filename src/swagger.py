@@ -5,8 +5,7 @@ This module provides comprehensive API documentation using OpenAPI 3.0 specifica
 Access the interactive documentation at /docs (Swagger UI) or /openapi.json (raw spec).
 """
 
-import os
-from flask import Blueprint, jsonify, current_app
+from flask import Blueprint, jsonify
 
 # OpenAPI 3.0 Specification
 OPENAPI_SPEC = {
@@ -55,28 +54,13 @@ All errors follow this format:
 ```
         """,
         "version": "0.1.0-alpha",
-        "contact": {
-            "name": "NatLangChain",
-            "url": "https://github.com/kase1111-hash/NatLangChain"
-        },
-        "license": {
-            "name": "MIT",
-            "url": "https://opensource.org/licenses/MIT"
-        }
+        "contact": {"name": "NatLangChain", "url": "https://github.com/kase1111-hash/NatLangChain"},
+        "license": {"name": "MIT", "url": "https://opensource.org/licenses/MIT"},
     },
     "servers": [
-        {
-            "url": "/",
-            "description": "Current server"
-        },
-        {
-            "url": "https://api.natlangchain.io",
-            "description": "Production server"
-        },
-        {
-            "url": "https://staging.natlangchain.io",
-            "description": "Staging server"
-        }
+        {"url": "/", "description": "Current server"},
+        {"url": "https://api.natlangchain.io", "description": "Production server"},
+        {"url": "https://staging.natlangchain.io", "description": "Staging server"},
     ],
     "tags": [
         {"name": "Health", "description": "Health checks and monitoring"},
@@ -97,7 +81,7 @@ All errors follow this format:
         {"name": "Chat", "description": "LLM chat interface"},
         {"name": "P2P", "description": "Peer-to-peer networking"},
         {"name": "Metrics", "description": "Prometheus metrics"},
-        {"name": "Help", "description": "API documentation and NCIPs"}
+        {"name": "Help", "description": "API documentation and NCIPs"},
     ],
     "components": {
         "securitySchemes": {
@@ -105,7 +89,7 @@ All errors follow this format:
                 "type": "apiKey",
                 "in": "header",
                 "name": "X-API-Key",
-                "description": "API key for authentication"
+                "description": "API key for authentication",
             }
         },
         "schemas": {
@@ -115,17 +99,17 @@ All errors follow this format:
                 "properties": {
                     "status": {"type": "string", "example": "success"},
                     "data": {"type": "object"},
-                    "timestamp": {"type": "integer", "example": 1704067200}
-                }
+                    "timestamp": {"type": "integer", "example": 1704067200},
+                },
             },
             "ErrorResponse": {
                 "type": "object",
                 "properties": {
                     "error": {"type": "string", "example": "Invalid request"},
                     "reason": {"type": "string", "example": "Missing required field"},
-                    "hint": {"type": "string", "example": "Include 'content' in request body"}
+                    "hint": {"type": "string", "example": "Include 'content' in request body"},
                 },
-                "required": ["error"]
+                "required": ["error"],
             },
             "HealthStatus": {
                 "type": "object",
@@ -134,8 +118,8 @@ All errors follow this format:
                     "chain_length": {"type": "integer"},
                     "chain_valid": {"type": "boolean"},
                     "pending_entries": {"type": "integer"},
-                    "uptime_seconds": {"type": "number"}
-                }
+                    "uptime_seconds": {"type": "number"},
+                },
             },
             # Entry Schemas
             "Entry": {
@@ -144,26 +128,23 @@ All errors follow this format:
                     "content": {
                         "type": "string",
                         "description": "Natural language content",
-                        "maxLength": 51200
+                        "maxLength": 51200,
                     },
                     "author": {
                         "type": "string",
                         "description": "Author identifier",
-                        "maxLength": 500
+                        "maxLength": 500,
                     },
                     "intent": {
                         "type": "string",
                         "description": "Brief summary of intent",
-                        "maxLength": 2048
+                        "maxLength": 2048,
                     },
-                    "metadata": {
-                        "type": "object",
-                        "description": "Additional metadata"
-                    },
+                    "metadata": {"type": "object", "description": "Additional metadata"},
                     "timestamp": {"type": "number"},
-                    "hash": {"type": "string"}
+                    "hash": {"type": "string"},
                 },
-                "required": ["content", "author"]
+                "required": ["content", "author"],
             },
             "EntryCreate": {
                 "type": "object",
@@ -171,31 +152,27 @@ All errors follow this format:
                     "content": {
                         "type": "string",
                         "description": "Natural language content (max 50KB)",
-                        "maxLength": 51200
+                        "maxLength": 51200,
                     },
                     "author": {
                         "type": "string",
                         "description": "Author identifier",
-                        "maxLength": 500
+                        "maxLength": 500,
                     },
-                    "intent": {
-                        "type": "string",
-                        "description": "Brief summary",
-                        "maxLength": 2048
-                    },
+                    "intent": {"type": "string", "description": "Brief summary", "maxLength": 2048},
                     "metadata": {"type": "object"},
                     "validate": {
                         "type": "boolean",
                         "default": True,
-                        "description": "Validate entry before adding"
+                        "description": "Validate entry before adding",
                     },
                     "auto_mine": {
                         "type": "boolean",
                         "default": False,
-                        "description": "Automatically mine after adding"
-                    }
+                        "description": "Automatically mine after adding",
+                    },
                 },
-                "required": ["content", "author"]
+                "required": ["content", "author"],
             },
             # Block Schemas
             "Block": {
@@ -203,46 +180,37 @@ All errors follow this format:
                 "properties": {
                     "index": {"type": "integer"},
                     "timestamp": {"type": "number"},
-                    "entries": {
-                        "type": "array",
-                        "items": {"$ref": "#/components/schemas/Entry"}
-                    },
+                    "entries": {"type": "array", "items": {"$ref": "#/components/schemas/Entry"}},
                     "previous_hash": {"type": "string"},
                     "hash": {"type": "string"},
-                    "nonce": {"type": "integer"}
-                }
+                    "nonce": {"type": "integer"},
+                },
             },
             "Chain": {
                 "type": "object",
                 "properties": {
-                    "chain": {
-                        "type": "array",
-                        "items": {"$ref": "#/components/schemas/Block"}
-                    },
+                    "chain": {"type": "array", "items": {"$ref": "#/components/schemas/Block"}},
                     "length": {"type": "integer"},
-                    "valid": {"type": "boolean"}
-                }
+                    "valid": {"type": "boolean"},
+                },
             },
             # Search Schemas
             "SemanticSearchRequest": {
                 "type": "object",
                 "properties": {
-                    "query": {
-                        "type": "string",
-                        "description": "Natural language search query"
-                    },
+                    "query": {"type": "string", "description": "Natural language search query"},
                     "top_k": {
                         "type": "integer",
                         "default": 10,
-                        "description": "Number of results to return"
+                        "description": "Number of results to return",
                     },
                     "threshold": {
                         "type": "number",
                         "default": 0.5,
-                        "description": "Minimum similarity threshold (0-1)"
-                    }
+                        "description": "Minimum similarity threshold (0-1)",
+                    },
                 },
-                "required": ["query"]
+                "required": ["query"],
             },
             "SearchResult": {
                 "type": "object",
@@ -250,19 +218,14 @@ All errors follow this format:
                     "entry": {"$ref": "#/components/schemas/Entry"},
                     "score": {"type": "number", "description": "Similarity score"},
                     "block_index": {"type": "integer"},
-                    "entry_index": {"type": "integer"}
-                }
+                    "entry_index": {"type": "integer"},
+                },
             },
             # Contract Schemas
             "ContractParseRequest": {
                 "type": "object",
-                "properties": {
-                    "text": {
-                        "type": "string",
-                        "description": "Contract text to parse"
-                    }
-                },
-                "required": ["text"]
+                "properties": {"text": {"type": "string", "description": "Contract text to parse"}},
+                "required": ["text"],
             },
             "Contract": {
                 "type": "object",
@@ -270,9 +233,12 @@ All errors follow this format:
                     "id": {"type": "string"},
                     "parties": {"type": "array", "items": {"type": "string"}},
                     "terms": {"type": "array", "items": {"type": "object"}},
-                    "status": {"type": "string", "enum": ["draft", "active", "completed", "disputed"]},
-                    "created_at": {"type": "string", "format": "date-time"}
-                }
+                    "status": {
+                        "type": "string",
+                        "enum": ["draft", "active", "completed", "disputed"],
+                    },
+                    "created_at": {"type": "string", "format": "date-time"},
+                },
             },
             # Dispute Schemas
             "DisputeFileRequest": {
@@ -282,9 +248,9 @@ All errors follow this format:
                     "claimant": {"type": "string"},
                     "respondent": {"type": "string"},
                     "description": {"type": "string"},
-                    "evidence": {"type": "array", "items": {"type": "string"}}
+                    "evidence": {"type": "array", "items": {"type": "string"}},
                 },
-                "required": ["contract_id", "claimant", "description"]
+                "required": ["contract_id", "claimant", "description"],
             },
             "Dispute": {
                 "type": "object",
@@ -295,11 +261,11 @@ All errors follow this format:
                     "respondent": {"type": "string"},
                     "status": {
                         "type": "string",
-                        "enum": ["filed", "evidence", "escalated", "resolved"]
+                        "enum": ["filed", "evidence", "escalated", "resolved"],
                     },
                     "resolution": {"type": "object"},
-                    "created_at": {"type": "string", "format": "date-time"}
-                }
+                    "created_at": {"type": "string", "format": "date-time"},
+                },
             },
             # FIDO2 Schemas
             "FIDO2RegisterBegin": {
@@ -307,9 +273,9 @@ All errors follow this format:
                 "properties": {
                     "user_id": {"type": "string"},
                     "user_name": {"type": "string"},
-                    "display_name": {"type": "string"}
+                    "display_name": {"type": "string"},
                 },
-                "required": ["user_id", "user_name"]
+                "required": ["user_id", "user_name"],
             },
             "FIDO2Credential": {
                 "type": "object",
@@ -317,17 +283,17 @@ All errors follow this format:
                     "credential_id": {"type": "string"},
                     "public_key": {"type": "string"},
                     "sign_count": {"type": "integer"},
-                    "created_at": {"type": "string", "format": "date-time"}
-                }
+                    "created_at": {"type": "string", "format": "date-time"},
+                },
             },
             # ZK Schemas
             "ZKIdentityCommitment": {
                 "type": "object",
                 "properties": {
                     "identity_secret": {"type": "string"},
-                    "nullifier": {"type": "string"}
+                    "nullifier": {"type": "string"},
                 },
-                "required": ["identity_secret"]
+                "required": ["identity_secret"],
             },
             "ZKProof": {
                 "type": "object",
@@ -335,8 +301,8 @@ All errors follow this format:
                     "proof_id": {"type": "string"},
                     "commitment": {"type": "string"},
                     "nullifier_hash": {"type": "string"},
-                    "verified": {"type": "boolean"}
-                }
+                    "verified": {"type": "boolean"},
+                },
             },
             # Mobile Schemas
             "DeviceRegister": {
@@ -344,35 +310,27 @@ All errors follow this format:
                 "properties": {
                     "device_id": {"type": "string"},
                     "platform": {"type": "string", "enum": ["ios", "android", "web"]},
-                    "capabilities": {"type": "object"}
+                    "capabilities": {"type": "object"},
                 },
-                "required": ["device_id", "platform"]
+                "required": ["device_id", "platform"],
             },
             "EdgeInferenceRequest": {
                 "type": "object",
                 "properties": {
                     "model_id": {"type": "string"},
                     "input_data": {"type": "object"},
-                    "options": {"type": "object"}
+                    "options": {"type": "object"},
                 },
-                "required": ["model_id", "input_data"]
+                "required": ["model_id", "input_data"],
             },
             # Pagination
             "PaginationParams": {
                 "type": "object",
                 "properties": {
-                    "limit": {
-                        "type": "integer",
-                        "default": 20,
-                        "maximum": 100
-                    },
-                    "offset": {
-                        "type": "integer",
-                        "default": 0,
-                        "maximum": 100000
-                    }
-                }
-            }
+                    "limit": {"type": "integer", "default": 20, "maximum": 100},
+                    "offset": {"type": "integer", "default": 0, "maximum": 100000},
+                },
+            },
         },
         "responses": {
             "Unauthorized": {
@@ -380,27 +338,27 @@ All errors follow this format:
                 "content": {
                     "application/json": {
                         "schema": {"$ref": "#/components/schemas/ErrorResponse"},
-                        "example": {"error": "API key required"}
+                        "example": {"error": "API key required"},
                     }
-                }
+                },
             },
             "Forbidden": {
                 "description": "Invalid API key",
                 "content": {
                     "application/json": {
                         "schema": {"$ref": "#/components/schemas/ErrorResponse"},
-                        "example": {"error": "Invalid API key"}
+                        "example": {"error": "Invalid API key"},
                     }
-                }
+                },
             },
             "NotFound": {
                 "description": "Resource not found",
                 "content": {
                     "application/json": {
                         "schema": {"$ref": "#/components/schemas/ErrorResponse"},
-                        "example": {"error": "Resource not found"}
+                        "example": {"error": "Resource not found"},
                     }
-                }
+                },
             },
             "RateLimited": {
                 "description": "Rate limit exceeded",
@@ -409,21 +367,21 @@ All errors follow this format:
                         "schema": {"$ref": "#/components/schemas/ErrorResponse"},
                         "example": {
                             "error": "Rate limit exceeded",
-                            "hint": "Try again in 60 seconds"
-                        }
+                            "hint": "Try again in 60 seconds",
+                        },
                     }
-                }
+                },
             },
             "ServiceUnavailable": {
                 "description": "Feature not available",
                 "content": {
                     "application/json": {
                         "schema": {"$ref": "#/components/schemas/ErrorResponse"},
-                        "example": {"error": "Feature not initialized"}
+                        "example": {"error": "Feature not initialized"},
                     }
-                }
-            }
-        }
+                },
+            },
+        },
     },
     "paths": {
         # =====================================================================
@@ -442,9 +400,9 @@ All errors follow this format:
                             "application/json": {
                                 "schema": {"$ref": "#/components/schemas/HealthStatus"}
                             }
-                        }
+                        },
                     }
-                }
+                },
             }
         },
         "/health/live": {
@@ -456,13 +414,9 @@ All errors follow this format:
                 "responses": {
                     "200": {
                         "description": "Service is alive",
-                        "content": {
-                            "application/json": {
-                                "example": {"status": "alive"}
-                            }
-                        }
+                        "content": {"application/json": {"example": {"status": "alive"}}},
                     }
-                }
+                },
             }
         },
         "/health/ready": {
@@ -475,13 +429,11 @@ All errors follow this format:
                     "200": {
                         "description": "Service is ready",
                         "content": {
-                            "application/json": {
-                                "example": {"status": "ready", "checks": {}}
-                            }
-                        }
+                            "application/json": {"example": {"status": "ready", "checks": {}}}
+                        },
                     },
-                    "503": {"$ref": "#/components/responses/ServiceUnavailable"}
-                }
+                    "503": {"$ref": "#/components/responses/ServiceUnavailable"},
+                },
             }
         },
         "/health/detailed": {
@@ -501,13 +453,13 @@ All errors follow this format:
                                         "status": {"type": "string"},
                                         "checks": {"type": "object"},
                                         "chain": {"type": "object"},
-                                        "features": {"type": "object"}
-                                    }
+                                        "features": {"type": "object"},
+                                    },
                                 }
                             }
-                        }
+                        },
                     }
-                }
+                },
             }
         },
         # =====================================================================
@@ -523,12 +475,10 @@ All errors follow this format:
                     "200": {
                         "description": "Full blockchain",
                         "content": {
-                            "application/json": {
-                                "schema": {"$ref": "#/components/schemas/Chain"}
-                            }
-                        }
+                            "application/json": {"schema": {"$ref": "#/components/schemas/Chain"}}
+                        },
                     }
-                }
+                },
             }
         },
         "/chain/narrative": {
@@ -540,13 +490,9 @@ All errors follow this format:
                 "responses": {
                     "200": {
                         "description": "Narrative text",
-                        "content": {
-                            "text/plain": {
-                                "schema": {"type": "string"}
-                            }
-                        }
+                        "content": {"text/plain": {"schema": {"type": "string"}}},
                     }
-                }
+                },
             }
         },
         "/validate/chain": {
@@ -559,12 +505,10 @@ All errors follow this format:
                     "200": {
                         "description": "Validation result",
                         "content": {
-                            "application/json": {
-                                "example": {"valid": True, "blocks_checked": 10}
-                            }
-                        }
+                            "application/json": {"example": {"valid": True, "blocks_checked": 10}}
+                        },
                     }
-                }
+                },
             }
         },
         "/stats": {
@@ -581,12 +525,12 @@ All errors follow this format:
                                 "example": {
                                     "total_blocks": 100,
                                     "total_entries": 500,
-                                    "pending_entries": 5
+                                    "pending_entries": 5,
                                 }
                             }
-                        }
+                        },
                     }
-                }
+                },
             }
         },
         "/block/{index}": {
@@ -601,20 +545,18 @@ All errors follow this format:
                         "in": "path",
                         "required": True,
                         "schema": {"type": "integer"},
-                        "description": "Block index"
+                        "description": "Block index",
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "Block data",
                         "content": {
-                            "application/json": {
-                                "schema": {"$ref": "#/components/schemas/Block"}
-                            }
-                        }
+                            "application/json": {"schema": {"$ref": "#/components/schemas/Block"}}
+                        },
                     },
-                    "404": {"$ref": "#/components/responses/NotFound"}
-                }
+                    "404": {"$ref": "#/components/responses/NotFound"},
+                },
             }
         },
         "/block/latest": {
@@ -627,12 +569,10 @@ All errors follow this format:
                     "200": {
                         "description": "Latest block",
                         "content": {
-                            "application/json": {
-                                "schema": {"$ref": "#/components/schemas/Block"}
-                            }
-                        }
+                            "application/json": {"schema": {"$ref": "#/components/schemas/Block"}}
+                        },
                     }
-                }
+                },
             }
         },
         "/mine": {
@@ -650,13 +590,13 @@ All errors follow this format:
                                 "example": {
                                     "message": "Block mined successfully",
                                     "block_index": 101,
-                                    "entries_mined": 5
+                                    "entries_mined": 5,
                                 }
                             }
-                        }
+                        },
                     },
-                    "401": {"$ref": "#/components/responses/Unauthorized"}
-                }
+                    "401": {"$ref": "#/components/responses/Unauthorized"},
+                },
             }
         },
         # =====================================================================
@@ -672,10 +612,8 @@ All errors follow this format:
                 "requestBody": {
                     "required": True,
                     "content": {
-                        "application/json": {
-                            "schema": {"$ref": "#/components/schemas/EntryCreate"}
-                        }
-                    }
+                        "application/json": {"schema": {"$ref": "#/components/schemas/EntryCreate"}}
+                    },
                 },
                 "responses": {
                     "201": {
@@ -685,10 +623,10 @@ All errors follow this format:
                                 "example": {
                                     "message": "Entry added",
                                     "entry_hash": "abc123...",
-                                    "pending_count": 5
+                                    "pending_count": 5,
                                 }
                             }
-                        }
+                        },
                     },
                     "400": {
                         "description": "Invalid entry",
@@ -696,10 +634,10 @@ All errors follow this format:
                             "application/json": {
                                 "schema": {"$ref": "#/components/schemas/ErrorResponse"}
                             }
-                        }
+                        },
                     },
-                    "401": {"$ref": "#/components/responses/Unauthorized"}
-                }
+                    "401": {"$ref": "#/components/responses/Unauthorized"},
+                },
             }
         },
         "/entry/validate": {
@@ -712,24 +650,19 @@ All errors follow this format:
                 "requestBody": {
                     "required": True,
                     "content": {
-                        "application/json": {
-                            "schema": {"$ref": "#/components/schemas/EntryCreate"}
-                        }
-                    }
+                        "application/json": {"schema": {"$ref": "#/components/schemas/EntryCreate"}}
+                    },
                 },
                 "responses": {
                     "200": {
                         "description": "Validation result",
                         "content": {
                             "application/json": {
-                                "example": {
-                                    "valid": True,
-                                    "validation_details": {}
-                                }
+                                "example": {"valid": True, "validation_details": {}}
                             }
-                        }
+                        },
                     }
-                }
+                },
             }
         },
         "/pending": {
@@ -741,16 +674,9 @@ All errors follow this format:
                 "responses": {
                     "200": {
                         "description": "Pending entries",
-                        "content": {
-                            "application/json": {
-                                "example": {
-                                    "pending": [],
-                                    "count": 0
-                                }
-                            }
-                        }
+                        "content": {"application/json": {"example": {"pending": [], "count": 0}}},
                     }
-                }
+                },
             }
         },
         "/entries/author/{author}": {
@@ -765,29 +691,21 @@ All errors follow this format:
                         "in": "path",
                         "required": True,
                         "schema": {"type": "string"},
-                        "description": "Author identifier"
+                        "description": "Author identifier",
                     },
                     {
                         "name": "limit",
                         "in": "query",
-                        "schema": {"type": "integer", "default": 20, "maximum": 100}
+                        "schema": {"type": "integer", "default": 20, "maximum": 100},
                     },
-                    {
-                        "name": "offset",
-                        "in": "query",
-                        "schema": {"type": "integer", "default": 0}
-                    }
+                    {"name": "offset", "in": "query", "schema": {"type": "integer", "default": 0}},
                 ],
                 "responses": {
                     "200": {
                         "description": "Author's entries",
-                        "content": {
-                            "application/json": {
-                                "example": {"entries": [], "total": 0}
-                            }
-                        }
+                        "content": {"application/json": {"example": {"entries": [], "total": 0}}},
                     }
-                }
+                },
             }
         },
         "/entries/search": {
@@ -802,19 +720,15 @@ All errors follow this format:
                         "in": "query",
                         "required": True,
                         "schema": {"type": "string"},
-                        "description": "Search query"
+                        "description": "Search query",
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "Search results",
-                        "content": {
-                            "application/json": {
-                                "example": {"results": [], "count": 0}
-                            }
-                        }
+                        "content": {"application/json": {"example": {"results": [], "count": 0}}},
                     }
-                }
+                },
             }
         },
         # =====================================================================
@@ -832,7 +746,7 @@ All errors follow this format:
                         "application/json": {
                             "schema": {"$ref": "#/components/schemas/SemanticSearchRequest"}
                         }
-                    }
+                    },
                 },
                 "responses": {
                     "200": {
@@ -844,17 +758,17 @@ All errors follow this format:
                                     "properties": {
                                         "results": {
                                             "type": "array",
-                                            "items": {"$ref": "#/components/schemas/SearchResult"}
+                                            "items": {"$ref": "#/components/schemas/SearchResult"},
                                         },
                                         "query": {"type": "string"},
-                                        "count": {"type": "integer"}
-                                    }
+                                        "count": {"type": "integer"},
+                                    },
                                 }
                             }
-                        }
+                        },
                     },
-                    "503": {"$ref": "#/components/responses/ServiceUnavailable"}
-                }
+                    "503": {"$ref": "#/components/responses/ServiceUnavailable"},
+                },
             }
         },
         "/search/similar": {
@@ -871,23 +785,19 @@ All errors follow this format:
                                 "type": "object",
                                 "properties": {
                                     "text": {"type": "string"},
-                                    "top_k": {"type": "integer", "default": 5}
+                                    "top_k": {"type": "integer", "default": 5},
                                 },
-                                "required": ["text"]
+                                "required": ["text"],
                             }
                         }
-                    }
+                    },
                 },
                 "responses": {
                     "200": {
                         "description": "Similar entries",
-                        "content": {
-                            "application/json": {
-                                "example": {"similar": [], "count": 0}
-                            }
-                        }
+                        "content": {"application/json": {"example": {"similar": [], "count": 0}}},
                     }
-                }
+                },
             }
         },
         "/drift/check": {
@@ -904,11 +814,11 @@ All errors follow this format:
                                 "type": "object",
                                 "properties": {
                                     "reference_text": {"type": "string"},
-                                    "threshold": {"type": "number", "default": 0.3}
-                                }
+                                    "threshold": {"type": "number", "default": 0.3},
+                                },
                             }
                         }
-                    }
+                    },
                 },
                 "responses": {
                     "200": {
@@ -918,12 +828,12 @@ All errors follow this format:
                                 "example": {
                                     "drift_detected": False,
                                     "drift_score": 0.15,
-                                    "analysis": {}
+                                    "analysis": {},
                                 }
                             }
-                        }
+                        },
                     }
-                }
+                },
             }
         },
         # =====================================================================
@@ -941,22 +851,18 @@ All errors follow this format:
                         "application/json": {
                             "schema": {"$ref": "#/components/schemas/ContractParseRequest"}
                         }
-                    }
+                    },
                 },
                 "responses": {
                     "200": {
                         "description": "Parsed contract",
                         "content": {
                             "application/json": {
-                                "example": {
-                                    "parties": [],
-                                    "terms": [],
-                                    "obligations": []
-                                }
+                                "example": {"parties": [], "terms": [], "obligations": []}
                             }
-                        }
+                        },
                     }
-                }
+                },
             }
         },
         "/contract/list": {
@@ -968,18 +874,14 @@ All errors follow this format:
                 "parameters": [
                     {"name": "status", "in": "query", "schema": {"type": "string"}},
                     {"name": "party", "in": "query", "schema": {"type": "string"}},
-                    {"name": "limit", "in": "query", "schema": {"type": "integer", "default": 20}}
+                    {"name": "limit", "in": "query", "schema": {"type": "integer", "default": 20}},
                 ],
                 "responses": {
                     "200": {
                         "description": "Contract list",
-                        "content": {
-                            "application/json": {
-                                "example": {"contracts": [], "total": 0}
-                            }
-                        }
+                        "content": {"application/json": {"example": {"contracts": [], "total": 0}}},
                     }
-                }
+                },
             }
         },
         # =====================================================================
@@ -998,19 +900,17 @@ All errors follow this format:
                         "application/json": {
                             "schema": {"$ref": "#/components/schemas/DisputeFileRequest"}
                         }
-                    }
+                    },
                 },
                 "responses": {
                     "201": {
                         "description": "Dispute filed",
                         "content": {
-                            "application/json": {
-                                "schema": {"$ref": "#/components/schemas/Dispute"}
-                            }
-                        }
+                            "application/json": {"schema": {"$ref": "#/components/schemas/Dispute"}}
+                        },
                     },
-                    "401": {"$ref": "#/components/responses/Unauthorized"}
-                }
+                    "401": {"$ref": "#/components/responses/Unauthorized"},
+                },
             }
         },
         "/dispute/list": {
@@ -1021,18 +921,14 @@ All errors follow this format:
                 "operationId": "listDisputes",
                 "parameters": [
                     {"name": "status", "in": "query", "schema": {"type": "string"}},
-                    {"name": "party", "in": "query", "schema": {"type": "string"}}
+                    {"name": "party", "in": "query", "schema": {"type": "string"}},
                 ],
                 "responses": {
                     "200": {
                         "description": "Dispute list",
-                        "content": {
-                            "application/json": {
-                                "example": {"disputes": [], "total": 0}
-                            }
-                        }
+                        "content": {"application/json": {"example": {"disputes": [], "total": 0}}},
                     }
-                }
+                },
             }
         },
         "/dispute/{dispute_id}": {
@@ -1046,20 +942,18 @@ All errors follow this format:
                         "name": "dispute_id",
                         "in": "path",
                         "required": True,
-                        "schema": {"type": "string"}
+                        "schema": {"type": "string"},
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "Dispute details",
                         "content": {
-                            "application/json": {
-                                "schema": {"$ref": "#/components/schemas/Dispute"}
-                            }
-                        }
+                            "application/json": {"schema": {"$ref": "#/components/schemas/Dispute"}}
+                        },
                     },
-                    "404": {"$ref": "#/components/responses/NotFound"}
-                }
+                    "404": {"$ref": "#/components/responses/NotFound"},
+                },
             }
         },
         "/dispute/{dispute_id}/resolve": {
@@ -1074,7 +968,7 @@ All errors follow this format:
                         "name": "dispute_id",
                         "in": "path",
                         "required": True,
-                        "schema": {"type": "string"}
+                        "schema": {"type": "string"},
                     }
                 ],
                 "requestBody": {
@@ -1085,12 +979,12 @@ All errors follow this format:
                                 "type": "object",
                                 "properties": {
                                     "resolution": {"type": "string"},
-                                    "ruling": {"type": "object"}
+                                    "ruling": {"type": "object"},
                                 },
-                                "required": ["resolution"]
+                                "required": ["resolution"],
                             }
                         }
-                    }
+                    },
                 },
                 "responses": {
                     "200": {
@@ -1099,10 +993,10 @@ All errors follow this format:
                             "application/json": {
                                 "example": {"status": "resolved", "resolution": {}}
                             }
-                        }
+                        },
                     },
-                    "401": {"$ref": "#/components/responses/Unauthorized"}
-                }
+                    "401": {"$ref": "#/components/responses/Unauthorized"},
+                },
             }
         },
         # =====================================================================
@@ -1120,11 +1014,11 @@ All errors follow this format:
                         "content": {
                             "text/plain": {
                                 "schema": {"type": "string"},
-                                "example": "# HELP http_requests_total Total HTTP requests\nhttp_requests_total{status=\"200\"} 1234"
+                                "example": '# HELP http_requests_total Total HTTP requests\nhttp_requests_total{status="200"} 1234',
                             }
-                        }
+                        },
                     }
-                }
+                },
             }
         },
         "/metrics/json": {
@@ -1138,14 +1032,11 @@ All errors follow this format:
                         "description": "JSON metrics",
                         "content": {
                             "application/json": {
-                                "example": {
-                                    "http_requests_total": 1234,
-                                    "chain_blocks": 100
-                                }
+                                "example": {"http_requests_total": 1234, "chain_blocks": 100}
                             }
-                        }
+                        },
                     }
-                }
+                },
             }
         },
         # =====================================================================
@@ -1164,21 +1055,18 @@ All errors follow this format:
                         "application/json": {
                             "schema": {"$ref": "#/components/schemas/DeviceRegister"}
                         }
-                    }
+                    },
                 },
                 "responses": {
                     "201": {
                         "description": "Device registered",
                         "content": {
                             "application/json": {
-                                "example": {
-                                    "device_id": "abc123",
-                                    "registered": True
-                                }
+                                "example": {"device_id": "abc123", "registered": True}
                             }
-                        }
+                        },
                     }
-                }
+                },
             }
         },
         "/mobile/edge/inference": {
@@ -1194,21 +1082,16 @@ All errors follow this format:
                         "application/json": {
                             "schema": {"$ref": "#/components/schemas/EdgeInferenceRequest"}
                         }
-                    }
+                    },
                 },
                 "responses": {
                     "200": {
                         "description": "Inference result",
                         "content": {
-                            "application/json": {
-                                "example": {
-                                    "result": {},
-                                    "inference_time_ms": 50
-                                }
-                            }
-                        }
+                            "application/json": {"example": {"result": {}, "inference_time_ms": 50}}
+                        },
                     }
-                }
+                },
             }
         },
         # =====================================================================
@@ -1227,7 +1110,7 @@ All errors follow this format:
                         "application/json": {
                             "schema": {"$ref": "#/components/schemas/FIDO2RegisterBegin"}
                         }
-                    }
+                    },
                 },
                 "responses": {
                     "200": {
@@ -1237,12 +1120,12 @@ All errors follow this format:
                                 "example": {
                                     "challenge": "base64...",
                                     "rp": {"name": "NatLangChain"},
-                                    "user": {}
+                                    "user": {},
                                 }
                             }
-                        }
+                        },
                     }
-                }
+                },
             }
         },
         "/fido2/authenticate/begin": {
@@ -1258,27 +1141,22 @@ All errors follow this format:
                         "application/json": {
                             "schema": {
                                 "type": "object",
-                                "properties": {
-                                    "user_id": {"type": "string"}
-                                },
-                                "required": ["user_id"]
+                                "properties": {"user_id": {"type": "string"}},
+                                "required": ["user_id"],
                             }
                         }
-                    }
+                    },
                 },
                 "responses": {
                     "200": {
                         "description": "Authentication options",
                         "content": {
                             "application/json": {
-                                "example": {
-                                    "challenge": "base64...",
-                                    "allowCredentials": []
-                                }
+                                "example": {"challenge": "base64...", "allowCredentials": []}
                             }
-                        }
+                        },
                     }
-                }
+                },
             }
         },
         # =====================================================================
@@ -1297,21 +1175,18 @@ All errors follow this format:
                         "application/json": {
                             "schema": {"$ref": "#/components/schemas/ZKIdentityCommitment"}
                         }
-                    }
+                    },
                 },
                 "responses": {
                     "200": {
                         "description": "Commitment created",
                         "content": {
                             "application/json": {
-                                "example": {
-                                    "commitment": "0x...",
-                                    "nullifier": "0x..."
-                                }
+                                "example": {"commitment": "0x...", "nullifier": "0x..."}
                             }
-                        }
+                        },
                     }
-                }
+                },
             }
         },
         "/zk/identity/verify": {
@@ -1329,23 +1204,21 @@ All errors follow this format:
                                 "type": "object",
                                 "properties": {
                                     "proof_id": {"type": "string"},
-                                    "proof_data": {"type": "object"}
+                                    "proof_data": {"type": "object"},
                                 },
-                                "required": ["proof_id"]
+                                "required": ["proof_id"],
                             }
                         }
-                    }
+                    },
                 },
                 "responses": {
                     "200": {
                         "description": "Verification result",
                         "content": {
-                            "application/json": {
-                                "schema": {"$ref": "#/components/schemas/ZKProof"}
-                            }
-                        }
+                            "application/json": {"schema": {"$ref": "#/components/schemas/ZKProof"}}
+                        },
                     }
-                }
+                },
             }
         },
         # =====================================================================
@@ -1366,26 +1239,23 @@ All errors follow this format:
                                 "type": "object",
                                 "properties": {
                                     "message": {"type": "string"},
-                                    "context": {"type": "object"}
+                                    "context": {"type": "object"},
                                 },
-                                "required": ["message"]
+                                "required": ["message"],
                             }
                         }
-                    }
+                    },
                 },
                 "responses": {
                     "200": {
                         "description": "Chat response",
                         "content": {
                             "application/json": {
-                                "example": {
-                                    "response": "Here's my answer...",
-                                    "sources": []
-                                }
+                                "example": {"response": "Here's my answer...", "sources": []}
                             }
-                        }
+                        },
                     }
-                }
+                },
             }
         },
         "/chat/status": {
@@ -1402,12 +1272,12 @@ All errors follow this format:
                                 "example": {
                                     "available": True,
                                     "model": "claude-3",
-                                    "context_window": 100000
+                                    "context_window": 100000,
                                 }
                             }
-                        }
+                        },
                     }
-                }
+                },
             }
         },
         # =====================================================================
@@ -1427,12 +1297,12 @@ All errors follow this format:
                                 "example": {
                                     "name": "NatLangChain API",
                                     "version": "1.0.0",
-                                    "endpoints": 212
+                                    "endpoints": 212,
                                 }
                             }
-                        }
+                        },
                     }
-                }
+                },
             }
         },
         "/api/help/ncips": {
@@ -1444,35 +1314,36 @@ All errors follow this format:
                 "responses": {
                     "200": {
                         "description": "NCIP list",
-                        "content": {
-                            "application/json": {
-                                "example": {"ncips": [], "total": 0}
-                            }
-                        }
+                        "content": {"application/json": {"example": {"ncips": [], "total": 0}}},
                     }
-                }
+                },
             }
-        }
-    }
+        },
+    },
 }
 
 
 def create_swagger_blueprint():
     """Create the Swagger UI blueprint."""
-    swagger_bp = Blueprint('swagger', __name__)
+    swagger_bp = Blueprint("swagger", __name__)
 
-    @swagger_bp.route('/openapi.json')
+    @swagger_bp.route("/openapi.json")
     def openapi_spec():
         """Return the OpenAPI specification."""
         return jsonify(OPENAPI_SPEC)
 
-    @swagger_bp.route('/openapi.yaml')
+    @swagger_bp.route("/openapi.yaml")
     def openapi_yaml():
         """Return the OpenAPI specification as YAML."""
-        import json
+
         try:
             import yaml
-            return yaml.dump(OPENAPI_SPEC, default_flow_style=False), 200, {'Content-Type': 'text/yaml'}
+
+            return (
+                yaml.dump(OPENAPI_SPEC, default_flow_style=False),
+                200,
+                {"Content-Type": "text/yaml"},
+            )
         except ImportError:
             # Fallback to JSON if PyYAML not available
             return jsonify(OPENAPI_SPEC)
@@ -1485,27 +1356,27 @@ def init_swagger(app):
     try:
         from flask_swagger_ui import get_swaggerui_blueprint
 
-        SWAGGER_URL = '/docs'
-        API_URL = '/openapi.json'
+        SWAGGER_URL = "/docs"
+        API_URL = "/openapi.json"
 
         swaggerui_blueprint = get_swaggerui_blueprint(
             SWAGGER_URL,
             API_URL,
             config={
-                'app_name': "NatLangChain API",
-                'layout': 'BaseLayout',
-                'deepLinking': True,
-                'displayRequestDuration': True,
-                'filter': True,
-                'showExtensions': True,
-                'showCommonExtensions': True,
-                'tryItOutEnabled': True,
-                'persistAuthorization': True,
-                'defaultModelsExpandDepth': 2,
-                'defaultModelExpandDepth': 2,
-                'docExpansion': 'list',
-                'syntaxHighlight.theme': 'monokai'
-            }
+                "app_name": "NatLangChain API",
+                "layout": "BaseLayout",
+                "deepLinking": True,
+                "displayRequestDuration": True,
+                "filter": True,
+                "showExtensions": True,
+                "showCommonExtensions": True,
+                "tryItOutEnabled": True,
+                "persistAuthorization": True,
+                "defaultModelsExpandDepth": 2,
+                "defaultModelExpandDepth": 2,
+                "docExpansion": "list",
+                "syntaxHighlight.theme": "monokai",
+            },
         )
 
         # Register blueprints
@@ -1523,4 +1394,4 @@ def init_swagger(app):
 
 
 # Export for use in api.py
-__all__ = ['init_swagger', 'OPENAPI_SPEC', 'create_swagger_blueprint']
+__all__ = ["OPENAPI_SPEC", "create_swagger_blueprint", "init_swagger"]

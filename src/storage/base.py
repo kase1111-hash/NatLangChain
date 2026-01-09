@@ -10,21 +10,25 @@ from typing import Any
 
 class StorageError(Exception):
     """Base exception for storage-related errors."""
+
     pass
 
 
 class StorageConnectionError(StorageError):
     """Raised when connection to storage backend fails."""
+
     pass
 
 
 class StorageReadError(StorageError):
     """Raised when reading from storage fails."""
+
     pass
 
 
 class StorageWriteError(StorageError):
     """Raised when writing to storage fails."""
+
     pass
 
 
@@ -130,9 +134,7 @@ class StorageBackend(ABC):
                 return chain[index]
         return None
 
-    def get_blocks_range(
-        self, start: int, end: int
-    ) -> list[dict[str, Any]]:
+    def get_blocks_range(self, start: int, end: int) -> list[dict[str, Any]]:
         """
         Get a range of blocks.
 
@@ -160,10 +162,7 @@ class StorageBackend(ABC):
         """
         chain_data = self.load_chain()
         if chain_data and "chain" in chain_data:
-            return sum(
-                len(block.get("entries", []))
-                for block in chain_data["chain"]
-            )
+            return sum(len(block.get("entries", [])) for block in chain_data["chain"])
         return 0
 
     def get_block_count(self) -> int:
@@ -178,9 +177,7 @@ class StorageBackend(ABC):
             return len(chain_data["chain"])
         return 0
 
-    def search_entries_by_author(
-        self, author: str, limit: int = 100
-    ) -> list[dict[str, Any]]:
+    def search_entries_by_author(self, author: str, limit: int = 100) -> list[dict[str, Any]]:
         """
         Search entries by author.
 

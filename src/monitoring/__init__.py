@@ -19,16 +19,16 @@ Usage:
     logger.info("Something happened", extra={"user_id": "123"})
 """
 
+from monitoring.logging import configure_logging, get_logger
 from monitoring.metrics import MetricsCollector, metrics
-from monitoring.logging import get_logger, configure_logging
-from monitoring.middleware import setup_request_logging, timed, counted
+from monitoring.middleware import counted, setup_request_logging, timed
 
 __all__ = [
     "MetricsCollector",
-    "metrics",
-    "get_logger",
     "configure_logging",
+    "counted",
+    "get_logger",
+    "metrics",
     "setup_request_logging",
     "timed",
-    "counted",
 ]

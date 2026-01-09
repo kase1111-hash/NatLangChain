@@ -13,7 +13,7 @@ Tests cover:
 import os
 import sys
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 import unittest
 from datetime import datetime
@@ -74,10 +74,7 @@ class TestJurisdictionDeclaration(unittest.TestCase):
 
     def test_create_valid_declaration(self):
         """Test creating a valid jurisdiction declaration."""
-        decl = JurisdictionDeclaration(
-            code="US-CA",
-            role=JurisdictionRole.ENFORCEMENT
-        )
+        decl = JurisdictionDeclaration(code="US-CA", role=JurisdictionRole.ENFORCEMENT)
         self.assertEqual(decl.code, "US-CA")
         self.assertEqual(decl.role, JurisdictionRole.ENFORCEMENT)
         self.assertEqual(decl.country, "US")
@@ -212,7 +209,7 @@ class TestLegalTranslationArtifacts(unittest.TestCase):
             legal_prose="Legal translation of the contract...",
             registry_version="1.0.0",
             temporal_fixity_timestamp=self.temporal_fixity,
-            referenced_terms=["PROSE_CONTRACT", "RATIFICATION"]
+            referenced_terms=["PROSE_CONTRACT", "RATIFICATION"],
         )
 
         self.assertIsNotNone(lta)
@@ -228,7 +225,7 @@ class TestLegalTranslationArtifacts(unittest.TestCase):
             target_jurisdiction="DE",
             legal_prose="Legal translation...",
             registry_version="1.0.0",
-            temporal_fixity_timestamp=self.temporal_fixity
+            temporal_fixity_timestamp=self.temporal_fixity,
         )
 
         self.assertTrue(lta.has_required_references)
@@ -240,7 +237,7 @@ class TestLegalTranslationArtifacts(unittest.TestCase):
             target_jurisdiction="GB",
             legal_prose="Legal translation...",
             registry_version="1.0.0",
-            temporal_fixity_timestamp=self.temporal_fixity
+            temporal_fixity_timestamp=self.temporal_fixity,
         )
 
         self.assertIn("non-authoritative", lta.semantic_authority_disclaimer)
@@ -268,7 +265,7 @@ class TestLTAValidation(unittest.TestCase):
                 "Payment shall be remitted within 30 days following delivery."
             ),
             registry_version="1.0.0",
-            temporal_fixity_timestamp=self.temporal_fixity
+            temporal_fixity_timestamp=self.temporal_fixity,
         )
 
         _valid, _violations = self.manager.validate_lta(lta, self.original_prose)
@@ -287,7 +284,7 @@ class TestLTAValidation(unittest.TestCase):
                 "Additional support services are required."
             ),
             registry_version="1.0.0",
-            temporal_fixity_timestamp=self.temporal_fixity
+            temporal_fixity_timestamp=self.temporal_fixity,
         )
 
         _valid, violations = self.manager.validate_lta(lta, self.original_prose)
@@ -304,7 +301,7 @@ class TestLTAValidation(unittest.TestCase):
                 "Payment shall be made within 30 days."
             ),
             registry_version="1.0.0",
-            temporal_fixity_timestamp=self.temporal_fixity
+            temporal_fixity_timestamp=self.temporal_fixity,
         )
 
         _valid, violations = self.manager.validate_lta(lta, self.original_prose)
@@ -321,7 +318,7 @@ class TestLTAValidation(unittest.TestCase):
                 "This is entirely new material with no connection to original."
             ),
             registry_version="1.0.0",
-            temporal_fixity_timestamp=self.temporal_fixity
+            temporal_fixity_timestamp=self.temporal_fixity,
         )
 
         _valid, _violations = self.manager.validate_lta(lta, self.original_prose)
@@ -343,7 +340,7 @@ class TestCourtRulings(unittest.TestCase):
             jurisdiction="US-CA",
             ruling_type=CourtRulingType.ENFORCEMENT,
             summary="Court ordered payment enforcement",
-            enforcement_outcome="Garnishment ordered"
+            enforcement_outcome="Garnishment ordered",
         )
 
         self.assertFalse(ruling.rejected)
@@ -356,7 +353,7 @@ class TestCourtRulings(unittest.TestCase):
             prose_contract_id="contract-001",
             jurisdiction="US-CA",
             ruling_type=CourtRulingType.SEMANTIC_OVERRIDE,
-            summary="Court attempts to redefine 'uptime' term"
+            summary="Court attempts to redefine 'uptime' term",
         )
 
         self.assertTrue(ruling.rejected)
@@ -369,7 +366,7 @@ class TestCourtRulings(unittest.TestCase):
             prose_contract_id="contract-001",
             jurisdiction="US-CA",
             ruling_type=CourtRulingType.VOID_CONTRACT,
-            summary="Court voided contract due to fraud"
+            summary="Court voided contract due to fraud",
         )
 
         self.assertTrue(ruling.execution_halted)
@@ -381,7 +378,7 @@ class TestCourtRulings(unittest.TestCase):
             prose_contract_id="contract-001",
             jurisdiction="DE",
             ruling_type=CourtRulingType.PROCEDURAL,
-            summary="Court ordered mediation before trial"
+            summary="Court ordered mediation before trial",
         )
 
         self.assertFalse(ruling.rejected)
@@ -403,7 +400,7 @@ class TestCrossJurisdictionConflicts(unittest.TestCase):
             prose_contract_id="contract-001",
             jurisdictions=["US-CA", "DE"],
             conflict_type="enforcement",
-            description="Conflicting enforcement requirements between jurisdictions"
+            description="Conflicting enforcement requirements between jurisdictions",
         )
 
         self.assertIsNotNone(conflict)
@@ -416,13 +413,13 @@ class TestCrossJurisdictionConflicts(unittest.TestCase):
             prose_contract_id="contract-001",
             jurisdictions=["US-CA", "DE"],
             conflict_type="enforcement",
-            description="Payment term conflict"
+            description="Payment term conflict",
         )
 
         success = self.manager.resolve_conflict(
             conflict,
             most_restrictive_outcome="Apply German data protection requirements (stricter)",
-            resolution_notes="GDPR requirements are more restrictive than California's"
+            resolution_notes="GDPR requirements are more restrictive than California's",
         )
 
         self.assertTrue(success)
@@ -462,7 +459,7 @@ class TestValidatorChecks(unittest.TestCase):
             target_jurisdiction="US-CA",
             legal_prose="Legal translation of the agreement.",
             registry_version="1.0.0",
-            temporal_fixity_timestamp=datetime.utcnow()
+            temporal_fixity_timestamp=datetime.utcnow(),
         )
 
         original = "The original agreement text."
@@ -525,7 +522,7 @@ class TestStatusSummary(unittest.TestCase):
             target_jurisdiction="US-CA",
             legal_prose="Legal translation",
             registry_version="1.0.0",
-            temporal_fixity_timestamp=datetime.utcnow()
+            temporal_fixity_timestamp=datetime.utcnow(),
         )
 
         bridge2 = self.manager.create_bridge("contract-002")

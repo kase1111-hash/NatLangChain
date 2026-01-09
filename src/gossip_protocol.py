@@ -19,16 +19,15 @@ import hashlib
 import heapq
 import logging
 import math
-import os
 import random
-import secrets
 import threading
 import time
 from collections import defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum, IntEnum
-from typing import Any, Callable
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -76,8 +75,10 @@ IHAVE_BATCH_SIZE = 50  # Max message IDs per IHAVE
 # Enums
 # =============================================================================
 
+
 class GossipMessageType(Enum):
     """Types of gossip protocol messages."""
+
     GOSSIP = "gossip"  # Full message push
     IHAVE = "ihave"  # Lazy push notification
     IWANT = "iwant"  # Request for message
@@ -87,6 +88,7 @@ class GossipMessageType(Enum):
 
 class MessagePriority(IntEnum):
     """Message priority levels."""
+
     CRITICAL = PRIORITY_CRITICAL
     HIGH = PRIORITY_HIGH
     NORMAL = PRIORITY_NORMAL
@@ -95,6 +97,7 @@ class MessagePriority(IntEnum):
 
 class PeerType(Enum):
     """Peer classification in Plumtree."""
+
     EAGER = "eager"  # Receives full messages immediately
     LAZY = "lazy"  # Receives IHAVE notifications
     UNKNOWN = "unknown"  # New peer, not classified
@@ -103,6 +106,7 @@ class PeerType(Enum):
 # =============================================================================
 # Bloom Filter Implementation
 # =============================================================================
+
 
 class BloomFilter:
     """
@@ -130,8 +134,8 @@ class BloomFilter:
         """Generate hash values for an item using double hashing."""
         # Use SHA-256 for base hashes
         h = hashlib.sha256(item.encode()).digest()
-        h1 = int.from_bytes(h[:8], 'big')
-        h2 = int.from_bytes(h[8:16], 'big')
+        h1 = int.from_bytes(h[:8], "big")
+        h2 = int.from_bytes(h[8:16], "big")
 
         # Generate k hash values using double hashing
         return [(h1 + i * h2) % self.size for i in range(self.hash_count)]
@@ -142,7 +146,7 @@ class BloomFilter:
             for idx in self._get_hash_values(item):
                 byte_idx = idx // 8
                 bit_idx = idx % 8
-                self.bit_array[byte_idx] |= (1 << bit_idx)
+                self.bit_array[byte_idx] |= 1 << bit_idx
             self.count += 1
 
     def contains(self, item: str) -> bool:
@@ -171,7 +175,7 @@ class BloomFilter:
                 bit_idx = idx % 8
                 if not (self.bit_array[byte_idx] & (1 << bit_idx)):
                     was_present = False
-                self.bit_array[byte_idx] |= (1 << bit_idx)
+                self.bit_array[byte_idx] |= 1 << bit_idx
 
             if not was_present:
                 self.count += 1
@@ -191,7 +195,7 @@ class BloomFilter:
         exponent = -self.hash_count * self.count / self.size
         return (1 - math.exp(exponent)) ** self.hash_count
 
-    def merge(self, other: 'BloomFilter') -> None:
+    def merge(self, other: "BloomFilter") -> None:
         """Merge another bloom filter into this one (OR operation)."""
         if self.size != other.size:
             raise ValueError("Cannot merge filters of different sizes")
@@ -211,7 +215,7 @@ class RotatingBloomFilter:
         self,
         size_bits: int = BLOOM_SIZE_BITS,
         hash_count: int = BLOOM_HASH_COUNT,
-        rotation_interval: int = BLOOM_ROTATION_INTERVAL
+        rotation_interval: int = BLOOM_ROTATION_INTERVAL,
     ):
         self.size_bits = size_bits
         self.hash_count = hash_count
@@ -255,9 +259,11 @@ class RotatingBloomFilter:
 # Message Cache
 # =============================================================================
 
+
 @dataclass
 class CachedMessage:
     """Cached message for IWANT requests."""
+
     message_id: str
     message_data: dict[str, Any]
     priority: MessagePriority
@@ -280,8 +286,13 @@ class MessageCache:
         self.cache: dict[str, CachedMessage] = {}
         self._lock = threading.Lock()
 
-    def put(self, message_id: str, message_data: dict[str, Any],
-            priority: MessagePriority, origin_peer: str) -> None:
+    def put(
+        self,
+        message_id: str,
+        message_data: dict[str, Any],
+        priority: MessagePriority,
+        origin_peer: str,
+    ) -> None:
         """Add a message to the cache."""
         with self._lock:
             # Evict if at capacity
@@ -295,7 +306,7 @@ class MessageCache:
                 priority=priority,
                 received_at=time.time(),
                 size_bytes=size,
-                origin_peer=origin_peer
+                origin_peer=origin_peer,
             )
 
     def get(self, message_id: str) -> dict[str, Any] | None:
@@ -320,8 +331,7 @@ class MessageCache:
         with self._lock:
             now = time.time()
             return [
-                mid for mid, cached in self.cache.items()
-                if now - cached.received_at <= self.ttl
+                mid for mid, cached in self.cache.items() if now - cached.received_at <= self.ttl
             ]
 
     def _evict_oldest(self) -> None:
@@ -331,7 +341,7 @@ class MessageCache:
 
         # Sort by received_at and remove oldest
         sorted_items = sorted(self.cache.items(), key=lambda x: x[1].received_at)
-        for mid, _ in sorted_items[:len(self.cache) - self.max_size + 1]:
+        for mid, _ in sorted_items[: len(self.cache) - self.max_size + 1]:
             del self.cache[mid]
 
     def cleanup_expired(self) -> int:
@@ -339,8 +349,7 @@ class MessageCache:
         with self._lock:
             now = time.time()
             expired = [
-                mid for mid, cached in self.cache.items()
-                if now - cached.received_at > self.ttl
+                mid for mid, cached in self.cache.items() if now - cached.received_at > self.ttl
             ]
             for mid in expired:
                 del self.cache[mid]
@@ -351,9 +360,11 @@ class MessageCache:
 # Priority Queue for Messages
 # =============================================================================
 
+
 @dataclass(order=True)
 class PrioritizedMessage:
     """Message wrapper for priority queue ordering."""
+
     priority: int
     timestamp: float
     message_id: str = field(compare=False)
@@ -379,7 +390,7 @@ class MessageQueue:
         message_id: str,
         message_data: dict[str, Any],
         target_peer: str,
-        priority: MessagePriority = MessagePriority.NORMAL
+        priority: MessagePriority = MessagePriority.NORMAL,
     ) -> bool:
         """Add a message to the queue."""
         with self._lock:
@@ -391,7 +402,7 @@ class MessageQueue:
                 timestamp=time.time(),
                 message_id=message_id,
                 message_data=message_data,
-                target_peer=target_peer
+                target_peer=target_peer,
             )
             heapq.heappush(self._queue, item)
             self._not_empty.notify()
@@ -429,9 +440,11 @@ class MessageQueue:
 # Peer Management for Gossip
 # =============================================================================
 
+
 @dataclass
 class GossipPeerState:
     """State tracking for a peer in gossip protocol."""
+
     peer_id: str
     peer_type: PeerType = PeerType.UNKNOWN
     duplicate_count: int = 0  # Consecutive duplicates received
@@ -458,7 +471,9 @@ class PlumtreePeerManager:
     to optimize bandwidth while maintaining reliability.
     """
 
-    def __init__(self, node_id: str, max_eager: int = MAX_EAGER_PEERS, max_lazy: int = MAX_LAZY_PEERS):
+    def __init__(
+        self, node_id: str, max_eager: int = MAX_EAGER_PEERS, max_lazy: int = MAX_LAZY_PEERS
+    ):
         self.node_id = node_id
         self.max_eager = max_eager
         self.max_lazy = max_lazy
@@ -563,8 +578,10 @@ class PlumtreePeerManager:
             self.peers[peer_id].duplicate_count += 1
 
             # Prune if exceeds threshold
-            if (peer_id in self.eager_peers and
-                self.peers[peer_id].duplicate_count >= PRUNE_THRESHOLD):
+            if (
+                peer_id in self.eager_peers
+                and self.peers[peer_id].duplicate_count >= PRUNE_THRESHOLD
+            ):
                 return True
             return False
 
@@ -581,8 +598,7 @@ class PlumtreePeerManager:
             self.peers[peer_id].missing_count += 1
 
             # Graft if we're frequently missing messages
-            if (peer_id in self.lazy_peers and
-                self.peers[peer_id].missing_count >= 2):
+            if peer_id in self.lazy_peers and self.peers[peer_id].missing_count >= 2:
                 return True
             return False
 
@@ -643,13 +659,16 @@ class PlumtreePeerManager:
             if len(self.eager_peers) < self.max_eager // 2:
                 # Promote best lazy peers
                 lazy_by_rate = sorted(
-                    [(pid, self.peers[pid].delivery_rate())
-                     for pid in self.lazy_peers if pid in self.peers],
+                    [
+                        (pid, self.peers[pid].delivery_rate())
+                        for pid in self.lazy_peers
+                        if pid in self.peers
+                    ],
                     key=lambda x: x[1],
-                    reverse=True
+                    reverse=True,
                 )
 
-                for peer_id, _ in lazy_by_rate[:self.max_eager - len(self.eager_peers)]:
+                for peer_id, _ in lazy_by_rate[: self.max_eager - len(self.eager_peers)]:
                     self.lazy_peers.discard(peer_id)
                     self.eager_peers.add(peer_id)
                     self.peers[peer_id].peer_type = PeerType.EAGER
@@ -658,6 +677,7 @@ class PlumtreePeerManager:
 # =============================================================================
 # Adaptive Fanout Controller
 # =============================================================================
+
 
 class AdaptiveFanout:
     """
@@ -671,7 +691,7 @@ class AdaptiveFanout:
         initial_fanout: int = GOSSIP_FANOUT,
         min_fanout: int = MIN_FANOUT,
         max_fanout: int = MAX_FANOUT,
-        target_ratio: float = TARGET_DELIVERY_RATIO
+        target_ratio: float = TARGET_DELIVERY_RATIO,
     ):
         self.fanout = initial_fanout
         self.min_fanout = min_fanout
@@ -756,6 +776,7 @@ class AdaptiveFanout:
 # Main Gossip Protocol Manager
 # =============================================================================
 
+
 class GossipProtocol:
     """
     Optimized epidemic gossip protocol implementation.
@@ -768,7 +789,7 @@ class GossipProtocol:
         self,
         node_id: str,
         send_callback: Callable[[str, dict[str, Any]], bool],
-        on_message_callback: Callable[[dict[str, Any]], None] | None = None
+        on_message_callback: Callable[[dict[str, Any]], None] | None = None,
     ):
         """
         Initialize gossip protocol.
@@ -813,7 +834,7 @@ class GossipProtocol:
             "grafts": 0,
             "prunes": 0,
             "eager_pushes": 0,
-            "lazy_pushes": 0
+            "lazy_pushes": 0,
         }
 
         # Background thread for IHAVE batching
@@ -859,7 +880,7 @@ class GossipProtocol:
         message_id: str,
         message_data: dict[str, Any],
         priority: MessagePriority = MessagePriority.NORMAL,
-        exclude_peers: set[str] | None = None
+        exclude_peers: set[str] | None = None,
     ) -> int:
         """
         Gossip a message to the network using Plumtree protocol.
@@ -911,14 +932,16 @@ class GossipProtocol:
             additional = list(all_peers - set(eager_peers))
             random.shuffle(additional)
 
-            for peer_id in additional[:fanout - sent_count]:
+            for peer_id in additional[: fanout - sent_count]:
                 if self._send_gossip(peer_id, message_id, message_data):
                     sent_count += 1
 
         self.stats["messages_gossiped"] += 1
         self.fanout_controller.record_send()
 
-        logger.debug(f"Gossiped message {message_id[:8]} to {sent_count} peers (priority: {priority.name})")
+        logger.debug(
+            f"Gossiped message {message_id[:8]} to {sent_count} peers (priority: {priority.name})"
+        )
         return sent_count
 
     def _send_gossip(self, peer_id: str, message_id: str, message_data: dict[str, Any]) -> bool:
@@ -928,7 +951,7 @@ class GossipProtocol:
             "message_id": message_id,
             "origin": self.node_id,
             "payload": message_data,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         }
         return self._send(peer_id, gossip_msg)
 
@@ -947,7 +970,7 @@ class GossipProtocol:
             "type": GossipMessageType.IHAVE.value,
             "message_ids": message_ids[:IHAVE_BATCH_SIZE],
             "origin": self.node_id,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         }
 
         success = self._send(peer_id, ihave_msg)
@@ -961,7 +984,7 @@ class GossipProtocol:
             "type": GossipMessageType.IWANT.value,
             "message_ids": message_ids,
             "origin": self.node_id,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         }
 
         success = self._send(peer_id, iwant_msg)
@@ -974,7 +997,7 @@ class GossipProtocol:
         graft_msg = {
             "type": GossipMessageType.GRAFT.value,
             "origin": self.node_id,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         }
 
         success = self._send(peer_id, graft_msg)
@@ -987,7 +1010,7 @@ class GossipProtocol:
         prune_msg = {
             "type": GossipMessageType.PRUNE.value,
             "origin": self.node_id,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         }
 
         success = self._send(peer_id, prune_msg)
@@ -1182,13 +1205,14 @@ class GossipProtocol:
             "eager_peers": len(self.peer_manager.get_eager_peers()),
             "lazy_peers": len(self.peer_manager.get_lazy_peers()),
             "cached_messages": len(self.message_cache.get_message_ids()),
-            "bloom_fpr": self.seen_filter.current.estimated_false_positive_rate()
+            "bloom_fpr": self.seen_filter.current.estimated_false_positive_rate(),
         }
 
 
 # =============================================================================
 # Helper Functions
 # =============================================================================
+
 
 def get_message_priority(broadcast_type: str) -> MessagePriority:
     """Get priority for a broadcast type."""
@@ -1197,7 +1221,7 @@ def get_message_priority(broadcast_type: str) -> MessagePriority:
         "settlement": MessagePriority.HIGH,
         "new_entry": MessagePriority.NORMAL,
         "peer_announce": MessagePriority.LOW,
-        "chain_tip": MessagePriority.LOW
+        "chain_tip": MessagePriority.LOW,
     }
     return priority_map.get(broadcast_type, MessagePriority.NORMAL)
 

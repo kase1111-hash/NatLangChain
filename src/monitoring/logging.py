@@ -11,15 +11,13 @@ Features:
 - Configurable log levels per module
 """
 
-import logging
 import json
+import logging
 import os
 import sys
 import threading
-import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
-
 
 # Thread-local storage for request context
 _request_context = threading.local()
@@ -27,7 +25,7 @@ _request_context = threading.local()
 
 def set_request_context(**kwargs) -> None:
     """Set context values for the current request."""
-    if not hasattr(_request_context, 'data'):
+    if not hasattr(_request_context, "data"):
         _request_context.data = {}
     _request_context.data.update(kwargs)
 
@@ -39,7 +37,7 @@ def clear_request_context() -> None:
 
 def get_request_context() -> dict[str, Any]:
     """Get current request context."""
-    return getattr(_request_context, 'data', {})
+    return getattr(_request_context, "data", {})
 
 
 class JSONFormatter(logging.Formatter):
@@ -65,7 +63,7 @@ class JSONFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         # Base log entry
         log_entry = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),
@@ -89,15 +87,31 @@ class JSONFormatter(logging.Formatter):
             log_entry["context"] = context
 
         # Add any extra fields from the log call
-        if hasattr(record, '__dict__'):
+        if hasattr(record, "__dict__"):
             for key, value in record.__dict__.items():
                 if key not in (
-                    'name', 'msg', 'args', 'created', 'filename',
-                    'funcName', 'levelname', 'levelno', 'lineno',
-                    'module', 'msecs', 'pathname', 'process',
-                    'processName', 'relativeCreated', 'stack_info',
-                    'exc_info', 'exc_text', 'thread', 'threadName',
-                    'message', 'taskName'
+                    "name",
+                    "msg",
+                    "args",
+                    "created",
+                    "filename",
+                    "funcName",
+                    "levelname",
+                    "levelno",
+                    "lineno",
+                    "module",
+                    "msecs",
+                    "pathname",
+                    "process",
+                    "processName",
+                    "relativeCreated",
+                    "stack_info",
+                    "exc_info",
+                    "exc_text",
+                    "thread",
+                    "threadName",
+                    "message",
+                    "taskName",
                 ):
                     log_entry[key] = value
 
@@ -112,19 +126,19 @@ class ConsoleFormatter(logging.Formatter):
     """
 
     COLORS = {
-        'DEBUG': '\033[36m',    # Cyan
-        'INFO': '\033[32m',     # Green
-        'WARNING': '\033[33m',  # Yellow
-        'ERROR': '\033[31m',    # Red
-        'CRITICAL': '\033[35m', # Magenta
+        "DEBUG": "\033[36m",  # Cyan
+        "INFO": "\033[32m",  # Green
+        "WARNING": "\033[33m",  # Yellow
+        "ERROR": "\033[31m",  # Red
+        "CRITICAL": "\033[35m",  # Magenta
     }
-    RESET = '\033[0m'
+    RESET = "\033[0m"
 
     def format(self, record: logging.LogRecord) -> str:
-        color = self.COLORS.get(record.levelname, '')
+        color = self.COLORS.get(record.levelname, "")
         reset = self.RESET
 
-        timestamp = datetime.now().strftime('%H:%M:%S.%f')[:-3]
+        timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
         level = record.levelname[0]
 
         # Build the message
@@ -133,28 +147,44 @@ class ConsoleFormatter(logging.Formatter):
         # Add context if present
         context = get_request_context()
         if context:
-            ctx_str = ' '.join(f'{k}={v}' for k, v in context.items())
+            ctx_str = " ".join(f"{k}={v}" for k, v in context.items())
             msg += f" {color}({ctx_str}){reset}"
 
         # Add extra fields
         extras = []
         for key, value in record.__dict__.items():
             if key not in (
-                'name', 'msg', 'args', 'created', 'filename',
-                'funcName', 'levelname', 'levelno', 'lineno',
-                'module', 'msecs', 'pathname', 'process',
-                'processName', 'relativeCreated', 'stack_info',
-                'exc_info', 'exc_text', 'thread', 'threadName',
-                'message', 'taskName'
+                "name",
+                "msg",
+                "args",
+                "created",
+                "filename",
+                "funcName",
+                "levelname",
+                "levelno",
+                "lineno",
+                "module",
+                "msecs",
+                "pathname",
+                "process",
+                "processName",
+                "relativeCreated",
+                "stack_info",
+                "exc_info",
+                "exc_text",
+                "thread",
+                "threadName",
+                "message",
+                "taskName",
             ):
-                extras.append(f'{key}={value}')
+                extras.append(f"{key}={value}")
 
         if extras:
             msg += f" [{', '.join(extras)}]"
 
         # Add exception info
         if record.exc_info:
-            msg += '\n' + self.formatException(record.exc_info)
+            msg += "\n" + self.formatException(record.exc_info)
 
         return msg
 

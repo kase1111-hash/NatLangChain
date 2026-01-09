@@ -8,32 +8,33 @@ Tests cover:
 - Intent and Settlement operations
 """
 
-import pytest
+import json
 import sys
 import time
-import json
+
+import pytest
 
 sys.path.insert(0, "src")
 
 from chain_interface import (
-    HMACAuthenticator,
-    ChainInterface,
-    MockChainInterface,
-    ChainIntent,
-    ChainSettlement,
-    ChainReputation,
+    TIMESTAMP_WINDOW,
     ChainDelegation,
     ChainHealth,
+    ChainIntent,
+    ChainInterface,
+    ChainReputation,
+    ChainSettlement,
+    HMACAuthenticator,
     IntentStatus,
-    SubmissionType,
+    MockChainInterface,
     SettlementStatus,
-    TIMESTAMP_WINDOW,
+    SubmissionType,
 )
-
 
 # ============================================================
 # HMAC Authentication Tests
 # ============================================================
+
 
 class TestHMACAuthenticator:
     """Tests for HMAC request authentication."""
@@ -85,7 +86,7 @@ class TestHMACAuthenticator:
             body=None,
             signature=headers["X-NLC-Signature"],
             timestamp=headers["X-NLC-Timestamp"],
-            nonce=headers["X-NLC-Nonce"]
+            nonce=headers["X-NLC-Nonce"],
         )
 
         assert is_valid is True
@@ -102,7 +103,7 @@ class TestHMACAuthenticator:
             body=body,
             signature=headers["X-NLC-Signature"],
             timestamp=headers["X-NLC-Timestamp"],
-            nonce=headers["X-NLC-Nonce"]
+            nonce=headers["X-NLC-Nonce"],
         )
 
         assert is_valid is True
@@ -117,7 +118,7 @@ class TestHMACAuthenticator:
             body=None,
             signature="invalid_signature",
             timestamp=headers["X-NLC-Timestamp"],
-            nonce=headers["X-NLC-Nonce"]
+            nonce=headers["X-NLC-Nonce"],
         )
 
         assert is_valid is False
@@ -136,7 +137,7 @@ class TestHMACAuthenticator:
             body=None,
             signature=headers["X-NLC-Signature"],
             timestamp=old_timestamp,
-            nonce=headers["X-NLC-Nonce"]
+            nonce=headers["X-NLC-Nonce"],
         )
 
         assert is_valid is False
@@ -153,7 +154,7 @@ class TestHMACAuthenticator:
             body=None,
             signature=headers["X-NLC-Signature"],
             timestamp=headers["X-NLC-Timestamp"],
-            nonce=headers["X-NLC-Nonce"]
+            nonce=headers["X-NLC-Nonce"],
         )
         assert is_valid1 is True
 
@@ -164,7 +165,7 @@ class TestHMACAuthenticator:
             body=None,
             signature=headers["X-NLC-Signature"],
             timestamp=headers["X-NLC-Timestamp"],
-            nonce=headers["X-NLC-Nonce"]
+            nonce=headers["X-NLC-Nonce"],
         )
         assert is_valid2 is False
         assert "replay" in message.lower()
@@ -173,6 +174,7 @@ class TestHMACAuthenticator:
 # ============================================================
 # Mock Chain Interface Tests
 # ============================================================
+
 
 class TestMockChainInterface:
     """Tests for MockChainInterface."""
@@ -205,7 +207,7 @@ class TestMockChainInterface:
             offered_fee=100.0,
             timestamp=int(time.time()),
             status=IntentStatus.PENDING,
-            branch="main"
+            branch="main",
         )
 
         mock_chain.add_test_intent(intent)
@@ -227,7 +229,7 @@ class TestMockChainInterface:
             offered_fee=10.0,
             timestamp=int(time.time()),
             status=IntentStatus.PENDING,
-            branch="main"
+            branch="main",
         )
         mock_chain.add_test_intent(pending_intent)
 
@@ -241,7 +243,7 @@ class TestMockChainInterface:
             offered_fee=10.0,
             timestamp=int(time.time()),
             status=IntentStatus.MATCHED,
-            branch="main"
+            branch="main",
         )
         mock_chain.add_test_intent(matched_intent)
 
@@ -256,7 +258,7 @@ class TestMockChainInterface:
             intent_hash_a="0xIntent1",
             intent_hash_b="0xIntent2",
             terms={"price": 50000, "quantity": 1},
-            fee=100.0
+            fee=100.0,
         )
 
         assert success is True
@@ -265,20 +267,12 @@ class TestMockChainInterface:
     def test_get_settlement_status(self, mock_chain):
         """Should get settlement status."""
         # First create a settlement
-        mock_chain.propose_settlement(
-            intent_hash_a="0xA",
-            intent_hash_b="0xB",
-            terms={},
-            fee=50.0
-        )
+        mock_chain.propose_settlement(intent_hash_a="0xA", intent_hash_b="0xB", terms={}, fee=50.0)
 
         # Get the settlement (need to know the ID)
         # The settlement ID is generated in propose_settlement
         entries = mock_chain.get_submitted_entries()
-        settlement_entry = next(
-            (e for e in entries if e.get("type") == "settlement"),
-            None
-        )
+        settlement_entry = next((e for e in entries if e.get("type") == "settlement"), None)
 
         if settlement_entry:
             settlement_id = settlement_entry["metadata"]["id"]
@@ -290,25 +284,15 @@ class TestMockChainInterface:
     def test_accept_settlement(self, mock_chain):
         """Should accept settlement."""
         # Create settlement
-        mock_chain.propose_settlement(
-            intent_hash_a="0xA",
-            intent_hash_b="0xB",
-            terms={},
-            fee=50.0
-        )
+        mock_chain.propose_settlement(intent_hash_a="0xA", intent_hash_b="0xB", terms={}, fee=50.0)
 
         entries = mock_chain.get_submitted_entries()
-        settlement_entry = next(
-            (e for e in entries if e.get("type") == "settlement"),
-            None
-        )
+        settlement_entry = next((e for e in entries if e.get("type") == "settlement"), None)
         settlement_id = settlement_entry["metadata"]["id"]
 
         # Accept as party A
         success, result = mock_chain.accept_settlement(
-            settlement_id=settlement_id,
-            party="A",
-            party_identifier="alice"
+            settlement_id=settlement_id, party="A", party_identifier="alice"
         )
 
         assert success is True
@@ -320,12 +304,7 @@ class TestMockChainInterface:
     def test_is_settlement_accepted_both_parties(self, mock_chain):
         """Should detect both parties accepted."""
         # Create and accept settlement
-        mock_chain.propose_settlement(
-            intent_hash_a="0xA",
-            intent_hash_b="0xB",
-            terms={},
-            fee=50.0
-        )
+        mock_chain.propose_settlement(intent_hash_a="0xA", intent_hash_b="0xB", terms={}, fee=50.0)
 
         entries = mock_chain.get_submitted_entries()
         settlement_id = entries[0]["metadata"]["id"]
@@ -362,7 +341,7 @@ class TestMockChainInterface:
             delegator_id="user1",
             mediator_id="test_mediator",
             amount=500.0,
-            timestamp=int(time.time())
+            timestamp=int(time.time()),
         )
         mock_chain.add_test_delegation(delegation)
 
@@ -394,6 +373,7 @@ class TestMockChainInterface:
 # Data Class Tests
 # ============================================================
 
+
 class TestChainIntent:
     """Tests for ChainIntent dataclass."""
 
@@ -408,7 +388,7 @@ class TestChainIntent:
             offered_fee=200.0,
             timestamp=1704067200,
             status=IntentStatus.PENDING,
-            branch="main"
+            branch="main",
         )
 
         assert intent.hash == "0xabc123"
@@ -425,7 +405,7 @@ class TestChainIntent:
             offered_fee=10.0,
             timestamp=123456,
             status=IntentStatus.MATCHED,
-            branch="main"
+            branch="main",
         )
 
         d = intent.to_dict()
@@ -445,7 +425,7 @@ class TestChainIntent:
             "offeredFee": 50.0,
             "timestamp": 999999,
             "status": "pending",
-            "branch": "test"
+            "branch": "test",
         }
 
         intent = ChainIntent.from_dict(data)
@@ -467,7 +447,7 @@ class TestChainSettlement:
             mediator_id="mediator1",
             terms={"price": 1000, "deadline": "2024-12-31"},
             fee=50.0,
-            status=SettlementStatus.PROPOSED
+            status=SettlementStatus.PROPOSED,
         )
 
         assert settlement.id == "settlement_001"
@@ -485,7 +465,7 @@ class TestChainSettlement:
             fee=10.0,
             status=SettlementStatus.BOTH_ACCEPTED,
             party_a_accepted=True,
-            party_b_accepted=True
+            party_b_accepted=True,
         )
 
         d = settlement.to_dict()
@@ -503,7 +483,7 @@ class TestChainSettlement:
             "mediatorId": "m2",
             "terms": {"key": "value"},
             "fee": 100.0,
-            "status": "finalized"
+            "status": "finalized",
         }
 
         settlement = ChainSettlement.from_dict(data)
@@ -518,10 +498,7 @@ class TestChainReputation:
     def test_create_reputation(self):
         """Should create ChainReputation."""
         rep = ChainReputation(
-            mediator_id="mediator1",
-            successful_closures=10,
-            failed_challenges=2,
-            weight=1.5
+            mediator_id="mediator1", successful_closures=10, failed_challenges=2, weight=1.5
         )
 
         assert rep.mediator_id == "mediator1"
@@ -530,11 +507,7 @@ class TestChainReputation:
 
     def test_reputation_to_dict(self):
         """Should convert to dictionary."""
-        rep = ChainReputation(
-            mediator_id="m1",
-            successful_closures=5,
-            weight=2.0
-        )
+        rep = ChainReputation(mediator_id="m1", successful_closures=5, weight=2.0)
 
         d = rep.to_dict()
 
@@ -545,6 +518,7 @@ class TestChainReputation:
 # ============================================================
 # Enum Tests
 # ============================================================
+
 
 class TestEnums:
     """Tests for chain interface enums."""
@@ -574,6 +548,7 @@ class TestEnums:
 # Integration Tests
 # ============================================================
 
+
 class TestChainInterfaceIntegration:
     """Integration tests for chain interface."""
 
@@ -591,7 +566,7 @@ class TestChainInterfaceIntegration:
             offered_fee=50.0,
             timestamp=int(time.time()),
             status=IntentStatus.PENDING,
-            branch="main"
+            branch="main",
         )
         intent_b = ChainIntent(
             hash="0xIntentB",
@@ -602,7 +577,7 @@ class TestChainInterfaceIntegration:
             offered_fee=50.0,
             timestamp=int(time.time()),
             status=IntentStatus.PENDING,
-            branch="main"
+            branch="main",
         )
         chain.add_test_intent(intent_a)
         chain.add_test_intent(intent_b)
@@ -612,7 +587,7 @@ class TestChainInterfaceIntegration:
             intent_hash_a="0xIntentA",
             intent_hash_b="0xIntentB",
             terms={"price_per_widget": 11.0, "quantity": 100},
-            fee=100.0
+            fee=100.0,
         )
         assert success
 

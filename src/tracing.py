@@ -39,8 +39,9 @@ import functools
 import logging
 import os
 import threading
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
-from typing import Any, Callable, Generator
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +66,7 @@ try:
         TraceIdRatioBased,
     )
     from opentelemetry.semconv.resource import ResourceAttributes
-    from opentelemetry.trace import Status, StatusCode, SpanKind
+    from opentelemetry.trace import SpanKind, Status, StatusCode
     from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 
     OTEL_AVAILABLE = True
@@ -77,6 +78,7 @@ except ImportError:
 # Optional exporters
 try:
     from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+
     OTLP_AVAILABLE = True
 except ImportError:
     OTLP_AVAILABLE = False
@@ -84,6 +86,7 @@ except ImportError:
 
 try:
     from opentelemetry.exporter.jaeger.thrift import JaegerExporter
+
     JAEGER_AVAILABLE = True
 except ImportError:
     JAEGER_AVAILABLE = False
@@ -91,6 +94,7 @@ except ImportError:
 
 try:
     from opentelemetry.exporter.zipkin.json import ZipkinExporter
+
     ZIPKIN_AVAILABLE = True
 except ImportError:
     ZIPKIN_AVAILABLE = False
@@ -100,6 +104,7 @@ except ImportError:
 try:
     from opentelemetry.instrumentation.flask import FlaskInstrumentor
     from opentelemetry.instrumentation.requests import RequestsInstrumentor
+
     FLASK_INSTRUMENTATION_AVAILABLE = True
 except ImportError:
     FLASK_INSTRUMENTATION_AVAILABLE = False
@@ -109,6 +114,7 @@ except ImportError:
 # =============================================================================
 # Configuration
 # =============================================================================
+
 
 class TracingConfig:
     """Configuration for distributed tracing."""
@@ -196,11 +202,13 @@ def init_tracing(
 
         try:
             # Create resource
-            resource = Resource.create({
-                ResourceAttributes.SERVICE_NAME: _config.service_name,
-                ResourceAttributes.SERVICE_VERSION: _config.service_version,
-                ResourceAttributes.DEPLOYMENT_ENVIRONMENT: _config.environment,
-            })
+            resource = Resource.create(
+                {
+                    ResourceAttributes.SERVICE_NAME: _config.service_name,
+                    ResourceAttributes.SERVICE_VERSION: _config.service_version,
+                    ResourceAttributes.DEPLOYMENT_ENVIRONMENT: _config.environment,
+                }
+            )
 
             # Create sampler
             sampler = ParentBasedTraceIdRatio(_config.sample_rate)
@@ -320,6 +328,7 @@ def shutdown_tracing():
 # Tracing Decorators
 # =============================================================================
 
+
 def trace_operation(
     name: str | None = None,
     kind: SpanKind = SpanKind.INTERNAL if OTEL_AVAILABLE else None,
@@ -342,6 +351,7 @@ def trace_operation(
         def validate_entry(entry):
             ...
     """
+
     def decorator(func: Callable) -> Callable:
         if not OTEL_AVAILABLE or not (_config and _config.enabled):
             return func
@@ -378,6 +388,7 @@ def trace_operation(
                     raise
 
         return wrapper
+
     return decorator
 
 
@@ -387,6 +398,7 @@ def trace_async_operation(
     attributes: dict[str, Any] | None = None,
 ):
     """Decorator to trace an async function as a span."""
+
     def decorator(func: Callable) -> Callable:
         if not OTEL_AVAILABLE or not (_config and _config.enabled):
             return func
@@ -419,12 +431,14 @@ def trace_async_operation(
                     raise
 
         return wrapper
+
     return decorator
 
 
 # =============================================================================
 # Context Helpers
 # =============================================================================
+
 
 @contextmanager
 def span_context(
@@ -483,7 +497,7 @@ def get_trace_id() -> str | None:
     if ctx is None or not ctx.is_valid:
         return None
 
-    return format(ctx.trace_id, '032x')
+    return format(ctx.trace_id, "032x")
 
 
 def get_span_id() -> str | None:
@@ -499,7 +513,7 @@ def get_span_id() -> str | None:
     if ctx is None or not ctx.is_valid:
         return None
 
-    return format(ctx.span_id, '016x')
+    return format(ctx.span_id, "016x")
 
 
 def add_span_attribute(key: str, value: Any):
@@ -536,6 +550,7 @@ def set_span_error(error: Exception):
 # =============================================================================
 # Context Propagation
 # =============================================================================
+
 
 def extract_context(headers: dict[str, str]) -> Context | None:
     """
@@ -574,6 +589,7 @@ def inject_context(headers: dict[str, str]) -> dict[str, str]:
 # Flask Integration
 # =============================================================================
 
+
 def trace_request():
     """
     Get trace information for the current Flask request.
@@ -607,6 +623,7 @@ def add_trace_to_response(response):
 # =============================================================================
 # Specialized Tracers
 # =============================================================================
+
 
 @trace_operation("blockchain.add_entry", attributes={"component": "blockchain"})
 def trace_add_entry(entry_content: str, agent_id: str):

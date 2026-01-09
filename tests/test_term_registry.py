@@ -226,7 +226,7 @@ class TestTermDefinition:
             term_class=TermClass.EXTENSION,
             definition="A test term",
             introduced_in="Test",
-            governance={"mutable": True}
+            governance={"mutable": True},
         )
 
         immutable_term = TermDefinition(
@@ -234,7 +234,7 @@ class TestTermDefinition:
             term_class=TermClass.CORE,
             definition="A core term",
             introduced_in="Spec",
-            governance={"mutable": False, "requires_ncip": True}
+            governance={"mutable": False, "requires_ncip": True},
         )
 
         assert mutable_term.is_mutable is True

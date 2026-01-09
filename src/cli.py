@@ -19,13 +19,14 @@ import os
 import sys
 
 # Ensure src is in path when running from source
-if os.path.exists(os.path.join(os.path.dirname(__file__), 'blockchain.py')):
+if os.path.exists(os.path.join(os.path.dirname(__file__), "blockchain.py")):
     sys.path.insert(0, os.path.dirname(__file__))
 
 
 def cmd_serve(args):
     """Start the NatLangChain API server."""
     from dotenv import load_dotenv
+
     load_dotenv()
 
     host = args.host or os.getenv("HOST", "0.0.0.0")
@@ -64,18 +65,20 @@ def cmd_serve(args):
             # Import the Flask app
             flask_app = _get_flask_app()
             options = {
-                'bind': f'{host}:{port}',
-                'workers': args.workers or int(os.getenv("WORKERS", 4)),
-                'worker_class': 'sync',
-                'timeout': 120,
-                'accesslog': '-',
-                'errorlog': '-',
+                "bind": f"{host}:{port}",
+                "workers": args.workers or int(os.getenv("WORKERS", 4)),
+                "worker_class": "sync",
+                "timeout": 120,
+                "accesslog": "-",
+                "errorlog": "-",
             }
             StandaloneApplication(flask_app, options).run()
 
         except ImportError as e:
-            if 'gunicorn' in str(e):
-                print("Error: gunicorn not installed. Install with: pip install natlangchain[production]")
+            if "gunicorn" in str(e):
+                print(
+                    "Error: gunicorn not installed. Install with: pip install natlangchain[production]"
+                )
             else:
                 print(f"Error: {e}")
             sys.exit(1)
@@ -94,7 +97,7 @@ def _get_flask_app():
 
     # Find api.py (not api/ directory)
     src_dir = os.path.dirname(__file__)
-    api_path = os.path.join(src_dir, 'api.py')
+    api_path = os.path.join(src_dir, "api.py")
 
     if os.path.exists(api_path):
         spec = importlib.util.spec_from_file_location("api_module", api_path)
@@ -104,7 +107,9 @@ def _get_flask_app():
     else:
         # Fallback: create minimal app with blueprints
         from flask import Flask
+
         from api import register_blueprints
+
         flask_app = Flask(__name__)
         register_blueprints(flask_app)
         return flask_app
@@ -120,6 +125,7 @@ def cmd_check(args):
     # Check core imports
     try:
         from blockchain import NatLangChain
+
         checks.append(("Core blockchain", "OK"))
     except ImportError as e:
         checks.append(("Core blockchain", f"FAIL: {e}"))
@@ -128,13 +134,15 @@ def cmd_check(args):
     try:
         # api.py contains the Flask app (api/ is the blueprints package)
         import api as api_module
-        if hasattr(api_module, 'app'):
+
+        if hasattr(api_module, "app"):
             checks.append(("Flask API", "OK"))
         else:
             # Try importing from api.py directly
             import importlib.util
+
             spec = importlib.util.find_spec("api")
-            if spec and spec.origin and spec.origin.endswith('.py'):
+            if spec and spec.origin and spec.origin.endswith(".py"):
                 checks.append(("Flask API", "OK"))
             else:
                 checks.append(("Flask API", "OK (blueprints only)"))
@@ -144,6 +152,7 @@ def cmd_check(args):
     # Check validator (optional)
     try:
         from validator import ProofOfUnderstanding
+
         checks.append(("LLM Validator", "OK"))
     except ImportError:
         checks.append(("LLM Validator", "SKIP (anthropic not installed)"))
@@ -151,6 +160,7 @@ def cmd_check(args):
     # Check storage
     try:
         from storage import get_storage_backend
+
         storage = get_storage_backend()
         backend_name = storage.__class__.__name__
         available = storage.is_available()
@@ -162,13 +172,15 @@ def cmd_check(args):
     # Check monitoring
     try:
         from monitoring import metrics
+
         checks.append(("Monitoring", "OK"))
     except ImportError as e:
         checks.append(("Monitoring", f"FAIL: {e}"))
 
     # Check scaling
     try:
-        from scaling import get_lock_manager, get_cache
+        from scaling import get_cache, get_lock_manager
+
         lock_type = get_lock_manager().__class__.__name__
         cache_type = get_cache().__class__.__name__
         checks.append((f"Scaling (Lock: {lock_type})", "OK"))
@@ -179,12 +191,14 @@ def cmd_check(args):
     # Check optional dependencies
     try:
         import redis
+
         checks.append(("Redis support", "OK"))
     except ImportError:
         checks.append(("Redis support", "SKIP (redis not installed)"))
 
     try:
         import psycopg2
+
         checks.append(("PostgreSQL support", "OK"))
     except ImportError:
         checks.append(("PostgreSQL support", "SKIP (psycopg2 not installed)"))
@@ -239,6 +253,7 @@ def cmd_info(args):
     print("Storage:")
     try:
         from storage import get_storage_backend
+
         storage = get_storage_backend()
         info = storage.get_info()
         for key, value in info.items():
@@ -255,11 +270,7 @@ def main():
         prog="natlangchain",
         description="NatLangChain - Natural Language Blockchain",
     )
-    parser.add_argument(
-        "--version", "-v",
-        action="version",
-        version="%(prog)s 0.1.0"
-    )
+    parser.add_argument("--version", "-v", action="version", version="%(prog)s 0.1.0")
 
     subparsers = parser.add_subparsers(dest="command", help="Commands")
 
@@ -268,7 +279,9 @@ def main():
     serve_parser.add_argument("--host", help="Host to bind to (default: 0.0.0.0)")
     serve_parser.add_argument("--port", type=int, help="Port to bind to (default: 5000)")
     serve_parser.add_argument("--debug", action="store_true", help="Enable debug mode")
-    serve_parser.add_argument("--production", action="store_true", help="Use gunicorn for production")
+    serve_parser.add_argument(
+        "--production", action="store_true", help="Use gunicorn for production"
+    )
     serve_parser.add_argument("--workers", type=int, help="Number of workers (production mode)")
 
     # check command

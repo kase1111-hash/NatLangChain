@@ -12,7 +12,7 @@ This test suite verifies that the Boundary Daemon:
 import os
 import sys
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from boundary_daemon import BoundaryDaemon, BoundaryPolicy, EnforcementMode, validate_outbound_data
 
@@ -24,13 +24,15 @@ class TestFailSafeBehavior:
         """Unknown data classifications should default to RESTRICTED and block."""
         daemon = BoundaryDaemon(enforcement_mode=EnforcementMode.STRICT)
 
-        result = daemon.authorize_request({
-            "request_id": "REQ-001",
-            "source": "agent_os",
-            "destination": "external_api",
-            "payload": {"content": "Some internal data"},
-            "data_classification": "super_secret_unknown_level"
-        })
+        result = daemon.authorize_request(
+            {
+                "request_id": "REQ-001",
+                "source": "agent_os",
+                "destination": "external_api",
+                "payload": {"content": "Some internal data"},
+                "data_classification": "super_secret_unknown_level",
+            }
+        )
 
         # Should be blocked because unknown classification = RESTRICTED
         assert result["authorized"] is False
@@ -40,13 +42,15 @@ class TestFailSafeBehavior:
         """Unknown destinations should be blocked by default."""
         daemon = BoundaryDaemon(enforcement_mode=EnforcementMode.STRICT)
 
-        result = daemon.authorize_request({
-            "request_id": "REQ-002",
-            "source": "agent_os",
-            "destination": "malicious_unknown_server",
-            "payload": {"content": "Hello world"},
-            "data_classification": "internal"
-        })
+        result = daemon.authorize_request(
+            {
+                "request_id": "REQ-002",
+                "source": "agent_os",
+                "destination": "malicious_unknown_server",
+                "payload": {"content": "Hello world"},
+                "data_classification": "internal",
+            }
+        )
 
         # Internal data should not go to unknown destinations
         assert result["authorized"] is False
@@ -57,12 +61,14 @@ class TestFailSafeBehavior:
         daemon = BoundaryDaemon(enforcement_mode=EnforcementMode.STRICT)
 
         # Simulate an edge case that might cause issues
-        result = daemon.authorize_request({
-            "request_id": "REQ-003",
-            "source": None,  # Edge case
-            "destination": None,  # Edge case
-            "payload": None  # Edge case
-        })
+        result = daemon.authorize_request(
+            {
+                "request_id": "REQ-003",
+                "source": None,  # Edge case
+                "destination": None,  # Edge case
+                "payload": None,  # Edge case
+            }
+        )
 
         # Should still return a valid response (blocked)
         assert "authorized" in result
@@ -73,13 +79,15 @@ class TestFailSafeBehavior:
         """Empty payloads should be allowed (no sensitive data)."""
         daemon = BoundaryDaemon(enforcement_mode=EnforcementMode.STRICT)
 
-        result = daemon.authorize_request({
-            "request_id": "REQ-004",
-            "source": "agent_os",
-            "destination": "natlangchain",
-            "payload": {},
-            "data_classification": "public"
-        })
+        result = daemon.authorize_request(
+            {
+                "request_id": "REQ-004",
+                "source": "agent_os",
+                "destination": "natlangchain",
+                "payload": {},
+                "data_classification": "public",
+            }
+        )
 
         assert result["authorized"] is True
         print("✓ Empty payload correctly allowed")
@@ -89,13 +97,15 @@ class TestFailSafeBehavior:
         daemon = BoundaryDaemon(enforcement_mode=EnforcementMode.STRICT)
 
         # Try to send restricted data
-        result = daemon.authorize_request({
-            "request_id": "REQ-005",
-            "source": "agent_os",
-            "destination": "external_api",
-            "payload": {"content": "password=secret123"},
-            "data_classification": "public"
-        })
+        result = daemon.authorize_request(
+            {
+                "request_id": "REQ-005",
+                "source": "agent_os",
+                "destination": "external_api",
+                "payload": {"content": "password=secret123"},
+                "data_classification": "public",
+            }
+        )
 
         assert result["authorized"] is False
         assert result["violation"]["type"] == "blocked_pattern_detected"
@@ -118,11 +128,9 @@ class TestSensitiveDataBlocking:
         ]
 
         for payload in test_cases:
-            result = daemon.authorize_request({
-                "source": "agent",
-                "destination": "external",
-                "payload": {"content": payload}
-            })
+            result = daemon.authorize_request(
+                {"source": "agent", "destination": "external", "payload": {"content": payload}}
+            )
             assert result["authorized"] is False, f"Failed to block: {payload}"
 
         print("✓ All API key patterns correctly blocked")
@@ -141,11 +149,9 @@ class TestSensitiveDataBlocking:
         ]
 
         for payload in test_cases:
-            result = daemon.authorize_request({
-                "source": "agent",
-                "destination": "external",
-                "payload": {"content": payload}
-            })
+            result = daemon.authorize_request(
+                {"source": "agent", "destination": "external", "payload": {"content": payload}}
+            )
             assert result["authorized"] is False, f"Failed to block: {payload}"
 
         print("✓ All password patterns correctly blocked")
@@ -164,11 +170,9 @@ class TestSensitiveDataBlocking:
         ]
 
         for payload in test_cases:
-            result = daemon.authorize_request({
-                "source": "agent",
-                "destination": "external",
-                "payload": {"content": payload}
-            })
+            result = daemon.authorize_request(
+                {"source": "agent", "destination": "external", "payload": {"content": payload}}
+            )
             assert result["authorized"] is False, f"Failed to block: {payload}"
 
         print("✓ All private key patterns correctly blocked")
@@ -185,11 +189,9 @@ class TestSensitiveDataBlocking:
         ]
 
         for payload in test_cases:
-            result = daemon.authorize_request({
-                "source": "agent",
-                "destination": "external",
-                "payload": {"content": payload}
-            })
+            result = daemon.authorize_request(
+                {"source": "agent", "destination": "external", "payload": {"content": payload}}
+            )
             assert result["authorized"] is False, f"Failed to block: {payload}"
 
         print("✓ All SSH key patterns correctly blocked")
@@ -209,11 +211,9 @@ class TestSensitiveDataBlocking:
         ]
 
         for payload in test_cases:
-            result = daemon.authorize_request({
-                "source": "agent",
-                "destination": "external",
-                "payload": {"content": payload}
-            })
+            result = daemon.authorize_request(
+                {"source": "agent", "destination": "external", "payload": {"content": payload}}
+            )
             assert result["authorized"] is False, f"Failed to block: {payload}"
 
         print("✓ All secret patterns correctly blocked")
@@ -225,17 +225,15 @@ class TestSensitiveDataBlocking:
         test_cases = [
             "4111111111111111",  # Visa test
             "5500000000000004",  # Mastercard test
-            "340000000000009",   # Amex test
+            "340000000000009",  # Amex test
             "Card: 4111111111111111",
             "Payment with 5500000000000004",
         ]
 
         for payload in test_cases:
-            result = daemon.authorize_request({
-                "source": "agent",
-                "destination": "external",
-                "payload": {"content": payload}
-            })
+            result = daemon.authorize_request(
+                {"source": "agent", "destination": "external", "payload": {"content": payload}}
+            )
             assert result["authorized"] is False, f"Failed to block: {payload}"
 
         print("✓ All credit card patterns correctly blocked")
@@ -252,11 +250,9 @@ class TestSensitiveDataBlocking:
         ]
 
         for payload in test_cases:
-            result = daemon.authorize_request({
-                "source": "agent",
-                "destination": "external",
-                "payload": {"content": payload}
-            })
+            result = daemon.authorize_request(
+                {"source": "agent", "destination": "external", "payload": {"content": payload}}
+            )
             assert result["authorized"] is False, f"Failed to block: {payload}"
 
         print("✓ All SSN patterns correctly blocked")
@@ -272,11 +268,9 @@ class TestSensitiveDataBlocking:
         ]
 
         for payload in test_cases:
-            result = daemon.authorize_request({
-                "source": "agent",
-                "destination": "external",
-                "payload": {"content": payload}
-            })
+            result = daemon.authorize_request(
+                {"source": "agent", "destination": "external", "payload": {"content": payload}}
+            )
             assert result["authorized"] is False, f"Failed to block: {payload}"
 
         print("✓ All AWS credential patterns correctly blocked")
@@ -294,11 +288,9 @@ class TestSensitiveDataBlocking:
         ]
 
         for payload in test_cases:
-            result = daemon.authorize_request({
-                "source": "agent",
-                "destination": "external",
-                "payload": {"content": payload}
-            })
+            result = daemon.authorize_request(
+                {"source": "agent", "destination": "external", "payload": {"content": payload}}
+            )
             assert result["authorized"] is False, f"Failed to block: {payload}"
 
         print("✓ All database connection string patterns correctly blocked")
@@ -317,12 +309,14 @@ class TestSensitiveDataBlocking:
         ]
 
         for payload in safe_payloads:
-            result = daemon.authorize_request({
-                "source": "agent_os",
-                "destination": "natlangchain",
-                "payload": {"content": payload},
-                "data_classification": "public"
-            })
+            result = daemon.authorize_request(
+                {
+                    "source": "agent_os",
+                    "destination": "natlangchain",
+                    "payload": {"content": payload},
+                    "data_classification": "public",
+                }
+            )
             assert result["authorized"] is True, f"Incorrectly blocked: {payload}"
 
         print("✓ Safe content correctly allowed")
@@ -338,12 +332,14 @@ class TestDataClassificationEnforcement:
         destinations = ["natlangchain", "value_ledger", "external_api", "memory_vault"]
 
         for dest in destinations:
-            result = daemon.authorize_request({
-                "source": "agent_os",
-                "destination": dest,
-                "payload": {"content": "This is public information"},
-                "data_classification": "public"
-            })
+            result = daemon.authorize_request(
+                {
+                    "source": "agent_os",
+                    "destination": dest,
+                    "payload": {"content": "This is public information"},
+                    "data_classification": "public",
+                }
+            )
             assert result["authorized"] is True, f"Public data should go to {dest}"
 
         print("✓ Public data correctly allowed to all destinations")
@@ -355,23 +351,27 @@ class TestDataClassificationEnforcement:
         # Should be allowed
         allowed_destinations = ["natlangchain", "value_ledger"]
         for dest in allowed_destinations:
-            result = daemon.authorize_request({
-                "source": "agent_os",
-                "destination": dest,
-                "payload": {"content": "Internal contract details"},
-                "data_classification": "internal"
-            })
+            result = daemon.authorize_request(
+                {
+                    "source": "agent_os",
+                    "destination": dest,
+                    "payload": {"content": "Internal contract details"},
+                    "data_classification": "internal",
+                }
+            )
             assert result["authorized"] is True, f"Internal data should go to {dest}"
 
         # Should be blocked
         blocked_destinations = ["external_api", "unknown_server"]
         for dest in blocked_destinations:
-            result = daemon.authorize_request({
-                "source": "agent_os",
-                "destination": dest,
-                "payload": {"content": "Internal contract details"},
-                "data_classification": "internal"
-            })
+            result = daemon.authorize_request(
+                {
+                    "source": "agent_os",
+                    "destination": dest,
+                    "payload": {"content": "Internal contract details"},
+                    "data_classification": "internal",
+                }
+            )
             assert result["authorized"] is False, f"Internal data should NOT go to {dest}"
 
         print("✓ Internal data correctly restricted to allowed destinations")
@@ -385,23 +385,29 @@ class TestDataClassificationEnforcement:
         confidential_content = "Proprietary business strategy document"
 
         # Should be allowed
-        result = daemon.authorize_request({
-            "source": "agent_os",
-            "destination": "memory_vault",
-            "payload": {"content": confidential_content},
-            "data_classification": "confidential"
-        })
-        assert result["authorized"] is True, f"Confidential data should go to memory_vault: {result}"
+        result = daemon.authorize_request(
+            {
+                "source": "agent_os",
+                "destination": "memory_vault",
+                "payload": {"content": confidential_content},
+                "data_classification": "confidential",
+            }
+        )
+        assert result["authorized"] is True, (
+            f"Confidential data should go to memory_vault: {result}"
+        )
 
         # Should be blocked for all other destinations
         blocked_destinations = ["natlangchain", "external_api", "value_ledger"]
         for dest in blocked_destinations:
-            result = daemon.authorize_request({
-                "source": "agent_os",
-                "destination": dest,
-                "payload": {"content": confidential_content},
-                "data_classification": "confidential"
-            })
+            result = daemon.authorize_request(
+                {
+                    "source": "agent_os",
+                    "destination": dest,
+                    "payload": {"content": confidential_content},
+                    "data_classification": "confidential",
+                }
+            )
             assert result["authorized"] is False, f"Confidential data should NOT go to {dest}"
 
         print("✓ Confidential data correctly restricted to memory_vault only")
@@ -413,12 +419,14 @@ class TestDataClassificationEnforcement:
         all_destinations = ["natlangchain", "value_ledger", "memory_vault", "external_api"]
 
         for dest in all_destinations:
-            result = daemon.authorize_request({
-                "source": "agent_os",
-                "destination": dest,
-                "payload": {"content": "Private key material"},
-                "data_classification": "restricted"
-            })
+            result = daemon.authorize_request(
+                {
+                    "source": "agent_os",
+                    "destination": dest,
+                    "payload": {"content": "Private key material"},
+                    "data_classification": "restricted",
+                }
+            )
             assert result["authorized"] is False, f"Restricted data should NOT go to {dest}"
 
         print("✓ Restricted data correctly blocked from all destinations")
@@ -428,12 +436,14 @@ class TestDataClassificationEnforcement:
         daemon = BoundaryDaemon()
 
         # Don't specify classification - let it auto-detect
-        result = daemon.authorize_request({
-            "source": "agent_os",
-            "destination": "external_api",
-            "payload": {"content": "Here is my password=secret123"}
-            # No data_classification specified
-        })
+        result = daemon.authorize_request(
+            {
+                "source": "agent_os",
+                "destination": "external_api",
+                "payload": {"content": "Here is my password=secret123"},
+                # No data_classification specified
+            }
+        )
 
         assert result["authorized"] is False
         print("✓ Sensitive data correctly auto-classified and blocked")
@@ -446,12 +456,14 @@ class TestEnforcementModes:
         """Strict mode should block all violations."""
         daemon = BoundaryDaemon(enforcement_mode=EnforcementMode.STRICT)
 
-        result = daemon.authorize_request({
-            "source": "agent",
-            "destination": "external",
-            "payload": {"content": "secret=test123"},
-            "data_classification": "internal"
-        })
+        result = daemon.authorize_request(
+            {
+                "source": "agent",
+                "destination": "external",
+                "payload": {"content": "secret=test123"},
+                "data_classification": "internal",
+            }
+        )
 
         assert result["authorized"] is False
         print("✓ Strict mode correctly blocks all violations")
@@ -461,12 +473,14 @@ class TestEnforcementModes:
         daemon = BoundaryDaemon(enforcement_mode=EnforcementMode.PERMISSIVE)
 
         # Critical patterns should still be blocked
-        result = daemon.authorize_request({
-            "source": "agent",
-            "destination": "external",
-            "payload": {"content": "password=admin123"},
-            "data_classification": "public"
-        })
+        result = daemon.authorize_request(
+            {
+                "source": "agent",
+                "destination": "external",
+                "payload": {"content": "password=admin123"},
+                "data_classification": "public",
+            }
+        )
 
         assert result["authorized"] is False
         print("✓ Permissive mode correctly blocks critical patterns")
@@ -475,12 +489,14 @@ class TestEnforcementModes:
         """Permissive mode should block restricted data exfiltration."""
         daemon = BoundaryDaemon(enforcement_mode=EnforcementMode.PERMISSIVE)
 
-        result = daemon.authorize_request({
-            "source": "agent",
-            "destination": "external",
-            "payload": {"content": "Normal looking content"},
-            "data_classification": "restricted"
-        })
+        result = daemon.authorize_request(
+            {
+                "source": "agent",
+                "destination": "external",
+                "payload": {"content": "Normal looking content"},
+                "data_classification": "restricted",
+            }
+        )
 
         assert result["authorized"] is False
         print("✓ Permissive mode correctly blocks restricted data exfiltration")
@@ -489,12 +505,14 @@ class TestEnforcementModes:
         """Audit-only mode should allow but still log violations."""
         daemon = BoundaryDaemon(enforcement_mode=EnforcementMode.AUDIT_ONLY)
 
-        result = daemon.authorize_request({
-            "source": "agent",
-            "destination": "natlangchain",
-            "payload": {"content": "Normal content"},
-            "data_classification": "public"
-        })
+        result = daemon.authorize_request(
+            {
+                "source": "agent",
+                "destination": "natlangchain",
+                "payload": {"content": "Normal content"},
+                "data_classification": "public",
+            }
+        )
 
         # Should be allowed in audit mode (no sensitive patterns)
         assert result["authorized"] is True
@@ -512,13 +530,15 @@ class TestAuditLogging:
         """Successful authorizations should be logged."""
         daemon = BoundaryDaemon()
 
-        daemon.authorize_request({
-            "request_id": "REQ-AUDIT-001",
-            "source": "agent_os",
-            "destination": "natlangchain",
-            "payload": {"content": "Normal message"},
-            "data_classification": "public"
-        })
+        daemon.authorize_request(
+            {
+                "request_id": "REQ-AUDIT-001",
+                "source": "agent_os",
+                "destination": "natlangchain",
+                "payload": {"content": "Normal message"},
+                "data_classification": "public",
+            }
+        )
 
         audit_log = daemon.get_audit_log()
         assert len(audit_log) >= 1
@@ -533,13 +553,15 @@ class TestAuditLogging:
         """Blocked requests should be logged."""
         daemon = BoundaryDaemon()
 
-        daemon.authorize_request({
-            "request_id": "REQ-AUDIT-002",
-            "source": "agent_os",
-            "destination": "external",
-            "payload": {"content": "password=secret"},
-            "data_classification": "public"
-        })
+        daemon.authorize_request(
+            {
+                "request_id": "REQ-AUDIT-002",
+                "source": "agent_os",
+                "destination": "external",
+                "payload": {"content": "password=secret"},
+                "data_classification": "public",
+            }
+        )
 
         audit_log = daemon.get_audit_log()
         assert len(audit_log) >= 1
@@ -552,12 +574,14 @@ class TestAuditLogging:
         """Audit log should contain payload hash for integrity."""
         daemon = BoundaryDaemon()
 
-        daemon.authorize_request({
-            "source": "agent",
-            "destination": "natlangchain",
-            "payload": {"content": "Test message"},
-            "data_classification": "public"
-        })
+        daemon.authorize_request(
+            {
+                "source": "agent",
+                "destination": "natlangchain",
+                "payload": {"content": "Test message"},
+                "data_classification": "public",
+            }
+        )
 
         audit_log = daemon.get_audit_log()
         latest = audit_log[-1]
@@ -571,19 +595,23 @@ class TestAuditLogging:
         daemon = BoundaryDaemon()
 
         # Generate both types of events
-        daemon.authorize_request({
-            "source": "agent",
-            "destination": "natlangchain",
-            "payload": {"content": "Normal"},
-            "data_classification": "public"
-        })
+        daemon.authorize_request(
+            {
+                "source": "agent",
+                "destination": "natlangchain",
+                "payload": {"content": "Normal"},
+                "data_classification": "public",
+            }
+        )
 
-        daemon.authorize_request({
-            "source": "agent",
-            "destination": "external",
-            "payload": {"content": "api_key=secret"},
-            "data_classification": "public"
-        })
+        daemon.authorize_request(
+            {
+                "source": "agent",
+                "destination": "external",
+                "payload": {"content": "api_key=secret"},
+                "data_classification": "public",
+            }
+        )
 
         granted = daemon.get_audit_log(event_type="authorization_granted")
         denied = daemon.get_audit_log(event_type="authorization_denied")
@@ -602,13 +630,15 @@ class TestViolationHandling:
         """Violations should be recorded when requests are blocked."""
         daemon = BoundaryDaemon()
 
-        daemon.authorize_request({
-            "request_id": "REQ-VIOL-001",
-            "source": "agent_os",
-            "destination": "external",
-            "payload": {"content": "password=hackme"},
-            "data_classification": "public"
-        })
+        daemon.authorize_request(
+            {
+                "request_id": "REQ-VIOL-001",
+                "source": "agent_os",
+                "destination": "external",
+                "payload": {"content": "password=hackme"},
+                "data_classification": "public",
+            }
+        )
 
         violations = daemon.get_violations()
         assert len(violations) >= 1
@@ -623,12 +653,14 @@ class TestViolationHandling:
         daemon = BoundaryDaemon()
 
         # Create a pattern-based violation (high severity)
-        daemon.authorize_request({
-            "source": "agent",
-            "destination": "external",
-            "payload": {"content": "-----BEGIN PRIVATE KEY-----"},
-            "data_classification": "public"
-        })
+        daemon.authorize_request(
+            {
+                "source": "agent",
+                "destination": "external",
+                "payload": {"content": "-----BEGIN PRIVATE KEY-----"},
+                "data_classification": "public",
+            }
+        )
 
         violations = daemon.get_violations()
         # Pattern violations should be high severity
@@ -642,12 +674,14 @@ class TestViolationHandling:
         daemon = BoundaryDaemon()
 
         # Generate violations
-        daemon.authorize_request({
-            "source": "agent",
-            "destination": "external",
-            "payload": {"content": "secret=test"},
-            "data_classification": "public"
-        })
+        daemon.authorize_request(
+            {
+                "source": "agent",
+                "destination": "external",
+                "payload": {"content": "secret=test"},
+                "data_classification": "public",
+            }
+        )
 
         high_violations = daemon.get_violations(severity="high")
         assert all(v["severity"] == "high" for v in high_violations)
@@ -657,13 +691,15 @@ class TestViolationHandling:
         """Violation records should contain complete details."""
         daemon = BoundaryDaemon()
 
-        daemon.authorize_request({
-            "request_id": "REQ-DETAIL-001",
-            "source": "agent_os",
-            "destination": "malicious_server",
-            "payload": {"content": "api_key=stolen_key"},
-            "data_classification": "public"
-        })
+        daemon.authorize_request(
+            {
+                "request_id": "REQ-DETAIL-001",
+                "source": "agent_os",
+                "destination": "malicious_server",
+                "payload": {"content": "api_key=stolen_key"},
+                "data_classification": "public",
+            }
+        )
 
         violations = daemon.get_violations()
         latest = violations[-1]
@@ -747,7 +783,7 @@ class TestPolicyManagement:
             owner="alice",
             agent_id="agent_1",
             enforcement_mode=EnforcementMode.STRICT,
-            custom_blocked_patterns=["internal-project-\\d+"]
+            custom_blocked_patterns=["internal-project-\\d+"],
         )
 
         result = daemon.register_policy(policy)
@@ -763,17 +799,19 @@ class TestPolicyManagement:
             policy_id="POLICY-002",
             owner="bob",
             agent_id="agent_2",
-            custom_blocked_patterns=["secret-project-\\d+", "confidential-code"]
+            custom_blocked_patterns=["secret-project-\\d+", "confidential-code"],
         )
         daemon.register_policy(policy)
 
-        result = daemon.authorize_request({
-            "source": "agent_2",
-            "destination": "external",
-            "payload": {"content": "Working on secret-project-123"},
-            "policy_id": "POLICY-002",
-            "data_classification": "public"
-        })
+        result = daemon.authorize_request(
+            {
+                "source": "agent_2",
+                "destination": "external",
+                "payload": {"content": "Working on secret-project-123"},
+                "policy_id": "POLICY-002",
+                "data_classification": "public",
+            }
+        )
 
         assert result["authorized"] is False
         print("✓ Custom patterns correctly enforced")
@@ -786,17 +824,19 @@ class TestPolicyManagement:
             policy_id="POLICY-003",
             owner="charlie",
             agent_id="agent_3",
-            max_payload_size=100  # Very small limit for testing
+            max_payload_size=100,  # Very small limit for testing
         )
         daemon.register_policy(policy)
 
-        result = daemon.authorize_request({
-            "source": "agent_3",
-            "destination": "natlangchain",
-            "payload": {"content": "A" * 200},  # Exceeds limit
-            "policy_id": "POLICY-003",
-            "data_classification": "public"
-        })
+        result = daemon.authorize_request(
+            {
+                "source": "agent_3",
+                "destination": "natlangchain",
+                "payload": {"content": "A" * 200},  # Exceeds limit
+                "policy_id": "POLICY-003",
+                "data_classification": "public",
+            }
+        )
 
         assert result["authorized"] is False
         assert result["violation"]["type"] == "payload_too_large"
@@ -810,13 +850,15 @@ class TestNatLangChainIntegration:
         """Should generate proper chain entry for violations."""
         daemon = BoundaryDaemon()
 
-        daemon.authorize_request({
-            "request_id": "REQ-CHAIN-001",
-            "source": "agent_os",
-            "destination": "malicious_external",
-            "payload": {"content": "password=stolen"},
-            "data_classification": "public"
-        })
+        daemon.authorize_request(
+            {
+                "request_id": "REQ-CHAIN-001",
+                "source": "agent_os",
+                "destination": "malicious_external",
+                "payload": {"content": "password=stolen"},
+                "data_classification": "public",
+            }
+        )
 
         violations = daemon.violations
         assert len(violations) > 0
@@ -838,13 +880,15 @@ class TestNatLangChainIntegration:
         """Chain entry should contain relevant violation details."""
         daemon = BoundaryDaemon()
 
-        daemon.authorize_request({
-            "request_id": "REQ-CHAIN-002",
-            "source": "compromised_agent",
-            "destination": "attacker_server",
-            "payload": {"content": "api_key=leaked"},
-            "data_classification": "public"
-        })
+        daemon.authorize_request(
+            {
+                "request_id": "REQ-CHAIN-002",
+                "source": "compromised_agent",
+                "destination": "attacker_server",
+                "payload": {"content": "api_key=leaked"},
+                "data_classification": "public",
+            }
+        )
 
         violations = daemon.violations
         entry = daemon.generate_chain_entry(violations[-1])
@@ -861,10 +905,7 @@ class TestConvenienceFunction:
 
     def test_quick_validation_blocks_sensitive(self):
         """Quick validation should block sensitive data."""
-        result = validate_outbound_data(
-            data="password=secret123",
-            destination="external_api"
-        )
+        result = validate_outbound_data(data="password=secret123", destination="external_api")
 
         assert result["authorized"] is False
         print("✓ Quick validation correctly blocks sensitive data")
@@ -874,7 +915,7 @@ class TestConvenienceFunction:
         result = validate_outbound_data(
             data="Hello, this is a normal message",
             destination="natlangchain",
-            classification="public"
+            classification="public",
         )
 
         assert result["authorized"] is True
@@ -888,12 +929,14 @@ class TestEdgeCases:
         """Unicode content should be properly handled."""
         daemon = BoundaryDaemon()
 
-        result = daemon.authorize_request({
-            "source": "agent",
-            "destination": "natlangchain",
-            "payload": {"content": "Hello 世界! 🌍 Привет мир!"},
-            "data_classification": "public"
-        })
+        result = daemon.authorize_request(
+            {
+                "source": "agent",
+                "destination": "natlangchain",
+                "payload": {"content": "Hello 世界! 🌍 Привет мир!"},
+                "data_classification": "public",
+            }
+        )
 
         assert result["authorized"] is True
         print("✓ Unicode content handled correctly")
@@ -902,17 +945,13 @@ class TestEdgeCases:
         """Nested JSON payloads should be fully inspected."""
         daemon = BoundaryDaemon()
 
-        result = daemon.authorize_request({
-            "source": "agent",
-            "destination": "external",
-            "payload": {
-                "level1": {
-                    "level2": {
-                        "secret": "password=hidden_deep"
-                    }
-                }
+        result = daemon.authorize_request(
+            {
+                "source": "agent",
+                "destination": "external",
+                "payload": {"level1": {"level2": {"secret": "password=hidden_deep"}}},
             }
-        })
+        )
 
         assert result["authorized"] is False
         print("✓ Nested JSON payloads correctly inspected")
@@ -924,12 +963,14 @@ class TestEdgeCases:
         # Large but safe payload
         large_content = "Normal text. " * 10000
 
-        result = daemon.authorize_request({
-            "source": "agent",
-            "destination": "natlangchain",
-            "payload": {"content": large_content},
-            "data_classification": "public"
-        })
+        result = daemon.authorize_request(
+            {
+                "source": "agent",
+                "destination": "natlangchain",
+                "payload": {"content": large_content},
+                "data_classification": "public",
+            }
+        )
 
         assert result["authorized"] is True
         print("✓ Large payloads handled efficiently")
@@ -938,12 +979,9 @@ class TestEdgeCases:
         """Empty strings in various fields should be handled."""
         daemon = BoundaryDaemon()
 
-        result = daemon.authorize_request({
-            "source": "",
-            "destination": "",
-            "payload": {"content": ""},
-            "data_classification": ""
-        })
+        result = daemon.authorize_request(
+            {"source": "", "destination": "", "payload": {"content": ""}, "data_classification": ""}
+        )
 
         # Should still process without crashing
         assert "authorized" in result
@@ -954,11 +992,13 @@ class TestEdgeCases:
         daemon = BoundaryDaemon()
 
         # Content with regex special chars
-        result = daemon.authorize_request({
-            "source": "agent",
-            "destination": "external",
-            "payload": {"content": "The password=[test$^.*+?(){}|] is complex"},
-        })
+        result = daemon.authorize_request(
+            {
+                "source": "agent",
+                "destination": "external",
+                "payload": {"content": "The password=[test$^.*+?(){}|] is complex"},
+            }
+        )
 
         assert result["authorized"] is False
         print("✓ Special characters don't break pattern detection")

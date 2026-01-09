@@ -30,25 +30,28 @@ logger = logging.getLogger("natlangchain.pou")
 
 class PoUStatus(Enum):
     """PoU verification status per NCIP-004 Section 6."""
-    VERIFIED = "verified"          # ≥0.90 - Accept
-    MARGINAL = "marginal"          # 0.75-0.89 - Warn, allow resubmission
+
+    VERIFIED = "verified"  # ≥0.90 - Accept
+    MARGINAL = "marginal"  # 0.75-0.89 - Warn, allow resubmission
     INSUFFICIENT = "insufficient"  # 0.50-0.74 - Reject, require retry
-    FAILED = "failed"              # <0.50 - Reject, escalate
-    INVALID = "invalid"            # Format/structure invalid
-    ERROR = "error"                # Processing error
+    FAILED = "failed"  # <0.50 - Reject, escalate
+    INVALID = "invalid"  # Format/structure invalid
+    ERROR = "error"  # Processing error
 
 
 class PoUDimension(Enum):
     """Scoring dimensions per NCIP-004 Section 5."""
-    COVERAGE = "coverage"          # All material clauses addressed
-    FIDELITY = "fidelity"          # Meaning matches canonical intent
-    CONSISTENCY = "consistency"    # No contradictions
+
+    COVERAGE = "coverage"  # All material clauses addressed
+    FIDELITY = "fidelity"  # Meaning matches canonical intent
+    CONSISTENCY = "consistency"  # No contradictions
     COMPLETENESS = "completeness"  # Obligations + consequences acknowledged
 
 
 @dataclass
 class DimensionScore:
     """Score for a single PoU dimension."""
+
     dimension: PoUDimension
     score: float
     evidence: str
@@ -58,6 +61,7 @@ class DimensionScore:
 @dataclass
 class PoUScoreResult:
     """Complete PoU scoring result per NCIP-004."""
+
     coverage_score: float
     fidelity_score: float
     consistency_score: float
@@ -77,6 +81,7 @@ class SemanticFingerprint:
     A semantic fingerprint captures the essential meaning
     for later verification and dispute resolution.
     """
+
     method: str
     hash: str
     content_hash: str
@@ -87,6 +92,7 @@ class SemanticFingerprint:
 @dataclass
 class PoUSubmission:
     """A structured PoU submission per NCIP-004 Section 4."""
+
     contract_id: str
     signer_id: str
     signer_role: str
@@ -103,6 +109,7 @@ class PoUSubmission:
 @dataclass
 class PoUValidationResult:
     """Complete PoU validation result with binding effect."""
+
     submission: PoUSubmission
     scores: PoUScoreResult
     fingerprint: SemanticFingerprint | None
@@ -118,7 +125,7 @@ POU_THRESHOLDS = {
     PoUStatus.VERIFIED: (0.90, 1.00),
     PoUStatus.MARGINAL: (0.75, 0.90),
     PoUStatus.INSUFFICIENT: (0.50, 0.75),
-    PoUStatus.FAILED: (0.00, 0.50)
+    PoUStatus.FAILED: (0.00, 0.50),
 }
 
 # Response messages per status
@@ -128,7 +135,7 @@ POU_MESSAGES = {
     PoUStatus.INSUFFICIENT: "Proof of Understanding insufficient. New submission required.",
     PoUStatus.FAILED: "Proof of Understanding failed. Mediator review required.",
     PoUStatus.INVALID: "Proof of Understanding format invalid.",
-    PoUStatus.ERROR: "Proof of Understanding processing error."
+    PoUStatus.ERROR: "Proof of Understanding processing error.",
 }
 
 # Required sections per NCIP-004 Section 4.1
@@ -150,7 +157,7 @@ class PoUScorer:
         self,
         validator_id: str = "default",
         registry_version: str = "1.0",
-        api_key: str | None = None
+        api_key: str | None = None,
     ):
         """
         Initialize the PoU scorer.
@@ -171,6 +178,7 @@ class PoUScorer:
         """Lazy-load Anthropic client."""
         if self._client is None and self.api_key:
             from anthropic import Anthropic
+
             self._client = Anthropic(api_key=self.api_key)
         return self._client
 
@@ -194,11 +202,7 @@ class PoUScorer:
             return PoUStatus.FAILED
 
     def calculate_final_score(
-        self,
-        coverage: float,
-        fidelity: float,
-        consistency: float,
-        completeness: float
+        self, coverage: float, fidelity: float, consistency: float, completeness: float
     ) -> tuple[float, PoUStatus]:
         """
         Calculate final score per NCIP-004.
@@ -220,11 +224,7 @@ class PoUScorer:
 
         return min_score, status
 
-    def generate_fingerprint(
-        self,
-        pou_content: str,
-        contract_content: str
-    ) -> SemanticFingerprint:
+    def generate_fingerprint(self, pou_content: str, contract_content: str) -> SemanticFingerprint:
         """
         Generate semantic fingerprint per NCIP-004 Section 10.
 
@@ -247,15 +247,15 @@ class PoUScorer:
         combined = f"{pou_content}\n---\n{contract_content}"
 
         # Generate SHA-256 hashes (cryptographically secure, collision-resistant)
-        semantic_hash = hashlib.sha256(combined.encode('utf-8')).hexdigest()
-        content_hash = hashlib.sha256(pou_content.encode('utf-8')).hexdigest()
+        semantic_hash = hashlib.sha256(combined.encode("utf-8")).hexdigest()
+        content_hash = hashlib.sha256(pou_content.encode("utf-8")).hexdigest()
 
         return SemanticFingerprint(
             method="sha256-semantic-v1",  # Version identifier for hash scheme
             hash=f"0x{semantic_hash[:16]}",  # Truncated for display (full hash in registry)
             content_hash=f"0x{content_hash[:16]}",
             timestamp=datetime.utcnow().isoformat() + "Z",
-            registry_version=self.registry_version
+            registry_version=self.registry_version,
         )
 
     def validate_pou_structure(self, pou_data: dict[str, Any]) -> tuple[bool, list[str]]:
@@ -304,9 +304,7 @@ class PoUScorer:
         return len(issues) == 0, issues
 
     def score_coverage(
-        self,
-        pou_sections: dict[str, Any],
-        contract_clauses: list[str]
+        self, pou_sections: dict[str, Any], contract_clauses: list[str]
     ) -> DimensionScore:
         """
         Score coverage dimension: All material clauses addressed.
@@ -323,7 +321,7 @@ class PoUScorer:
                 dimension=PoUDimension.COVERAGE,
                 score=1.0,
                 evidence="No material clauses to address",
-                issues=[]
+                issues=[],
             )
 
         # Combine PoU sections for checking
@@ -363,13 +361,10 @@ class PoUScorer:
             dimension=PoUDimension.COVERAGE,
             score=score,
             evidence=f"Covered {covered}/{len(contract_clauses)} material clauses",
-            issues=issues
+            issues=issues,
         )
 
-    def score_consistency(
-        self,
-        pou_sections: dict[str, Any]
-    ) -> DimensionScore:
+    def score_consistency(self, pou_sections: dict[str, Any]) -> DimensionScore:
         """
         Score consistency dimension: No contradictions.
 
@@ -398,7 +393,7 @@ class PoUScorer:
             ("required", "optional"),
             ("guaranteed", "not guaranteed"),
             ("unlimited", "limited"),
-            ("permanent", "temporary")
+            ("permanent", "temporary"),
         ]
 
         contradictions_found = 0
@@ -423,13 +418,10 @@ class PoUScorer:
             dimension=PoUDimension.CONSISTENCY,
             score=score,
             evidence=f"Found {len(issues)} potential consistency issues",
-            issues=issues
+            issues=issues,
         )
 
-    def score_completeness(
-        self,
-        pou_sections: dict[str, Any]
-    ) -> DimensionScore:
+    def score_completeness(self, pou_sections: dict[str, Any]) -> DimensionScore:
         """
         Score completeness dimension: Obligations + consequences acknowledged.
 
@@ -487,13 +479,11 @@ class PoUScorer:
             dimension=PoUDimension.COMPLETENESS,
             score=score,
             evidence=f"Completeness: {completeness_score}/{max_score} sections complete",
-            issues=issues
+            issues=issues,
         )
 
     def score_fidelity_basic(
-        self,
-        pou_sections: dict[str, Any],
-        contract_summary: str
+        self, pou_sections: dict[str, Any], contract_summary: str
     ) -> DimensionScore:
         """
         Basic fidelity scoring without LLM.
@@ -516,7 +506,7 @@ class PoUScorer:
                 dimension=PoUDimension.FIDELITY,
                 score=0.0,
                 evidence="No summary provided for fidelity check",
-                issues=["Missing summary"]
+                issues=["Missing summary"],
             )
 
         # Basic keyword matching
@@ -532,7 +522,7 @@ class PoUScorer:
                 dimension=PoUDimension.FIDELITY,
                 score=1.0,
                 evidence="Contract has no meaningful terms to check",
-                issues=[]
+                issues=[],
             )
 
         # Check overlap
@@ -549,14 +539,14 @@ class PoUScorer:
             dimension=PoUDimension.FIDELITY,
             score=min(1.0, coverage),
             evidence=f"Term overlap: {len(overlap)}/{len(meaningful_contract)} key terms matched",
-            issues=issues
+            issues=issues,
         )
 
     def score_pou(
         self,
         pou_data: dict[str, Any],
         contract_content: str,
-        contract_clauses: list[str] | None = None
+        contract_clauses: list[str] | None = None,
     ) -> PoUScoreResult:
         """
         Score a complete PoU submission per NCIP-004.
@@ -582,16 +572,13 @@ class PoUScorer:
                 status=PoUStatus.INVALID,
                 dimension_details={},
                 message=f"Structure invalid: {'; '.join(structure_issues)}",
-                binding_effect=False
+                binding_effect=False,
             )
 
         sections = pou_data.get("sections", {})
 
         # Score each dimension
-        coverage = self.score_coverage(
-            sections,
-            contract_clauses or []
-        )
+        coverage = self.score_coverage(sections, contract_clauses or [])
 
         consistency = self.score_consistency(sections)
 
@@ -601,10 +588,7 @@ class PoUScorer:
 
         # Calculate final score (minimum governs)
         final_score, status = self.calculate_final_score(
-            coverage.score,
-            fidelity.score,
-            consistency.score,
-            completeness.score
+            coverage.score, fidelity.score, consistency.score, completeness.score
         )
 
         # Determine binding effect per NCIP-004 Section 9
@@ -621,10 +605,10 @@ class PoUScorer:
                 "coverage": coverage,
                 "fidelity": fidelity,
                 "consistency": consistency,
-                "completeness": completeness
+                "completeness": completeness,
             },
             message=POU_MESSAGES[status],
-            binding_effect=binding_effect
+            binding_effect=binding_effect,
         )
 
     def validate_and_score(
@@ -632,7 +616,7 @@ class PoUScorer:
         pou_data: dict[str, Any],
         contract_content: str,
         contract_clauses: list[str] | None = None,
-        generate_fingerprint: bool = True
+        generate_fingerprint: bool = True,
     ) -> PoUValidationResult:
         """
         Full PoU validation with scoring and fingerprint generation.
@@ -658,9 +642,12 @@ class PoUScorer:
                 obligations=pou_data.get("sections", {}).get("obligations", []),
                 rights=pou_data.get("sections", {}).get("rights", []),
                 consequences=pou_data.get("sections", {}).get("consequences", []),
-                acceptance_statement=pou_data.get("sections", {}).get("acceptance", {}).get("statement", ""),
-                timestamp=pou_data.get("sections", {}).get("acceptance", {}).get("timestamp",
-                                                                                  datetime.utcnow().isoformat() + "Z")
+                acceptance_statement=pou_data.get("sections", {})
+                .get("acceptance", {})
+                .get("statement", ""),
+                timestamp=pou_data.get("sections", {})
+                .get("acceptance", {})
+                .get("timestamp", datetime.utcnow().isoformat() + "Z"),
             )
         except Exception as e:
             # Return error result
@@ -676,7 +663,7 @@ class PoUScorer:
                     rights=[],
                     consequences=[],
                     acceptance_statement="",
-                    timestamp=datetime.utcnow().isoformat() + "Z"
+                    timestamp=datetime.utcnow().isoformat() + "Z",
                 ),
                 scores=PoUScoreResult(
                     coverage_score=0.0,
@@ -687,14 +674,14 @@ class PoUScorer:
                     status=PoUStatus.ERROR,
                     dimension_details={},
                     message=f"Failed to parse PoU: {e!s}",
-                    binding_effect=False
+                    binding_effect=False,
                 ),
                 fingerprint=None,
                 validator_id=self.validator_id,
                 validated_at=datetime.utcnow().isoformat() + "Z",
                 is_bound=False,
                 can_resubmit=True,
-                actions=self._get_actions(PoUStatus.ERROR)
+                actions=self._get_actions(PoUStatus.ERROR),
             )
 
         # Score the PoU
@@ -718,7 +705,7 @@ class PoUScorer:
             validated_at=datetime.utcnow().isoformat() + "Z",
             is_bound=is_bound,
             can_resubmit=can_resubmit,
-            actions=self._get_actions(scores.status)
+            actions=self._get_actions(scores.status),
         )
 
     def _get_actions(self, status: PoUStatus) -> dict[str, bool]:
@@ -742,14 +729,14 @@ class PoUScorer:
             "block_execution": status in [PoUStatus.INSUFFICIENT, PoUStatus.FAILED],
             "require_new_pou": status == PoUStatus.INSUFFICIENT,
             "require_mediator": status == PoUStatus.FAILED,
-            "escalate": status == PoUStatus.FAILED
+            "escalate": status == PoUStatus.FAILED,
         }
 
     def get_validator_response(
         self,
         pou_data: dict[str, Any],
         contract_content: str,
-        contract_clauses: list[str] | None = None
+        contract_clauses: list[str] | None = None,
     ) -> dict[str, Any]:
         """
         Get complete validator response for a PoU submission.
@@ -773,14 +760,14 @@ class PoUScorer:
                 "coverage": result.scores.coverage_score,
                 "fidelity": result.scores.fidelity_score,
                 "consistency": result.scores.consistency_score,
-                "completeness": result.scores.completeness_score
+                "completeness": result.scores.completeness_score,
             },
             "message": result.scores.message,
             "binding_effect": result.is_bound,
             "can_resubmit": result.can_resubmit,
             "actions": result.actions,
             "validator_id": result.validator_id,
-            "validated_at": result.validated_at
+            "validated_at": result.validated_at,
         }
 
         if result.fingerprint:
@@ -788,7 +775,7 @@ class PoUScorer:
                 "method": result.fingerprint.method,
                 "hash": result.fingerprint.hash,
                 "content_hash": result.fingerprint.content_hash,
-                "timestamp": result.fingerprint.timestamp
+                "timestamp": result.fingerprint.timestamp,
             }
 
         # Include dimension details for debugging
@@ -797,7 +784,7 @@ class PoUScorer:
             response["dimension_details"][dim_name] = {
                 "score": dim_score.score,
                 "evidence": dim_score.evidence,
-                "issues": dim_score.issues
+                "issues": dim_score.issues,
             }
 
         return response
@@ -821,7 +808,7 @@ class BindingPoURecord:
         pou_data: dict[str, Any],
         scores: PoUScoreResult,
         fingerprint: SemanticFingerprint,
-        bound_at: str
+        bound_at: str,
     ):
         """
         Create a binding PoU record.
@@ -861,18 +848,15 @@ class BindingPoURecord:
                 "fidelity": self.scores.fidelity_score,
                 "consistency": self.scores.consistency_score,
                 "completeness": self.scores.completeness_score,
-                "final": self.scores.final_score
+                "final": self.scores.final_score,
             },
             "fingerprint": {
                 "method": self.fingerprint.method,
                 "hash": self.fingerprint.hash,
                 "content_hash": self.fingerprint.content_hash,
-                "timestamp": self.fingerprint.timestamp
+                "timestamp": self.fingerprint.timestamp,
             },
-            "binding_effect": {
-                "fixes_meaning": True,
-                "overrides_reinterpretation": True
-            }
+            "binding_effect": {"fixes_meaning": True, "overrides_reinterpretation": True},
         }
 
 
@@ -884,7 +868,7 @@ NCIP_004_CONFIG = {
             "verified": {"min": 0.90, "max": 1.00, "action": "accept_and_bind"},
             "marginal": {"min": 0.75, "max": 0.90, "action": "warn_and_flag"},
             "insufficient": {"min": 0.50, "max": 0.75, "action": "reject_retry"},
-            "failed": {"min": 0.00, "max": 0.50, "action": "reject_escalate"}
+            "failed": {"min": 0.00, "max": 0.50, "action": "reject_escalate"},
         },
         "dimensions": ["coverage", "fidelity", "consistency", "completeness"],
         "minimum_governs": True,
@@ -892,8 +876,8 @@ NCIP_004_CONFIG = {
         "binding_effect": {
             "verified_only": True,
             "waives_misunderstanding": True,
-            "admissible_in_dispute": True
-        }
+            "admissible_in_dispute": True,
+        },
     }
 }
 
@@ -904,9 +888,7 @@ def get_pou_config() -> dict[str, Any]:
 
 
 def score_pou(
-    pou_data: dict[str, Any],
-    contract_content: str,
-    contract_clauses: list[str] | None = None
+    pou_data: dict[str, Any], contract_content: str, contract_clauses: list[str] | None = None
 ) -> dict[str, Any]:
     """
     Convenience function to score a PoU submission.

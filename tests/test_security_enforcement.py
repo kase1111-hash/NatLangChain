@@ -9,11 +9,11 @@ import os
 import sys
 import unittest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from security_enforcement import (
-    validate_ip_address,
     SecurityEnforcementError,
+    validate_ip_address,
 )
 
 
@@ -167,22 +167,22 @@ class TestDangerousCharacterDetection(unittest.TestCase):
     def test_shell_metacharacters(self):
         """Test that shell metacharacters are detected."""
         # These characters are definitely in the dangerous list
-        dangerous_chars = [';', '|', '&', '$', '`', '(', ')', '<', '>']
+        dangerous_chars = [";", "|", "&", "$", "`", "(", ")", "<", ">"]
 
         for char in dangerous_chars:
             test_input = f"192.168.1.1{char}"
             is_valid, error = validate_ip_address(test_input)
-            self.assertFalse(is_valid, f"Character '{repr(char)}' should be rejected")
+            self.assertFalse(is_valid, f"Character '{char!r}' should be rejected")
             self.assertIn("Invalid character", error)
 
     def test_bracket_characters(self):
         """Test that bracket characters are detected."""
-        brackets = ['{', '}', '[', ']']
+        brackets = ["{", "}", "[", "]"]
 
         for char in brackets:
             test_input = f"192.168.1.1{char}"
             is_valid, error = validate_ip_address(test_input)
-            self.assertFalse(is_valid, f"Character '{repr(char)}' should be rejected")
+            self.assertFalse(is_valid, f"Character '{char!r}' should be rejected")
 
 
 class TestInputValidationEdgeCases(unittest.TestCase):

@@ -34,7 +34,6 @@ from src.multi_model_consensus import (
     quick_validate,
 )
 
-
 # =============================================================================
 # Provider Config Tests
 # =============================================================================
@@ -126,7 +125,7 @@ class TestAnthropicProvider:
     def test_complete_success(self):
         """Test successful completion with mocked client."""
         try:
-            import anthropic  # noqa: F401
+            import anthropic
         except ImportError:
             pytest.skip("anthropic package not installed")
 
@@ -148,7 +147,7 @@ class TestAnthropicProvider:
         provider._client = mock_client
 
         # Mock is_available to return True
-        with patch.object(provider, 'is_available', return_value=True):
+        with patch.object(provider, "is_available", return_value=True):
             response = provider.complete("Test prompt")
 
         assert response.success is True
@@ -168,7 +167,7 @@ class TestOpenAIProvider:
     def test_complete_success(self):
         """Test successful completion with mocked client."""
         try:
-            import openai  # noqa: F401
+            import openai
         except ImportError:
             pytest.skip("openai package not installed")
 
@@ -190,7 +189,7 @@ class TestOpenAIProvider:
         provider._client = mock_client
 
         # Mock is_available to return True
-        with patch.object(provider, 'is_available', return_value=True):
+        with patch.object(provider, "is_available", return_value=True):
             response = provider.complete("Test prompt")
 
         assert response.success is True
@@ -237,9 +236,7 @@ class TestOllamaProvider:
         """Test availability when Ollama server is running."""
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "models": [{"name": "llama3.2:latest"}]
-        }
+        mock_response.json.return_value = {"models": [{"name": "llama3.2:latest"}]}
         mock_get.return_value = mock_response
 
         provider = OllamaProvider()
@@ -249,6 +246,7 @@ class TestOllamaProvider:
     def test_is_available_server_down(self, mock_get):
         """Test availability when Ollama server is down."""
         import requests
+
         mock_get.side_effect = requests.exceptions.ConnectionError("Connection refused")
 
         provider = OllamaProvider()
@@ -260,17 +258,13 @@ class TestOllamaProvider:
         """Test successful completion with Ollama."""
         # Mock server availability check
         mock_get.return_value = MagicMock(
-            status_code=200,
-            json=lambda: {"models": [{"name": "llama3.2"}]}
+            status_code=200, json=lambda: {"models": [{"name": "llama3.2"}]}
         )
 
         # Mock completion
         mock_post.return_value = MagicMock(
             status_code=200,
-            json=lambda: {
-                "response": '{"valid": true, "confidence": 0.85}',
-                "eval_count": 45
-            }
+            json=lambda: {"response": '{"valid": true, "confidence": 0.85}', "eval_count": 45},
         )
 
         provider = OllamaProvider()
@@ -431,14 +425,16 @@ class TestMultiModelConsensus:
             )
             mock_provider.complete.return_value = LLMResponse(
                 success=True,
-                content=json.dumps({
-                    "valid": True,
-                    "confidence": 0.9,
-                    "clarity_score": 0.85,
-                    "intent_match": True,
-                    "issues": [],
-                    "reasoning": "Entry is clear"
-                }),
+                content=json.dumps(
+                    {
+                        "valid": True,
+                        "confidence": 0.9,
+                        "clarity_score": 0.85,
+                        "intent_match": True,
+                        "issues": [],
+                        "reasoning": "Entry is clear",
+                    }
+                ),
                 provider=f"provider{i}",
                 latency_ms=100,
             )
@@ -448,7 +444,7 @@ class TestMultiModelConsensus:
                 "clarity_score": 0.85,
                 "intent_match": True,
                 "issues": [],
-                "reasoning": "Entry is clear"
+                "reasoning": "Entry is clear",
             }
             manager.add_provider(mock_provider)
 
@@ -684,14 +680,16 @@ class TestMultiProviderIntegration:
         )
         claude.complete.return_value = LLMResponse(
             success=True,
-            content=json.dumps({
-                "valid": True,
-                "confidence": 0.95,
-                "clarity_score": 0.9,
-                "intent_match": True,
-                "issues": [],
-                "reasoning": "Clear and well-structured entry"
-            }),
+            content=json.dumps(
+                {
+                    "valid": True,
+                    "confidence": 0.95,
+                    "clarity_score": 0.9,
+                    "intent_match": True,
+                    "issues": [],
+                    "reasoning": "Clear and well-structured entry",
+                }
+            ),
             provider="anthropic",
             latency_ms=250,
         )
@@ -701,7 +699,7 @@ class TestMultiProviderIntegration:
             "clarity_score": 0.9,
             "intent_match": True,
             "issues": [],
-            "reasoning": "Clear and well-structured entry"
+            "reasoning": "Clear and well-structured entry",
         }
 
         # Simulate GPT (breadth)
@@ -716,14 +714,16 @@ class TestMultiProviderIntegration:
         )
         gpt.complete.return_value = LLMResponse(
             success=True,
-            content=json.dumps({
-                "valid": True,
-                "confidence": 0.88,
-                "clarity_score": 0.85,
-                "intent_match": True,
-                "issues": [],
-                "reasoning": "Entry matches stated intent"
-            }),
+            content=json.dumps(
+                {
+                    "valid": True,
+                    "confidence": 0.88,
+                    "clarity_score": 0.85,
+                    "intent_match": True,
+                    "issues": [],
+                    "reasoning": "Entry matches stated intent",
+                }
+            ),
             provider="openai",
             latency_ms=180,
         )
@@ -733,7 +733,7 @@ class TestMultiProviderIntegration:
             "clarity_score": 0.85,
             "intent_match": True,
             "issues": [],
-            "reasoning": "Entry matches stated intent"
+            "reasoning": "Entry matches stated intent",
         }
 
         # Simulate Ollama (local)
@@ -748,14 +748,16 @@ class TestMultiProviderIntegration:
         )
         ollama.complete.return_value = LLMResponse(
             success=True,
-            content=json.dumps({
-                "valid": True,
-                "confidence": 0.80,
-                "clarity_score": 0.75,
-                "intent_match": True,
-                "issues": [],
-                "reasoning": "Looks valid"
-            }),
+            content=json.dumps(
+                {
+                    "valid": True,
+                    "confidence": 0.80,
+                    "clarity_score": 0.75,
+                    "intent_match": True,
+                    "issues": [],
+                    "reasoning": "Looks valid",
+                }
+            ),
             provider="ollama",
             latency_ms=50,
         )
@@ -765,7 +767,7 @@ class TestMultiProviderIntegration:
             "clarity_score": 0.75,
             "intent_match": True,
             "issues": [],
-            "reasoning": "Looks valid"
+            "reasoning": "Looks valid",
         }
 
         manager.add_provider(claude)

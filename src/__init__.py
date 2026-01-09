@@ -38,6 +38,7 @@ from .blockchain import Block, NatLangChain, NaturalLanguageEntry
 # Validator requires anthropic - use lazy import
 try:
     from .validator import HybridValidator, ProofOfUnderstanding
+
     _HAS_VALIDATOR = True
 except ImportError:
     HybridValidator = None  # type: ignore
@@ -48,6 +49,7 @@ except ImportError:
 # =============================================================================
 # Infrastructure Components (lazy imports for optional dependencies)
 # =============================================================================
+
 
 def get_storage_backend():
     """
@@ -66,6 +68,7 @@ def get_storage_backend():
         storage.save_chain(chain.to_dict())
     """
     from .storage import get_storage_backend as _get_storage
+
     return _get_storage()
 
 
@@ -82,6 +85,7 @@ def get_metrics():
         metrics.timing("request_duration_ms", 42.5)
     """
     from .monitoring import metrics
+
     return metrics
 
 
@@ -100,6 +104,7 @@ def get_logger(name: str):
         logger.info("Processing entry", extra={"entry_id": "abc123"})
     """
     from .monitoring import get_logger as _get_logger
+
     return _get_logger(name)
 
 
@@ -117,6 +122,7 @@ def get_lock_manager():
             mine_block()
     """
     from .scaling import get_lock_manager as _get_lock
+
     return _get_lock()
 
 
@@ -134,6 +140,7 @@ def get_cache():
         value = cache.get("key")
     """
     from .scaling import get_cache as _get_cache
+
     return _get_cache()
 
 
@@ -149,6 +156,7 @@ def get_coordinator():
             perform_singleton_task()
     """
     from .scaling import get_coordinator as _get_coord
+
     return _get_coord()
 
 

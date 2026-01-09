@@ -26,6 +26,7 @@ class DriftLevel(Enum):
 
     These levels are absolute and normative.
     """
+
     D0 = "D0"  # Stable: 0.00 - 0.10
     D1 = "D1"  # Soft Drift: 0.10 - 0.25
     D2 = "D2"  # Ambiguous Drift: 0.25 - 0.45
@@ -35,6 +36,7 @@ class DriftLevel(Enum):
 
 class ValidatorAction(Enum):
     """Mandatory validator actions per drift level."""
+
     PROCEED = "proceed"
     WARN = "warn"
     PAUSE = "pause"
@@ -46,6 +48,7 @@ class ValidatorAction(Enum):
 @dataclass
 class DriftThreshold:
     """Definition of a drift level threshold."""
+
     level: DriftLevel
     min_score: float
     max_score: float
@@ -59,6 +62,7 @@ class DriftThreshold:
 @dataclass
 class DriftClassification:
     """Result of classifying a drift score."""
+
     score: float
     level: DriftLevel
     classification: str
@@ -72,6 +76,7 @@ class DriftClassification:
 @dataclass
 class DriftLogEntry:
     """Log entry for drift events (D2 and above per NCIP-002)."""
+
     timestamp: str
     drift_score: float
     drift_level: str
@@ -87,6 +92,7 @@ class DriftLogEntry:
 @dataclass
 class AggregatedDrift:
     """Result of aggregating multiple drift scores."""
+
     max_score: float
     max_level: DriftLevel
     component_scores: dict[str, float]
@@ -104,7 +110,7 @@ DRIFT_THRESHOLDS: dict[DriftLevel, DriftThreshold] = {
         description="Meaning preserved",
         actions=[ValidatorAction.PROCEED],
         requires_logging=False,
-        requires_human=False
+        requires_human=False,
     ),
     DriftLevel.D1: DriftThreshold(
         level=DriftLevel.D1,
@@ -114,7 +120,7 @@ DRIFT_THRESHOLDS: dict[DriftLevel, DriftThreshold] = {
         description="Minor lexical or stylistic variation",
         actions=[ValidatorAction.PROCEED, ValidatorAction.WARN],
         requires_logging=True,
-        requires_human=False
+        requires_human=False,
     ),
     DriftLevel.D2: DriftThreshold(
         level=DriftLevel.D2,
@@ -124,7 +130,7 @@ DRIFT_THRESHOLDS: dict[DriftLevel, DriftThreshold] = {
         description="Meaning overlap but execution risk",
         actions=[ValidatorAction.PAUSE, ValidatorAction.WARN],
         requires_logging=True,
-        requires_human=False
+        requires_human=False,
     ),
     DriftLevel.D3: DriftThreshold(
         level=DriftLevel.D3,
@@ -134,7 +140,7 @@ DRIFT_THRESHOLDS: dict[DriftLevel, DriftThreshold] = {
         description="Substantive semantic deviation",
         actions=[ValidatorAction.REJECT, ValidatorAction.REQUIRE_RATIFICATION],
         requires_logging=True,
-        requires_human=True
+        requires_human=True,
     ),
     DriftLevel.D4: DriftThreshold(
         level=DriftLevel.D4,
@@ -144,8 +150,8 @@ DRIFT_THRESHOLDS: dict[DriftLevel, DriftThreshold] = {
         description="Meaning no longer aligned",
         actions=[ValidatorAction.REJECT, ValidatorAction.ESCALATE_DISPUTE],
         requires_logging=True,
-        requires_human=True
-    )
+        requires_human=True,
+    ),
 }
 
 # Response messages per NCIP-002
@@ -154,7 +160,7 @@ DRIFT_MESSAGES = {
     DriftLevel.D1: "Minor semantic variation detected; meaning remains aligned.",
     DriftLevel.D2: "Intent meaning partially ambiguous; clarification required before execution.",
     DriftLevel.D3: "Semantic deviation exceeds safe threshold; human ratification required.",
-    DriftLevel.D4: "Semantic break detected; interpretation rejected as unsafe."
+    DriftLevel.D4: "Semantic break detected; interpretation rejected as unsafe.",
 }
 
 
@@ -203,8 +209,9 @@ class SemanticDriftClassifier:
         # Find matching threshold
         for level in [DriftLevel.D0, DriftLevel.D1, DriftLevel.D2, DriftLevel.D3, DriftLevel.D4]:
             threshold = DRIFT_THRESHOLDS[level]
-            if threshold.min_score <= score < threshold.max_score or \
-               (level == DriftLevel.D4 and score == 1.0):
+            if threshold.min_score <= score < threshold.max_score or (
+                level == DriftLevel.D4 and score == 1.0
+            ):
                 return DriftClassification(
                     score=score,
                     level=level,
@@ -213,7 +220,7 @@ class SemanticDriftClassifier:
                     actions=threshold.actions.copy(),
                     requires_logging=threshold.requires_logging,
                     requires_human=threshold.requires_human,
-                    message=DRIFT_MESSAGES[level]
+                    message=DRIFT_MESSAGES[level],
                 )
 
         # Default to D4 for edge cases
@@ -226,13 +233,10 @@ class SemanticDriftClassifier:
             actions=threshold.actions.copy(),
             requires_logging=threshold.requires_logging,
             requires_human=threshold.requires_human,
-            message=DRIFT_MESSAGES[DriftLevel.D4]
+            message=DRIFT_MESSAGES[DriftLevel.D4],
         )
 
-    def aggregate_drift(
-        self,
-        component_scores: dict[str, float]
-    ) -> AggregatedDrift:
+    def aggregate_drift(self, component_scores: dict[str, float]) -> AggregatedDrift:
         """
         Aggregate multiple drift scores per NCIP-002 rules.
 
@@ -252,7 +256,7 @@ class SemanticDriftClassifier:
                 max_level=DriftLevel.D0,
                 component_scores={},
                 governing_component="none",
-                classification=self.classify(0.0)
+                classification=self.classify(0.0),
             )
 
         # Find maximum score and its component
@@ -267,7 +271,7 @@ class SemanticDriftClassifier:
             max_level=classification.level,
             component_scores=component_scores.copy(),
             governing_component=max_component,
-            classification=classification
+            classification=classification,
         )
 
     def should_proceed(self, classification: DriftClassification) -> bool:
@@ -349,7 +353,7 @@ class SemanticDriftClassifier:
         source_of_divergence: str,
         temporal_reference: str | None = None,
         entry_id: str | None = None,
-        additional_context: dict[str, Any] | None = None
+        additional_context: dict[str, Any] | None = None,
     ) -> DriftLogEntry | None:
         """
         Log a drift event if required per NCIP-002.
@@ -383,18 +387,22 @@ class SemanticDriftClassifier:
             registry_version=self.registry_version,
             validator_id=self.validator_id,
             entry_id=entry_id,
-            additional_context=additional_context or {}
+            additional_context=additional_context or {},
         )
 
         # Store in internal log
         self._drift_log.append(log_entry)
 
         # Log to Python logger
-        log_level = logging.WARNING if classification.level in [DriftLevel.D2, DriftLevel.D3] else logging.ERROR
+        log_level = (
+            logging.WARNING
+            if classification.level in [DriftLevel.D2, DriftLevel.D3]
+            else logging.ERROR
+        )
         logger.log(
             log_level,
             f"Drift {classification.level.value}: score={classification.score:.3f}, "
-            f"terms={affected_terms}, source={source_of_divergence}"
+            f"terms={affected_terms}, source={source_of_divergence}",
         )
 
         return log_entry
@@ -412,7 +420,7 @@ class SemanticDriftClassifier:
         score: float,
         affected_terms: list[str] | None = None,
         source: str | None = None,
-        entry_id: str | None = None
+        entry_id: str | None = None,
     ) -> dict[str, Any]:
         """
         Get the complete validator response for a drift score.
@@ -436,7 +444,7 @@ class SemanticDriftClassifier:
                 classification=classification,
                 affected_terms=affected_terms or [],
                 source_of_divergence=source or "unspecified",
-                entry_id=entry_id
+                entry_id=entry_id,
             )
 
         response = {
@@ -451,10 +459,10 @@ class SemanticDriftClassifier:
                 "pause": self.should_pause(classification),
                 "require_ratification": self.should_require_ratification(classification),
                 "reject": self.should_reject(classification),
-                "escalate_dispute": self.should_escalate(classification)
+                "escalate_dispute": self.should_escalate(classification),
             },
             "requires_human": classification.requires_human,
-            "logged": classification.requires_logging
+            "logged": classification.requires_logging,
         }
 
         if affected_terms:
@@ -472,12 +480,7 @@ class TemporalFixityContext:
     without explicit upgrade.
     """
 
-    def __init__(
-        self,
-        ratification_time: str,
-        registry_version: str,
-        specification_version: str
-    ):
+    def __init__(self, ratification_time: str, registry_version: str, specification_version: str):
         """
         Initialize temporal context.
 
@@ -506,7 +509,7 @@ class TemporalFixityContext:
             "t0_ratification_time": self.ratification_time,
             "registry_version": self.registry_version,
             "specification_version": self.specification_version,
-            "locked": self._locked
+            "locked": self._locked,
         }
 
     @classmethod
@@ -515,7 +518,7 @@ class TemporalFixityContext:
         context = cls(
             ratification_time=data["t0_ratification_time"],
             registry_version=data["registry_version"],
-            specification_version=data["specification_version"]
+            specification_version=data["specification_version"],
         )
         if data.get("locked", False):
             context.lock()
@@ -538,7 +541,7 @@ class HumanOverrideRecord:
         override_decision: str,
         human_id: str,
         rationale: str,
-        timestamp: str | None = None
+        timestamp: str | None = None,
     ):
         """
         Record a human override.
@@ -576,7 +579,7 @@ class HumanOverrideRecord:
             "human_id": self.human_id,
             "rationale": self.rationale,
             "timestamp": self.timestamp,
-            "binds_future_interpretations": self.binds_future
+            "binds_future_interpretations": self.binds_future,
         }
 
 
@@ -589,33 +592,48 @@ NCIP_002_CONFIG = {
                 "min": 0.00,
                 "max": 0.10,
                 "classification": "stable",
-                "action": {"proceed": True, "log": False}
+                "action": {"proceed": True, "log": False},
             },
             "D1": {
                 "min": 0.10,
                 "max": 0.25,
                 "classification": "soft_drift",
-                "action": {"proceed": True, "warn": True, "log": True}
+                "action": {"proceed": True, "warn": True, "log": True},
             },
             "D2": {
                 "min": 0.25,
                 "max": 0.45,
                 "classification": "ambiguous_drift",
-                "action": {"proceed": False, "request_clarification": True, "log_uncertainty": True}
+                "action": {
+                    "proceed": False,
+                    "request_clarification": True,
+                    "log_uncertainty": True,
+                },
             },
             "D3": {
                 "min": 0.45,
                 "max": 0.70,
                 "classification": "hard_drift",
-                "action": {"proceed": False, "require_human_ratification": True, "mediator_review": True, "log": True}
+                "action": {
+                    "proceed": False,
+                    "require_human_ratification": True,
+                    "mediator_review": True,
+                    "log": True,
+                },
             },
             "D4": {
                 "min": 0.70,
                 "max": 1.00,
                 "classification": "semantic_break",
-                "action": {"proceed": False, "invalidate_interpretation": True, "escalate_dispute": True, "lock_autoretry": True, "log": True}
-            }
-        }
+                "action": {
+                    "proceed": False,
+                    "invalidate_interpretation": True,
+                    "escalate_dispute": True,
+                    "lock_autoretry": True,
+                    "log": True,
+                },
+            },
+        },
     }
 }
 

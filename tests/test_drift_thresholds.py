@@ -204,11 +204,7 @@ class TestDriftAggregation:
     def test_multiple_components_max_governs(self):
         """Maximum score should govern the response"""
         classifier = SemanticDriftClassifier()
-        result = classifier.aggregate_drift({
-            "term_a": 0.15,
-            "term_b": 0.55,
-            "term_c": 0.25
-        })
+        result = classifier.aggregate_drift({"term_a": 0.15, "term_b": 0.55, "term_c": 0.25})
         assert result.max_score == 0.55
         assert result.governing_component == "term_b"
         assert result.max_level == DriftLevel.D3
@@ -216,10 +212,7 @@ class TestDriftAggregation:
     def test_aggregated_classification_matches_max(self):
         """Aggregated classification should match max score classification"""
         classifier = SemanticDriftClassifier()
-        result = classifier.aggregate_drift({
-            "low": 0.05,
-            "high": 0.75
-        })
+        result = classifier.aggregate_drift({"low": 0.05, "high": 0.75})
         assert result.classification.level == DriftLevel.D4
         assert result.classification.classification == "semantic_break"
 
@@ -264,7 +257,7 @@ class TestLoggingBehavior:
         entry = classifier.log_drift_event(
             classification=classification,
             affected_terms=["Intent", "Agreement"],
-            source_of_divergence="Test divergence"
+            source_of_divergence="Test divergence",
         )
         assert entry is not None
         assert entry.drift_level == "D2"
@@ -276,9 +269,7 @@ class TestLoggingBehavior:
         classifier = SemanticDriftClassifier()
         classification = classifier.classify(0.05)
         entry = classifier.log_drift_event(
-            classification=classification,
-            affected_terms=["Intent"],
-            source_of_divergence="Test"
+            classification=classification, affected_terms=["Intent"], source_of_divergence="Test"
         )
         assert entry is None
 
@@ -289,7 +280,7 @@ class TestLoggingBehavior:
         classifier.log_drift_event(
             classification=classification,
             affected_terms=["Ratification"],
-            source_of_divergence="Test hard drift"
+            source_of_divergence="Test hard drift",
         )
         log = classifier.get_drift_log()
         assert len(log) == 1
@@ -300,9 +291,7 @@ class TestLoggingBehavior:
         classifier = SemanticDriftClassifier()
         classification = classifier.classify(0.55)
         classifier.log_drift_event(
-            classification=classification,
-            affected_terms=["Test"],
-            source_of_divergence="Test"
+            classification=classification, affected_terms=["Test"], source_of_divergence="Test"
         )
         classifier.clear_drift_log()
         assert len(classifier.get_drift_log()) == 0
@@ -316,7 +305,7 @@ class TestTemporalFixityContext:
         context = TemporalFixityContext(
             ratification_time="2025-12-24T00:00:00Z",
             registry_version="1.0",
-            specification_version="3.0"
+            specification_version="3.0",
         )
         assert context.ratification_time == "2025-12-24T00:00:00Z"
         assert context.registry_version == "1.0"
@@ -327,7 +316,7 @@ class TestTemporalFixityContext:
         context = TemporalFixityContext(
             ratification_time="2025-12-24T00:00:00Z",
             registry_version="1.0",
-            specification_version="3.0"
+            specification_version="3.0",
         )
         context.lock()
         assert context.is_locked is True
@@ -337,7 +326,7 @@ class TestTemporalFixityContext:
         context = TemporalFixityContext(
             ratification_time="2025-12-24T00:00:00Z",
             registry_version="1.0",
-            specification_version="3.0"
+            specification_version="3.0",
         )
         d = context.to_dict()
         assert d["t0_ratification_time"] == "2025-12-24T00:00:00Z"
@@ -350,7 +339,7 @@ class TestTemporalFixityContext:
             "t0_ratification_time": "2025-12-24T00:00:00Z",
             "registry_version": "1.0",
             "specification_version": "3.0",
-            "locked": True
+            "locked": True,
         }
         context = TemporalFixityContext.from_dict(data)
         assert context.ratification_time == "2025-12-24T00:00:00Z"
@@ -366,7 +355,7 @@ class TestHumanOverrideConstraints:
             original_level=DriftLevel.D2,
             override_decision="accept",
             human_id="human_123",
-            rationale="Context makes meaning clear"
+            rationale="Context makes meaning clear",
         )
         assert override.original_level == DriftLevel.D2
         assert override.binds_future is True
@@ -377,7 +366,7 @@ class TestHumanOverrideConstraints:
             original_level=DriftLevel.D3,
             override_decision="reject",
             human_id="human_123",
-            rationale="Deviation too significant"
+            rationale="Deviation too significant",
         )
         assert override.original_level == DriftLevel.D3
 
@@ -388,7 +377,7 @@ class TestHumanOverrideConstraints:
                 original_level=DriftLevel.D4,
                 override_decision="accept",
                 human_id="human_123",
-                rationale="Trying to override semantic break"
+                rationale="Trying to override semantic break",
             )
             assert False, "Should have raised ValueError"
         except ValueError as e:
@@ -401,7 +390,7 @@ class TestHumanOverrideConstraints:
                 original_level=DriftLevel.D0,
                 override_decision="accept",
                 human_id="human_123",
-                rationale="No reason to override"
+                rationale="No reason to override",
             )
             assert False, "Should have raised ValueError"
         except ValueError as e:
@@ -414,7 +403,7 @@ class TestHumanOverrideConstraints:
                 original_level=DriftLevel.D1,
                 override_decision="accept",
                 human_id="human_123",
-                rationale="No reason to override"
+                rationale="No reason to override",
             )
             assert False, "Should have raised ValueError"
         except ValueError as e:
@@ -426,7 +415,7 @@ class TestHumanOverrideConstraints:
             original_level=DriftLevel.D2,
             override_decision="accept",
             human_id="human_123",
-            rationale="Meaning preserved in context"
+            rationale="Meaning preserved in context",
         )
         d = override.to_dict()
         assert d["original_level"] == "D2"
@@ -451,10 +440,7 @@ class TestValidatorResponse:
     def test_response_includes_affected_terms(self):
         """Response should include affected terms if provided"""
         classifier = SemanticDriftClassifier()
-        response = classifier.get_validator_response(
-            0.35,
-            affected_terms=["Intent", "Agreement"]
-        )
+        response = classifier.get_validator_response(0.35, affected_terms=["Intent", "Agreement"])
         assert "affected_terms" in response
         assert "Intent" in response["affected_terms"]
 
@@ -506,9 +492,13 @@ class TestDriftMessages:
     def test_classification_includes_message(self):
         """Classification result should include message"""
         classifier = SemanticDriftClassifier()
-        for score, expected_level in [(0.05, DriftLevel.D0), (0.15, DriftLevel.D1),
-                                       (0.35, DriftLevel.D2), (0.55, DriftLevel.D3),
-                                       (0.85, DriftLevel.D4)]:
+        for score, expected_level in [
+            (0.05, DriftLevel.D0),
+            (0.15, DriftLevel.D1),
+            (0.35, DriftLevel.D2),
+            (0.55, DriftLevel.D3),
+            (0.85, DriftLevel.D4),
+        ]:
             result = classifier.classify(score)
             assert result.message == DRIFT_MESSAGES[expected_level]
 
@@ -522,8 +512,9 @@ class TestDriftThresholdDefinitions:
         for i in range(len(levels) - 1):
             current = DRIFT_THRESHOLDS[levels[i]]
             next_level = DRIFT_THRESHOLDS[levels[i + 1]]
-            assert current.max_score == next_level.min_score, \
+            assert current.max_score == next_level.min_score, (
                 f"Gap between {current.level} and {next_level.level}"
+            )
 
     def test_thresholds_start_at_zero(self):
         """D0 threshold should start at 0.0"""
@@ -546,7 +537,7 @@ def run_tests():
         TestValidatorResponse,
         TestConvenienceFunctions,
         TestDriftMessages,
-        TestDriftThresholdDefinitions
+        TestDriftThresholdDefinitions,
     ]
 
     total_tests = 0
@@ -571,7 +562,7 @@ def run_tests():
                 failed_tests.append((f"{test_class.__name__}.{method_name}", str(e)))
                 print(f"  ✗ {test_class.__name__}.{method_name}: {type(e).__name__}: {e}")
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Tests: {passed_tests}/{total_tests} passed")
 
     if failed_tests:

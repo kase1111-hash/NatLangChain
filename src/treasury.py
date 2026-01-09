@@ -30,16 +30,18 @@ from typing import Any
 
 class InflowType(Enum):
     """Types of treasury inflows."""
-    TIMEOUT_BURN = "timeout_burn"              # Burns from unresolved disputes
-    COUNTER_FEE = "counter_fee"                 # Counter-proposal fees
-    ESCALATED_STAKE = "escalated_stake"         # Stakes from frivolous initiations
-    VOLUNTARY_BURN = "voluntary_burn"           # Voluntary protocol burns
-    PROTOCOL_FEE = "protocol_fee"               # General protocol fees
-    DONATION = "donation"                       # Direct donations
+
+    TIMEOUT_BURN = "timeout_burn"  # Burns from unresolved disputes
+    COUNTER_FEE = "counter_fee"  # Counter-proposal fees
+    ESCALATED_STAKE = "escalated_stake"  # Stakes from frivolous initiations
+    VOLUNTARY_BURN = "voluntary_burn"  # Voluntary protocol burns
+    PROTOCOL_FEE = "protocol_fee"  # General protocol fees
+    DONATION = "donation"  # Direct donations
 
 
 class SubsidyStatus(Enum):
     """Status of a subsidy request."""
+
     PENDING = "pending"
     APPROVED = "approved"
     DENIED = "denied"
@@ -49,6 +51,7 @@ class SubsidyStatus(Enum):
 
 class DenialReason(Enum):
     """Reasons for subsidy denial."""
+
     INSUFFICIENT_BALANCE = "insufficient_balance"
     ALREADY_SUBSIDIZED = "already_subsidized"
     HARASSMENT_SCORE_TOO_HIGH = "harassment_score_too_high"
@@ -61,6 +64,7 @@ class DenialReason(Enum):
 @dataclass
 class Inflow:
     """Record of a treasury inflow."""
+
     inflow_id: str
     inflow_type: str
     amount: float
@@ -73,6 +77,7 @@ class Inflow:
 @dataclass
 class SubsidyRequest:
     """Request for defensive stake subsidy."""
+
     request_id: str
     dispute_id: str
     requester: str
@@ -99,17 +104,17 @@ class NatLangChainTreasury:
 
     # Configuration - Subsidy Limits
     DEFAULT_MAX_SUBSIDY_PERCENT = 0.80  # Max 80% of stake subsidized
-    DEFAULT_MAX_PER_DISPUTE = 500.0      # Max subsidy per dispute
+    DEFAULT_MAX_PER_DISPUTE = 500.0  # Max subsidy per dispute
     DEFAULT_MAX_PER_PARTICIPANT = 1000.0  # Max subsidy per participant (rolling window)
-    ROLLING_WINDOW_DAYS = 30              # Rolling window for per-participant cap
+    ROLLING_WINDOW_DAYS = 30  # Rolling window for per-participant cap
 
     # Configuration - Eligibility
     MAX_HARASSMENT_SCORE_FOR_SUBSIDY = 25.0  # Must be below this to qualify
-    MIN_TREASURY_BALANCE_RATIO = 0.10        # Keep at least 10% reserve
+    MIN_TREASURY_BALANCE_RATIO = 0.10  # Keep at least 10% reserve
 
     # Configuration - Subsidy Tiers
     SUBSIDY_TIERS = [
-        {"max_score": 0.0, "subsidy_percent": 1.0},    # Perfect record: 100%
+        {"max_score": 0.0, "subsidy_percent": 1.0},  # Perfect record: 100%
         {"max_score": 10.0, "subsidy_percent": 0.80},  # Low score: 80%
         {"max_score": 20.0, "subsidy_percent": 0.60},  # Moderate score: 60%
         {"max_score": 25.0, "subsidy_percent": 0.50},  # At threshold: 50%
@@ -145,7 +150,7 @@ class NatLangChainTreasury:
         inflow_type: InflowType,
         source: str,
         tx_hash: str | None = None,
-        metadata: dict[str, Any] | None = None
+        metadata: dict[str, Any] | None = None,
     ) -> tuple[bool, dict[str, Any]]:
         """
         Deposit funds into treasury.
@@ -172,77 +177,63 @@ class NatLangChainTreasury:
             source=source,
             timestamp=datetime.utcnow().isoformat(),
             tx_hash=tx_hash,
-            metadata=metadata or {}
+            metadata=metadata or {},
         )
 
         self.inflows.append(inflow)
         self.balance += amount
         self.total_inflows += amount
 
-        self._emit_event("Deposit", {
-            "inflow_id": inflow_id,
-            "inflow_type": inflow_type.value,
-            "amount": amount,
-            "source": source,
-            "new_balance": self.balance
-        })
+        self._emit_event(
+            "Deposit",
+            {
+                "inflow_id": inflow_id,
+                "inflow_type": inflow_type.value,
+                "amount": amount,
+                "source": source,
+                "new_balance": self.balance,
+            },
+        )
 
         return True, {
             "status": "deposited",
             "inflow_id": inflow_id,
             "amount": amount,
             "inflow_type": inflow_type.value,
-            "new_balance": self.balance
+            "new_balance": self.balance,
         }
 
     def deposit_timeout_burn(
-        self,
-        dispute_id: str,
-        amount: float,
-        initiator: str
+        self, dispute_id: str, amount: float, initiator: str
     ) -> tuple[bool, dict[str, Any]]:
         """Deposit from a dispute timeout burn."""
         return self.deposit(
             amount=amount,
             inflow_type=InflowType.TIMEOUT_BURN,
             source=dispute_id,
-            metadata={"initiator": initiator, "reason": "dispute_timeout"}
+            metadata={"initiator": initiator, "reason": "dispute_timeout"},
         )
 
     def deposit_counter_fee(
-        self,
-        dispute_id: str,
-        amount: float,
-        party: str,
-        counter_number: int
+        self, dispute_id: str, amount: float, party: str, counter_number: int
     ) -> tuple[bool, dict[str, Any]]:
         """Deposit from counter-proposal fee burn."""
         return self.deposit(
             amount=amount,
             inflow_type=InflowType.COUNTER_FEE,
             source=dispute_id,
-            metadata={
-                "party": party,
-                "counter_number": counter_number
-            }
+            metadata={"party": party, "counter_number": counter_number},
         )
 
     def deposit_escalated_stake(
-        self,
-        dispute_id: str,
-        amount: float,
-        party: str,
-        escalation_multiplier: float
+        self, dispute_id: str, amount: float, party: str, escalation_multiplier: float
     ) -> tuple[bool, dict[str, Any]]:
         """Deposit from escalated stake (frivolous initiation penalty)."""
         return self.deposit(
             amount=amount,
             inflow_type=InflowType.ESCALATED_STAKE,
             source=dispute_id,
-            metadata={
-                "party": party,
-                "escalation_multiplier": escalation_multiplier
-            }
+            metadata={"party": party, "escalation_multiplier": escalation_multiplier},
         )
 
     def get_balance(self) -> dict[str, Any]:
@@ -256,13 +247,11 @@ class NatLangChainTreasury:
             "reserve_amount": self.balance * self.MIN_TREASURY_BALANCE_RATIO,
             "total_inflows": self.total_inflows,
             "total_outflows": self.total_outflows,
-            "net_position": self.total_inflows - self.total_outflows
+            "net_position": self.total_inflows - self.total_outflows,
         }
 
     def get_inflow_history(
-        self,
-        limit: int = 50,
-        inflow_type: InflowType | None = None
+        self, limit: int = 50, inflow_type: InflowType | None = None
     ) -> dict[str, Any]:
         """Get inflow history with optional filtering."""
         filtered = self.inflows
@@ -271,11 +260,7 @@ class NatLangChainTreasury:
             filtered = [i for i in filtered if i.inflow_type == inflow_type.value]
 
         # Sort by timestamp descending
-        sorted_inflows = sorted(
-            filtered,
-            key=lambda x: x.timestamp,
-            reverse=True
-        )[:limit]
+        sorted_inflows = sorted(filtered, key=lambda x: x.timestamp, reverse=True)[:limit]
 
         return {
             "count": len(sorted_inflows),
@@ -287,20 +272,16 @@ class NatLangChainTreasury:
                     "amount": i.amount,
                     "source": i.source,
                     "timestamp": i.timestamp,
-                    "tx_hash": i.tx_hash
+                    "tx_hash": i.tx_hash,
                 }
                 for i in sorted_inflows
-            ]
+            ],
         }
 
     # ==================== PHASE 12B: SUBSIDY SYSTEM ====================
 
     def request_subsidy(
-        self,
-        dispute_id: str,
-        requester: str,
-        stake_required: float,
-        is_dispute_target: bool = True
+        self, dispute_id: str, requester: str, stake_required: float, is_dispute_target: bool = True
     ) -> tuple[bool, dict[str, Any]]:
         """
         Request a defensive stake subsidy.
@@ -326,33 +307,40 @@ class NatLangChainTreasury:
         # Check 1: Must be dispute target
         if not is_dispute_target:
             return self._deny_subsidy(
-                request_id, dispute_id, requester, stake_required,
-                DenialReason.NOT_DISPUTE_TARGET
+                request_id, dispute_id, requester, stake_required, DenialReason.NOT_DISPUTE_TARGET
             )
 
         # Check 2: Dispute not already subsidized
         if dispute_id in self.dispute_subsidized:
             return self._deny_subsidy(
-                request_id, dispute_id, requester, stake_required,
-                DenialReason.ALREADY_SUBSIDIZED
+                request_id, dispute_id, requester, stake_required, DenialReason.ALREADY_SUBSIDIZED
             )
 
         # Check 3: Get harassment score and check eligibility
         harassment_score = self._get_harassment_score(requester)
         if harassment_score > self.MAX_HARASSMENT_SCORE_FOR_SUBSIDY:
             return self._deny_subsidy(
-                request_id, dispute_id, requester, stake_required,
+                request_id,
+                dispute_id,
+                requester,
+                stake_required,
                 DenialReason.HARASSMENT_SCORE_TOO_HIGH,
-                {"harassment_score": harassment_score, "max_allowed": self.MAX_HARASSMENT_SCORE_FOR_SUBSIDY}
+                {
+                    "harassment_score": harassment_score,
+                    "max_allowed": self.MAX_HARASSMENT_SCORE_FOR_SUBSIDY,
+                },
             )
 
         # Check 4: Per-participant cap
         participant_used = self._get_participant_usage(requester)
         if participant_used >= self.DEFAULT_MAX_PER_PARTICIPANT:
             return self._deny_subsidy(
-                request_id, dispute_id, requester, stake_required,
+                request_id,
+                dispute_id,
+                requester,
+                stake_required,
                 DenialReason.CAP_EXCEEDED,
-                {"used": participant_used, "cap": self.DEFAULT_MAX_PER_PARTICIPANT}
+                {"used": participant_used, "cap": self.DEFAULT_MAX_PER_PARTICIPANT},
             )
 
         # Calculate subsidy amount based on tier
@@ -360,7 +348,7 @@ class NatLangChainTreasury:
         max_subsidy = min(
             stake_required * self.DEFAULT_MAX_SUBSIDY_PERCENT,
             self.DEFAULT_MAX_PER_DISPUTE,
-            self.DEFAULT_MAX_PER_PARTICIPANT - participant_used
+            self.DEFAULT_MAX_PER_PARTICIPANT - participant_used,
         )
 
         subsidy_amount = min(stake_required * subsidy_percent, max_subsidy)
@@ -373,9 +361,12 @@ class NatLangChainTreasury:
                 subsidy_amount = available
             else:
                 return self._deny_subsidy(
-                    request_id, dispute_id, requester, stake_required,
+                    request_id,
+                    dispute_id,
+                    requester,
+                    stake_required,
                     DenialReason.INSUFFICIENT_BALANCE,
-                    {"available": available, "requested": subsidy_amount}
+                    {"available": available, "requested": subsidy_amount},
                 )
 
         # Approve subsidy
@@ -388,20 +379,23 @@ class NatLangChainTreasury:
             subsidy_approved=subsidy_amount,
             status=SubsidyStatus.APPROVED.value,
             created_at=datetime.utcnow().isoformat(),
-            processed_at=datetime.utcnow().isoformat()
+            processed_at=datetime.utcnow().isoformat(),
         )
 
         self.subsidy_requests[request_id] = request
         self.dispute_subsidized[dispute_id] = request_id
 
-        self._emit_event("SubsidyApproved", {
-            "request_id": request_id,
-            "dispute_id": dispute_id,
-            "requester": requester,
-            "subsidy_approved": subsidy_amount,
-            "subsidy_percent": subsidy_percent,
-            "harassment_score": harassment_score
-        })
+        self._emit_event(
+            "SubsidyApproved",
+            {
+                "request_id": request_id,
+                "dispute_id": dispute_id,
+                "requester": requester,
+                "subsidy_approved": subsidy_amount,
+                "subsidy_percent": subsidy_percent,
+                "harassment_score": harassment_score,
+            },
+        )
 
         return True, {
             "status": "approved",
@@ -412,14 +406,10 @@ class NatLangChainTreasury:
             "requester_pays": stake_required - subsidy_amount,
             "subsidy_percent": round(subsidy_percent * 100, 1),
             "harassment_score": harassment_score,
-            "message": f"Subsidy of {subsidy_amount} approved. You pay {stake_required - subsidy_amount}."
+            "message": f"Subsidy of {subsidy_amount} approved. You pay {stake_required - subsidy_amount}.",
         }
 
-    def disburse_subsidy(
-        self,
-        request_id: str,
-        escrow_address: str
-    ) -> tuple[bool, dict[str, Any]]:
+    def disburse_subsidy(self, request_id: str, escrow_address: str) -> tuple[bool, dict[str, Any]]:
         """
         Disburse an approved subsidy to the stake escrow.
 
@@ -459,15 +449,18 @@ class NatLangChainTreasury:
         request.status = SubsidyStatus.DISBURSED.value
         request.disbursement_tx = tx_hash
 
-        self._emit_event("SubsidyDisbursed", {
-            "request_id": request_id,
-            "dispute_id": request.dispute_id,
-            "requester": request.requester,
-            "amount": amount,
-            "escrow_address": escrow_address,
-            "tx_hash": tx_hash,
-            "new_balance": self.balance
-        })
+        self._emit_event(
+            "SubsidyDisbursed",
+            {
+                "request_id": request_id,
+                "dispute_id": request.dispute_id,
+                "requester": request.requester,
+                "amount": amount,
+                "escrow_address": escrow_address,
+                "tx_hash": tx_hash,
+                "new_balance": self.balance,
+            },
+        )
 
         return True, {
             "status": "disbursed",
@@ -475,7 +468,7 @@ class NatLangChainTreasury:
             "amount": amount,
             "escrow_address": escrow_address,
             "tx_hash": tx_hash,
-            "new_treasury_balance": self.balance
+            "new_treasury_balance": self.balance,
         }
 
     def _deny_subsidy(
@@ -485,7 +478,7 @@ class NatLangChainTreasury:
         requester: str,
         stake_required: float,
         reason: DenialReason,
-        details: dict | None = None
+        details: dict | None = None,
     ) -> tuple[bool, dict[str, Any]]:
         """Record a denied subsidy request."""
         request = SubsidyRequest(
@@ -498,25 +491,28 @@ class NatLangChainTreasury:
             status=SubsidyStatus.DENIED.value,
             created_at=datetime.utcnow().isoformat(),
             processed_at=datetime.utcnow().isoformat(),
-            denial_reason=reason.value
+            denial_reason=reason.value,
         )
 
         self.subsidy_requests[request_id] = request
 
-        self._emit_event("SubsidyDenied", {
-            "request_id": request_id,
-            "dispute_id": dispute_id,
-            "requester": requester,
-            "reason": reason.value,
-            "details": details
-        })
+        self._emit_event(
+            "SubsidyDenied",
+            {
+                "request_id": request_id,
+                "dispute_id": dispute_id,
+                "requester": requester,
+                "reason": reason.value,
+                "details": details,
+            },
+        )
 
         return False, {
             "status": "denied",
             "request_id": request_id,
             "reason": reason.value,
             "details": details or {},
-            "message": self._get_denial_message(reason)
+            "message": self._get_denial_message(reason),
         }
 
     def _get_denial_message(self, reason: DenialReason) -> str:
@@ -528,7 +524,7 @@ class NatLangChainTreasury:
             DenialReason.CAP_EXCEEDED: "Per-participant subsidy cap exceeded for this period.",
             DenialReason.NOT_DISPUTE_TARGET: "Only dispute targets (not initiators) can request subsidies.",
             DenialReason.DISPUTE_NOT_FOUND: "Referenced dispute not found.",
-            DenialReason.INVALID_REQUEST: "Invalid subsidy request."
+            DenialReason.INVALID_REQUEST: "Invalid subsidy request.",
         }
         return messages.get(reason, "Subsidy request denied.")
 
@@ -549,7 +545,7 @@ class NatLangChainTreasury:
             "created_at": request.created_at,
             "processed_at": request.processed_at,
             "denial_reason": request.denial_reason,
-            "disbursement_tx": request.disbursement_tx
+            "disbursement_tx": request.disbursement_tx,
         }
 
     # ==================== PHASE 12C: ANTI-SYBIL PROTECTIONS ====================
@@ -589,10 +585,9 @@ class NatLangChainTreasury:
         if address not in self.participant_subsidies:
             self.participant_subsidies[address] = []
 
-        self.participant_subsidies[address].append({
-            "amount": amount,
-            "timestamp": datetime.utcnow().isoformat()
-        })
+        self.participant_subsidies[address].append(
+            {"amount": amount, "timestamp": datetime.utcnow().isoformat()}
+        )
 
     def cleanup_expired_usage(self) -> int:
         """Clean up expired usage records. Returns count of records removed."""
@@ -603,7 +598,8 @@ class NatLangChainTreasury:
         for address in self.participant_subsidies:
             before_count = len(self.participant_subsidies[address])
             self.participant_subsidies[address] = [
-                entry for entry in self.participant_subsidies[address]
+                entry
+                for entry in self.participant_subsidies[address]
                 if entry["timestamp"] > cutoff_str
             ]
             removed += before_count - len(self.participant_subsidies[address])
@@ -634,7 +630,7 @@ class NatLangChainTreasury:
             "remaining_cap": remaining,
             "period_days": self.ROLLING_WINDOW_DAYS,
             "max_per_participant": self.DEFAULT_MAX_PER_PARTICIPANT,
-            "subsidies_received": len(self.participant_subsidies.get(address, []))
+            "subsidies_received": len(self.participant_subsidies.get(address, [])),
         }
 
     # ==================== STATISTICS & REPORTING ====================
@@ -651,19 +647,19 @@ class NatLangChainTreasury:
 
         # Subsidy breakdown
         subsidies_approved = sum(
-            1 for r in self.subsidy_requests.values()
+            1
+            for r in self.subsidy_requests.values()
             if r.status in [SubsidyStatus.APPROVED.value, SubsidyStatus.DISBURSED.value]
         )
         subsidies_denied = sum(
-            1 for r in self.subsidy_requests.values()
-            if r.status == SubsidyStatus.DENIED.value
+            1 for r in self.subsidy_requests.values() if r.status == SubsidyStatus.DENIED.value
         )
         subsidies_disbursed = sum(
-            1 for r in self.subsidy_requests.values()
-            if r.status == SubsidyStatus.DISBURSED.value
+            1 for r in self.subsidy_requests.values() if r.status == SubsidyStatus.DISBURSED.value
         )
         total_disbursed = sum(
-            r.subsidy_approved for r in self.subsidy_requests.values()
+            r.subsidy_approved
+            for r in self.subsidy_requests.values()
             if r.status == SubsidyStatus.DISBURSED.value
         )
 
@@ -681,19 +677,16 @@ class NatLangChainTreasury:
                 "available_for_subsidies": self.balance * (1 - self.MIN_TREASURY_BALANCE_RATIO),
                 "reserve": self.balance * self.MIN_TREASURY_BALANCE_RATIO,
                 "total_inflows": self.total_inflows,
-                "total_outflows": self.total_outflows
+                "total_outflows": self.total_outflows,
             },
-            "inflows": {
-                "total_count": len(self.inflows),
-                "by_type": inflow_by_type
-            },
+            "inflows": {"total_count": len(self.inflows), "by_type": inflow_by_type},
             "subsidies": {
                 "total_requests": len(self.subsidy_requests),
                 "approved": subsidies_approved,
                 "denied": subsidies_denied,
                 "disbursed": subsidies_disbursed,
                 "total_amount_disbursed": total_disbursed,
-                "denial_reasons": denial_reasons
+                "denial_reasons": denial_reasons,
             },
             "disputes_subsidized": len(self.dispute_subsidized),
             "unique_beneficiaries": len(self.participant_subsidies),
@@ -703,32 +696,23 @@ class NatLangChainTreasury:
                 "max_per_participant": self.DEFAULT_MAX_PER_PARTICIPANT,
                 "rolling_window_days": self.ROLLING_WINDOW_DAYS,
                 "max_harassment_score": self.MAX_HARASSMENT_SCORE_FOR_SUBSIDY,
-                "reserve_ratio": self.MIN_TREASURY_BALANCE_RATIO * 100
-            }
+                "reserve_ratio": self.MIN_TREASURY_BALANCE_RATIO * 100,
+            },
         }
 
     def get_audit_trail(self, limit: int = 100) -> list[dict[str, Any]]:
         """Get recent audit trail events."""
-        return sorted(
-            self.events[-limit:],
-            key=lambda x: x["timestamp"],
-            reverse=True
-        )
+        return sorted(self.events[-limit:], key=lambda x: x["timestamp"], reverse=True)
 
     # ==================== UTILITY METHODS ====================
 
-    def _generate_inflow_id(
-        self,
-        amount: float,
-        inflow_type: InflowType,
-        source: str
-    ) -> str:
+    def _generate_inflow_id(self, amount: float, inflow_type: InflowType, source: str) -> str:
         """Generate unique inflow ID."""
         data = {
             "amount": str(amount),
             "type": inflow_type.value,
             "source": source,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         }
         hash_input = json.dumps(data, sort_keys=True)
         return f"INFLOW-{hashlib.sha256(hash_input.encode()).hexdigest()[:12].upper()}"
@@ -738,34 +722,25 @@ class NatLangChainTreasury:
         data = {
             "dispute_id": dispute_id,
             "requester": requester,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         }
         hash_input = json.dumps(data, sort_keys=True)
         return f"SUBSIDY-{hashlib.sha256(hash_input.encode()).hexdigest()[:12].upper()}"
 
-    def _generate_tx_hash(
-        self,
-        request_id: str,
-        amount: float,
-        destination: str
-    ) -> str:
+    def _generate_tx_hash(self, request_id: str, amount: float, destination: str) -> str:
         """Generate transaction hash for disbursement."""
         data = {
             "request_id": request_id,
             "amount": str(amount),
             "destination": destination,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         }
         hash_input = json.dumps(data, sort_keys=True)
         return "0x" + hashlib.sha256(hash_input.encode()).hexdigest()
 
     def _emit_event(self, event_type: str, data: dict[str, Any]) -> None:
         """Emit an event for audit trail."""
-        event = {
-            "event_type": event_type,
-            "timestamp": datetime.utcnow().isoformat(),
-            "data": data
-        }
+        event = {"event_type": event_type, "timestamp": datetime.utcnow().isoformat(), "data": data}
         self.events.append(event)
 
     # ==================== INTEGRATION HELPERS ====================
@@ -774,11 +749,7 @@ class NatLangChainTreasury:
         """Set the anti-harassment manager for score lookups."""
         self.anti_harassment_manager = manager
 
-    def simulate_subsidy(
-        self,
-        requester: str,
-        stake_required: float
-    ) -> dict[str, Any]:
+    def simulate_subsidy(self, requester: str, stake_required: float) -> dict[str, Any]:
         """
         Simulate a subsidy request without creating a record.
         Useful for UI to show potential subsidy before committing.
@@ -797,7 +768,7 @@ class NatLangChainTreasury:
                 "eligible": False,
                 "reason": "harassment_score_too_high",
                 "harassment_score": harassment_score,
-                "max_allowed": self.MAX_HARASSMENT_SCORE_FOR_SUBSIDY
+                "max_allowed": self.MAX_HARASSMENT_SCORE_FOR_SUBSIDY,
             }
 
         participant_used = self._get_participant_usage(requester)
@@ -806,14 +777,14 @@ class NatLangChainTreasury:
                 "eligible": False,
                 "reason": "cap_exceeded",
                 "used": participant_used,
-                "cap": self.DEFAULT_MAX_PER_PARTICIPANT
+                "cap": self.DEFAULT_MAX_PER_PARTICIPANT,
             }
 
         subsidy_percent = self._get_subsidy_percent(harassment_score)
         max_subsidy = min(
             stake_required * self.DEFAULT_MAX_SUBSIDY_PERCENT,
             self.DEFAULT_MAX_PER_DISPUTE,
-            self.DEFAULT_MAX_PER_PARTICIPANT - participant_used
+            self.DEFAULT_MAX_PER_PARTICIPANT - participant_used,
         )
 
         available = self.balance * (1 - self.MIN_TREASURY_BALANCE_RATIO)
@@ -827,5 +798,5 @@ class NatLangChainTreasury:
             "potential_subsidy": potential_subsidy,
             "you_would_pay": stake_required - potential_subsidy,
             "treasury_available": available,
-            "remaining_cap": self.DEFAULT_MAX_PER_PARTICIPANT - participant_used
+            "remaining_cap": self.DEFAULT_MAX_PER_PARTICIPANT - participant_used,
         }

@@ -22,37 +22,36 @@ from typing import Any
 
 try:
     from boundary_exceptions import (
+        PolicyConfigurationError,
         PolicyError,
         PolicyViolationError,
-        PolicyConfigurationError,
     )
 except ImportError:
-    from .boundary_exceptions import (
-        PolicyError,
-        PolicyViolationError,
-        PolicyConfigurationError,
-    )
+    pass
 
 logger = logging.getLogger(__name__)
 
 
 class EnforcementMode(Enum):
     """Enforcement modes for the boundary daemon."""
-    STRICT = "strict"        # Block all violations, no exceptions
+
+    STRICT = "strict"  # Block all violations, no exceptions
     PERMISSIVE = "permissive"  # Block critical, warn on minor
     AUDIT_ONLY = "audit_only"  # Log only, no blocking
 
 
 class DataClassification(Enum):
     """Data classification levels."""
-    PUBLIC = "public"           # Can go anywhere
-    INTERNAL = "internal"       # NatLangChain, Value Ledger only
+
+    PUBLIC = "public"  # Can go anywhere
+    INTERNAL = "internal"  # NatLangChain, Value Ledger only
     CONFIDENTIAL = "confidential"  # Memory Vault only
-    RESTRICTED = "restricted"   # No external destinations allowed
+    RESTRICTED = "restricted"  # No external destinations allowed
 
 
 class ViolationType(Enum):
     """Types of policy violations."""
+
     BLOCKED_PATTERN_DETECTED = "blocked_pattern_detected"
     DATA_EXFILTRATION_ATTEMPT = "data_exfiltration_attempt"
     UNAUTHORIZED_DESTINATION = "unauthorized_destination"
@@ -64,6 +63,7 @@ class ViolationType(Enum):
 @dataclass
 class PolicyViolation:
     """Represents a policy violation."""
+
     violation_id: str
     violation_type: ViolationType
     severity: str  # low, medium, high, critical
@@ -76,6 +76,7 @@ class PolicyViolation:
 @dataclass
 class AuditRecord:
     """Audit record for data flow events."""
+
     audit_id: str
     event_type: str
     timestamp: str
@@ -89,6 +90,7 @@ class AuditRecord:
 @dataclass
 class BoundaryPolicy:
     """Policy configuration for boundary enforcement."""
+
     policy_id: str
     owner: str
     agent_id: str
@@ -136,16 +138,13 @@ class BoundaryDaemon:
         r"bearer\s+[\w\-\.]+",
         r"sk-live-[\w]+",  # Stripe-style live keys
         r"sk-test-[\w]+",  # Stripe-style test keys
-
         # Passwords
         r"password\s*[=:]\s*['\"]?[^\s'\",]+",
         r"passwd\s*[=:]\s*['\"]?[^\s'\",]+",
         r"pwd\s*[=:]\s*['\"]?[^\s'\",]+",
-
         # Secrets
         r"secret\s*[=:]\s*['\"]?[\w\-]+",
         r"secret[_-]?key\s*[=:]\s*['\"]?[\w\-]+",
-
         # Private keys
         r"private[_-]?key",
         r"privatekey",
@@ -153,30 +152,24 @@ class BoundaryDaemon:
         r"-----BEGIN\s+OPENSSH\s+PRIVATE\s+KEY-----",
         r"-----BEGIN\s+EC\s+PRIVATE\s+KEY-----",
         r"-----BEGIN\s+DSA\s+PRIVATE\s+KEY-----",
-
         # SSH keys
         r"ssh[_-]?key\s*[=:]\s*['\"]?[\w\-]+",
         r"ssh-rsa\s+[A-Za-z0-9+/=]+",
         r"ssh-ed25519\s+[A-Za-z0-9+/=]+",
-
         # Credit card patterns (Luhn-valid 16 digit sequences)
         r"\b(?:4[0-9]{12}(?:[0-9]{3})?)\b",  # Visa
-        r"\b(?:5[1-5][0-9]{14})\b",           # Mastercard
-        r"\b(?:3[47][0-9]{13})\b",            # Amex
+        r"\b(?:5[1-5][0-9]{14})\b",  # Mastercard
+        r"\b(?:3[47][0-9]{13})\b",  # Amex
         r"\b(?:6(?:011|5[0-9]{2})[0-9]{12})\b",  # Discover
-
         # Social Security Numbers
         r"\b\d{3}[-\s]?\d{2}[-\s]?\d{4}\b",
-
         # AWS credentials
         r"AKIA[0-9A-Z]{16}",
         r"aws[_-]?access[_-]?key[_-]?id\s*[=:]\s*['\"]?[\w]+",
         r"aws[_-]?secret[_-]?access[_-]?key\s*[=:]\s*['\"]?[\w]+",
-
         # Database connection strings
         r"(?:mongodb|postgres|mysql|redis)://[^\s]+",
         r"jdbc:[a-z]+://[^\s]+",
-
         # Generic secrets
         r"client[_-]?secret\s*[=:]\s*['\"]?[\w\-]+",
         r"encryption[_-]?key\s*[=:]\s*['\"]?[\w\-]+",
@@ -184,12 +177,20 @@ class BoundaryDaemon:
 
     # Keyword blocklist for simple string matching (case-insensitive)
     KEYWORD_BLOCKLIST = [
-        "api_key", "api-key", "apikey",
-        "password", "passwd", "pwd",
-        "secret", "token",
-        "private_key", "privatekey",
-        "ssh_key", "ssh-key",
-        "credentials", "credential",
+        "api_key",
+        "api-key",
+        "apikey",
+        "password",
+        "passwd",
+        "pwd",
+        "secret",
+        "token",
+        "private_key",
+        "privatekey",
+        "ssh_key",
+        "ssh-key",
+        "credentials",
+        "credential",
     ]
 
     # Allowed destinations per classification
@@ -217,8 +218,7 @@ class BoundaryDaemon:
 
         # Compile regex patterns for efficiency
         self._compiled_patterns = [
-            re.compile(pattern, re.IGNORECASE)
-            for pattern in self.BUILTIN_BLOCKED_PATTERNS
+            re.compile(pattern, re.IGNORECASE) for pattern in self.BUILTIN_BLOCKED_PATTERNS
         ]
 
     def register_policy(self, policy: BoundaryPolicy) -> dict[str, Any]:
@@ -232,11 +232,7 @@ class BoundaryDaemon:
             Registration result
         """
         self.policies[policy.policy_id] = policy
-        return {
-            "registered": True,
-            "policy_id": policy.policy_id,
-            "status": policy.status
-        }
+        return {"registered": True, "policy_id": policy.policy_id, "status": policy.status}
 
     def _generate_violation_id(self) -> str:
         """Generate unique violation ID."""
@@ -258,7 +254,9 @@ class BoundaryDaemon:
         payload_str = json.dumps(payload, sort_keys=True, default=str)
         return f"SHA256:{hashlib.sha256(payload_str.encode()).hexdigest()}"
 
-    def _detect_blocked_patterns(self, data: str, custom_patterns: list[str] | None = None) -> list[dict[str, Any]]:
+    def _detect_blocked_patterns(
+        self, data: str, custom_patterns: list[str] | None = None
+    ) -> list[dict[str, Any]]:
         """
         Detect blocked patterns in data.
 
@@ -277,24 +275,28 @@ class BoundaryDaemon:
         data_lower = data.lower()
         for keyword in self.KEYWORD_BLOCKLIST:
             if keyword in data_lower:
-                detected.append({
-                    "type": "keyword_match",
-                    "pattern": keyword,
-                    "risk": "high",
-                    "location": "content"
-                })
+                detected.append(
+                    {
+                        "type": "keyword_match",
+                        "pattern": keyword,
+                        "risk": "high",
+                        "location": "content",
+                    }
+                )
 
         # Check regex patterns
         for pattern in self._compiled_patterns:
             matches = pattern.findall(data)
             if matches:
-                detected.append({
-                    "type": "regex_match",
-                    "pattern": pattern.pattern[:50] + "...",  # Truncate for safety
-                    "count": len(matches),
-                    "risk": "critical",
-                    "location": "content"
-                })
+                detected.append(
+                    {
+                        "type": "regex_match",
+                        "pattern": pattern.pattern[:50] + "...",  # Truncate for safety
+                        "count": len(matches),
+                        "risk": "critical",
+                        "location": "content",
+                    }
+                )
 
         # Check custom patterns
         if custom_patterns:
@@ -303,25 +305,31 @@ class BoundaryDaemon:
                     pattern = re.compile(pattern_str, re.IGNORECASE)
                     matches = pattern.findall(data)
                     if matches:
-                        detected.append({
-                            "type": "custom_pattern_match",
-                            "pattern": pattern_str[:50],
-                            "count": len(matches),
-                            "risk": "high",
-                            "location": "content"
-                        })
+                        detected.append(
+                            {
+                                "type": "custom_pattern_match",
+                                "pattern": pattern_str[:50],
+                                "count": len(matches),
+                                "risk": "high",
+                                "location": "content",
+                            }
+                        )
                 except re.error:
                     # Invalid regex - fail safe by flagging it
-                    detected.append({
-                        "type": "invalid_pattern",
-                        "pattern": pattern_str[:50],
-                        "risk": "medium",
-                        "location": "pattern_config"
-                    })
+                    detected.append(
+                        {
+                            "type": "invalid_pattern",
+                            "pattern": pattern_str[:50],
+                            "risk": "medium",
+                            "location": "pattern_config",
+                        }
+                    )
 
         return detected
 
-    def _classify_data(self, data: str, explicit_classification: str | None = None) -> DataClassification:
+    def _classify_data(
+        self, data: str, explicit_classification: str | None = None
+    ) -> DataClassification:
         """
         Classify data based on content analysis.
 
@@ -355,7 +363,7 @@ class BoundaryDaemon:
         self,
         classification: DataClassification,
         destination: str,
-        policy: BoundaryPolicy | None = None
+        policy: BoundaryPolicy | None = None,
     ) -> tuple[bool, str]:
         """
         Check if a destination is allowed for the given classification.
@@ -372,13 +380,9 @@ class BoundaryDaemon:
         """
         # Get allowed destinations
         if policy and policy.data_classifications:
-            allowed_destinations = policy.data_classifications.get(
-                classification, []
-            )
+            allowed_destinations = policy.data_classifications.get(classification, [])
         else:
-            allowed_destinations = self.DEFAULT_CLASSIFICATION_DESTINATIONS.get(
-                classification, []
-            )
+            allowed_destinations = self.DEFAULT_CLASSIFICATION_DESTINATIONS.get(classification, [])
 
         # Wildcard allows all
         if "*" in allowed_destinations:
@@ -395,7 +399,10 @@ class BoundaryDaemon:
                 return True, f"Destination {destination} is explicitly allowed"
 
         # FAIL-SAFE: Not in allowed list = blocked
-        return False, f"Destination {destination} not in allowed list for {classification.value} data"
+        return (
+            False,
+            f"Destination {destination} not in allowed list for {classification.value} data",
+        )
 
     def authorize_request(self, request: dict[str, Any]) -> dict[str, Any]:
         """
@@ -441,7 +448,7 @@ class BoundaryDaemon:
                     location="payload",
                     rule="size_limit",
                     source=source,
-                    destination=destination
+                    destination=destination,
                 )
 
             # Step 2: Detect blocked patterns (ALWAYS runs, regardless of classification)
@@ -460,16 +467,14 @@ class BoundaryDaemon:
                         rule="builtin_patterns",
                         source=source,
                         destination=destination,
-                        all_detections=detected_patterns
+                        all_detections=detected_patterns,
                     )
 
             # Step 3: Classify data
             classification = self._classify_data(payload_str, explicit_classification)
 
             # Step 4: Check if destination is allowed for this classification
-            allowed, reason = self._check_destination_allowed(
-                classification, destination, policy
-            )
+            allowed, reason = self._check_destination_allowed(classification, destination, policy)
 
             if not allowed:
                 if enforcement == EnforcementMode.STRICT:
@@ -481,7 +486,7 @@ class BoundaryDaemon:
                         rule="classification_policy",
                         source=source,
                         destination=destination,
-                        reason=reason
+                        reason=reason,
                     )
                 elif enforcement == EnforcementMode.PERMISSIVE:
                     # Permissive mode: warn but allow for non-critical
@@ -493,7 +498,7 @@ class BoundaryDaemon:
                             location="payload",
                             rule="classification_policy",
                             source=source,
-                            destination=destination
+                            destination=destination,
                         )
 
             # Authorization successful
@@ -506,7 +511,7 @@ class BoundaryDaemon:
                 destination=destination,
                 request=request,
                 authorization={"authorized": True, "authorization_id": auth_id},
-                result={"status": "allowed"}
+                result={"status": "allowed"},
             )
 
             return {
@@ -516,7 +521,7 @@ class BoundaryDaemon:
                 "rules_applied": ["builtin_patterns", "classification_policy"],
                 "data_classification": classification.value,
                 "modifications": [],
-                "proceed": True
+                "proceed": True,
             }
 
         except Exception as e:
@@ -529,7 +534,7 @@ class BoundaryDaemon:
                     "destination": request.get("destination", "unknown"),
                     "error": str(e),
                 },
-                exc_info=True
+                exc_info=True,
             )
             return self._block_request(
                 request_id=request.get("request_id", "unknown"),
@@ -539,7 +544,7 @@ class BoundaryDaemon:
                 rule="fail_safe",
                 source=request.get("source", "unknown"),
                 destination=request.get("destination", "unknown"),
-                reason=f"Authorization error (fail-safe block): {e!s}"
+                reason=f"Authorization error (fail-safe block): {e!s}",
             )
 
     def _block_request(
@@ -552,7 +557,7 @@ class BoundaryDaemon:
         source: str,
         destination: str,
         reason: str | None = None,
-        all_detections: list[dict] | None = None
+        all_detections: list[dict] | None = None,
     ) -> dict[str, Any]:
         """
         Block a request and record the violation.
@@ -575,21 +580,21 @@ class BoundaryDaemon:
         violation = PolicyViolation(
             violation_id=self._generate_violation_id(),
             violation_type=violation_type,
-            severity="high" if violation_type in [
-                ViolationType.BLOCKED_PATTERN_DETECTED,
-                ViolationType.DATA_EXFILTRATION_ATTEMPT
-            ] else "medium",
+            severity="high"
+            if violation_type
+            in [ViolationType.BLOCKED_PATTERN_DETECTED, ViolationType.DATA_EXFILTRATION_ATTEMPT]
+            else "medium",
             details={
                 "source": source,
                 "destination": destination,
                 "blocked_pattern": pattern,
                 "rule_violated": rule,
                 "all_detections": all_detections or [],
-                "reason": reason
+                "reason": reason,
             },
             timestamp=datetime.utcnow().isoformat() + "Z",
             action_taken="blocked",
-            owner_notified=True
+            owner_notified=True,
         )
         self.violations.append(violation)
 
@@ -600,7 +605,7 @@ class BoundaryDaemon:
             destination=destination,
             request={"request_id": request_id},
             authorization={"authorized": False, "violation_id": violation.violation_id},
-            result={"status": "blocked", "reason": reason or violation_type.value}
+            result={"status": "blocked", "reason": reason or violation_type.value},
         )
 
         return {
@@ -611,10 +616,10 @@ class BoundaryDaemon:
                 "pattern": pattern,
                 "location": location,
                 "rule": rule,
-                "reason": reason
+                "reason": reason,
             },
             "action_taken": "blocked",
-            "owner_notified": True
+            "owner_notified": True,
         }
 
     def _log_audit(
@@ -624,7 +629,7 @@ class BoundaryDaemon:
         destination: str,
         request: dict[str, Any],
         authorization: dict[str, Any],
-        result: dict[str, Any]
+        result: dict[str, Any],
     ) -> AuditRecord:
         """
         Log an audit record.
@@ -649,10 +654,10 @@ class BoundaryDaemon:
             request={
                 "request_id": request.get("request_id", "unknown"),
                 "payload_hash": self._hash_payload(request.get("payload", {})),
-                "payload_size": len(str(request.get("payload", "")))
+                "payload_size": len(str(request.get("payload", ""))),
             },
             authorization=authorization,
-            result=result
+            result=result,
         )
         self.audit_log.append(record)
 
@@ -667,8 +672,8 @@ class BoundaryDaemon:
                 "source": source,
                 "destination": destination,
                 "authorized": authorization.get("authorized", False),
-                "result_status": result.get("status", "unknown")
-            }
+                "result_status": result.get("status", "unknown"),
+            },
         )
 
         return record
@@ -710,7 +715,7 @@ class BoundaryDaemon:
             "risk_score": risk_score,
             "detected_patterns": detected,
             "classification_suggested": classification.value,
-            "policy_compliance": len(detected) == 0
+            "policy_compliance": len(detected) == 0,
         }
 
     def get_violations(self, severity: str | None = None, limit: int = 100) -> list[dict[str, Any]]:
@@ -735,12 +740,14 @@ class BoundaryDaemon:
                 "severity": v.severity,
                 "details": v.details,
                 "timestamp": v.timestamp,
-                "action_taken": v.action_taken
+                "action_taken": v.action_taken,
             }
             for v in violations[-limit:]
         ]
 
-    def get_audit_log(self, event_type: str | None = None, limit: int = 100) -> list[dict[str, Any]]:
+    def get_audit_log(
+        self, event_type: str | None = None, limit: int = 100
+    ) -> list[dict[str, Any]]:
         """
         Get audit log entries.
 
@@ -764,7 +771,7 @@ class BoundaryDaemon:
                 "destination": r.destination,
                 "request": r.request,
                 "authorization": r.authorization,
-                "result": r.result
+                "result": r.result,
             }
             for r in records[-limit:]
         ]
@@ -783,10 +790,10 @@ class BoundaryDaemon:
         """
         return {
             "content": f"Boundary Daemon Audit: {violation.violation_type.value} detected and blocked. "
-                      f"Source {violation.details.get('source', 'unknown')} attempted to send "
-                      f"{violation.details.get('classification', 'sensitive')} data to "
-                      f"{violation.details.get('destination', 'unknown')}. "
-                      f"Action: {violation.action_taken}. Owner notified.",
+            f"Source {violation.details.get('source', 'unknown')} attempted to send "
+            f"{violation.details.get('classification', 'sensitive')} data to "
+            f"{violation.details.get('destination', 'unknown')}. "
+            f"Action: {violation.action_taken}. Owner notified.",
             "author": "boundary_daemon",
             "intent": "Record security event",
             "metadata": {
@@ -794,8 +801,8 @@ class BoundaryDaemon:
                 "event_type": "policy_violation",
                 "violation_id": violation.violation_id,
                 "severity": violation.severity,
-                "action_taken": violation.action_taken
-            }
+                "action_taken": violation.action_taken,
+            },
         }
 
 
@@ -804,7 +811,7 @@ def validate_outbound_data(
     data: str,
     destination: str,
     classification: str | None = None,
-    mode: EnforcementMode = EnforcementMode.STRICT
+    mode: EnforcementMode = EnforcementMode.STRICT,
 ) -> dict[str, Any]:
     """
     Quick validation of outbound data.
@@ -819,10 +826,12 @@ def validate_outbound_data(
         Authorization result
     """
     daemon = BoundaryDaemon(enforcement_mode=mode)
-    return daemon.authorize_request({
-        "request_id": f"QUICK-{int(time.time())}",
-        "source": "quick_validate",
-        "destination": destination,
-        "payload": {"content": data},
-        "data_classification": classification
-    })
+    return daemon.authorize_request(
+        {
+            "request_id": f"QUICK-{int(time.time())}",
+            "source": "quick_validate",
+            "destination": destination,
+            "payload": {"content": data},
+            "data_classification": classification,
+        }
+    )

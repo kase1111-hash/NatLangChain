@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ChatMessage:
     """Represents a single message in the conversation."""
+
     role: str  # 'user' or 'assistant'
     content: str
     timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
@@ -28,6 +29,7 @@ class ChatMessage:
 @dataclass
 class ConversationContext:
     """Context about the current user activity."""
+
     current_view: str = "dashboard"
     selected_entries: list[str] = field(default_factory=list)
     draft_content: str = ""
@@ -50,7 +52,7 @@ class OllamaChatHelper:
 
     # Security limits
     MAX_MESSAGE_LENGTH = 4000  # Max characters per message
-    MAX_HISTORY_SIZE = 50      # Max messages kept in memory
+    MAX_HISTORY_SIZE = 50  # Max messages kept in memory
     MAX_CONTEXT_LENGTH = 1000  # Max characters in context fields
 
     # System prompt that guides the helper's behavior
@@ -102,11 +104,7 @@ BAD response: "Here's what you should write: 'I will deliver within 2 weeks...'"
 
 If the user shares draft content, point out what's good and what needs clarification."""
 
-    def __init__(
-        self,
-        ollama_url: str | None = None,
-        model: str | None = None
-    ):
+    def __init__(self, ollama_url: str | None = None, model: str | None = None):
         """
         Initialize the chat helper.
 
@@ -126,6 +124,7 @@ If the user shares draft content, point out what's good and what needs clarifica
         Args:
             context: Dictionary with context information
         """
+
         # Helper to safely get and truncate string values
         def safe_str(key: str, default: str = "", max_len: int = self.MAX_CONTEXT_LENGTH) -> str:
             val = context.get(key, default)
@@ -145,7 +144,7 @@ If the user shares draft content, point out what's good and what needs clarifica
             draft_content=safe_str("draft_content"),
             draft_intent=safe_str("draft_intent"),
             is_contract=bool(context.get("is_contract", False)),
-            contract_type=safe_str("contract_type", "", 50)
+            contract_type=safe_str("contract_type", "", 50),
         )
 
     def clear_history(self) -> None:
@@ -162,19 +161,20 @@ If the user shares draft content, point out what's good and what needs clarifica
                 "explorer": "exploring the blockchain",
                 "submit": "creating a new entry",
                 "contracts": "viewing contracts",
-                "search": "searching the blockchain"
+                "search": "searching the blockchain",
             }
             view_desc = view_descriptions.get(
-                self.context.current_view,
-                f"on the {self.context.current_view} page"
+                self.context.current_view, f"on the {self.context.current_view} page"
             )
             context_parts.append(f"The user is currently {view_desc}.")
 
         if self.context.draft_content:
-            context_parts.append(f"\nTheir current draft content is:\n\"{self.context.draft_content}\"")
+            context_parts.append(
+                f'\nTheir current draft content is:\n"{self.context.draft_content}"'
+            )
 
         if self.context.draft_intent:
-            context_parts.append(f"\nTheir stated intent is: \"{self.context.draft_intent}\"")
+            context_parts.append(f'\nTheir stated intent is: "{self.context.draft_intent}"')
 
         if self.context.is_contract:
             context_parts.append(f"\nThis is a contract of type: {self.context.contract_type}")
@@ -216,39 +216,30 @@ If the user shares draft content, point out what's good and what needs clarifica
                     "available": True,
                     "models": models,
                     "current_model": self.model,
-                    "model_available": self.model in models or any(self.model in m for m in models)
+                    "model_available": self.model in models or any(self.model in m for m in models),
                 }
             else:
                 logger.warning(
-                    "Ollama status check returned non-200 status: %d",
-                    response.status_code
+                    "Ollama status check returned non-200 status: %d", response.status_code
                 )
         except requests.exceptions.ConnectionError as e:
             logger.debug(
                 "Cannot connect to Ollama at %s: %s. Ensure Ollama is running (ollama serve)",
-                self.ollama_url, str(e)
+                self.ollama_url,
+                str(e),
             )
         except requests.exceptions.Timeout:
-            logger.debug(
-                "Ollama status check timed out at %s",
-                self.ollama_url
-            )
+            logger.debug("Ollama status check timed out at %s", self.ollama_url)
         except requests.exceptions.RequestException as e:
-            logger.warning(
-                "Ollama status check failed with unexpected error: %s",
-                str(e)
-            )
+            logger.warning("Ollama status check failed with unexpected error: %s", str(e))
         except json.JSONDecodeError as e:
-            logger.warning(
-                "Ollama returned invalid JSON response: %s",
-                str(e)
-            )
+            logger.warning("Ollama returned invalid JSON response: %s", str(e))
 
         return {
             "available": False,
             "models": [],
             "current_model": self.model,
-            "model_available": False
+            "model_available": False,
         }
 
     def chat(self, user_message: str, context: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -264,15 +255,11 @@ If the user shares draft content, point out what's good and what needs clarifica
         """
         # Input validation
         if not user_message or not isinstance(user_message, str):
-            return {
-                "success": False,
-                "response": None,
-                "error": "Message is required"
-            }
+            return {"success": False, "response": None, "error": "Message is required"}
 
         # Truncate overly long messages
         if len(user_message) > self.MAX_MESSAGE_LENGTH:
-            user_message = user_message[:self.MAX_MESSAGE_LENGTH]
+            user_message = user_message[: self.MAX_MESSAGE_LENGTH]
 
         if context:
             self.set_context(context)
@@ -282,7 +269,7 @@ If the user shares draft content, point out what's good and what needs clarifica
 
         # Prune history if too large (keep most recent messages)
         if len(self.conversation_history) > self.MAX_HISTORY_SIZE:
-            self.conversation_history = self.conversation_history[-self.MAX_HISTORY_SIZE:]
+            self.conversation_history = self.conversation_history[-self.MAX_HISTORY_SIZE :]
 
         try:
             # Build messages for Ollama
@@ -298,9 +285,9 @@ If the user shares draft content, point out what's good and what needs clarifica
                     "options": {
                         "temperature": 0.7,
                         "top_p": 0.9,
-                    }
+                    },
                 },
-                timeout=60
+                timeout=60,
             )
 
             if response.status_code == 200:
@@ -312,68 +299,41 @@ If the user shares draft content, point out what's good and what needs clarifica
                     ChatMessage(role="assistant", content=assistant_message)
                 )
 
-                return {
-                    "success": True,
-                    "response": assistant_message,
-                    "model": self.model
-                }
+                return {"success": True, "response": assistant_message, "model": self.model}
             else:
                 error_msg = f"Ollama returned status {response.status_code}"
-                return {
-                    "success": False,
-                    "response": None,
-                    "error": error_msg
-                }
+                return {"success": False, "response": None, "error": error_msg}
 
         except requests.exceptions.ConnectionError as e:
-            logger.error(
-                "Cannot connect to Ollama at %s: %s",
-                self.ollama_url, str(e)
-            )
+            logger.error("Cannot connect to Ollama at %s: %s", self.ollama_url, str(e))
             return {
                 "success": False,
                 "response": None,
-                "error": "Cannot connect to Ollama. Make sure Ollama is running (ollama serve)"
+                "error": "Cannot connect to Ollama. Make sure Ollama is running (ollama serve)",
             }
         except requests.exceptions.Timeout:
-            logger.warning(
-                "Ollama chat request timed out for model %s",
-                self.model
-            )
+            logger.warning("Ollama chat request timed out for model %s", self.model)
             return {
                 "success": False,
                 "response": None,
-                "error": "Request timed out. The model might be loading or busy."
+                "error": "Request timed out. The model might be loading or busy.",
             }
         except json.JSONDecodeError as e:
-            logger.error(
-                "Failed to parse Ollama response as JSON: %s",
-                str(e)
-            )
+            logger.error("Failed to parse Ollama response as JSON: %s", str(e))
             return {
                 "success": False,
                 "response": None,
-                "error": f"Invalid JSON response from Ollama: {e.msg}"
+                "error": f"Invalid JSON response from Ollama: {e.msg}",
             }
         except requests.exceptions.RequestException as e:
-            logger.error(
-                "Ollama request failed: %s",
-                str(e)
-            )
-            return {
-                "success": False,
-                "response": None,
-                "error": f"Request failed: {e!s}"
-            }
+            logger.error("Ollama request failed: %s", str(e))
+            return {"success": False, "response": None, "error": f"Request failed: {e!s}"}
         except Exception as e:
-            logger.exception(
-                "Unexpected error during Ollama chat: %s",
-                str(e)
-            )
+            logger.exception("Unexpected error during Ollama chat: %s", str(e))
             return {
                 "success": False,
                 "response": None,
-                "error": f"Unexpected error: {type(e).__name__}: {e!s}"
+                "error": f"Unexpected error: {type(e).__name__}: {e!s}",
             }
 
     def get_suggestions(self, content: str, intent: str, contract_type: str = "") -> dict[str, Any]:
@@ -389,13 +349,15 @@ If the user shares draft content, point out what's good and what needs clarifica
             Dictionary with suggestions
         """
         # Update context
-        self.set_context({
-            "current_view": "submit",
-            "draft_content": content,
-            "draft_intent": intent,
-            "is_contract": bool(contract_type),
-            "contract_type": contract_type
-        })
+        self.set_context(
+            {
+                "current_view": "submit",
+                "draft_content": content,
+                "draft_intent": intent,
+                "is_contract": bool(contract_type),
+                "contract_type": contract_type,
+            }
+        )
 
         # Craft a specific request for suggestions
         prompt = f"""Please analyze this draft and provide specific suggestions to improve clarity:

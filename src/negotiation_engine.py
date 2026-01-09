@@ -24,6 +24,7 @@ from typing import Any
 
 try:
     from anthropic import Anthropic
+
     HAS_ANTHROPIC = True
 except ImportError:
     HAS_ANTHROPIC = False
@@ -37,6 +38,7 @@ try:
         create_safe_prompt_section,
         sanitize_prompt_input,
     )
+
     SANITIZATION_AVAILABLE = True
 except ImportError:
     SANITIZATION_AVAILABLE = False
@@ -63,20 +65,23 @@ except ImportError:
 # Enums and Constants
 # ============================================================
 
+
 class NegotiationPhase(Enum):
     """Phases of a negotiation session."""
-    INITIATED = "initiated"          # Session created, awaiting counterparty
-    INTENT_ALIGNMENT = "alignment"   # Aligning intents between parties
-    CLAUSE_DRAFTING = "drafting"     # Generating contract clauses
-    NEGOTIATING = "negotiating"      # Active back-and-forth
-    PENDING_APPROVAL = "pending"     # Awaiting final approval
-    AGREED = "agreed"                # Both parties agreed
-    FAILED = "failed"                # Negotiation failed
-    EXPIRED = "expired"              # Session timed out
+
+    INITIATED = "initiated"  # Session created, awaiting counterparty
+    INTENT_ALIGNMENT = "alignment"  # Aligning intents between parties
+    CLAUSE_DRAFTING = "drafting"  # Generating contract clauses
+    NEGOTIATING = "negotiating"  # Active back-and-forth
+    PENDING_APPROVAL = "pending"  # Awaiting final approval
+    AGREED = "agreed"  # Both parties agreed
+    FAILED = "failed"  # Negotiation failed
+    EXPIRED = "expired"  # Session timed out
 
 
 class OfferType(Enum):
     """Types of offers in negotiation."""
+
     INITIAL = "initial"
     COUNTER = "counter"
     FINAL = "final"
@@ -86,6 +91,7 @@ class OfferType(Enum):
 
 class ClauseType(Enum):
     """Types of contract clauses."""
+
     PAYMENT = "payment"
     DELIVERY = "delivery"
     QUALITY = "quality"
@@ -99,9 +105,10 @@ class ClauseType(Enum):
 
 class AlignmentLevel(Enum):
     """Levels of intent alignment."""
-    STRONG = "strong"      # >80% aligned
+
+    STRONG = "strong"  # >80% aligned
     MODERATE = "moderate"  # 50-80% aligned
-    WEAK = "weak"          # 20-50% aligned
+    WEAK = "weak"  # 20-50% aligned
     MISALIGNED = "misaligned"  # <20% aligned
 
 
@@ -109,9 +116,11 @@ class AlignmentLevel(Enum):
 # Data Classes
 # ============================================================
 
+
 @dataclass
 class Intent:
     """Represents a party's negotiation intent."""
+
     party: str
     objectives: list[str]
     constraints: list[str]
@@ -124,6 +133,7 @@ class Intent:
 @dataclass
 class Clause:
     """Represents a contract clause."""
+
     clause_id: str
     clause_type: ClauseType
     content: str
@@ -136,6 +146,7 @@ class Clause:
 @dataclass
 class Offer:
     """Represents an offer in negotiation."""
+
     offer_id: str
     offer_type: OfferType
     from_party: str
@@ -151,6 +162,7 @@ class Offer:
 @dataclass
 class NegotiationSession:
     """Represents a complete negotiation session."""
+
     session_id: str
     initiator: str
     counterparty: str
@@ -174,6 +186,7 @@ class NegotiationSession:
 # Proactive Alignment Layer
 # ============================================================
 
+
 class ProactiveAlignmentLayer:
     """
     Analyzes and aligns intents between negotiating parties.
@@ -190,12 +203,7 @@ class ProactiveAlignmentLayer:
         self.client = client
         self.model = "claude-3-5-sonnet-20241022"
 
-    def extract_intent(
-        self,
-        party: str,
-        statement: str,
-        context: str | None = None
-    ) -> Intent:
+    def extract_intent(self, party: str, statement: str, context: str | None = None) -> Intent:
         """
         Extract structured intent from natural language statement.
 
@@ -211,10 +219,14 @@ class ProactiveAlignmentLayer:
             try:
                 # SECURITY: Sanitize all user inputs to prevent prompt injection
                 safe_party = create_safe_prompt_section("PARTY", party, MAX_AUTHOR_LENGTH)
-                safe_statement = create_safe_prompt_section("STATEMENT", statement, MAX_CONTENT_LENGTH)
+                safe_statement = create_safe_prompt_section(
+                    "STATEMENT", statement, MAX_CONTENT_LENGTH
+                )
                 safe_context = ""
                 if context:
-                    safe_context = create_safe_prompt_section("CONTEXT", context, MAX_CONTENT_LENGTH)
+                    safe_context = create_safe_prompt_section(
+                        "CONTEXT", context, MAX_CONTENT_LENGTH
+                    )
 
                 prompt = f"""Extract negotiation intent from this statement.
 
@@ -238,15 +250,13 @@ Return JSON:
 }}"""
 
                 message = self.client.messages.create(
-                    model=self.model,
-                    max_tokens=512,
-                    messages=[{"role": "user", "content": prompt}]
+                    model=self.model, max_tokens=512, messages=[{"role": "user", "content": prompt}]
                 )
 
                 # Safe access to API response
                 if not message.content:
                     raise ValueError("Empty response from API: no content returned")
-                if not hasattr(message.content[0], 'text'):
+                if not hasattr(message.content[0], "text"):
                     raise ValueError("Invalid API response format: missing 'text' attribute")
 
                 response_text = message.content[0].text
@@ -259,7 +269,7 @@ Return JSON:
                     priorities=result.get("priorities", {}),
                     flexibility=result.get("flexibility", {}),
                     batna=result.get("batna"),
-                    reservation_point=result.get("reservation_point")
+                    reservation_point=result.get("reservation_point"),
                 )
 
             except Exception as e:
@@ -267,18 +277,10 @@ Return JSON:
 
         # Fallback: basic extraction
         return Intent(
-            party=party,
-            objectives=[statement],
-            constraints=[],
-            priorities={},
-            flexibility={}
+            party=party, objectives=[statement], constraints=[], priorities={}, flexibility={}
         )
 
-    def compute_alignment(
-        self,
-        intent_a: Intent,
-        intent_b: Intent
-    ) -> tuple[float, dict[str, Any]]:
+    def compute_alignment(self, intent_a: Intent, intent_b: Intent) -> tuple[float, dict[str, Any]]:
         """
         Compute alignment between two intents.
 
@@ -292,21 +294,35 @@ Return JSON:
         if self.client:
             try:
                 # SECURITY: Sanitize intent data by converting to controlled format
-                intent_a_data = json.dumps({
-                    "party": sanitize_prompt_input(intent_a.party, MAX_AUTHOR_LENGTH, "party_a"),
-                    "objectives": intent_a.objectives[:10],  # Limit list size
-                    "constraints": intent_a.constraints[:10],
-                    "priorities": dict(list(intent_a.priorities.items())[:10])
-                }, indent=2)
-                intent_b_data = json.dumps({
-                    "party": sanitize_prompt_input(intent_b.party, MAX_AUTHOR_LENGTH, "party_b"),
-                    "objectives": intent_b.objectives[:10],
-                    "constraints": intent_b.constraints[:10],
-                    "priorities": dict(list(intent_b.priorities.items())[:10])
-                }, indent=2)
+                intent_a_data = json.dumps(
+                    {
+                        "party": sanitize_prompt_input(
+                            intent_a.party, MAX_AUTHOR_LENGTH, "party_a"
+                        ),
+                        "objectives": intent_a.objectives[:10],  # Limit list size
+                        "constraints": intent_a.constraints[:10],
+                        "priorities": dict(list(intent_a.priorities.items())[:10]),
+                    },
+                    indent=2,
+                )
+                intent_b_data = json.dumps(
+                    {
+                        "party": sanitize_prompt_input(
+                            intent_b.party, MAX_AUTHOR_LENGTH, "party_b"
+                        ),
+                        "objectives": intent_b.objectives[:10],
+                        "constraints": intent_b.constraints[:10],
+                        "priorities": dict(list(intent_b.priorities.items())[:10]),
+                    },
+                    indent=2,
+                )
 
-                safe_intent_a = create_safe_prompt_section("PARTY_A_INTENT", intent_a_data, MAX_CONTENT_LENGTH)
-                safe_intent_b = create_safe_prompt_section("PARTY_B_INTENT", intent_b_data, MAX_CONTENT_LENGTH)
+                safe_intent_a = create_safe_prompt_section(
+                    "PARTY_A_INTENT", intent_a_data, MAX_CONTENT_LENGTH
+                )
+                safe_intent_b = create_safe_prompt_section(
+                    "PARTY_B_INTENT", intent_b_data, MAX_CONTENT_LENGTH
+                )
 
                 prompt = f"""Analyze alignment between these negotiation intents.
 
@@ -330,16 +346,18 @@ Return JSON:
 }}"""
 
                 message = self.client.messages.create(
-                    model=self.model,
-                    max_tokens=512,
-                    messages=[{"role": "user", "content": prompt}]
+                    model=self.model, max_tokens=512, messages=[{"role": "user", "content": prompt}]
                 )
 
                 # Safe access to API response
                 if not message.content:
-                    raise ValueError("Empty response from API: no content returned during alignment computation")
-                if not hasattr(message.content[0], 'text'):
-                    raise ValueError("Invalid API response format: missing 'text' attribute in alignment computation")
+                    raise ValueError(
+                        "Empty response from API: no content returned during alignment computation"
+                    )
+                if not hasattr(message.content[0], "text"):
+                    raise ValueError(
+                        "Invalid API response format: missing 'text' attribute in alignment computation"
+                    )
 
                 response_text = message.content[0].text
                 result = self._parse_json(response_text)
@@ -354,13 +372,11 @@ Return JSON:
             "alignment_level": "moderate",
             "aligned_objectives": [],
             "conflicting_objectives": [],
-            "strategy_suggestions": ["Use LLM for detailed analysis"]
+            "strategy_suggestions": ["Use LLM for detailed analysis"],
         }
 
     def suggest_alignment_strategy(
-        self,
-        alignment_details: dict[str, Any],
-        for_party: str
+        self, alignment_details: dict[str, Any], for_party: str
     ) -> list[dict[str, str]]:
         """
         Suggest strategies to improve alignment.
@@ -378,37 +394,47 @@ Return JSON:
         level = alignment_details.get("alignment_level", "moderate")
 
         if level == "strong":
-            strategies.append({
-                "strategy": "Fast-track to agreement",
-                "rationale": "High alignment suggests quick resolution possible",
-                "action": "Propose final terms based on zone of agreement"
-            })
+            strategies.append(
+                {
+                    "strategy": "Fast-track to agreement",
+                    "rationale": "High alignment suggests quick resolution possible",
+                    "action": "Propose final terms based on zone of agreement",
+                }
+            )
         elif level == "moderate":
-            strategies.append({
-                "strategy": "Focus on complementary needs",
-                "rationale": "Find win-win by trading complementary items",
-                "action": "Package offers that address other party's priorities"
-            })
+            strategies.append(
+                {
+                    "strategy": "Focus on complementary needs",
+                    "rationale": "Find win-win by trading complementary items",
+                    "action": "Package offers that address other party's priorities",
+                }
+            )
         elif level == "weak":
-            strategies.append({
-                "strategy": "Build common ground first",
-                "rationale": "Establish trust before tackling conflicts",
-                "action": "Start with aligned objectives to build momentum"
-            })
+            strategies.append(
+                {
+                    "strategy": "Build common ground first",
+                    "rationale": "Establish trust before tackling conflicts",
+                    "action": "Start with aligned objectives to build momentum",
+                }
+            )
         else:
-            strategies.append({
-                "strategy": "Reassess feasibility",
-                "rationale": "Low alignment may indicate incompatible parties",
-                "action": "Consider BATNA or find creative restructuring"
-            })
+            strategies.append(
+                {
+                    "strategy": "Reassess feasibility",
+                    "rationale": "Low alignment may indicate incompatible parties",
+                    "action": "Consider BATNA or find creative restructuring",
+                }
+            )
 
         # Add specific suggestions from alignment
         for suggestion in alignment_details.get("strategy_suggestions", []):
-            strategies.append({
-                "strategy": suggestion,
-                "rationale": "AI-recommended based on intent analysis",
-                "action": "Implement as appropriate"
-            })
+            strategies.append(
+                {
+                    "strategy": suggestion,
+                    "rationale": "AI-recommended based on intent analysis",
+                    "action": "Implement as appropriate",
+                }
+            )
 
         return strategies
 
@@ -434,7 +460,9 @@ Return JSON:
             json_start = text.find("```json") + 7
             json_end = text.find("```", json_start)
             if json_end == -1:
-                raise ValueError("Malformed response: unclosed JSON code block in alignment response")
+                raise ValueError(
+                    "Malformed response: unclosed JSON code block in alignment response"
+                )
             text = text[json_start:json_end].strip()
         elif "```" in text:
             json_start = text.find("```") + 3
@@ -444,17 +472,22 @@ Return JSON:
             text = text[json_start:json_end].strip()
 
         if not text:
-            raise ValueError(f"No JSON content found after extraction from response: {original_text[:100]}...")
+            raise ValueError(
+                f"No JSON content found after extraction from response: {original_text[:100]}..."
+            )
 
         try:
             return json.loads(text)
         except json.JSONDecodeError as e:
-            raise ValueError(f"Failed to parse JSON in alignment layer: {e.msg} at position {e.pos}. Content: {text[:100]}...")
+            raise ValueError(
+                f"Failed to parse JSON in alignment layer: {e.msg} at position {e.pos}. Content: {text[:100]}..."
+            )
 
 
 # ============================================================
 # Clause Generator
 # ============================================================
+
 
 class ClauseGenerator:
     """
@@ -476,7 +509,7 @@ class ClauseGenerator:
         ClauseType.LIABILITY: "Liability shall be limited to {limit}. Neither party shall be liable for {exclusions}.",
         ClauseType.TERMINATION: "Either party may terminate this agreement with {notice_period} written notice. Upon termination, {consequences}.",
         ClauseType.DISPUTE_RESOLUTION: "Disputes shall be resolved through {method} in {jurisdiction}. Costs shall be borne by {cost_allocation}.",
-        ClauseType.CONFIDENTIALITY: "All {scope} information shall remain confidential for {duration} following {trigger}."
+        ClauseType.CONFIDENTIALITY: "All {scope} information shall remain confidential for {duration} following {trigger}.",
     }
 
     def __init__(self, client=None):
@@ -489,7 +522,7 @@ class ClauseGenerator:
         clause_type: ClauseType,
         parameters: dict[str, str],
         context: str | None = None,
-        style: str = "formal"
+        style: str = "formal",
     ) -> Clause:
         """
         Generate a contract clause.
@@ -533,16 +566,18 @@ Return JSON:
 }}"""
 
                 message = self.client.messages.create(
-                    model=self.model,
-                    max_tokens=512,
-                    messages=[{"role": "user", "content": prompt}]
+                    model=self.model, max_tokens=512, messages=[{"role": "user", "content": prompt}]
                 )
 
                 # Safe access to API response
                 if not message.content:
-                    raise ValueError("Empty response from API: no content returned during clause generation")
-                if not hasattr(message.content[0], 'text'):
-                    raise ValueError("Invalid API response format: missing 'text' attribute in clause generation")
+                    raise ValueError(
+                        "Empty response from API: no content returned during clause generation"
+                    )
+                if not hasattr(message.content[0], "text"):
+                    raise ValueError(
+                        "Invalid API response format: missing 'text' attribute in clause generation"
+                    )
 
                 response_text = message.content[0].text
                 result = self._parse_json(response_text)
@@ -552,7 +587,7 @@ Return JSON:
                     clause_type=clause_type,
                     content=result.get("refined_clause", base_content),
                     proposed_by="system",
-                    alternatives=result.get("alternatives", [])
+                    alternatives=result.get("alternatives", []),
                 )
 
             except Exception as e:
@@ -560,16 +595,11 @@ Return JSON:
 
         # Return template-based clause
         return Clause(
-            clause_id=clause_id,
-            clause_type=clause_type,
-            content=base_content,
-            proposed_by="system"
+            clause_id=clause_id, clause_type=clause_type, content=base_content, proposed_by="system"
         )
 
     def generate_full_contract(
-        self,
-        session: NegotiationSession,
-        agreed_terms: dict[str, Any]
+        self, session: NegotiationSession, agreed_terms: dict[str, Any]
     ) -> str:
         """
         Generate a full contract from agreed terms.
@@ -595,7 +625,7 @@ AGREED TERMS:
 {json.dumps(agreed_terms, indent=2)}
 
 CLAUSES AGREED:
-{json.dumps([c.content for c in session.clauses.values() if c.status == 'accepted'], indent=2)}
+{json.dumps([c.content for c in session.clauses.values() if c.status == "accepted"], indent=2)}
 
 Generate a professional contract document that:
 1. Has proper preamble identifying parties
@@ -607,14 +637,18 @@ Generate a professional contract document that:
                 message = self.client.messages.create(
                     model=self.model,
                     max_tokens=2000,
-                    messages=[{"role": "user", "content": prompt}]
+                    messages=[{"role": "user", "content": prompt}],
                 )
 
                 # Safe access to API response
                 if not message.content:
-                    raise ValueError("Empty response from API: no content returned during contract generation")
-                if not hasattr(message.content[0], 'text'):
-                    raise ValueError("Invalid API response format: missing 'text' attribute in contract generation")
+                    raise ValueError(
+                        "Empty response from API: no content returned during contract generation"
+                    )
+                if not hasattr(message.content[0], "text"):
+                    raise ValueError(
+                        "Invalid API response format: missing 'text' attribute in contract generation"
+                    )
 
                 return message.content[0].text.strip()
 
@@ -625,9 +659,7 @@ Generate a professional contract document that:
         return self._generate_basic_contract(session, agreed_terms)
 
     def _generate_basic_contract(
-        self,
-        session: NegotiationSession,
-        agreed_terms: dict[str, Any]
+        self, session: NegotiationSession, agreed_terms: dict[str, Any]
     ) -> str:
         """Generate a basic contract without LLM."""
         lines = [
@@ -649,21 +681,25 @@ Generate a professional contract document that:
         for key, value in agreed_terms.items():
             lines.append(f"  {key}: {value}")
 
-        lines.extend([
-            "",
-            "CLAUSES:",
-        ])
+        lines.extend(
+            [
+                "",
+                "CLAUSES:",
+            ]
+        )
 
         for clause in session.clauses.values():
             if clause.status == "accepted":
                 lines.append(f"  {clause.clause_type.value}: {clause.content}")
 
-        lines.extend([
-            "",
-            "SIGNATURES:",
-            f"  {session.initiator}: _________________",
-            f"  {session.counterparty}: _________________",
-        ])
+        lines.extend(
+            [
+                "",
+                "SIGNATURES:",
+                f"  {session.initiator}: _________________",
+                f"  {session.counterparty}: _________________",
+            ]
+        )
 
         return "\n".join(lines)
 
@@ -699,17 +735,22 @@ Generate a professional contract document that:
             text = text[json_start:json_end].strip()
 
         if not text:
-            raise ValueError(f"No JSON content found in clause generator response: {original_text[:100]}...")
+            raise ValueError(
+                f"No JSON content found in clause generator response: {original_text[:100]}..."
+            )
 
         try:
             return json.loads(text)
         except json.JSONDecodeError as e:
-            raise ValueError(f"Failed to parse JSON in clause generator: {e.msg} at position {e.pos}. Content: {text[:100]}...")
+            raise ValueError(
+                f"Failed to parse JSON in clause generator: {e.msg} at position {e.pos}. Content: {text[:100]}..."
+            )
 
 
 # ============================================================
 # Counter-Offer Drafter
 # ============================================================
+
 
 class CounterOfferDrafter:
     """
@@ -733,7 +774,7 @@ class CounterOfferDrafter:
         session: NegotiationSession,
         received_offer: Offer,
         party_intent: Intent,
-        strategy: str = "balanced"
+        strategy: str = "balanced",
     ) -> Offer:
         """
         Draft a counter-offer to a received offer.
@@ -748,7 +789,11 @@ class CounterOfferDrafter:
             Counter-offer
         """
         offer_id = f"OFFER-{secrets.token_hex(6).upper()}"
-        responding_party = session.counterparty if received_offer.from_party == session.initiator else session.initiator
+        responding_party = (
+            session.counterparty
+            if received_offer.from_party == session.initiator
+            else session.initiator
+        )
 
         if self.client:
             try:
@@ -756,24 +801,39 @@ class CounterOfferDrafter:
                 concessions = self.concession_history.get(session.session_id, [])
 
                 # SECURITY: Sanitize all user inputs
-                safe_from_party = sanitize_prompt_input(received_offer.from_party, MAX_AUTHOR_LENGTH, "from_party")
+                safe_from_party = sanitize_prompt_input(
+                    received_offer.from_party, MAX_AUTHOR_LENGTH, "from_party"
+                )
                 safe_terms = json.dumps(received_offer.terms, indent=2)[:MAX_CONTENT_LENGTH]
-                safe_message = sanitize_prompt_input(received_offer.message, MAX_CONTENT_LENGTH, "message")
-                safe_responding = sanitize_prompt_input(responding_party, MAX_AUTHOR_LENGTH, "responding_party")
+                safe_message = sanitize_prompt_input(
+                    received_offer.message, MAX_CONTENT_LENGTH, "message"
+                )
+                safe_responding = sanitize_prompt_input(
+                    responding_party, MAX_AUTHOR_LENGTH, "responding_party"
+                )
 
-                offer_data = create_safe_prompt_section("RECEIVED_OFFER", f"""
+                offer_data = create_safe_prompt_section(
+                    "RECEIVED_OFFER",
+                    f"""
 From: {safe_from_party}
 Terms: {safe_terms}
 Message: {safe_message}
-""", MAX_CONTENT_LENGTH)
+""",
+                    MAX_CONTENT_LENGTH,
+                )
 
-                intent_data = json.dumps({
-                    "objectives": party_intent.objectives[:10],
-                    "constraints": party_intent.constraints[:10],
-                    "priorities": dict(list(party_intent.priorities.items())[:10]),
-                    "flexibility": dict(list(party_intent.flexibility.items())[:10])
-                }, indent=2)
-                safe_intent = create_safe_prompt_section("YOUR_INTENT", intent_data, MAX_CONTENT_LENGTH)
+                intent_data = json.dumps(
+                    {
+                        "objectives": party_intent.objectives[:10],
+                        "constraints": party_intent.constraints[:10],
+                        "priorities": dict(list(party_intent.priorities.items())[:10]),
+                        "flexibility": dict(list(party_intent.flexibility.items())[:10]),
+                    },
+                    indent=2,
+                )
+                safe_intent = create_safe_prompt_section(
+                    "YOUR_INTENT", intent_data, MAX_CONTENT_LENGTH
+                )
 
                 prompt = f"""Draft a counter-offer for this negotiation.
 
@@ -808,16 +868,18 @@ Return JSON:
 }}"""
 
                 message = self.client.messages.create(
-                    model=self.model,
-                    max_tokens=512,
-                    messages=[{"role": "user", "content": prompt}]
+                    model=self.model, max_tokens=512, messages=[{"role": "user", "content": prompt}]
                 )
 
                 # Safe access to API response
                 if not message.content:
-                    raise ValueError("Empty response from API: no content returned during counter-offer drafting")
-                if not hasattr(message.content[0], 'text'):
-                    raise ValueError("Invalid API response format: missing 'text' attribute in counter-offer drafting")
+                    raise ValueError(
+                        "Empty response from API: no content returned during counter-offer drafting"
+                    )
+                if not hasattr(message.content[0], "text"):
+                    raise ValueError(
+                        "Invalid API response format: missing 'text' attribute in counter-offer drafting"
+                    )
 
                 response_text = message.content[0].text
                 result = self._parse_json(response_text)
@@ -825,10 +887,12 @@ Return JSON:
                 # Track concessions
                 if session.session_id not in self.concession_history:
                     self.concession_history[session.session_id] = []
-                self.concession_history[session.session_id].append({
-                    "round": session.round_count + 1,
-                    "concessions": result.get("concessions_made", [])
-                })
+                self.concession_history[session.session_id].append(
+                    {
+                        "round": session.round_count + 1,
+                        "concessions": result.get("concessions_made", []),
+                    }
+                )
 
                 return Offer(
                     offer_id=offer_id,
@@ -837,14 +901,16 @@ Return JSON:
                     to_party=received_offer.from_party,
                     terms=result.get("counter_terms", {}),
                     clauses=[],
-                    message=result.get("message", "Counter-offer attached.")
+                    message=result.get("message", "Counter-offer attached."),
                 )
 
             except Exception as e:
                 print(f"Counter-offer drafting failed: {e}")
 
         # Fallback: simple counter
-        return self._draft_basic_counter(session, received_offer, party_intent, responding_party, offer_id)
+        return self._draft_basic_counter(
+            session, received_offer, party_intent, responding_party, offer_id
+        )
 
     def _draft_basic_counter(
         self,
@@ -852,7 +918,7 @@ Return JSON:
         received_offer: Offer,
         party_intent: Intent,
         responding_party: str,
-        offer_id: str
+        offer_id: str,
     ) -> Offer:
         """Draft a basic counter-offer without LLM."""
         # Start with received terms
@@ -863,7 +929,11 @@ Return JSON:
             if priority >= 7 and term in party_intent.constraints:
                 # High priority constraint - don't compromise
                 if term in counter_terms:
-                    counter_terms[term] = party_intent.reservation_point.get(term, counter_terms[term]) if party_intent.reservation_point else counter_terms[term]
+                    counter_terms[term] = (
+                        party_intent.reservation_point.get(term, counter_terms[term])
+                        if party_intent.reservation_point
+                        else counter_terms[term]
+                    )
 
         return Offer(
             offer_id=offer_id,
@@ -872,14 +942,10 @@ Return JSON:
             to_party=received_offer.from_party,
             terms=counter_terms,
             clauses=[],
-            message="Please consider this counter-proposal addressing key concerns."
+            message="Please consider this counter-proposal addressing key concerns.",
         )
 
-    def evaluate_offer(
-        self,
-        offer: Offer,
-        party_intent: Intent
-    ) -> dict[str, Any]:
+    def evaluate_offer(self, offer: Offer, party_intent: Intent) -> dict[str, Any]:
         """
         Evaluate an offer against party's intent.
 
@@ -895,7 +961,7 @@ Return JSON:
             "score": 0.0,
             "satisfied_objectives": [],
             "violated_constraints": [],
-            "priority_alignment": {}
+            "priority_alignment": {},
         }
 
         # Check constraints
@@ -912,15 +978,13 @@ Return JSON:
 
         # Calculate score
         if party_intent.objectives:
-            evaluation["score"] = len(evaluation["satisfied_objectives"]) / len(party_intent.objectives)
+            evaluation["score"] = len(evaluation["satisfied_objectives"]) / len(
+                party_intent.objectives
+            )
 
         return evaluation
 
-    def suggest_final_offer(
-        self,
-        session: NegotiationSession,
-        party_intent: Intent
-    ) -> Offer:
+    def suggest_final_offer(self, session: NegotiationSession, party_intent: Intent) -> Offer:
         """
         Suggest a final offer to close the negotiation.
 
@@ -941,7 +1005,7 @@ SESSION: {session.session_id}
 ROUNDS COMPLETED: {session.round_count}
 
 OFFER HISTORY:
-{json.dumps([{'from': o.from_party, 'terms': o.terms} for o in session.offers[-4:]], indent=2)}
+{json.dumps([{"from": o.from_party, "terms": o.terms} for o in session.offers[-4:]], indent=2)}
 
 YOUR INTENT:
 - Objectives: {json.dumps(party_intent.objectives)}
@@ -962,16 +1026,18 @@ Return JSON:
 }}"""
 
                 message = self.client.messages.create(
-                    model=self.model,
-                    max_tokens=512,
-                    messages=[{"role": "user", "content": prompt}]
+                    model=self.model, max_tokens=512, messages=[{"role": "user", "content": prompt}]
                 )
 
                 # Safe access to API response
                 if not message.content:
-                    raise ValueError("Empty response from API: no content returned during final offer generation")
-                if not hasattr(message.content[0], 'text'):
-                    raise ValueError("Invalid API response format: missing 'text' attribute in final offer generation")
+                    raise ValueError(
+                        "Empty response from API: no content returned during final offer generation"
+                    )
+                if not hasattr(message.content[0], "text"):
+                    raise ValueError(
+                        "Invalid API response format: missing 'text' attribute in final offer generation"
+                    )
 
                 response_text = message.content[0].text
                 result = self._parse_json(response_text)
@@ -980,10 +1046,12 @@ Return JSON:
                     offer_id=offer_id,
                     offer_type=OfferType.FINAL,
                     from_party=party_intent.party,
-                    to_party=session.counterparty if party_intent.party == session.initiator else session.initiator,
+                    to_party=session.counterparty
+                    if party_intent.party == session.initiator
+                    else session.initiator,
                     terms=result.get("final_terms", session.current_terms),
                     clauses=list(session.clauses.keys()),
-                    message=result.get("message", "This is my final offer.")
+                    message=result.get("message", "This is my final offer."),
                 )
 
             except Exception as e:
@@ -994,10 +1062,12 @@ Return JSON:
             offer_id=offer_id,
             offer_type=OfferType.FINAL,
             from_party=party_intent.party,
-            to_party=session.counterparty if party_intent.party == session.initiator else session.initiator,
+            to_party=session.counterparty
+            if party_intent.party == session.initiator
+            else session.initiator,
             terms=session.current_terms,
             clauses=list(session.clauses.keys()),
-            message="This is my final offer for your consideration."
+            message="This is my final offer for your consideration.",
         )
 
     def _parse_json(self, text: str) -> dict[str, Any]:
@@ -1032,17 +1102,22 @@ Return JSON:
             text = text[json_start:json_end].strip()
 
         if not text:
-            raise ValueError(f"No JSON content found in counter-offer response: {original_text[:100]}...")
+            raise ValueError(
+                f"No JSON content found in counter-offer response: {original_text[:100]}..."
+            )
 
         try:
             return json.loads(text)
         except json.JSONDecodeError as e:
-            raise ValueError(f"Failed to parse JSON in counter-offer drafter: {e.msg} at position {e.pos}. Content: {text[:100]}...")
+            raise ValueError(
+                f"Failed to parse JSON in counter-offer drafter: {e.msg} at position {e.pos}. Content: {text[:100]}..."
+            )
 
 
 # ============================================================
 # Main Negotiation Engine
 # ============================================================
+
 
 class AutomatedNegotiationEngine:
     """
@@ -1085,7 +1160,7 @@ class AutomatedNegotiationEngine:
         counterparty: str,
         subject: str,
         initiator_statement: str,
-        initial_terms: dict[str, Any] | None = None
+        initial_terms: dict[str, Any] | None = None,
     ) -> tuple[bool, dict[str, Any]]:
         """
         Initiate a new negotiation session.
@@ -1104,9 +1179,7 @@ class AutomatedNegotiationEngine:
 
         # Extract initiator intent
         initiator_intent = self.alignment_layer.extract_intent(
-            initiator,
-            initiator_statement,
-            f"Negotiation about: {subject}"
+            initiator, initiator_statement, f"Negotiation about: {subject}"
         )
 
         # Create session
@@ -1119,17 +1192,20 @@ class AutomatedNegotiationEngine:
             initiator_intent=initiator_intent,
             current_terms=initial_terms or {},
             expires_at=(datetime.utcnow() + timedelta(hours=self.SESSION_EXPIRY_HOURS)).isoformat(),
-            max_rounds=self.MAX_ROUNDS
+            max_rounds=self.MAX_ROUNDS,
         )
 
         self.sessions[session_id] = session
 
-        self._log_audit("session_initiated", {
-            "session_id": session_id,
-            "initiator": initiator,
-            "counterparty": counterparty,
-            "subject": subject
-        })
+        self._log_audit(
+            "session_initiated",
+            {
+                "session_id": session_id,
+                "initiator": initiator,
+                "counterparty": counterparty,
+                "subject": subject,
+            },
+        )
 
         return True, {
             "session_id": session_id,
@@ -1140,14 +1216,11 @@ class AutomatedNegotiationEngine:
             "subject": subject,
             "initial_terms": initial_terms,
             "expires_at": session.expires_at,
-            "next_action": f"Awaiting {counterparty} to join and state intent"
+            "next_action": f"Awaiting {counterparty} to join and state intent",
         }
 
     def join_session(
-        self,
-        session_id: str,
-        counterparty: str,
-        counterparty_statement: str
+        self, session_id: str, counterparty: str, counterparty_statement: str
     ) -> tuple[bool, dict[str, Any]]:
         """
         Counterparty joins a negotiation session.
@@ -1173,9 +1246,7 @@ class AutomatedNegotiationEngine:
 
         # Extract counterparty intent
         counterparty_intent = self.alignment_layer.extract_intent(
-            counterparty,
-            counterparty_statement,
-            f"Negotiation about: {session.subject}"
+            counterparty, counterparty_statement, f"Negotiation about: {session.subject}"
         )
 
         session.counterparty_intent = counterparty_intent
@@ -1184,16 +1255,18 @@ class AutomatedNegotiationEngine:
 
         # Compute alignment
         alignment_score, alignment_details = self.alignment_layer.compute_alignment(
-            session.initiator_intent,
-            session.counterparty_intent
+            session.initiator_intent, session.counterparty_intent
         )
         session.alignment_score = alignment_score
 
-        self._log_audit("session_joined", {
-            "session_id": session_id,
-            "counterparty": counterparty,
-            "alignment_score": alignment_score
-        })
+        self._log_audit(
+            "session_joined",
+            {
+                "session_id": session_id,
+                "counterparty": counterparty,
+                "alignment_score": alignment_score,
+            },
+        )
 
         return True, {
             "session_id": session_id,
@@ -1204,14 +1277,10 @@ class AutomatedNegotiationEngine:
             "aligned_objectives": alignment_details.get("aligned_objectives", []),
             "conflicting_objectives": alignment_details.get("conflicting_objectives", []),
             "zone_of_possible_agreement": alignment_details.get("zone_of_possible_agreement", {}),
-            "next_action": "Proceed to clause drafting or make initial offer"
+            "next_action": "Proceed to clause drafting or make initial offer",
         }
 
-    def advance_phase(
-        self,
-        session_id: str,
-        party: str
-    ) -> tuple[bool, dict[str, Any]]:
+    def advance_phase(self, session_id: str, party: str) -> tuple[bool, dict[str, Any]]:
         """
         Advance session to next phase.
 
@@ -1244,26 +1313,25 @@ class AutomatedNegotiationEngine:
 
         session.updated_at = datetime.utcnow().isoformat()
 
-        self._log_audit("phase_advanced", {
-            "session_id": session_id,
-            "from_phase": old_phase.value,
-            "to_phase": session.phase.value
-        })
+        self._log_audit(
+            "phase_advanced",
+            {
+                "session_id": session_id,
+                "from_phase": old_phase.value,
+                "to_phase": session.phase.value,
+            },
+        )
 
         return True, {
             "session_id": session_id,
             "previous_phase": old_phase.value,
-            "current_phase": session.phase.value
+            "current_phase": session.phase.value,
         }
 
     # ===== Clause Management =====
 
     def add_clause(
-        self,
-        session_id: str,
-        clause_type: ClauseType,
-        parameters: dict[str, str],
-        proposed_by: str
+        self, session_id: str, clause_type: ClauseType, parameters: dict[str, str], proposed_by: str
     ) -> tuple[bool, dict[str, Any]]:
         """
         Add a clause to the session.
@@ -1286,29 +1354,28 @@ class AutomatedNegotiationEngine:
             return False, {"error": "Not a party to this session"}
 
         # Generate clause
-        clause = self.clause_generator.generate_clause(
-            clause_type,
-            parameters,
-            session.subject
-        )
+        clause = self.clause_generator.generate_clause(clause_type, parameters, session.subject)
         clause.proposed_by = proposed_by
 
         session.clauses[clause.clause_id] = clause
         session.updated_at = datetime.utcnow().isoformat()
 
-        self._log_audit("clause_added", {
-            "session_id": session_id,
-            "clause_id": clause.clause_id,
-            "clause_type": clause_type.value,
-            "proposed_by": proposed_by
-        })
+        self._log_audit(
+            "clause_added",
+            {
+                "session_id": session_id,
+                "clause_id": clause.clause_id,
+                "clause_type": clause_type.value,
+                "proposed_by": proposed_by,
+            },
+        )
 
         return True, {
             "clause_id": clause.clause_id,
             "clause_type": clause_type.value,
             "content": clause.content,
             "alternatives": clause.alternatives,
-            "status": clause.status
+            "status": clause.status,
         }
 
     def respond_to_clause(
@@ -1317,7 +1384,7 @@ class AutomatedNegotiationEngine:
         clause_id: str,
         party: str,
         response: str,
-        modified_content: str | None = None
+        modified_content: str | None = None,
     ) -> tuple[bool, dict[str, Any]]:
         """
         Respond to a proposed clause.
@@ -1354,18 +1421,17 @@ class AutomatedNegotiationEngine:
 
         session.updated_at = datetime.utcnow().isoformat()
 
-        self._log_audit("clause_response", {
-            "session_id": session_id,
-            "clause_id": clause_id,
-            "response": response,
-            "party": party
-        })
+        self._log_audit(
+            "clause_response",
+            {
+                "session_id": session_id,
+                "clause_id": clause_id,
+                "response": response,
+                "party": party,
+            },
+        )
 
-        return True, {
-            "clause_id": clause_id,
-            "status": clause.status,
-            "content": clause.content
-        }
+        return True, {"clause_id": clause_id, "status": clause.status, "content": clause.content}
 
     # ===== Offer Management =====
 
@@ -1375,7 +1441,7 @@ class AutomatedNegotiationEngine:
         from_party: str,
         terms: dict[str, Any],
         message: str,
-        offer_type: OfferType = OfferType.INITIAL
+        offer_type: OfferType = OfferType.INITIAL,
     ) -> tuple[bool, dict[str, Any]]:
         """
         Make an offer in the negotiation.
@@ -1411,7 +1477,7 @@ class AutomatedNegotiationEngine:
             to_party=to_party,
             terms=terms,
             clauses=list(session.clauses.keys()),
-            message=message
+            message=message,
         )
 
         session.offers.append(offer)
@@ -1422,12 +1488,15 @@ class AutomatedNegotiationEngine:
         if session.phase == NegotiationPhase.INTENT_ALIGNMENT:
             session.phase = NegotiationPhase.NEGOTIATING
 
-        self._log_audit("offer_made", {
-            "session_id": session_id,
-            "offer_id": offer_id,
-            "from_party": from_party,
-            "round": session.round_count
-        })
+        self._log_audit(
+            "offer_made",
+            {
+                "session_id": session_id,
+                "offer_id": offer_id,
+                "from_party": from_party,
+                "round": session.round_count,
+            },
+        )
 
         return True, {
             "offer_id": offer_id,
@@ -1436,7 +1505,7 @@ class AutomatedNegotiationEngine:
             "to": to_party,
             "terms": terms,
             "round": session.round_count,
-            "max_rounds": session.max_rounds
+            "max_rounds": session.max_rounds,
         }
 
     def respond_to_offer(
@@ -1446,7 +1515,7 @@ class AutomatedNegotiationEngine:
         party: str,
         response: str,
         counter_terms: dict[str, Any] | None = None,
-        message: str | None = None
+        message: str | None = None,
     ) -> tuple[bool, dict[str, Any]]:
         """
         Respond to an offer.
@@ -1482,30 +1551,26 @@ class AutomatedNegotiationEngine:
             session.phase = NegotiationPhase.AGREED
             session.agreed_terms = offer.terms
 
-            self._log_audit("offer_accepted", {
-                "session_id": session_id,
-                "offer_id": offer_id,
-                "agreed_terms": offer.terms
-            })
+            self._log_audit(
+                "offer_accepted",
+                {"session_id": session_id, "offer_id": offer_id, "agreed_terms": offer.terms},
+            )
 
             return True, {
                 "status": "agreed",
                 "session_id": session_id,
                 "agreed_terms": offer.terms,
-                "message": "Agreement reached!"
+                "message": "Agreement reached!",
             }
 
         elif response == "reject":
-            self._log_audit("offer_rejected", {
-                "session_id": session_id,
-                "offer_id": offer_id
-            })
+            self._log_audit("offer_rejected", {"session_id": session_id, "offer_id": offer_id})
 
             return True, {
                 "status": "rejected",
                 "session_id": session_id,
                 "round": session.round_count,
-                "max_rounds": session.max_rounds
+                "max_rounds": session.max_rounds,
             }
 
         elif response == "counter":
@@ -1518,16 +1583,13 @@ class AutomatedNegotiationEngine:
                 party,
                 counter_terms,
                 message or "Counter-offer attached.",
-                OfferType.COUNTER
+                OfferType.COUNTER,
             )
 
         return False, {"error": "Invalid response"}
 
     def auto_draft_counter(
-        self,
-        session_id: str,
-        party: str,
-        strategy: str = "balanced"
+        self, session_id: str, party: str, strategy: str = "balanced"
     ) -> tuple[bool, dict[str, Any]]:
         """
         Automatically draft a counter-offer.
@@ -1553,34 +1615,25 @@ class AutomatedNegotiationEngine:
             return False, {"error": "Cannot counter your own offer"}
 
         # Get party's intent
-        party_intent = session.initiator_intent if party == session.initiator else session.counterparty_intent
+        party_intent = (
+            session.initiator_intent if party == session.initiator else session.counterparty_intent
+        )
         if not party_intent:
             return False, {"error": "Party intent not set"}
 
         # Draft counter-offer
         counter_offer = self.counter_drafter.draft_counter_offer(
-            session,
-            latest_offer,
-            party_intent,
-            strategy
+            session, latest_offer, party_intent, strategy
         )
 
         # Make the offer
         return self.make_offer(
-            session_id,
-            party,
-            counter_offer.terms,
-            counter_offer.message,
-            OfferType.COUNTER
+            session_id, party, counter_offer.terms, counter_offer.message, OfferType.COUNTER
         )
 
     # ===== Agreement & Finalization =====
 
-    def finalize_agreement(
-        self,
-        session_id: str,
-        party: str
-    ) -> tuple[bool, dict[str, Any]]:
+    def finalize_agreement(self, session_id: str, party: str) -> tuple[bool, dict[str, Any]]:
         """
         Finalize an agreed negotiation into a contract.
 
@@ -1603,18 +1656,14 @@ class AutomatedNegotiationEngine:
             return False, {"error": "No agreed terms found"}
 
         # Generate full contract
-        contract_text = self.clause_generator.generate_full_contract(
-            session,
-            session.agreed_terms
-        )
+        contract_text = self.clause_generator.generate_full_contract(session, session.agreed_terms)
 
         # Generate contract hash
         contract_hash = "0x" + hashlib.sha256(contract_text.encode()).hexdigest()
 
-        self._log_audit("agreement_finalized", {
-            "session_id": session_id,
-            "contract_hash": contract_hash
-        })
+        self._log_audit(
+            "agreement_finalized", {"session_id": session_id, "contract_hash": contract_hash}
+        )
 
         return True, {
             "session_id": session_id,
@@ -1622,12 +1671,9 @@ class AutomatedNegotiationEngine:
             "contract_hash": contract_hash,
             "contract_text": contract_text,
             "agreed_terms": session.agreed_terms,
-            "parties": {
-                "initiator": session.initiator,
-                "counterparty": session.counterparty
-            },
+            "parties": {"initiator": session.initiator, "counterparty": session.counterparty},
             "round_count": session.round_count,
-            "finalized_at": datetime.utcnow().isoformat()
+            "finalized_at": datetime.utcnow().isoformat(),
         }
 
     # ===== Session Queries =====
@@ -1654,7 +1700,7 @@ class AutomatedNegotiationEngine:
             "offers_count": len(session.offers),
             "created_at": session.created_at,
             "updated_at": session.updated_at,
-            "expires_at": session.expires_at
+            "expires_at": session.expires_at,
         }
 
     def get_session_offers(self, session_id: str) -> list[dict[str, Any]]:
@@ -1673,7 +1719,7 @@ class AutomatedNegotiationEngine:
                 "terms": o.terms,
                 "message": o.message,
                 "response": o.response,
-                "created_at": o.created_at
+                "created_at": o.created_at,
             }
             for o in session.offers
         ]
@@ -1692,16 +1738,12 @@ class AutomatedNegotiationEngine:
                 "content": c.content,
                 "proposed_by": c.proposed_by,
                 "status": c.status,
-                "alternatives": c.alternatives
+                "alternatives": c.alternatives,
             }
             for c in session.clauses.values()
         ]
 
-    def get_alignment_strategies(
-        self,
-        session_id: str,
-        for_party: str
-    ) -> list[dict[str, str]]:
+    def get_alignment_strategies(self, session_id: str, for_party: str) -> list[dict[str, str]]:
         """Get alignment strategies for a party."""
         if session_id not in self.sessions:
             return []
@@ -1712,14 +1754,10 @@ class AutomatedNegotiationEngine:
             return []
 
         _, alignment_details = self.alignment_layer.compute_alignment(
-            session.initiator_intent,
-            session.counterparty_intent
+            session.initiator_intent, session.counterparty_intent
         )
 
-        return self.alignment_layer.suggest_alignment_strategy(
-            alignment_details,
-            for_party
-        )
+        return self.alignment_layer.suggest_alignment_strategy(alignment_details, for_party)
 
     # ===== Statistics =====
 
@@ -1736,7 +1774,7 @@ class AutomatedNegotiationEngine:
             "total_offers": sum(len(s.offers) for s in self.sessions.values()),
             "total_clauses": sum(len(s.clauses) for s in self.sessions.values()),
             "agreed_sessions": phases.get("agreed", 0),
-            "failed_sessions": phases.get("failed", 0)
+            "failed_sessions": phases.get("failed", 0),
         }
 
     def get_audit_trail(self, limit: int = 100) -> list[dict[str, Any]]:
@@ -1745,8 +1783,6 @@ class AutomatedNegotiationEngine:
 
     def _log_audit(self, action: str, details: dict[str, Any]):
         """Log audit trail entry."""
-        self.audit_trail.append({
-            "action": action,
-            "details": details,
-            "timestamp": datetime.utcnow().isoformat()
-        })
+        self.audit_trail.append(
+            {"action": action, "details": details, "timestamp": datetime.utcnow().isoformat()}
+        )

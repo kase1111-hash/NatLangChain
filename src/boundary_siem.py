@@ -11,7 +11,6 @@ Based on the Boundary SIEM specification:
 https://github.com/kase1111-hash/Boundary-SIEM
 """
 
-import hashlib
 import json
 import logging
 import os
@@ -22,12 +21,13 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Callable
+from typing import Any
 from urllib.parse import urljoin
 
 # Optional HTTP client
 try:
     import requests
+
     REQUESTS_AVAILABLE = True
 except ImportError:
     REQUESTS_AVAILABLE = False
@@ -37,6 +37,7 @@ logger = logging.getLogger(__name__)
 
 class SIEMSeverity(Enum):
     """SIEM event severity levels (0-10 scale)."""
+
     INFORMATIONAL = 1
     LOW = 3
     MEDIUM = 5
@@ -47,6 +48,7 @@ class SIEMSeverity(Enum):
 
 class SIEMEventCategory(Enum):
     """Categories of SIEM events for NatLangChain."""
+
     # Chain operations
     CHAIN_ENTRY_CREATED = "chain.entry.created"
     CHAIN_BLOCK_MINED = "chain.block.mined"
@@ -91,6 +93,7 @@ class SIEMEventCategory(Enum):
 @dataclass
 class SIEMEvent:
     """A security event to send to the SIEM."""
+
     category: SIEMEventCategory
     action: str
     outcome: str  # "success", "failure", "unknown"
@@ -117,7 +120,7 @@ class SIEMEvent:
             "source": {
                 "product": self.source_product,
                 "version": self.source_version,
-                "host": self.source_host
+                "host": self.source_host,
             },
             "category": self.category.value,
             "action": self.action,
@@ -128,7 +131,7 @@ class SIEMEvent:
             "target": self.target,
             "request": self.request,
             "response": self.response,
-            "metadata": self.metadata
+            "metadata": self.metadata,
         }
 
     def to_cef(self) -> str:
@@ -137,9 +140,10 @@ class SIEMEvent:
 
         Format: CEF:Version|Device Vendor|Device Product|Device Version|Signature ID|Name|Severity|Extension
         """
+
         # Escape pipe characters in values
         def escape(s: str) -> str:
-            return str(s).replace('\\', '\\\\').replace('|', '\\|')
+            return str(s).replace("\\", "\\\\").replace("|", "\\|")
 
         # Build extension fields
         extensions = []
@@ -173,6 +177,7 @@ class SIEMEvent:
 @dataclass
 class SIEMAlert:
     """An alert received from the SIEM."""
+
     alert_id: str
     rule_id: str
     rule_name: str
@@ -191,6 +196,7 @@ class SIEMAlert:
 
 class SIEMConnectionError(Exception):
     """Raised when SIEM connection fails."""
+
     pass
 
 
@@ -221,7 +227,7 @@ class SIEMClient:
         flush_interval: float = 5.0,
         max_queue_size: int = 10000,
         retry_attempts: int = 3,
-        verify_ssl: bool = True
+        verify_ssl: bool = True,
     ):
         """
         Initialize the SIEM client.
@@ -267,13 +273,14 @@ class SIEMClient:
             "events_sent": 0,
             "events_dropped": 0,
             "send_failures": 0,
-            "last_send_time": None
+            "last_send_time": None,
         }
 
         # HTTP session for connection pooling
         self._session: Any = None
         if REQUESTS_AVAILABLE and self.siem_url:
             import requests
+
             self._session = requests.Session()
             if self.api_key:
                 self._session.headers["Authorization"] = f"Bearer {self.api_key}"
@@ -392,8 +399,7 @@ class SIEMClient:
                 # Check if we should flush
                 now = time.time()
                 should_flush = (
-                    len(self._batch) >= self.batch_size or
-                    (now - last_flush) >= self.flush_interval
+                    len(self._batch) >= self.batch_size or (now - last_flush) >= self.flush_interval
                 )
 
                 if should_flush and self._batch:
@@ -441,24 +447,19 @@ class SIEMClient:
 
         for attempt in range(self.retry_attempts):
             try:
-                response = self._session.post(
-                    url,
-                    json=payload,
-                    timeout=30,
-                    verify=self.verify_ssl
-                )
+                response = self._session.post(url, json=payload, timeout=30, verify=self.verify_ssl)
 
                 if response.status_code in (200, 201, 202):
                     return True
                 elif response.status_code == 429:
                     # Rate limited - back off
-                    time.sleep(2 ** attempt)
+                    time.sleep(2**attempt)
                 else:
                     logger.warning(f"SIEM HTTP error {response.status_code}: {response.text}")
 
             except Exception as e:
                 logger.error(f"SIEM HTTP send failed (attempt {attempt + 1}): {e}")
-                time.sleep(2 ** attempt)
+                time.sleep(2**attempt)
 
         return False
 
@@ -478,8 +479,7 @@ class SIEMClient:
                     self._syslog_socket.send(syslog_message.encode())
                 else:
                     self._syslog_socket.sendto(
-                        syslog_message.encode(),
-                        (self.syslog_host, self.syslog_port)
+                        syslog_message.encode(), (self.syslog_host, self.syslog_port)
                     )
             return True
         except Exception as e:
@@ -497,7 +497,7 @@ class SIEMClient:
         status: str | None = None,
         severity: SIEMSeverity | None = None,
         limit: int = 100,
-        since: str | None = None
+        since: str | None = None,
     ) -> list[SIEMAlert]:
         """
         Query alerts from the SIEM.
@@ -543,11 +543,7 @@ class SIEMClient:
 
         try:
             url = urljoin(self.siem_url, f"/api/v1/alerts/{alert_id}/acknowledge")
-            response = self._session.post(
-                url,
-                json={"note": note} if note else {},
-                timeout=30
-            )
+            response = self._session.post(url, json={"note": note} if note else {}, timeout=30)
             return response.status_code == 200
         except Exception as e:
             logger.error(f"Error acknowledging alert: {e}")
@@ -560,11 +556,7 @@ class SIEMClient:
 
         try:
             url = urljoin(self.siem_url, f"/api/v1/alerts/{alert_id}/close")
-            response = self._session.post(
-                url,
-                json={"resolution": resolution},
-                timeout=30
-            )
+            response = self._session.post(url, json={"resolution": resolution}, timeout=30)
             return response.status_code == 200
         except Exception as e:
             logger.error(f"Error closing alert: {e}")
@@ -586,7 +578,7 @@ class SIEMClient:
             description=data.get("description", ""),
             recommendations=data.get("recommendations", []),
             events=data.get("events", []),
-            metadata=data.get("metadata", {})
+            metadata=data.get("metadata", {}),
         )
 
     # =========================================================================
@@ -598,7 +590,7 @@ class SIEMClient:
         query: str,
         start_time: str | None = None,
         end_time: str | None = None,
-        limit: int = 100
+        limit: int = 100,
     ) -> list[dict[str, Any]]:
         """
         Search events in the SIEM.
@@ -617,10 +609,7 @@ class SIEMClient:
 
         try:
             url = urljoin(self.siem_url, "/api/v1/search")
-            payload = {
-                "query": query,
-                "limit": limit
-            }
+            payload = {"query": query, "limit": limit}
             if start_time or end_time:
                 payload["time_range"] = {}
                 if start_time:
@@ -649,7 +638,7 @@ class SIEMClient:
             **self._stats,
             "queue_size": self._event_queue.qsize(),
             "batch_size": len(self._batch),
-            "connected": self._is_connected()
+            "connected": self._is_connected(),
         }
 
     def _is_connected(self) -> bool:
@@ -665,11 +654,7 @@ class SIEMClient:
 
     def health_check(self) -> dict[str, Any]:
         """Perform health check against SIEM."""
-        result = {
-            "http_available": False,
-            "syslog_available": False,
-            "overall_healthy": False
-        }
+        result = {"http_available": False, "syslog_available": False, "overall_healthy": False}
 
         if self.siem_url and self._session:
             try:
@@ -691,6 +676,7 @@ class SIEMClient:
 # =============================================================================
 # NatLangChain Event Helpers
 # =============================================================================
+
 
 class NatLangChainSIEMEvents:
     """
@@ -714,7 +700,7 @@ class NatLangChainSIEMEvents:
         author: str,
         content_hash: str,
         block_index: int | None = None,
-        metadata: dict[str, Any] | None = None
+        metadata: dict[str, Any] | None = None,
     ) -> SIEMEvent:
         """Create event for new chain entry."""
         return SIEMEvent(
@@ -725,15 +711,12 @@ class NatLangChainSIEMEvents:
             message=f"New chain entry created by {author}",
             actor={"user": author},
             target={"entry_id": entry_id, "block_index": block_index},
-            metadata={"content_hash": content_hash, **(metadata or {})}
+            metadata={"content_hash": content_hash, **(metadata or {})},
         )
 
     @staticmethod
     def block_mined(
-        block_index: int,
-        block_hash: str,
-        entry_count: int,
-        miner: str | None = None
+        block_index: int, block_hash: str, entry_count: int, miner: str | None = None
     ) -> SIEMEvent:
         """Create event for mined block."""
         return SIEMEvent(
@@ -744,15 +727,11 @@ class NatLangChainSIEMEvents:
             message=f"Block {block_index} mined with {entry_count} entries",
             actor={"user": miner} if miner else {},
             target={"block_index": block_index, "block_hash": block_hash},
-            metadata={"entry_count": entry_count}
+            metadata={"entry_count": entry_count},
         )
 
     @staticmethod
-    def validation_failed(
-        entry_id: str,
-        reason: str,
-        validator: str | None = None
-    ) -> SIEMEvent:
+    def validation_failed(entry_id: str, reason: str, validator: str | None = None) -> SIEMEvent:
         """Create event for validation failure."""
         return SIEMEvent(
             category=SIEMEventCategory.CHAIN_VALIDATION_FAILED,
@@ -761,7 +740,7 @@ class NatLangChainSIEMEvents:
             severity=SIEMSeverity.MEDIUM,
             message=f"Validation failed for entry {entry_id}: {reason}",
             target={"entry_id": entry_id},
-            metadata={"reason": reason, "validator": validator}
+            metadata={"reason": reason, "validator": validator},
         )
 
     @staticmethod
@@ -770,7 +749,7 @@ class NatLangChainSIEMEvents:
         source: str,
         destination: str,
         pattern: str | None = None,
-        blocked: bool = True
+        blocked: bool = True,
     ) -> SIEMEvent:
         """Create event for boundary policy violation."""
         return SIEMEvent(
@@ -784,16 +763,13 @@ class NatLangChainSIEMEvents:
             metadata={
                 "violation_type": violation_type,
                 "pattern": pattern,
-                "action_taken": "blocked" if blocked else "logged"
-            }
+                "action_taken": "blocked" if blocked else "logged",
+            },
         )
 
     @staticmethod
     def mode_change(
-        old_mode: str,
-        new_mode: str,
-        reason: str | None = None,
-        triggered_by: str | None = None
+        old_mode: str, new_mode: str, reason: str | None = None, triggered_by: str | None = None
     ) -> SIEMEvent:
         """Create event for boundary mode change."""
         return SIEMEvent(
@@ -803,18 +779,12 @@ class NatLangChainSIEMEvents:
             severity=SIEMSeverity.MEDIUM,
             message=f"Boundary mode changed from {old_mode} to {new_mode}",
             actor={"user": triggered_by} if triggered_by else {},
-            metadata={
-                "old_mode": old_mode,
-                "new_mode": new_mode,
-                "reason": reason
-            }
+            metadata={"old_mode": old_mode, "new_mode": new_mode, "reason": reason},
         )
 
     @staticmethod
     def tripwire_triggered(
-        tripwire_type: str,
-        trigger_details: str,
-        automatic_response: str | None = None
+        tripwire_type: str, trigger_details: str, automatic_response: str | None = None
     ) -> SIEMEvent:
         """Create event for tripwire activation."""
         return SIEMEvent(
@@ -826,15 +796,13 @@ class NatLangChainSIEMEvents:
             metadata={
                 "tripwire_type": tripwire_type,
                 "details": trigger_details,
-                "automatic_response": automatic_response
-            }
+                "automatic_response": automatic_response,
+            },
         )
 
     @staticmethod
     def lockdown_activated(
-        reason: str,
-        triggered_by: str | None = None,
-        actions_taken: list[str] | None = None
+        reason: str, triggered_by: str | None = None, actions_taken: list[str] | None = None
     ) -> SIEMEvent:
         """Create event for lockdown activation."""
         return SIEMEvent(
@@ -844,10 +812,7 @@ class NatLangChainSIEMEvents:
             severity=SIEMSeverity.EMERGENCY,
             message=f"LOCKDOWN activated: {reason}",
             actor={"user": triggered_by} if triggered_by else {},
-            metadata={
-                "reason": reason,
-                "actions_taken": actions_taken or []
-            }
+            metadata={"reason": reason, "actions_taken": actions_taken or []},
         )
 
     @staticmethod
@@ -855,7 +820,7 @@ class NatLangChainSIEMEvents:
         input_text: str,
         detection_method: str,
         patterns_matched: list[str] | None = None,
-        source_ip: str | None = None
+        source_ip: str | None = None,
     ) -> SIEMEvent:
         """Create event for prompt injection detection."""
         # Truncate input for safety
@@ -871,16 +836,12 @@ class NatLangChainSIEMEvents:
             metadata={
                 "input_preview": safe_input,
                 "detection_method": detection_method,
-                "patterns_matched": patterns_matched or []
-            }
+                "patterns_matched": patterns_matched or [],
+            },
         )
 
     @staticmethod
-    def rag_poisoning_detected(
-        document_id: str,
-        source: str,
-        indicators: list[str]
-    ) -> SIEMEvent:
+    def rag_poisoning_detected(document_id: str, source: str, indicators: list[str]) -> SIEMEvent:
         """Create event for RAG document poisoning detection."""
         return SIEMEvent(
             category=SIEMEventCategory.AI_RAG_POISONING_DETECTED,
@@ -889,15 +850,11 @@ class NatLangChainSIEMEvents:
             severity=SIEMSeverity.HIGH,
             message=f"Potential RAG poisoning detected in document {document_id}",
             target={"document_id": document_id, "source": source},
-            metadata={"indicators": indicators}
+            metadata={"indicators": indicators},
         )
 
     @staticmethod
-    def jailbreak_attempt(
-        input_text: str,
-        technique: str,
-        blocked: bool = True
-    ) -> SIEMEvent:
+    def jailbreak_attempt(input_text: str, technique: str, blocked: bool = True) -> SIEMEvent:
         """Create event for jailbreak attempt."""
         safe_input = input_text[:200] + "..." if len(input_text) > 200 else input_text
 
@@ -907,19 +864,11 @@ class NatLangChainSIEMEvents:
             outcome="success" if blocked else "failure",
             severity=SIEMSeverity.CRITICAL,
             message=f"Jailbreak attempt detected: {technique}",
-            metadata={
-                "input_preview": safe_input,
-                "technique": technique,
-                "blocked": blocked
-            }
+            metadata={"input_preview": safe_input, "technique": technique, "blocked": blocked},
         )
 
     @staticmethod
-    def api_auth_failed(
-        source_ip: str,
-        endpoint: str,
-        reason: str
-    ) -> SIEMEvent:
+    def api_auth_failed(source_ip: str, endpoint: str, reason: str) -> SIEMEvent:
         """Create event for API authentication failure."""
         return SIEMEvent(
             category=SIEMEventCategory.AUTH_API_KEY_INVALID,
@@ -929,15 +878,12 @@ class NatLangChainSIEMEvents:
             message=f"API authentication failed from {source_ip}: {reason}",
             actor={"ip": source_ip},
             request={"endpoint": endpoint},
-            metadata={"reason": reason}
+            metadata={"reason": reason},
         )
 
     @staticmethod
     def rate_limit_exceeded(
-        source_ip: str,
-        endpoint: str,
-        limit: int,
-        window_seconds: int
+        source_ip: str, endpoint: str, limit: int, window_seconds: int
     ) -> SIEMEvent:
         """Create event for rate limit exceeded."""
         return SIEMEvent(
@@ -948,7 +894,7 @@ class NatLangChainSIEMEvents:
             message=f"Rate limit exceeded for {source_ip} on {endpoint}",
             actor={"ip": source_ip},
             request={"endpoint": endpoint},
-            metadata={"limit": limit, "window_seconds": window_seconds}
+            metadata={"limit": limit, "window_seconds": window_seconds},
         )
 
     @staticmethod
@@ -957,7 +903,7 @@ class NatLangChainSIEMEvents:
         destination: str,
         data_classification: str,
         payload_size: int,
-        blocked: bool = True
+        blocked: bool = True,
     ) -> SIEMEvent:
         """Create event for data exfiltration attempt."""
         return SIEMEvent(
@@ -971,15 +917,12 @@ class NatLangChainSIEMEvents:
             metadata={
                 "data_classification": data_classification,
                 "payload_size": payload_size,
-                "blocked": blocked
-            }
+                "blocked": blocked,
+            },
         )
 
     @staticmethod
-    def system_startup(
-        version: str,
-        config: dict[str, Any] | None = None
-    ) -> SIEMEvent:
+    def system_startup(version: str, config: dict[str, Any] | None = None) -> SIEMEvent:
         """Create event for system startup."""
         return SIEMEvent(
             category=SIEMEventCategory.SYSTEM_STARTUP,
@@ -987,15 +930,12 @@ class NatLangChainSIEMEvents:
             outcome="success",
             severity=SIEMSeverity.INFORMATIONAL,
             message=f"NatLangChain started (version {version})",
-            metadata={"version": version, "config": config or {}}
+            metadata={"version": version, "config": config or {}},
         )
 
     @staticmethod
     def system_error(
-        error_type: str,
-        error_message: str,
-        component: str,
-        stack_trace: str | None = None
+        error_type: str, error_message: str, component: str, stack_trace: str | None = None
     ) -> SIEMEvent:
         """Create event for system error."""
         return SIEMEvent(
@@ -1004,11 +944,7 @@ class NatLangChainSIEMEvents:
             outcome="failure",
             severity=SIEMSeverity.HIGH,
             message=f"System error in {component}: {error_message}",
-            metadata={
-                "error_type": error_type,
-                "component": component,
-                "stack_trace": stack_trace
-            }
+            metadata={"error_type": error_type, "component": component, "stack_trace": stack_trace},
         )
 
 
@@ -1055,6 +991,7 @@ def shutdown_siem_client() -> None:
 
 class AuthMethod(Enum):
     """Authentication methods for Boundary-SIEM."""
+
     BEARER_TOKEN = "bearer_token"
     OAUTH2 = "oauth2"
     SAML = "saml"
@@ -1065,6 +1002,7 @@ class AuthMethod(Enum):
 @dataclass
 class SIEMAuthConfig:
     """Authentication configuration for Boundary-SIEM."""
+
     method: AuthMethod = AuthMethod.BEARER_TOKEN
     token: str | None = None
 
@@ -1134,7 +1072,7 @@ class EnhancedSIEMClient(SIEMClient):
         max_queue_size: int = 10000,
         retry_attempts: int = 3,
         verify_ssl: bool = True,
-        validate_schema: bool = True
+        validate_schema: bool = True,
     ):
         """
         Initialize the enhanced SIEM client.
@@ -1165,11 +1103,13 @@ class EnhancedSIEMClient(SIEMClient):
             flush_interval=flush_interval,
             max_queue_size=max_queue_size,
             retry_attempts=retry_attempts,
-            verify_ssl=verify_ssl
+            verify_ssl=verify_ssl,
         )
 
         self.auth_config = auth_config or SIEMAuthConfig.from_env()
-        self.kafka_brokers = kafka_brokers or os.getenv("BOUNDARY_SIEM_KAFKA_BROKERS", "").split(",")
+        self.kafka_brokers = kafka_brokers or os.getenv("BOUNDARY_SIEM_KAFKA_BROKERS", "").split(
+            ","
+        )
         self.kafka_brokers = [b.strip() for b in self.kafka_brokers if b.strip()]
         self.kafka_topic = kafka_topic
         self.validate_schema = validate_schema
@@ -1193,11 +1133,12 @@ class EnhancedSIEMClient(SIEMClient):
 
         try:
             from kafka import KafkaProducer
+
             self._kafka_producer = KafkaProducer(
                 bootstrap_servers=self.kafka_brokers,
                 value_serializer=lambda v: json.dumps(v).encode(),
                 retries=self.retry_attempts,
-                acks='all'
+                acks="all",
             )
             logger.info(f"Kafka producer initialized: {self.kafka_brokers}")
         except ImportError:
@@ -1223,7 +1164,7 @@ class EnhancedSIEMClient(SIEMClient):
             if self.auth_config.mtls_cert_path and self.auth_config.mtls_key_path:
                 self._session.cert = (
                     self.auth_config.mtls_cert_path,
-                    self.auth_config.mtls_key_path
+                    self.auth_config.mtls_key_path,
                 )
                 if self.auth_config.mtls_ca_path:
                     self._session.verify = self.auth_config.mtls_ca_path
@@ -1234,25 +1175,28 @@ class EnhancedSIEMClient(SIEMClient):
         if self._oauth2_token and now < self._oauth2_token_expires:
             return self._oauth2_token
 
-        if not all([
-            self.auth_config.oauth2_client_id,
-            self.auth_config.oauth2_client_secret,
-            self.auth_config.oauth2_token_url
-        ]):
+        if not all(
+            [
+                self.auth_config.oauth2_client_id,
+                self.auth_config.oauth2_client_secret,
+                self.auth_config.oauth2_token_url,
+            ]
+        ):
             logger.error("OAuth2 credentials not configured")
             return None
 
         try:
             import requests
+
             response = requests.post(
                 self.auth_config.oauth2_token_url,
                 data={
                     "grant_type": "client_credentials",
                     "client_id": self.auth_config.oauth2_client_id,
                     "client_secret": self.auth_config.oauth2_client_secret,
-                    "scope": self.auth_config.oauth2_scope
+                    "scope": self.auth_config.oauth2_scope,
                 },
-                timeout=30
+                timeout=30,
             )
 
             if response.status_code == 200:
@@ -1321,10 +1265,7 @@ class EnhancedSIEMClient(SIEMClient):
         if self._kafka_producer and batch:
             try:
                 for event in batch:
-                    self._kafka_producer.send(
-                        self.kafka_topic,
-                        value=event.to_json()
-                    )
+                    self._kafka_producer.send(self.kafka_topic, value=event.to_json())
                 self._kafka_producer.flush()
                 success = True
             except Exception as e:
@@ -1337,9 +1278,7 @@ class EnhancedSIEMClient(SIEMClient):
     # =========================================================================
 
     def graphql_query(
-        self,
-        query: str,
-        variables: dict[str, Any] | None = None
+        self, query: str, variables: dict[str, Any] | None = None
     ) -> dict[str, Any] | None:
         """
         Execute a GraphQL query against the SIEM.
@@ -1369,12 +1308,7 @@ class EnhancedSIEMClient(SIEMClient):
         try:
             url = urljoin(self.siem_url, "/graphql")
             response = self._session.post(
-                url,
-                json={
-                    "query": query,
-                    "variables": variables or {}
-                },
-                timeout=60
+                url, json={"query": query, "variables": variables or {}}, timeout=60
             )
 
             if response.status_code == 200:
@@ -1391,7 +1325,7 @@ class EnhancedSIEMClient(SIEMClient):
         self,
         filters: dict[str, Any] | None = None,
         limit: int = 100,
-        fields: list[str] | None = None
+        fields: list[str] | None = None,
     ) -> list[dict[str, Any]]:
         """
         Query events using GraphQL.
@@ -1410,25 +1344,19 @@ class EnhancedSIEMClient(SIEMClient):
         query = f"""
             query GetEvents($filters: EventFilters, $limit: Int!) {{
                 events(filters: $filters, limit: $limit) {{
-                    {' '.join(fields)}
+                    {" ".join(fields)}
                 }}
             }}
         """
 
-        result = self.graphql_query(query, {
-            "filters": filters or {},
-            "limit": limit
-        })
+        result = self.graphql_query(query, {"filters": filters or {}, "limit": limit})
 
         if result and "data" in result:
             return result["data"].get("events", [])
         return []
 
     def query_alerts_graphql(
-        self,
-        status: str | None = None,
-        severity: int | None = None,
-        limit: int = 100
+        self, status: str | None = None, severity: int | None = None, limit: int = 100
     ) -> list[dict[str, Any]]:
         """
         Query alerts using GraphQL.
@@ -1456,11 +1384,9 @@ class EnhancedSIEMClient(SIEMClient):
             }
         """
 
-        result = self.graphql_query(query, {
-            "status": status,
-            "minSeverity": severity,
-            "limit": limit
-        })
+        result = self.graphql_query(
+            query, {"status": status, "minSeverity": severity, "limit": limit}
+        )
 
         if result and "data" in result:
             return result["data"].get("alerts", [])
@@ -1470,11 +1396,7 @@ class EnhancedSIEMClient(SIEMClient):
     # Bulk Operations
     # =========================================================================
 
-    def send_events_bulk(
-        self,
-        events: list[SIEMEvent],
-        sync: bool = False
-    ) -> dict[str, Any]:
+    def send_events_bulk(self, events: list[SIEMEvent], sync: bool = False) -> dict[str, Any]:
         """
         Send multiple events in bulk.
 
@@ -1501,7 +1423,7 @@ class EnhancedSIEMClient(SIEMClient):
             return {
                 "success": len(events) if success else 0,
                 "failed": 0 if success else len(events),
-                "errors": [] if success else ["Batch send failed"]
+                "errors": [] if success else ["Batch send failed"],
             }
         else:
             queued = 0
@@ -1515,11 +1437,7 @@ class EnhancedSIEMClient(SIEMClient):
                     failed += 1
                     errors.append(f"Failed to queue event: {event.event_id}")
 
-            return {
-                "queued": queued,
-                "failed": failed,
-                "errors": errors
-            }
+            return {"queued": queued, "failed": failed, "errors": errors}
 
     # =========================================================================
     # Detection Rules
@@ -1550,12 +1468,7 @@ class EnhancedSIEMClient(SIEMClient):
             return []
 
     def create_custom_rule(
-        self,
-        name: str,
-        query: str,
-        severity: int,
-        description: str,
-        tags: list[str] | None = None
+        self, name: str, query: str, severity: int, description: str, tags: list[str] | None = None
     ) -> dict[str, Any] | None:
         """
         Create a custom detection rule.
@@ -1583,9 +1496,9 @@ class EnhancedSIEMClient(SIEMClient):
                     "severity": severity,
                     "description": description,
                     "tags": tags or [],
-                    "enabled": True
+                    "enabled": True,
                 },
-                timeout=30
+                timeout=30,
             )
 
             if response.status_code in (200, 201):

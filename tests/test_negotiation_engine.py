@@ -9,29 +9,30 @@ Tests cover:
 - Offer handling
 """
 
-import pytest
 import sys
 from datetime import datetime, timedelta
+
+import pytest
 
 sys.path.insert(0, "src")
 
 from negotiation_engine import (
-    NegotiationPhase,
-    OfferType,
-    ClauseType,
     AlignmentLevel,
-    Intent,
     Clause,
-    Offer,
-    NegotiationSession,
-    ProactiveAlignmentLayer,
     ClauseGenerator,
+    ClauseType,
+    Intent,
+    NegotiationPhase,
+    NegotiationSession,
+    Offer,
+    OfferType,
+    ProactiveAlignmentLayer,
 )
-
 
 # ============================================================
 # Data Class Tests
 # ============================================================
+
 
 class TestIntent:
     """Tests for Intent dataclass."""
@@ -43,7 +44,7 @@ class TestIntent:
             objectives=["sell product", "get fair price"],
             constraints=["minimum $1000", "delivery within 30 days"],
             priorities={"price": 10, "timeline": 7},
-            flexibility={"price": "rigid", "timeline": "flexible"}
+            flexibility={"price": "rigid", "timeline": "flexible"},
         )
 
         assert intent.party == "alice"
@@ -58,7 +59,7 @@ class TestIntent:
             constraints=[],
             priorities={},
             flexibility={},
-            batna="Buy from alternative supplier at $1200"
+            batna="Buy from alternative supplier at $1200",
         )
 
         assert intent.batna is not None
@@ -72,7 +73,7 @@ class TestIntent:
             constraints=[],
             priorities={},
             flexibility={},
-            reservation_point={"min_rate": 150, "max_hours": 100}
+            reservation_point={"min_rate": 150, "max_hours": 100},
         )
 
         assert intent.reservation_point is not None
@@ -88,7 +89,7 @@ class TestClause:
             clause_id="CL-001",
             clause_type=ClauseType.PAYMENT,
             content="Payment of $5000 shall be made within 30 days.",
-            proposed_by="mediator"
+            proposed_by="mediator",
         )
 
         assert clause.clause_id == "CL-001"
@@ -102,10 +103,7 @@ class TestClause:
             clause_type=ClauseType.TIMELINE,
             content="Project due in 60 days",
             proposed_by="alice",
-            alternatives=[
-                "Project due in 45 days with rush fee",
-                "Project due in 90 days"
-            ]
+            alternatives=["Project due in 45 days with rush fee", "Project due in 90 days"],
         )
 
         assert len(clause.alternatives) == 2
@@ -116,7 +114,7 @@ class TestClause:
             clause_id="CL-003",
             clause_type=ClauseType.QUALITY,
             content="Quality standards must be met",
-            proposed_by="bob"
+            proposed_by="bob",
         )
 
         assert clause.created_at is not None
@@ -134,7 +132,7 @@ class TestOffer:
             to_party="bob",
             terms={"price": 5000, "quantity": 100},
             clauses=["CL-001", "CL-002"],
-            message="Initial offer for widgets"
+            message="Initial offer for widgets",
         )
 
         assert offer.offer_id == "OFF-001"
@@ -152,7 +150,7 @@ class TestOffer:
             terms={},
             clauses=[],
             message="Final offer",
-            expires_at=expires
+            expires_at=expires,
         )
 
         assert offer.expires_at is not None
@@ -168,7 +166,7 @@ class TestNegotiationSession:
             initiator="alice",
             counterparty="bob",
             subject="Widget purchase agreement",
-            phase=NegotiationPhase.INITIATED
+            phase=NegotiationPhase.INITIATED,
         )
 
         assert session.session_id == "SESSION-001"
@@ -183,7 +181,7 @@ class TestNegotiationSession:
             initiator="a",
             counterparty="b",
             subject="test",
-            phase=NegotiationPhase.INITIATED
+            phase=NegotiationPhase.INITIATED,
         )
 
         assert session.alignment_score == 0.0
@@ -195,6 +193,7 @@ class TestNegotiationSession:
 # ============================================================
 # Enum Tests
 # ============================================================
+
 
 class TestEnums:
     """Tests for negotiation enums."""
@@ -239,6 +238,7 @@ class TestEnums:
 # Proactive Alignment Layer Tests
 # ============================================================
 
+
 class TestProactiveAlignmentLayer:
     """Tests for ProactiveAlignmentLayer."""
 
@@ -250,8 +250,7 @@ class TestProactiveAlignmentLayer:
     def test_extract_intent_fallback(self, alignment_layer):
         """Should extract basic intent without LLM."""
         intent = alignment_layer.extract_intent(
-            party="alice",
-            statement="I want to sell 100 widgets for at least $10 each"
+            party="alice", statement="I want to sell 100 widgets for at least $10 each"
         )
 
         assert intent.party == "alice"
@@ -263,7 +262,7 @@ class TestProactiveAlignmentLayer:
         intent = alignment_layer.extract_intent(
             party="bob",
             statement="I need rush delivery",
-            context="Previous agreement was for standard delivery"
+            context="Previous agreement was for standard delivery",
         )
 
         assert intent.party == "bob"
@@ -275,14 +274,14 @@ class TestProactiveAlignmentLayer:
             objectives=["sell widgets"],
             constraints=["min $10 each"],
             priorities={"price": 10},
-            flexibility={}
+            flexibility={},
         )
         intent_b = Intent(
             party="bob",
             objectives=["buy widgets"],
             constraints=["max $12 each"],
             priorities={"quality": 10},
-            flexibility={}
+            flexibility={},
         )
 
         score, details = alignment_layer.compute_alignment(intent_a, intent_b)
@@ -330,10 +329,7 @@ class TestProactiveAlignmentLayer:
         """Should include AI strategy suggestions."""
         details = {
             "alignment_level": "moderate",
-            "strategy_suggestions": [
-                "Consider package deal",
-                "Offer timeline flexibility"
-            ]
+            "strategy_suggestions": ["Consider package deal", "Offer timeline flexibility"],
         }
 
         strategies = alignment_layer.suggest_alignment_strategy(details, "alice")
@@ -345,6 +341,7 @@ class TestProactiveAlignmentLayer:
 # ============================================================
 # Clause Generator Tests
 # ============================================================
+
 
 class TestClauseGenerator:
     """Tests for ClauseGenerator."""
@@ -393,6 +390,7 @@ class TestClauseGenerator:
 # Session Management Tests
 # ============================================================
 
+
 class TestSessionManagement:
     """Tests for negotiation session management."""
 
@@ -404,7 +402,7 @@ class TestSessionManagement:
             NegotiationPhase.CLAUSE_DRAFTING,
             NegotiationPhase.NEGOTIATING,
             NegotiationPhase.PENDING_APPROVAL,
-            NegotiationPhase.AGREED
+            NegotiationPhase.AGREED,
         ]
 
         # All phases should be distinct
@@ -413,18 +411,10 @@ class TestSessionManagement:
     def test_session_with_intents(self):
         """Session should store party intents."""
         intent_a = Intent(
-            party="alice",
-            objectives=["sell"],
-            constraints=[],
-            priorities={},
-            flexibility={}
+            party="alice", objectives=["sell"], constraints=[], priorities={}, flexibility={}
         )
         intent_b = Intent(
-            party="bob",
-            objectives=["buy"],
-            constraints=[],
-            priorities={},
-            flexibility={}
+            party="bob", objectives=["buy"], constraints=[], priorities={}, flexibility={}
         )
 
         session = NegotiationSession(
@@ -435,7 +425,7 @@ class TestSessionManagement:
             phase=NegotiationPhase.INTENT_ALIGNMENT,
             initiator_intent=intent_a,
             counterparty_intent=intent_b,
-            alignment_score=0.7
+            alignment_score=0.7,
         )
 
         assert session.initiator_intent.party == "alice"
@@ -451,7 +441,7 @@ class TestSessionManagement:
             to_party="bob",
             terms={"price": 100},
             clauses=[],
-            message="Initial"
+            message="Initial",
         )
         offer2 = Offer(
             offer_id="O2",
@@ -460,7 +450,7 @@ class TestSessionManagement:
             to_party="alice",
             terms={"price": 90},
             clauses=[],
-            message="Counter"
+            message="Counter",
         )
 
         session = NegotiationSession(
@@ -470,7 +460,7 @@ class TestSessionManagement:
             subject="test",
             phase=NegotiationPhase.NEGOTIATING,
             offers=[offer1, offer2],
-            round_count=2
+            round_count=2,
         )
 
         assert len(session.offers) == 2
@@ -483,7 +473,7 @@ class TestSessionManagement:
             clause_type=ClauseType.PAYMENT,
             content="Payment terms",
             proposed_by="mediator",
-            status="accepted"
+            status="accepted",
         )
 
         session = NegotiationSession(
@@ -492,7 +482,7 @@ class TestSessionManagement:
             counterparty="bob",
             subject="test",
             phase=NegotiationPhase.CLAUSE_DRAFTING,
-            clauses={"CL1": clause}
+            clauses={"CL1": clause},
         )
 
         assert "CL1" in session.clauses
@@ -506,12 +496,7 @@ class TestSessionManagement:
             counterparty="bob",
             subject="Widget purchase",
             phase=NegotiationPhase.AGREED,
-            agreed_terms={
-                "price": 95,
-                "quantity": 100,
-                "delivery": "30 days",
-                "payment": "Net 30"
-            }
+            agreed_terms={"price": 95, "quantity": 100, "delivery": "30 days", "payment": "Net 30"},
         )
 
         assert session.phase == NegotiationPhase.AGREED
@@ -523,6 +508,7 @@ class TestSessionManagement:
 # Integration Tests
 # ============================================================
 
+
 class TestNegotiationIntegration:
     """Integration tests for negotiation components."""
 
@@ -532,13 +518,11 @@ class TestNegotiationIntegration:
 
         # 1. Extract intents from parties
         intent_seller = layer.extract_intent(
-            party="seller",
-            statement="I want to sell my vintage guitar for at least $2000"
+            party="seller", statement="I want to sell my vintage guitar for at least $2000"
         )
 
         intent_buyer = layer.extract_intent(
-            party="buyer",
-            statement="I'm looking to buy a vintage guitar, budget up to $2500"
+            party="buyer", statement="I'm looking to buy a vintage guitar, budget up to $2500"
         )
 
         # 2. Compute alignment
@@ -560,7 +544,7 @@ class TestNegotiationIntegration:
             initiator="company_a",
             counterparty="company_b",
             subject="Partnership Agreement",
-            phase=NegotiationPhase.INITIATED
+            phase=NegotiationPhase.INITIATED,
         )
 
         assert session.phase == NegotiationPhase.INITIATED
@@ -571,14 +555,14 @@ class TestNegotiationIntegration:
             objectives=["establish partnership"],
             constraints=["maintain IP rights"],
             priorities={"revenue_share": 10},
-            flexibility={}
+            flexibility={},
         )
         session.counterparty_intent = Intent(
             party="company_b",
             objectives=["access technology"],
             constraints=["limit liability"],
             priorities={"exclusivity": 8},
-            flexibility={}
+            flexibility={},
         )
         session.phase = NegotiationPhase.INTENT_ALIGNMENT
         session.alignment_score = 0.65
@@ -588,29 +572,27 @@ class TestNegotiationIntegration:
             clause_id="IP",
             clause_type=ClauseType.CUSTOM,
             content="IP rights remain with originating party",
-            proposed_by="mediator"
+            proposed_by="mediator",
         )
         session.phase = NegotiationPhase.CLAUSE_DRAFTING
 
         # 4. Exchange offers (phase: negotiating)
-        session.offers.append(Offer(
-            offer_id="OFFER-1",
-            offer_type=OfferType.INITIAL,
-            from_party="company_a",
-            to_party="company_b",
-            terms={"revenue_share": 0.6},
-            clauses=["IP"],
-            message="Initial proposal"
-        ))
+        session.offers.append(
+            Offer(
+                offer_id="OFFER-1",
+                offer_type=OfferType.INITIAL,
+                from_party="company_a",
+                to_party="company_b",
+                terms={"revenue_share": 0.6},
+                clauses=["IP"],
+                message="Initial proposal",
+            )
+        )
         session.phase = NegotiationPhase.NEGOTIATING
         session.round_count = 1
 
         # 5. Reach agreement
-        session.agreed_terms = {
-            "revenue_share": 0.55,
-            "ip_clause": "IP",
-            "duration": "3 years"
-        }
+        session.agreed_terms = {"revenue_share": 0.55, "ip_clause": "IP", "duration": "3 years"}
         session.phase = NegotiationPhase.AGREED
 
         assert session.phase == NegotiationPhase.AGREED
@@ -627,7 +609,7 @@ class TestNegotiationIntegration:
             to_party="buyer",
             terms={"price": 100},
             clauses=[],
-            message="Initial offer at $100"
+            message="Initial offer at $100",
         )
 
         # Simulate response
@@ -640,7 +622,7 @@ class TestNegotiationIntegration:
             to_party="seller",
             terms={"price": 85},
             clauses=[],
-            message="Counter at $85"
+            message="Counter at $85",
         )
 
         assert initial_offer.response == "countered"

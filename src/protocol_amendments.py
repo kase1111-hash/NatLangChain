@@ -25,15 +25,17 @@ class AmendmentClass(Enum):
     - D: Structural - Near-unanimous
     - E: Existential - Fork-only
     """
-    A = "editorial"        # Wording clarity, examples
-    B = "procedural"       # Validator behavior, thresholds
-    C = "semantic"         # Term definitions, protocol meaning
-    D = "structural"       # Governance model, authority boundaries
-    E = "existential"      # Core principles, refusal doctrine
+
+    A = "editorial"  # Wording clarity, examples
+    B = "procedural"  # Validator behavior, thresholds
+    C = "semantic"  # Term definitions, protocol meaning
+    D = "structural"  # Governance model, authority boundaries
+    E = "existential"  # Core principles, refusal doctrine
 
 
 class AmendmentStatus(Enum):
     """Status of an amendment through the ratification process."""
+
     DRAFT = "draft"
     PROPOSED = "proposed"
     COOLING = "cooling"
@@ -51,6 +53,7 @@ class RatificationStage(Enum):
     Stages of the ratification process per NCIP-014 Section 7.1.
     No stage may be skipped.
     """
+
     PROPOSAL_POSTING = 1
     COOLING_PERIOD = 2
     DELIBERATION_WINDOW = 3
@@ -61,6 +64,7 @@ class RatificationStage(Enum):
 
 class ConstitutionalArtifact(Enum):
     """Constitutional artifacts subject to NCIP-014 governance."""
+
     GENESIS_BLOCK = "genesis_block"
     CORE_DOCTRINES = "core_doctrines"
     MP_01 = "mp_01"
@@ -88,6 +92,7 @@ class ConstitutionalArtifact(Enum):
 
 class ProhibitedAction(Enum):
     """Actions that are constitutionally prohibited per NCIP-014 Section 13."""
+
     RETROACTIVE_REINTERPRETATION = "retroactive_reinterpretation"
     POU_INVALIDATION = "pou_invalidation"
     SEMANTIC_LOCK_OVERRIDE = "semantic_lock_override"
@@ -98,6 +103,7 @@ class ProhibitedAction(Enum):
 @dataclass
 class VoteRecord:
     """Record of a single vote on an amendment."""
+
     voter_id: str
     vote: str  # "approve", "reject", "abstain"
     pou_statement: str  # Required PoU per NCIP-014 Section 6
@@ -123,6 +129,7 @@ class PoUStatement:
     - Who is affected
     - Why they agree or disagree
     """
+
     voter_id: str
     what_changes: str
     what_unchanged: str
@@ -148,6 +155,7 @@ class PoUStatement:
 @dataclass
 class SemanticCompatibilityResult:
     """Result of semantic compatibility check for an amendment."""
+
     is_compatible: bool
     drift_scores: dict[str, float] = field(default_factory=dict)
     max_drift: float = 0.0
@@ -164,6 +172,7 @@ class Amendment:
     A constitutional amendment proposal.
     Per NCIP-014 Section 5, must include required fields.
     """
+
     amendment_id: str
     amendment_class: AmendmentClass
     title: str
@@ -241,6 +250,7 @@ class EmergencyAmendment:
     - Auto-expire unless ratified
     - MUST NOT alter semantics
     """
+
     amendment_id: str
     reason: str  # validator_halt, exploit_mitigation, network_safety_pause
     proposed_changes: str
@@ -274,6 +284,7 @@ class EmergencyAmendment:
 @dataclass
 class ConstitutionVersion:
     """Tracks constitution version for entries."""
+
     version: str
     effective_from: datetime
     amendments_included: list[str] = field(default_factory=list)
@@ -289,7 +300,7 @@ class ConstitutionVersion:
             version=f"{major}.{minor + 1}",
             effective_from=datetime.utcnow(),
             amendments_included=[amendment_id],
-            previous_version=self.version
+            previous_version=self.version,
         )
 
 
@@ -308,11 +319,11 @@ class AmendmentManager:
 
     # Voting thresholds by class
     THRESHOLDS = {
-        AmendmentClass.A: 0.50,    # Simple majority (>50%)
-        AmendmentClass.B: 0.67,    # Supermajority (>67%)
-        AmendmentClass.C: 0.75,    # Constitutional quorum (>75%)
-        AmendmentClass.D: 0.90,    # Near-unanimous (>90%)
-        AmendmentClass.E: 1.00,    # Fork-only (100% or fork)
+        AmendmentClass.A: 0.50,  # Simple majority (>50%)
+        AmendmentClass.B: 0.67,  # Supermajority (>67%)
+        AmendmentClass.C: 0.75,  # Constitutional quorum (>75%)
+        AmendmentClass.D: 0.90,  # Near-unanimous (>90%)
+        AmendmentClass.E: 1.00,  # Fork-only (100% or fork)
     }
 
     # Minimum cooling period (days)
@@ -334,8 +345,7 @@ class AmendmentManager:
         self.amendments: dict[str, Amendment] = {}
         self.emergency_amendments: dict[str, EmergencyAmendment] = {}
         self.current_constitution = ConstitutionVersion(
-            version="3.0",
-            effective_from=datetime.utcnow()
+            version="3.0", effective_from=datetime.utcnow()
         )
         self.constitution_history: list[ConstitutionVersion] = [self.current_constitution]
         self.fork_registry: dict[str, str] = {}  # fork_id -> constitution_version
@@ -354,7 +364,7 @@ class AmendmentManager:
         affected_artifacts: list[ConstitutionalArtifact],
         proposed_changes: str,
         migration_guidance: str | None = None,
-        effective_date: datetime | None = None
+        effective_date: datetime | None = None,
     ) -> tuple[Amendment, list[str]]:
         """
         Create a new amendment proposal.
@@ -402,16 +412,14 @@ class AmendmentManager:
             proposed_changes=proposed_changes,
             migration_guidance=migration_guidance,
             effective_date=effective_date,
-            constitution_version_before=self.current_constitution.version
+            constitution_version_before=self.current_constitution.version,
         )
 
         self.amendments[amendment_id] = amendment
         return amendment, []
 
     def generate_amendment_id(
-        self,
-        amendment_class: AmendmentClass,
-        year: int | None = None
+        self, amendment_class: AmendmentClass, year: int | None = None
     ) -> str:
         """Generate a unique amendment ID."""
         year = year or datetime.utcnow().year
@@ -492,7 +500,10 @@ class AmendmentManager:
             return (False, "Semantic compatibility check required before voting")
 
         if not amendment.compatibility_result.is_compatible:
-            return (False, f"Amendment failed compatibility: {amendment.compatibility_result.violations}")
+            return (
+                False,
+                f"Amendment failed compatibility: {amendment.compatibility_result.violations}",
+            )
 
         amendment.status = AmendmentStatus.VOTING
         amendment.current_stage = RatificationStage.HUMAN_RATIFICATION
@@ -507,7 +518,7 @@ class AmendmentManager:
         pou: PoUStatement,
         weight: float = 1.0,
         validator_trust_score: float | None = None,
-        mediator_reputation: float | None = None
+        mediator_reputation: float | None = None,
     ) -> tuple[bool, str]:
         """
         Cast a vote on an amendment. Requires valid PoU.
@@ -525,7 +536,10 @@ class AmendmentManager:
         # Validate PoU
         pou_statement = pou.to_statement()
         if len(pou_statement) < 100:
-            return (False, "PoU statement too short. Must explain what changes, what doesn't, who affected, and why")
+            return (
+                False,
+                "PoU statement too short. Must explain what changes, what doesn't, who affected, and why",
+            )
 
         if not pou.what_changes or not pou.what_unchanged:
             return (False, "PoU must specify both what changes and what remains unchanged")
@@ -554,7 +568,7 @@ class AmendmentManager:
             pou_hash=pou.compute_hash(),
             weight=effective_weight,
             validator_trust_score=validator_trust_score,
-            mediator_reputation=mediator_reputation
+            mediator_reputation=mediator_reputation,
         )
 
         amendment.votes.append(vote_record)
@@ -588,7 +602,7 @@ class AmendmentManager:
             "total": total_weight,
             "approval_ratio": approval_ratio,
             "threshold": threshold,
-            "meets_threshold": approval_ratio >= threshold
+            "meets_threshold": approval_ratio >= threshold,
         }
 
         return amendment.vote_tally
@@ -617,7 +631,10 @@ class AmendmentManager:
 
         if not tally["meets_threshold"]:
             amendment.status = AmendmentStatus.REJECTED
-            return (False, f"Amendment rejected. Approval {tally['approval_ratio']:.1%} < threshold {tally['threshold']:.1%}")
+            return (
+                False,
+                f"Amendment rejected. Approval {tally['approval_ratio']:.1%} < threshold {tally['threshold']:.1%}",
+            )
 
         # Approved - apply semantic lock
         now = datetime.utcnow()
@@ -670,9 +687,7 @@ class AmendmentManager:
     # -------------------------------------------------------------------------
 
     def check_semantic_compatibility(
-        self,
-        amendment_id: str,
-        drift_scores: dict[str, float] | None = None
+        self, amendment_id: str, drift_scores: dict[str, float] | None = None
     ) -> SemanticCompatibilityResult:
         """
         Check semantic compatibility of an amendment.
@@ -681,8 +696,7 @@ class AmendmentManager:
         amendment = self.amendments.get(amendment_id)
         if not amendment:
             return SemanticCompatibilityResult(
-                is_compatible=False,
-                violations=["Amendment not found"]
+                is_compatible=False, violations=["Amendment not found"]
             )
 
         violations = []
@@ -698,8 +712,7 @@ class AmendmentManager:
 
         # Check affected NCIPs for dependencies
         affected_ncips = [
-            a.value for a in amendment.affected_artifacts
-            if a.value.startswith("ncip_")
+            a.value for a in amendment.affected_artifacts if a.value.startswith("ncip_")
         ]
 
         # Check for prohibited actions
@@ -713,7 +726,7 @@ class AmendmentManager:
             affected_ncips=affected_ncips,
             requires_migration=max_drift >= self.MAX_DRIFT_WITHOUT_MIGRATION,
             migration_guidance=amendment.migration_guidance,
-            violations=violations
+            violations=violations,
         )
 
         amendment.compatibility_result = result
@@ -727,7 +740,7 @@ class AmendmentManager:
             "invalidate pou",
             "override semantic lock",
             "grant semantic authority to ai",
-            "collapse refusal doctrine"
+            "collapse refusal doctrine",
         ]
 
         content = (amendment.proposed_changes + " " + amendment.rationale).lower()
@@ -739,11 +752,7 @@ class AmendmentManager:
     # -------------------------------------------------------------------------
 
     def create_emergency_amendment(
-        self,
-        amendment_id: str,
-        reason: str,
-        proposed_changes: str,
-        max_duration_days: int = 7
+        self, amendment_id: str, reason: str, proposed_changes: str, max_duration_days: int = 7
     ) -> tuple[EmergencyAmendment, list[str]]:
         """
         Create an emergency amendment with restricted scope.
@@ -768,7 +777,7 @@ class AmendmentManager:
             amendment_id=amendment_id,
             reason=reason,
             proposed_changes=proposed_changes,
-            max_duration=timedelta(days=max_duration_days)
+            max_duration=timedelta(days=max_duration_days),
         )
 
         self.emergency_amendments[amendment_id] = emergency
@@ -834,7 +843,7 @@ class AmendmentManager:
             AmendmentStatus.COOLING,
             AmendmentStatus.DELIBERATION,
             AmendmentStatus.VOTING,
-            AmendmentStatus.RATIFIED
+            AmendmentStatus.RATIFIED,
         ]
         return [a for a in self.amendments.values() if a.status in active_statuses]
 
@@ -850,10 +859,7 @@ class AmendmentManager:
     # Validation
     # -------------------------------------------------------------------------
 
-    def validate_amendment_proposal(
-        self,
-        amendment: Amendment
-    ) -> tuple[bool, list[str]]:
+    def validate_amendment_proposal(self, amendment: Amendment) -> tuple[bool, list[str]]:
         """
         Validate an amendment proposal meets all requirements.
         """
@@ -914,7 +920,9 @@ class AmendmentManager:
                 cls.value: len([a for a in self.amendments.values() if a.amendment_class == cls])
                 for cls in AmendmentClass
             },
-            "active_emergencies": len([e for e in self.emergency_amendments.values() if e.is_active]),
+            "active_emergencies": len(
+                [e for e in self.emergency_amendments.values() if e.is_active]
+            ),
             "forks": len(self.fork_registry),
-            "thresholds": {cls.name: f"{thresh:.0%}" for cls, thresh in self.THRESHOLDS.items()}
+            "thresholds": {cls.name: f"{thresh:.0%}" for cls, thresh in self.THRESHOLDS.items()},
         }

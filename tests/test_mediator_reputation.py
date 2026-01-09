@@ -18,7 +18,7 @@ from datetime import datetime, timedelta
 import pytest
 
 # Add src to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from mediator_reputation import (
     # Constants
@@ -44,6 +44,7 @@ from mediator_reputation import (
 # Fixtures
 # =============================================================================
 
+
 @pytest.fixture
 def manager():
     """Create a fresh reputation manager for each test."""
@@ -59,7 +60,7 @@ def registered_mediators(manager):
         mediator_id="med-001",
         stake_amount=50000,
         supported_domains=["software", "licensing"],
-        models_used=["claude"]
+        models_used=["claude"],
     )
     mediators.append("med-001")
 
@@ -67,14 +68,12 @@ def registered_mediators(manager):
         mediator_id="med-002",
         stake_amount=75000,
         supported_domains=["employment"],
-        models_used=["gpt-4", "claude"]
+        models_used=["gpt-4", "claude"],
     )
     mediators.append("med-002")
 
     manager.register_mediator(
-        mediator_id="med-003",
-        stake_amount=30000,
-        supported_domains=["real-estate"]
+        mediator_id="med-003", stake_amount=30000, supported_domains=["real-estate"]
     )
     mediators.append("med-003")
 
@@ -85,6 +84,7 @@ def registered_mediators(manager):
 # Registration & Bonding Tests
 # =============================================================================
 
+
 class TestMediatorRegistration:
     """Tests for mediator registration and bonding."""
 
@@ -94,7 +94,7 @@ class TestMediatorRegistration:
             mediator_id="med-test",
             stake_amount=50000,
             supported_domains=["software"],
-            models_used=["claude"]
+            models_used=["claude"],
         )
 
         assert profile.mediator_id == "med-test"
@@ -104,10 +104,7 @@ class TestMediatorRegistration:
 
     def test_register_with_minimum_bond(self, manager):
         """Test registering with minimum bond amount."""
-        profile = manager.register_mediator(
-            mediator_id="med-min",
-            stake_amount=MINIMUM_BOND
-        )
+        profile = manager.register_mediator(mediator_id="med-min", stake_amount=MINIMUM_BOND)
 
         assert profile.bond.amount == MINIMUM_BOND
         assert manager.is_bonded("med-min")
@@ -115,10 +112,7 @@ class TestMediatorRegistration:
     def test_register_below_minimum_fails(self, manager):
         """Test that registration below minimum bond fails."""
         with pytest.raises(ValueError, match="below minimum"):
-            manager.register_mediator(
-                mediator_id="med-low",
-                stake_amount=MINIMUM_BOND - 1
-            )
+            manager.register_mediator(mediator_id="med-low", stake_amount=MINIMUM_BOND - 1)
 
     def test_duplicate_registration_fails(self, manager):
         """Test that duplicate registration fails."""
@@ -152,6 +146,7 @@ class TestMediatorRegistration:
 # =============================================================================
 # Reputation Score Tests
 # =============================================================================
+
 
 class TestReputationScores:
     """Tests for reputation score calculation."""
@@ -194,10 +189,7 @@ class TestReputationScores:
         manager.register_mediator(mediator_id="med-outcome", stake_amount=50000)
 
         result = manager.record_proposal_outcome(
-            mediator_id="med-outcome",
-            accepted=True,
-            semantic_drift_score=0.1,
-            latency_seconds=30
+            mediator_id="med-outcome", accepted=True, semantic_drift_score=0.1, latency_seconds=30
         )
 
         assert result["mediator_id"] == "med-outcome"
@@ -210,10 +202,7 @@ class TestReputationScores:
         """Test recording a rejected proposal outcome."""
         manager.register_mediator(mediator_id="med-rejected", stake_amount=50000)
 
-        manager.record_proposal_outcome(
-            mediator_id="med-rejected",
-            accepted=False
-        )
+        manager.record_proposal_outcome(mediator_id="med-rejected", accepted=False)
 
         profile = manager.get_mediator("med-rejected")
         assert profile.rejected_count == 1
@@ -225,9 +214,7 @@ class TestReputationScores:
         initial_cs = manager.get_mediator("med-coerce").scores.coercion_signal
 
         manager.record_proposal_outcome(
-            mediator_id="med-coerce",
-            accepted=True,
-            coercion_detected=True
+            mediator_id="med-coerce", accepted=True, coercion_detected=True
         )
 
         final_cs = manager.get_mediator("med-coerce").scores.coercion_signal
@@ -269,6 +256,7 @@ class TestReputationScores:
 # =============================================================================
 # Composite Trust Score Tests
 # =============================================================================
+
 
 class TestCompositeTrustScore:
     """Tests for CTS calculation."""
@@ -318,6 +306,7 @@ class TestCompositeTrustScore:
 # Slashing Tests
 # =============================================================================
 
+
 class TestSlashing:
     """Tests for slashing conditions and execution."""
 
@@ -329,7 +318,7 @@ class TestSlashing:
             mediator_id="med-slash",
             offense=SlashingOffense.SEMANTIC_MANIPULATION,
             severity=0.5,
-            evidence={"drift_level": "D4"}
+            evidence={"drift_level": "D4"},
         )
 
         assert event is not None
@@ -346,15 +335,11 @@ class TestSlashing:
         manager.register_mediator(mediator_id="med-sev-high", stake_amount=50000)
 
         event_low = manager.slash(
-            mediator_id="med-sev-low",
-            offense=SlashingOffense.SEMANTIC_MANIPULATION,
-            severity=0.0
+            mediator_id="med-sev-low", offense=SlashingOffense.SEMANTIC_MANIPULATION, severity=0.0
         )
 
         event_high = manager.slash(
-            mediator_id="med-sev-high",
-            offense=SlashingOffense.SEMANTIC_MANIPULATION,
-            severity=1.0
+            mediator_id="med-sev-high", offense=SlashingOffense.SEMANTIC_MANIPULATION, severity=1.0
         )
 
         assert event_high.percentage > event_low.percentage
@@ -364,9 +349,7 @@ class TestSlashing:
         manager.register_mediator(mediator_id="med-cooldown", stake_amount=50000)
 
         manager.slash(
-            mediator_id="med-cooldown",
-            offense=SlashingOffense.APPEAL_REVERSAL,
-            severity=0.5
+            mediator_id="med-cooldown", offense=SlashingOffense.APPEAL_REVERSAL, severity=0.5
         )
 
         profile = manager.get_mediator("med-cooldown")
@@ -380,9 +363,7 @@ class TestSlashing:
         initial_treasury = manager.get_treasury_balance()
 
         manager.slash(
-            mediator_id="med-treasury",
-            offense=SlashingOffense.COERCIVE_FRAMING,
-            severity=0.5
+            mediator_id="med-treasury", offense=SlashingOffense.COERCIVE_FRAMING, severity=0.5
         )
 
         final_treasury = manager.get_treasury_balance()
@@ -396,7 +377,7 @@ class TestSlashing:
             mediator_id="med-affected",
             offense=SlashingOffense.SEMANTIC_MANIPULATION,
             severity=0.5,
-            affected_party_id="victim-001"
+            affected_party_id="victim-001",
         )
 
         # 50% goes to affected party, 50% to treasury
@@ -412,7 +393,7 @@ class TestSlashing:
         manager.slash(
             mediator_id="med-unbond",
             offense=SlashingOffense.COLLUSION_SIGNALS,
-            severity=1.0  # Max severity
+            severity=1.0,  # Max severity
         )
 
         profile = manager.get_mediator("med-unbond")
@@ -430,7 +411,7 @@ class TestSlashing:
                 mediator_id="med-repeat",
                 contract_id="contract-001",
                 content="test",
-                status=ProposalStatus.REJECTED
+                status=ProposalStatus.REJECTED,
             )
             manager.proposals[proposal.proposal_id] = proposal
 
@@ -443,6 +424,7 @@ class TestSlashing:
 # Cooldown Tests
 # =============================================================================
 
+
 class TestCooldowns:
     """Tests for cooldown periods."""
 
@@ -454,7 +436,7 @@ class TestCooldowns:
         manager.slash(
             mediator_id="med-limit",
             offense=SlashingOffense.REPEATED_INVALID_PROPOSALS,
-            severity=0.5
+            severity=0.5,
         )
 
         # Add a pending proposal
@@ -463,7 +445,7 @@ class TestCooldowns:
             mediator_id="med-limit",
             contract_id="contract-001",
             content="test",
-            status=ProposalStatus.PENDING
+            status=ProposalStatus.PENDING,
         )
         manager.proposals[proposal.proposal_id] = proposal
 
@@ -474,11 +456,7 @@ class TestCooldowns:
 
     def test_cooldown_is_active(self, manager):
         """Test cooldown is_active property."""
-        cooldown = Cooldown(
-            cooldown_id="cd-001",
-            reason=CooldownReason.SLASHING,
-            duration_days=1
-        )
+        cooldown = Cooldown(cooldown_id="cd-001", reason=CooldownReason.SLASHING, duration_days=1)
         assert cooldown.is_active
 
     def test_cooldown_expired(self, manager):
@@ -487,7 +465,7 @@ class TestCooldowns:
             cooldown_id="cd-002",
             reason=CooldownReason.SLASHING,
             started_at=datetime.utcnow() - timedelta(days=30),
-            duration_days=14
+            duration_days=14,
         )
         assert not cooldown.is_active
 
@@ -502,7 +480,7 @@ class TestCooldowns:
             cooldown_id="cd-expired",
             reason=CooldownReason.SLASHING,
             started_at=datetime.utcnow() - timedelta(days=30),
-            duration_days=7
+            duration_days=7,
         )
         profile.active_cooldowns.append(expired)
         profile.status = MediatorStatus.COOLDOWN
@@ -517,6 +495,7 @@ class TestCooldowns:
 # =============================================================================
 # Market Dynamics Tests
 # =============================================================================
+
 
 class TestMarketDynamics:
     """Tests for market dynamics and ranking."""
@@ -539,10 +518,7 @@ class TestMarketDynamics:
 
     def test_ranking_includes_diversity_bonus(self, manager, registered_mediators):
         """Test that diversity bonus is applied."""
-        rankings = manager.get_proposal_ranking(
-            registered_mediators,
-            diversity_weight=0.2
-        )
+        rankings = manager.get_proposal_ranking(registered_mediators, diversity_weight=0.2)
 
         # med-002 has multiple models, should get diversity bonus
         med002_ranking = next(r for r in rankings if r["mediator_id"] == "med-002")
@@ -561,15 +537,13 @@ class TestMarketDynamics:
         # Sample multiple times and check distribution
         samples = []
         for _ in range(500):  # More samples for statistical reliability
-            sample = manager.sample_proposals_by_trust(
-                registered_mediators,
-                sample_size=1
-            )
+            sample = manager.sample_proposals_by_trust(registered_mediators, sample_size=1)
             if sample:
                 samples.extend(sample)
 
         # High CTS mediator should be sampled more often
         from collections import Counter
+
         counts = Counter(samples)
 
         # med-001 should be in top 2 most frequently sampled
@@ -582,6 +556,7 @@ class TestMarketDynamics:
 # Treasury Tests
 # =============================================================================
 
+
 class TestTreasury:
     """Tests for treasury management."""
 
@@ -591,11 +566,7 @@ class TestTreasury:
 
         assert manager.get_treasury_balance() == 0
 
-        manager.slash(
-            mediator_id="med-acc",
-            offense=SlashingOffense.COERCIVE_FRAMING,
-            severity=0.5
-        )
+        manager.slash(mediator_id="med-acc", offense=SlashingOffense.COERCIVE_FRAMING, severity=0.5)
 
         assert manager.get_treasury_balance() > 0
 
@@ -605,27 +576,19 @@ class TestTreasury:
 
         # Build up treasury
         manager.slash(
-            mediator_id="med-subsidy",
-            offense=SlashingOffense.SEMANTIC_MANIPULATION,
-            severity=1.0
+            mediator_id="med-subsidy", offense=SlashingOffense.SEMANTIC_MANIPULATION, severity=1.0
         )
 
         initial_balance = manager.get_treasury_balance()
 
-        result = manager.allocate_defensive_subsidy(
-            amount=1000,
-            purpose="harassment_mitigation"
-        )
+        result = manager.allocate_defensive_subsidy(amount=1000, purpose="harassment_mitigation")
 
         assert result["success"]
         assert manager.get_treasury_balance() < initial_balance
 
     def test_allocate_exceeds_balance_fails(self, manager):
         """Test that allocation exceeding balance fails."""
-        result = manager.allocate_defensive_subsidy(
-            amount=1000000,
-            purpose="test"
-        )
+        result = manager.allocate_defensive_subsidy(amount=1000000, purpose="test")
 
         assert not result["success"]
         assert "insufficient" in result["message"].lower()
@@ -634,6 +597,7 @@ class TestTreasury:
 # =============================================================================
 # Utility Tests
 # =============================================================================
+
 
 class TestUtilities:
     """Tests for utility functions."""
@@ -679,6 +643,7 @@ class TestUtilities:
 # Module Function Tests
 # =============================================================================
 
+
 class TestModuleFunctions:
     """Tests for module-level functions."""
 
@@ -715,15 +680,13 @@ class TestModuleFunctions:
 # Serialization Tests
 # =============================================================================
 
+
 class TestSerialization:
     """Tests for data class serialization."""
 
     def test_reputation_scores_to_dict(self):
         """Test reputation scores serialization."""
-        scores = ReputationScores(
-            acceptance_rate=0.8,
-            semantic_accuracy=0.9
-        )
+        scores = ReputationScores(acceptance_rate=0.8, semantic_accuracy=0.9)
 
         data = scores.to_dict()
 
@@ -733,6 +696,7 @@ class TestSerialization:
     def test_bond_to_dict(self):
         """Test bond serialization with default staking currency."""
         from src.mediator_reputation import DEFAULT_STAKING_CURRENCY
+
         bond = Bond(amount=50000)  # Uses DEFAULT_STAKING_CURRENCY
 
         data = bond.to_dict()
@@ -743,11 +707,7 @@ class TestSerialization:
 
     def test_cooldown_to_dict(self):
         """Test cooldown serialization."""
-        cooldown = Cooldown(
-            cooldown_id="cd-ser",
-            reason=CooldownReason.SLASHING,
-            duration_days=14
-        )
+        cooldown = Cooldown(cooldown_id="cd-ser", reason=CooldownReason.SLASHING, duration_days=14)
 
         data = cooldown.to_dict()
 
@@ -758,9 +718,7 @@ class TestSerialization:
     def test_mediator_profile_to_dict(self, manager):
         """Test mediator profile serialization."""
         profile = manager.register_mediator(
-            mediator_id="med-ser",
-            stake_amount=50000,
-            supported_domains=["software"]
+            mediator_id="med-ser", stake_amount=50000, supported_domains=["software"]
         )
 
         data = profile.to_dict()

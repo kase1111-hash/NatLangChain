@@ -21,11 +21,12 @@ from typing import Any
 
 class BurnReason(Enum):
     """Valid reasons for Observance Burn."""
-    VOLUNTARY_SIGNAL = "VoluntarySignal"           # Pure belief in the system
-    ESCALATION_COMMITMENT = "EscalationCommitment" # Triggering an escalation fork
-    RATE_LIMIT_EXCESS = "RateLimitExcess"         # Exceeding daily contract threshold
-    PROTOCOL_VIOLATION = "ProtocolViolation"       # Enforced burns for violations
-    COMMUNITY_DIRECTIVE = "CommunityDirective"     # Governance-initiated burns
+
+    VOLUNTARY_SIGNAL = "VoluntarySignal"  # Pure belief in the system
+    ESCALATION_COMMITMENT = "EscalationCommitment"  # Triggering an escalation fork
+    RATE_LIMIT_EXCESS = "RateLimitExcess"  # Exceeding daily contract threshold
+    PROTOCOL_VIOLATION = "ProtocolViolation"  # Enforced burns for violations
+    COMMUNITY_DIRECTIVE = "CommunityDirective"  # Governance-initiated burns
 
 
 class ObservanceBurnManager:
@@ -46,9 +47,9 @@ class ObservanceBurnManager:
 
     # Configuration
     DEFAULT_ESCALATION_BURN_PERCENTAGE = 0.05  # 5% of mediation stake
-    DEFAULT_RATE_LIMIT_BURN_PER_EXCESS = 0.1   # 0.1 tokens per excess contract
-    MAXIMUM_EPITAPH_LENGTH = 280               # Twitter-length epitaphs
-    MINIMUM_EPITAPH_LENGTH = 0                 # Optional
+    DEFAULT_RATE_LIMIT_BURN_PER_EXCESS = 0.1  # 0.1 tokens per excess contract
+    MAXIMUM_EPITAPH_LENGTH = 280  # Twitter-length epitaphs
+    MINIMUM_EPITAPH_LENGTH = 0  # Optional
 
     def __init__(self, initial_supply: float = 1_000_000.0):
         """
@@ -67,9 +68,7 @@ class ObservanceBurnManager:
         self.burns: list[dict[str, Any]] = []
 
         # Burn counts by reason
-        self.burns_by_reason: dict[str, int] = {
-            reason.value: 0 for reason in BurnReason
-        }
+        self.burns_by_reason: dict[str, int] = {reason.value: 0 for reason in BurnReason}
 
         # Rate limiting (address -> daily contract count)
         self.daily_contract_counts: dict[str, int] = {}
@@ -82,7 +81,7 @@ class ObservanceBurnManager:
         reason: BurnReason,
         intent_hash: str | None = None,
         epitaph: str | None = None,
-        signature: str | None = None
+        signature: str | None = None,
     ) -> tuple[bool, dict[str, Any]]:
         """
         Perform an Observance Burn.
@@ -107,7 +106,9 @@ class ObservanceBurnManager:
 
         # Validate epitaph
         if epitaph and len(epitaph) > self.MAXIMUM_EPITAPH_LENGTH:
-            return False, {"error": f"Epitaph exceeds maximum length ({self.MAXIMUM_EPITAPH_LENGTH})"}
+            return False, {
+                "error": f"Epitaph exceeds maximum length ({self.MAXIMUM_EPITAPH_LENGTH})"
+            }
 
         # Generate transaction hash
         tx_hash = self._generate_tx_hash(burner, amount, reason, intent_hash, epitaph)
@@ -116,7 +117,9 @@ class ObservanceBurnManager:
         # Calculate redistribution effect
         supply_before = self.total_supply
         supply_after = self.total_supply - amount
-        redistribution_effect = ((supply_before / supply_after) - 1) * 100 if supply_after > 0 else 100
+        redistribution_effect = (
+            ((supply_before / supply_after) - 1) * 100 if supply_after > 0 else 100
+        )
 
         # Create burn record
         burn_record = {
@@ -130,7 +133,7 @@ class ObservanceBurnManager:
             "timestamp": datetime.utcnow().isoformat(),
             "supply_before": supply_before,
             "supply_after": supply_after,
-            "redistribution_effect_percent": round(redistribution_effect, 6)
+            "redistribution_effect_percent": round(redistribution_effect, 6),
         }
 
         # Execute burn
@@ -149,7 +152,7 @@ class ObservanceBurnManager:
             "amount": amount,
             "reason": reason_value,
             "new_total_supply": self.total_supply,
-            "redistribution_effect": f"{redistribution_effect:.4f}%"
+            "redistribution_effect": f"{redistribution_effect:.4f}%",
         }
 
     def _generate_tx_hash(
@@ -158,7 +161,7 @@ class ObservanceBurnManager:
         amount: float,
         reason: BurnReason,
         intent_hash: str | None,
-        epitaph: str | None
+        epitaph: str | None,
     ) -> str:
         """Generate unique transaction hash for burn."""
         data = {
@@ -167,7 +170,7 @@ class ObservanceBurnManager:
             "reason": reason.value if isinstance(reason, BurnReason) else reason,
             "intent_hash": intent_hash,
             "epitaph": epitaph,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         }
         hash_input = json.dumps(data, sort_keys=True)
         return "0x" + hashlib.sha256(hash_input.encode()).hexdigest()
@@ -185,10 +188,7 @@ class ObservanceBurnManager:
         return mediation_stake * self.DEFAULT_ESCALATION_BURN_PERCENTAGE
 
     def verify_escalation_burn(
-        self,
-        tx_hash: str,
-        expected_amount: float,
-        expected_intent_hash: str
+        self, tx_hash: str, expected_amount: float, expected_intent_hash: str
     ) -> tuple[bool, dict[str, Any] | None]:
         """
         Verify that an escalation burn was performed correctly.
@@ -215,15 +215,13 @@ class ObservanceBurnManager:
                         "error": "Burn verification failed",
                         "reason_match": reason_match,
                         "amount_match": amount_match,
-                        "intent_match": intent_match
+                        "intent_match": intent_match,
                     }
 
         return False, {"error": "Burn transaction not found"}
 
     def perform_rate_limit_burn(
-        self,
-        address: str,
-        excess_contracts: int
+        self, address: str, excess_contracts: int
     ) -> tuple[bool, dict[str, Any]]:
         """
         Perform burn for exceeding rate limit.
@@ -242,14 +240,11 @@ class ObservanceBurnManager:
             amount=burn_amount,
             reason=BurnReason.RATE_LIMIT_EXCESS,
             intent_hash=None,
-            epitaph=f"Rate limit exceeded by {excess_contracts} contracts"
+            epitaph=f"Rate limit exceeded by {excess_contracts} contracts",
         )
 
     def perform_voluntary_burn(
-        self,
-        burner: str,
-        amount: float,
-        epitaph: str | None = None
+        self, burner: str, amount: float, epitaph: str | None = None
     ) -> tuple[bool, dict[str, Any]]:
         """
         Perform a voluntary signal burn.
@@ -267,7 +262,7 @@ class ObservanceBurnManager:
             amount=amount,
             reason=BurnReason.VOLUNTARY_SIGNAL,
             intent_hash=None,
-            epitaph=epitaph
+            epitaph=epitaph,
         )
 
     def get_burn_by_tx_hash(self, tx_hash: str) -> dict[str, Any] | None:
@@ -318,15 +313,13 @@ class ObservanceBurnManager:
                 "amount": largest_burn["amount"],
                 "burner": largest_burn["burner"],
                 "epitaph": largest_burn["epitaph"],
-                "timestamp": largest_burn["timestamp"]
-            } if largest_burn else None
+                "timestamp": largest_burn["timestamp"],
+            }
+            if largest_burn
+            else None,
         }
 
-    def get_burn_history(
-        self,
-        limit: int = 50,
-        offset: int = 0
-    ) -> dict[str, Any]:
+    def get_burn_history(self, limit: int = 50, offset: int = 0) -> dict[str, Any]:
         """
         Get paginated burn history.
 
@@ -338,21 +331,17 @@ class ObservanceBurnManager:
             Paginated burn history
         """
         # Sort by timestamp descending (most recent first)
-        sorted_burns = sorted(
-            self.burns,
-            key=lambda b: b["timestamp"],
-            reverse=True
-        )
+        sorted_burns = sorted(self.burns, key=lambda b: b["timestamp"], reverse=True)
 
         total = len(sorted_burns)
-        page_burns = sorted_burns[offset:offset + limit]
+        page_burns = sorted_burns[offset : offset + limit]
 
         return {
             "total": total,
             "limit": limit,
             "offset": offset,
             "burns": page_burns,
-            "has_more": offset + limit < total
+            "has_more": offset + limit < total,
         }
 
     def format_burn_for_display(self, burn: dict[str, Any]) -> dict[str, Any]:
@@ -368,7 +357,7 @@ class ObservanceBurnManager:
             "EscalationCommitment": "Escalation Commitment",
             "RateLimitExcess": "Rate Limit Excess",
             "ProtocolViolation": "Protocol Violation",
-            "CommunityDirective": "Community Directive"
+            "CommunityDirective": "Community Directive",
         }
 
         return {
@@ -380,7 +369,7 @@ class ObservanceBurnManager:
             "burner": burn["burner"],
             "block_number": burn["block_number"],
             "timestamp": burn["timestamp"],
-            "tx_hash": burn["tx_hash"]
+            "tx_hash": burn["tx_hash"],
         }
 
     def get_observance_ledger(self, limit: int = 20) -> dict[str, Any]:
@@ -393,17 +382,14 @@ class ObservanceBurnManager:
         stats = self.get_statistics()
         history = self.get_burn_history(limit=limit)
 
-        formatted_burns = [
-            self.format_burn_for_display(burn)
-            for burn in history["burns"]
-        ]
+        formatted_burns = [self.format_burn_for_display(burn) for burn in history["burns"]]
 
         return {
             "title": "OBSERVANCE LEDGER",
             "total_supply_reduction": self.total_burned,
             "total_burns": len(self.burns),
             "last_24h_burned": stats["last_24_hours"],
-            "recent_observances": formatted_burns
+            "recent_observances": formatted_burns,
         }
 
     def emit_observance_burn_event(self, burn: dict[str, Any]) -> dict[str, Any]:
@@ -417,40 +403,30 @@ class ObservanceBurnManager:
             "name": "ObservanceBurn",
             "anonymous": False,
             "inputs": [
-                {
-                    "name": "burner",
-                    "type": "address",
-                    "indexed": True,
-                    "value": burn["burner"]
-                },
+                {"name": "burner", "type": "address", "indexed": True, "value": burn["burner"]},
                 {
                     "name": "amount",
                     "type": "uint256",
                     "indexed": False,
-                    "value": int(burn["amount"] * 10**18)  # Convert to wei equivalent
+                    "value": int(burn["amount"] * 10**18),  # Convert to wei equivalent
                 },
                 {
                     "name": "reason",
                     "type": "uint8",
                     "indexed": False,
-                    "value": list(BurnReason).index(
-                        BurnReason(burn["reason"])
-                    ) if burn["reason"] in [r.value for r in BurnReason] else 0
+                    "value": list(BurnReason).index(BurnReason(burn["reason"]))
+                    if burn["reason"] in [r.value for r in BurnReason]
+                    else 0,
                 },
                 {
                     "name": "intentHash",
                     "type": "bytes32",
                     "indexed": True,
-                    "value": burn["intent_hash"]
+                    "value": burn["intent_hash"],
                 },
-                {
-                    "name": "epitaph",
-                    "type": "string",
-                    "indexed": False,
-                    "value": burn["epitaph"]
-                }
+                {"name": "epitaph", "type": "string", "indexed": False, "value": burn["epitaph"]},
             ],
             "emittedAt": burn["timestamp"],
             "txHash": burn["tx_hash"],
-            "blockNumber": burn["block_number"]
+            "blockNumber": burn["block_number"],
         }

@@ -35,6 +35,7 @@ E2E_SKIP = os.getenv("NATLANGCHAIN_E2E_SKIP", "false").lower() == "true"
 # Try to import requests
 try:
     import requests
+
     REQUESTS_AVAILABLE = True
 except ImportError:
     REQUESTS_AVAILABLE = False
@@ -51,6 +52,7 @@ pytestmark = [
 # =============================================================================
 # Test Configuration
 # =============================================================================
+
 
 class E2EConfig:
     """Configuration for E2E tests."""
@@ -87,10 +89,7 @@ def session(config):
 def server_available(config):
     """Check if server is available before running tests."""
     try:
-        response = requests.get(
-            f"{config.base_url}/health",
-            timeout=5
-        )
+        response = requests.get(f"{config.base_url}/health", timeout=5)
         return response.status_code == 200
     except requests.RequestException:
         return False
@@ -99,6 +98,7 @@ def server_available(config):
 # =============================================================================
 # Health Check Tests
 # =============================================================================
+
 
 class TestHealthEndpoints:
     """Tests for health check endpoints."""
@@ -142,6 +142,7 @@ class TestHealthEndpoints:
 # Chain Info Tests
 # =============================================================================
 
+
 class TestChainInfo:
     """Tests for chain information endpoints."""
 
@@ -183,6 +184,7 @@ class TestChainInfo:
 # Entry Workflow Tests
 # =============================================================================
 
+
 class TestEntryWorkflow:
     """Tests for the complete entry lifecycle."""
 
@@ -203,9 +205,7 @@ class TestEntryWorkflow:
         }
 
         response = session.post(
-            f"{config.base_url}/entries",
-            json=entry_data,
-            timeout=config.timeout
+            f"{config.base_url}/entries", json=entry_data, timeout=config.timeout
         )
 
         # 201 Created or 200 OK depending on implementation
@@ -223,9 +223,7 @@ class TestEntryWorkflow:
             pytest.skip("Server not available")
 
         response = session.get(
-            f"{config.base_url}/entries",
-            params={"limit": 10},
-            timeout=config.timeout
+            f"{config.base_url}/entries", params={"limit": 10}, timeout=config.timeout
         )
         assert response.status_code == 200
 
@@ -245,7 +243,7 @@ class TestEntryWorkflow:
                 "content": entry_content,
                 "agent_id": unique_agent_id,
             },
-            timeout=config.timeout
+            timeout=config.timeout,
         )
 
         if create_response.status_code == 401:
@@ -254,28 +252,19 @@ class TestEntryWorkflow:
         assert create_response.status_code in [200, 201]
 
         # 2. Get pending entries
-        pending_response = session.get(
-            f"{config.base_url}/entries/pending",
-            timeout=config.timeout
-        )
+        pending_response = session.get(f"{config.base_url}/entries/pending", timeout=config.timeout)
         # May or may not be authorized
         if pending_response.status_code == 200:
             pending = pending_response.json()
             assert isinstance(pending, (list, dict))
 
         # 3. Mine a block (if authorized)
-        mine_response = session.post(
-            f"{config.base_url}/mine",
-            timeout=config.timeout
-        )
+        mine_response = session.post(f"{config.base_url}/mine", timeout=config.timeout)
         # Mining may require auth
         assert mine_response.status_code in [200, 201, 401, 403]
 
         # 4. Verify chain is still valid
-        validate_response = session.get(
-            f"{config.base_url}/chain/validate",
-            timeout=config.timeout
-        )
+        validate_response = session.get(f"{config.base_url}/chain/validate", timeout=config.timeout)
         assert validate_response.status_code == 200
         assert validate_response.json().get("valid", True) is True
 
@@ -283,6 +272,7 @@ class TestEntryWorkflow:
 # =============================================================================
 # Contract Tests (if available)
 # =============================================================================
+
 
 class TestContractWorkflow:
     """Tests for contract operations."""
@@ -292,10 +282,7 @@ class TestContractWorkflow:
         if not server_available:
             pytest.skip("Server not available")
 
-        response = session.get(
-            f"{config.base_url}/contracts",
-            timeout=config.timeout
-        )
+        response = session.get(f"{config.base_url}/contracts", timeout=config.timeout)
         # Endpoint may or may not exist
         if response.status_code == 404:
             pytest.skip("Contracts endpoint not available")
@@ -306,6 +293,7 @@ class TestContractWorkflow:
 # =============================================================================
 # Rate Limiting Tests
 # =============================================================================
+
 
 class TestRateLimiting:
     """Tests for rate limiting behavior."""
@@ -344,6 +332,7 @@ class TestRateLimiting:
 # Concurrent Access Tests
 # =============================================================================
 
+
 class TestConcurrency:
     """Tests for concurrent access handling."""
 
@@ -355,10 +344,7 @@ class TestConcurrency:
         import concurrent.futures
 
         def make_request():
-            response = requests.get(
-                f"{config.base_url}/health",
-                timeout=config.timeout
-            )
+            response = requests.get(f"{config.base_url}/health", timeout=config.timeout)
             return response.status_code
 
         # Make 10 concurrent requests
@@ -374,6 +360,7 @@ class TestConcurrency:
 # Error Handling Tests
 # =============================================================================
 
+
 class TestErrorHandling:
     """Tests for error handling."""
 
@@ -383,8 +370,7 @@ class TestErrorHandling:
             pytest.skip("Server not available")
 
         response = requests.get(
-            f"{config.base_url}/nonexistent-endpoint-{uuid.uuid4().hex}",
-            timeout=config.timeout
+            f"{config.base_url}/nonexistent-endpoint-{uuid.uuid4().hex}", timeout=config.timeout
         )
         assert response.status_code == 404
 
@@ -397,7 +383,7 @@ class TestErrorHandling:
             f"{config.base_url}/entries",
             data="not valid json",
             headers={"Content-Type": "application/json"},
-            timeout=config.timeout
+            timeout=config.timeout,
         )
         # Should be 400 Bad Request
         assert response.status_code in [400, 401]
@@ -410,7 +396,7 @@ class TestErrorHandling:
         response = session.post(
             f"{config.base_url}/entries",
             json={},  # Empty body
-            timeout=config.timeout
+            timeout=config.timeout,
         )
         # Should be 400 or 401 (if auth required)
         assert response.status_code in [400, 401, 422]
@@ -419,6 +405,7 @@ class TestErrorHandling:
 # =============================================================================
 # Security Headers Tests
 # =============================================================================
+
 
 class TestSecurityHeaders:
     """Tests for security headers."""
@@ -448,7 +435,7 @@ class TestSecurityHeaders:
         response = requests.options(
             f"{config.base_url}/health",
             headers={"Origin": "http://example.com"},
-            timeout=config.timeout
+            timeout=config.timeout,
         )
         # CORS may or may not be configured
         # Just verify we get a response
@@ -458,6 +445,7 @@ class TestSecurityHeaders:
 # =============================================================================
 # Performance Tests
 # =============================================================================
+
 
 class TestPerformance:
     """Basic performance tests."""
@@ -491,6 +479,7 @@ class TestPerformance:
 # Integration Workflow Tests
 # =============================================================================
 
+
 class TestFullWorkflow:
     """Tests for complete application workflows."""
 
@@ -515,7 +504,7 @@ class TestFullWorkflow:
                     "agent_id": f"workflow-test-{test_id}",
                     "intent": "test",
                 },
-                timeout=config.timeout
+                timeout=config.timeout,
             )
             if response.status_code in [200, 201]:
                 entries_created += 1
@@ -534,9 +523,7 @@ class TestFullWorkflow:
 
         # 5. Search for our entries
         search = session.get(
-            f"{config.base_url}/entries",
-            params={"q": test_id, "limit": 10},
-            timeout=config.timeout
+            f"{config.base_url}/entries", params={"q": test_id, "limit": 10}, timeout=config.timeout
         )
         if search.status_code == 200:
             # Verify we can find our entries (implementation dependent)
@@ -546,6 +533,7 @@ class TestFullWorkflow:
 # =============================================================================
 # Cleanup
 # =============================================================================
+
 
 @pytest.fixture(scope="module", autouse=True)
 def cleanup():

@@ -13,15 +13,17 @@ from typing import Any
 
 class ErrorSeverity(Enum):
     """Severity levels for boundary protection errors."""
-    LOW = "low"           # Informational, no action needed
-    MEDIUM = "medium"     # Warning, should be monitored
-    HIGH = "high"         # Error, requires attention
-    CRITICAL = "critical" # Critical, may require immediate intervention
+
+    LOW = "low"  # Informational, no action needed
+    MEDIUM = "medium"  # Warning, should be monitored
+    HIGH = "high"  # Error, requires attention
+    CRITICAL = "critical"  # Critical, may require immediate intervention
 
 
 @dataclass
 class ErrorContext:
     """Structured context for error tracking and debugging."""
+
     component: str
     action: str
     timestamp: str = field(default_factory=lambda: datetime.utcnow().isoformat() + "Z")
@@ -35,7 +37,7 @@ class ErrorContext:
             "action": self.action,
             "timestamp": self.timestamp,
             "details": self.details,
-            "severity": self.severity.value
+            "severity": self.severity.value,
         }
 
 
@@ -54,15 +56,12 @@ class BoundaryProtectionError(Exception):
         action: str = "unknown",
         severity: ErrorSeverity = ErrorSeverity.MEDIUM,
         details: dict[str, Any] | None = None,
-        cause: Exception | None = None
+        cause: Exception | None = None,
     ):
         super().__init__(message)
         self.message = message
         self.context = ErrorContext(
-            component=component,
-            action=action,
-            severity=severity,
-            details=details or {}
+            component=component, action=action, severity=severity, details=details or {}
         )
         self.cause = cause
 
@@ -75,13 +74,10 @@ class BoundaryProtectionError(Exception):
         result = {
             "error_type": type(self).__name__,
             "message": self.message,
-            **self.context.to_dict()
+            **self.context.to_dict(),
         }
         if self.cause:
-            result["cause"] = {
-                "type": type(self.cause).__name__,
-                "message": str(self.cause)
-            }
+            result["cause"] = {"type": type(self.cause).__name__, "message": str(self.cause)}
         return result
 
     def __str__(self) -> str:
@@ -94,6 +90,7 @@ class BoundaryProtectionError(Exception):
 # =============================================================================
 # Enforcement Errors
 # =============================================================================
+
 
 class EnforcementError(BoundaryProtectionError):
     """
@@ -111,19 +108,15 @@ class EnforcementError(BoundaryProtectionError):
         enforcement_type: str = "unknown",
         target: str | None = None,
         details: dict[str, Any] | None = None,
-        cause: Exception | None = None
+        cause: Exception | None = None,
     ):
         super().__init__(
             message=message,
             component="security_enforcement",
             action=enforcement_type,
             severity=ErrorSeverity.HIGH,
-            details={
-                "enforcement_type": enforcement_type,
-                "target": target,
-                **(details or {})
-            },
-            cause=cause
+            details={"enforcement_type": enforcement_type, "target": target, **(details or {})},
+            cause=cause,
         )
         self.enforcement_type = enforcement_type
         self.target = target
@@ -137,14 +130,10 @@ class NetworkEnforcementError(EnforcementError):
         message: str,
         target: str | None = None,
         details: dict[str, Any] | None = None,
-        cause: Exception | None = None
+        cause: Exception | None = None,
     ):
         super().__init__(
-            message=message,
-            enforcement_type="network",
-            target=target,
-            details=details,
-            cause=cause
+            message=message, enforcement_type="network", target=target, details=details, cause=cause
         )
 
 
@@ -156,20 +145,21 @@ class ProcessEnforcementError(EnforcementError):
         message: str,
         pid: int | None = None,
         details: dict[str, Any] | None = None,
-        cause: Exception | None = None
+        cause: Exception | None = None,
     ):
         super().__init__(
             message=message,
             enforcement_type="process",
             target=str(pid) if pid else None,
             details={"pid": pid, **(details or {})},
-            cause=cause
+            cause=cause,
         )
 
 
 # =============================================================================
 # SIEM Errors
 # =============================================================================
+
 
 class SIEMError(BoundaryProtectionError):
     """Base class for SIEM-related errors."""
@@ -179,7 +169,7 @@ class SIEMError(BoundaryProtectionError):
         message: str,
         action: str = "siem_operation",
         details: dict[str, Any] | None = None,
-        cause: Exception | None = None
+        cause: Exception | None = None,
     ):
         super().__init__(
             message=message,
@@ -187,7 +177,7 @@ class SIEMError(BoundaryProtectionError):
             action=action,
             severity=ErrorSeverity.MEDIUM,
             details=details,
-            cause=cause
+            cause=cause,
         )
 
 
@@ -200,17 +190,13 @@ class SIEMConnectionError(SIEMError):
         endpoint: str | None = None,
         status_code: int | None = None,
         details: dict[str, Any] | None = None,
-        cause: Exception | None = None
+        cause: Exception | None = None,
     ):
         super().__init__(
             message=message,
             action="connect",
-            details={
-                "endpoint": endpoint,
-                "status_code": status_code,
-                **(details or {})
-            },
-            cause=cause
+            details={"endpoint": endpoint, "status_code": status_code, **(details or {})},
+            cause=cause,
         )
         self.endpoint = endpoint
         self.status_code = status_code
@@ -224,19 +210,20 @@ class SIEMEventError(SIEMError):
         message: str,
         event_id: str | None = None,
         details: dict[str, Any] | None = None,
-        cause: Exception | None = None
+        cause: Exception | None = None,
     ):
         super().__init__(
             message=message,
             action="send_event",
             details={"event_id": event_id, **(details or {})},
-            cause=cause
+            cause=cause,
         )
 
 
 # =============================================================================
 # Policy Errors
 # =============================================================================
+
 
 class PolicyError(BoundaryProtectionError):
     """Base class for policy-related errors."""
@@ -246,7 +233,7 @@ class PolicyError(BoundaryProtectionError):
         message: str,
         policy_name: str | None = None,
         details: dict[str, Any] | None = None,
-        cause: Exception | None = None
+        cause: Exception | None = None,
     ):
         super().__init__(
             message=message,
@@ -254,7 +241,7 @@ class PolicyError(BoundaryProtectionError):
             action="policy_check",
             severity=ErrorSeverity.HIGH,
             details={"policy_name": policy_name, **(details or {})},
-            cause=cause
+            cause=cause,
         )
         self.policy_name = policy_name
 
@@ -268,7 +255,7 @@ class PolicyViolationError(PolicyError):
         violation_type: str,
         source: str | None = None,
         destination: str | None = None,
-        details: dict[str, Any] | None = None
+        details: dict[str, Any] | None = None,
     ):
         super().__init__(
             message=message,
@@ -277,8 +264,8 @@ class PolicyViolationError(PolicyError):
                 "violation_type": violation_type,
                 "source": source,
                 "destination": destination,
-                **(details or {})
-            }
+                **(details or {}),
+            },
         )
         self.violation_type = violation_type
 
@@ -292,19 +279,20 @@ class PolicyConfigurationError(PolicyError):
         policy_name: str | None = None,
         config_key: str | None = None,
         details: dict[str, Any] | None = None,
-        cause: Exception | None = None
+        cause: Exception | None = None,
     ):
         super().__init__(
             message=message,
             policy_name=policy_name,
             details={"config_key": config_key, **(details or {})},
-            cause=cause
+            cause=cause,
         )
 
 
 # =============================================================================
 # Mode Transition Errors
 # =============================================================================
+
 
 class ModeTransitionError(BoundaryProtectionError):
     """Errors during boundary mode transitions."""
@@ -316,7 +304,7 @@ class ModeTransitionError(BoundaryProtectionError):
         to_mode: str | None = None,
         reason: str | None = None,
         details: dict[str, Any] | None = None,
-        cause: Exception | None = None
+        cause: Exception | None = None,
     ):
         super().__init__(
             message=message,
@@ -327,9 +315,9 @@ class ModeTransitionError(BoundaryProtectionError):
                 "from_mode": from_mode,
                 "to_mode": to_mode,
                 "reason": reason,
-                **(details or {})
+                **(details or {}),
             },
-            cause=cause
+            cause=cause,
         )
         self.from_mode = from_mode
         self.to_mode = to_mode
@@ -343,19 +331,20 @@ class OverrideError(ModeTransitionError):
         message: str,
         request_id: str | None = None,
         details: dict[str, Any] | None = None,
-        cause: Exception | None = None
+        cause: Exception | None = None,
     ):
         super().__init__(
             message=message,
             reason="override_failed",
             details={"request_id": request_id, **(details or {})},
-            cause=cause
+            cause=cause,
         )
 
 
 # =============================================================================
 # Security Check Errors
 # =============================================================================
+
 
 class SecurityCheckError(BoundaryProtectionError):
     """Errors during security checks (injection detection, etc.)."""
@@ -366,19 +355,15 @@ class SecurityCheckError(BoundaryProtectionError):
         check_type: str = "unknown",
         input_context: str | None = None,
         details: dict[str, Any] | None = None,
-        cause: Exception | None = None
+        cause: Exception | None = None,
     ):
         super().__init__(
             message=message,
             component="agent_security",
             action=check_type,
             severity=ErrorSeverity.HIGH,
-            details={
-                "check_type": check_type,
-                "input_context": input_context,
-                **(details or {})
-            },
-            cause=cause
+            details={"check_type": check_type, "input_context": input_context, **(details or {})},
+            cause=cause,
         )
         self.check_type = check_type
 
@@ -391,13 +376,13 @@ class PatternMatchError(SecurityCheckError):
         message: str,
         pattern: str | None = None,
         details: dict[str, Any] | None = None,
-        cause: Exception | None = None
+        cause: Exception | None = None,
     ):
         super().__init__(
             message=message,
             check_type="pattern_match",
             details={"pattern": pattern, **(details or {})},
-            cause=cause
+            cause=cause,
         )
 
 
@@ -409,19 +394,20 @@ class AttestationError(SecurityCheckError):
         message: str,
         agent_id: str | None = None,
         details: dict[str, Any] | None = None,
-        cause: Exception | None = None
+        cause: Exception | None = None,
     ):
         super().__init__(
             message=message,
             check_type="attestation",
             details={"agent_id": agent_id, **(details or {})},
-            cause=cause
+            cause=cause,
         )
 
 
 # =============================================================================
 # Tripwire Errors
 # =============================================================================
+
 
 class TripwireError(BoundaryProtectionError):
     """Errors in tripwire handling."""
@@ -431,7 +417,7 @@ class TripwireError(BoundaryProtectionError):
         message: str,
         tripwire_type: str | None = None,
         details: dict[str, Any] | None = None,
-        cause: Exception | None = None
+        cause: Exception | None = None,
     ):
         super().__init__(
             message=message,
@@ -439,13 +425,14 @@ class TripwireError(BoundaryProtectionError):
             action="tripwire",
             severity=ErrorSeverity.CRITICAL,
             details={"tripwire_type": tripwire_type, **(details or {})},
-            cause=cause
+            cause=cause,
         )
 
 
 # =============================================================================
 # Configuration Errors
 # =============================================================================
+
 
 class ConfigurationError(BoundaryProtectionError):
     """Configuration-related errors."""
@@ -456,19 +443,15 @@ class ConfigurationError(BoundaryProtectionError):
         config_key: str | None = None,
         expected_type: str | None = None,
         details: dict[str, Any] | None = None,
-        cause: Exception | None = None
+        cause: Exception | None = None,
     ):
         super().__init__(
             message=message,
             component="configuration",
             action="load_config",
             severity=ErrorSeverity.HIGH,
-            details={
-                "config_key": config_key,
-                "expected_type": expected_type,
-                **(details or {})
-            },
-            cause=cause
+            details={"config_key": config_key, "expected_type": expected_type, **(details or {})},
+            cause=cause,
         )
 
 
@@ -476,11 +459,9 @@ class ConfigurationError(BoundaryProtectionError):
 # Utility Functions
 # =============================================================================
 
+
 def wrap_exception(
-    e: Exception,
-    component: str,
-    action: str,
-    message: str | None = None
+    e: Exception, component: str, action: str, message: str | None = None
 ) -> BoundaryProtectionError:
     """
     Wrap a generic exception in a BoundaryProtectionError.
@@ -489,18 +470,11 @@ def wrap_exception(
     into our exception hierarchy.
     """
     return BoundaryProtectionError(
-        message=message or str(e),
-        component=component,
-        action=action,
-        cause=e
+        message=message or str(e), component=component, action=action, cause=e
     )
 
 
-def log_exception(
-    logger,
-    e: BoundaryProtectionError,
-    level: str = "error"
-) -> None:
+def log_exception(logger, e: BoundaryProtectionError, level: str = "error") -> None:
     """
     Log a BoundaryProtectionError with full context.
 
@@ -510,8 +484,4 @@ def log_exception(
         level: Log level (debug, info, warning, error, critical)
     """
     log_func = getattr(logger, level, logger.error)
-    log_func(
-        str(e),
-        extra=e.to_dict(),
-        exc_info=True if level in ("error", "critical") else False
-    )
+    log_func(str(e), extra=e.to_dict(), exc_info=True if level in ("error", "critical") else False)

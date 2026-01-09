@@ -11,14 +11,14 @@ import time
 import unittest
 from unittest.mock import patch
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from rate_limiter import (
+    MemoryRateLimitStore,
+    RateLimitBackend,
     RateLimitConfig,
     RateLimitResult,
-    RateLimitBackend,
     RateLimitStore,
-    MemoryRateLimitStore,
     RedisRateLimitStore,
 )
 
@@ -42,7 +42,7 @@ class TestRateLimitConfig(unittest.TestCase):
             requests_per_window=50,
             window_seconds=30,
             burst_multiplier=2.0,
-            redis_url="redis://custom:6379/1"
+            redis_url="redis://custom:6379/1",
         )
 
         self.assertEqual(config.backend, "redis")
@@ -88,11 +88,7 @@ class TestRateLimitResult(unittest.TestCase):
     def test_create_result(self):
         """Test creating a rate limit result."""
         result = RateLimitResult(
-            exceeded=False,
-            remaining=95,
-            limit=100,
-            reset_at=time.time() + 60,
-            retry_after=0
+            exceeded=False, remaining=95, limit=100, reset_at=time.time() + 60, retry_after=0
         )
 
         self.assertFalse(result.exceeded)
@@ -103,11 +99,7 @@ class TestRateLimitResult(unittest.TestCase):
     def test_exceeded_result(self):
         """Test rate limit exceeded result."""
         result = RateLimitResult(
-            exceeded=True,
-            remaining=0,
-            limit=100,
-            reset_at=time.time() + 30,
-            retry_after=30
+            exceeded=True, remaining=0, limit=100, reset_at=time.time() + 30, retry_after=30
         )
 
         self.assertTrue(result.exceeded)
@@ -118,11 +110,7 @@ class TestRateLimitResult(unittest.TestCase):
         """Test converting result to HTTP headers."""
         reset_time = time.time() + 60
         result = RateLimitResult(
-            exceeded=False,
-            remaining=95,
-            limit=100,
-            reset_at=reset_time,
-            retry_after=0
+            exceeded=False, remaining=95, limit=100, reset_at=reset_time, retry_after=0
         )
 
         headers = result.to_headers()
@@ -138,7 +126,7 @@ class TestRateLimitResult(unittest.TestCase):
             remaining=-5,  # Could go negative if burst allowed
             limit=100,
             reset_at=time.time() + 60,
-            retry_after=60
+            retry_after=60,
         )
 
         headers = result.to_headers()
@@ -250,11 +238,7 @@ class TestRedisRateLimitStore(unittest.TestCase):
 
     def test_init(self):
         """Test initialization."""
-        store = RedisRateLimitStore(
-            url="redis://localhost:6379/0",
-            prefix="test:",
-            timeout=1.0
-        )
+        store = RedisRateLimitStore(url="redis://localhost:6379/0", prefix="test:", timeout=1.0)
 
         self.assertEqual(store.url, "redis://localhost:6379/0")
         self.assertEqual(store.prefix, "test:")
@@ -262,10 +246,7 @@ class TestRedisRateLimitStore(unittest.TestCase):
 
     def test_full_key(self):
         """Test key prefixing."""
-        store = RedisRateLimitStore(
-            url="redis://localhost:6379/0",
-            prefix="ratelimit:"
-        )
+        store = RedisRateLimitStore(url="redis://localhost:6379/0", prefix="ratelimit:")
 
         full_key = store._full_key("client:123")
 
@@ -273,10 +254,7 @@ class TestRedisRateLimitStore(unittest.TestCase):
 
     def test_not_available_without_redis(self):
         """Test that store reports unavailable when Redis not connected."""
-        store = RedisRateLimitStore(
-            url="redis://nonexistent:6379/0",
-            timeout=0.1
-        )
+        store = RedisRateLimitStore(url="redis://nonexistent:6379/0", timeout=0.1)
 
         # Force client creation attempt
         store._get_client()

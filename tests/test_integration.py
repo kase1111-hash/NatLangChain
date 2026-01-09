@@ -7,13 +7,14 @@ import sys
 
 import pytest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from blockchain import NatLangChain, NaturalLanguageEntry
 
 # Skip all tests if numpy/semantic_search is not available
 try:
     from semantic_search import SemanticSearchEngine
+
     SEMANTIC_SEARCH_AVAILABLE = True
 except ImportError as e:
     SEMANTIC_SEARCH_AVAILABLE = False
@@ -33,23 +34,23 @@ def test_semantic_search():
         NaturalLanguageEntry(
             content="The board of directors voted to approve the merger with TechCorp.",
             author="board",
-            intent="Record merger decision"
+            intent="Record merger decision",
         ),
         NaturalLanguageEntry(
             content="Alice transfers ownership of the vintage car to Bob for $25,000.",
             author="alice",
-            intent="Transfer vehicle ownership"
+            intent="Transfer vehicle ownership",
         ),
         NaturalLanguageEntry(
             content="The company acquired new office space in downtown Manhattan.",
             author="realestate",
-            intent="Real estate acquisition"
+            intent="Real estate acquisition",
         ),
         NaturalLanguageEntry(
             content="Bob sells his classic automobile to Charlie for thirty thousand dollars.",
             author="bob",
-            intent="Vehicle sale"
-        )
+            intent="Vehicle sale",
+        ),
     ]
 
     for entry in entries:
@@ -87,7 +88,7 @@ def test_semantic_search_by_field():
     entry = NaturalLanguageEntry(
         content="The financial transaction was completed successfully with all parties in agreement.",
         author="finance",
-        intent="Record successful payment"
+        intent="Record successful payment",
     )
 
     chain.add_entry(entry)
@@ -96,9 +97,7 @@ def test_semantic_search_by_field():
     search_engine = SemanticSearchEngine()
 
     # Search in intent field for "payment"
-    results = search_engine.search_by_field(
-        chain, "payment processing", field="intent", top_k=5
-    )
+    results = search_engine.search_by_field(chain, "payment processing", field="intent", top_k=5)
 
     print(f"Found {len(results)} results when searching intent field")
 
@@ -118,20 +117,16 @@ def test_find_similar_entries():
     # Add similar entries
     similar_entries = [
         NaturalLanguageEntry(
-            content="The stock price increased by 5% today.",
-            author="market",
-            intent="Price update"
+            content="The stock price increased by 5% today.", author="market", intent="Price update"
         ),
         NaturalLanguageEntry(
             content="Equity values rose approximately five percent during trading.",
             author="market",
-            intent="Market movement"
+            intent="Market movement",
         ),
         NaturalLanguageEntry(
-            content="The company hired three new engineers.",
-            author="hr",
-            intent="Hiring update"
-        )
+            content="The company hired three new engineers.", author="hr", intent="Hiring update"
+        ),
     ]
 
     for entry in similar_entries:
@@ -143,9 +138,7 @@ def test_find_similar_entries():
 
     # Find entries similar to the first stock price entry
     similar = search_engine.find_similar_entries(
-        chain,
-        "Stock market prices went up by 5 percent",
-        top_k=3
+        chain, "Stock market prices went up by 5 percent", top_k=3
     )
 
     print(f"Found {len(similar)} similar entries")
@@ -156,8 +149,9 @@ def test_find_similar_entries():
     # Top similar should be stock-related, not hiring
     if len(similar) > 0:
         top_similar = similar[0]["entry"]
-        assert "stock" in top_similar["content"].lower() or "equity" in top_similar["content"].lower(), \
-            "Top similar entry should be stock-related"
+        assert (
+            "stock" in top_similar["content"].lower() or "equity" in top_similar["content"].lower()
+        ), "Top similar entry should be stock-related"
 
     print("✓ Similar entry detection test passed")
 
@@ -186,10 +180,11 @@ def run_all_tests():
     except Exception as e:
         print(f"\n✗ Error during tests: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     success = run_all_tests()
     sys.exit(0 if success else 1)

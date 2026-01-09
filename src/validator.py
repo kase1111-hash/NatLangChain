@@ -39,9 +39,7 @@ PROMPT_INJECTION_PATTERNS = [
 
 
 def sanitize_prompt_input(
-    text: str,
-    max_length: int = MAX_CONTENT_LENGTH,
-    field_name: str = "input"
+    text: str, max_length: int = MAX_CONTENT_LENGTH, field_name: str = "input"
 ) -> str:
     """
     Sanitize user input before including it in LLM prompts.
@@ -81,13 +79,13 @@ def sanitize_prompt_input(
 
     # Escape delimiter-like sequences that could break prompt structure
     # Replace sequences that look like prompt delimiters
-    text = re.sub(r'```+', '[code-block]', text)
-    text = re.sub(r'---+', '[separator]', text)
-    text = re.sub(r'===+', '[separator]', text)
+    text = re.sub(r"```+", "[code-block]", text)
+    text = re.sub(r"---+", "[separator]", text)
+    text = re.sub(r"===+", "[separator]", text)
 
     # Normalize excessive whitespace
-    text = re.sub(r'\n{3,}', '\n\n', text)
-    text = re.sub(r' {3,}', '  ', text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    text = re.sub(r" {3,}", "  ", text)
 
     return text.strip()
 
@@ -113,12 +111,14 @@ def create_safe_prompt_section(label: str, content: str, max_length: int) -> str
 {sanitized}
 [END {label}]"""
 
+
 # Import NCIP-004 PoU scoring
 try:
     from pou_scoring import (
         PoUScorer,
         classify_pou_score,
     )
+
     NCIP_004_AVAILABLE = True
 except ImportError:
     NCIP_004_AVAILABLE = False
@@ -135,6 +135,7 @@ try:
         get_ncip_007_config,
         get_trust_manager,
     )
+
     NCIP_007_AVAILABLE = True
 except ImportError:
     NCIP_007_AVAILABLE = False
@@ -148,6 +149,7 @@ try:
         RatificationContext,
         SemanticUnit,
     )
+
     NCIP_012_AVAILABLE = True
 except ImportError:
     NCIP_012_AVAILABLE = False
@@ -160,6 +162,7 @@ try:
         ConstitutionalArtifact,
         PoUStatement,
     )
+
     NCIP_014_AVAILABLE = True
 except ImportError:
     NCIP_014_AVAILABLE = False
@@ -171,6 +174,7 @@ try:
         LanguageRole,
         MultilingualAlignmentManager,
     )
+
     NCIP_003_AVAILABLE = True
 except ImportError:
     NCIP_003_AVAILABLE = False
@@ -184,6 +188,7 @@ try:
         JurisdictionalManager,
         JurisdictionRole,
     )
+
     NCIP_006_AVAILABLE = True
 except ImportError:
     NCIP_006_AVAILABLE = False
@@ -197,6 +202,7 @@ try:
         DriftLevel as AppealsDriftLevel,
         ReviewPanelMember,
     )
+
     NCIP_008_AVAILABLE = True
 except ImportError:
     NCIP_008_AVAILABLE = False
@@ -207,10 +213,10 @@ try:
         ActorRole,
         ValidatorMediatorCoupling,
     )
+
     NCIP_011_AVAILABLE = True
 except ImportError:
     NCIP_011_AVAILABLE = False
-
 
 
 class ProofOfUnderstanding:
@@ -290,9 +296,7 @@ Respond in JSON format:
             message = self.client.messages.create(
                 model=self.model,
                 max_tokens=1024,
-                messages=[
-                    {"role": "user", "content": validation_prompt}
-                ]
+                messages=[{"role": "user", "content": validation_prompt}],
             )
 
             # Parse the response
@@ -300,9 +304,13 @@ Respond in JSON format:
 
             # Safe access to API response
             if not message.content:
-                raise ValueError("Empty response from API: no content returned during entry validation")
-            if not hasattr(message.content[0], 'text'):
-                raise ValueError("Invalid API response format: missing 'text' attribute in entry validation")
+                raise ValueError(
+                    "Empty response from API: no content returned during entry validation"
+                )
+            if not hasattr(message.content[0], "text"):
+                raise ValueError(
+                    "Invalid API response format: missing 'text' attribute in entry validation"
+                )
 
             response_text = message.content[0].text
 
@@ -314,19 +322,13 @@ Respond in JSON format:
             except json.JSONDecodeError as e:
                 raise ValueError(f"Failed to parse validation JSON: {e.msg} at position {e.pos}")
 
-            return {
-                "status": "success",
-                "validation": result
-            }
+            return {"status": "success", "validation": result}
 
         except json.JSONDecodeError as e:
             return {
                 "status": "error",
                 "error": f"JSON parsing error: {e!s}",
-                "validation": {
-                    "decision": "ERROR",
-                    "reasoning": f"JSON parsing failed: {e!s}"
-                }
+                "validation": {"decision": "ERROR", "reasoning": f"JSON parsing failed: {e!s}"},
             }
         except ValueError as e:
             return {
@@ -334,17 +336,14 @@ Respond in JSON format:
                 "error": f"Validation error: {e!s}",
                 "validation": {
                     "decision": "ERROR",
-                    "reasoning": f"Response validation failed: {e!s}"
-                }
+                    "reasoning": f"Response validation failed: {e!s}",
+                },
             }
         except Exception as e:
             return {
                 "status": "error",
                 "error": f"Unexpected error: {e!s}",
-                "validation": {
-                    "decision": "ERROR",
-                    "reasoning": f"Validation failed: {e!s}"
-                }
+                "validation": {"decision": "ERROR", "reasoning": f"Validation failed: {e!s}"},
             }
 
     def _extract_json_from_response(self, response_text: str) -> str:
@@ -382,11 +381,7 @@ Respond in JSON format:
     MAX_VALIDATORS = 10
 
     def multi_validator_consensus(
-        self,
-        content: str,
-        intent: str,
-        author: str,
-        num_validators: int = 3
+        self, content: str, intent: str, author: str, num_validators: int = 3
     ) -> dict[str, Any]:
         """
         Achieve consensus through multiple validator nodes.
@@ -413,17 +408,14 @@ Respond in JSON format:
                 validations.append(result["validation"])
 
         if not validations:
-            return {
-                "consensus": "FAILED",
-                "reason": "All validators encountered errors"
-            }
+            return {"consensus": "FAILED", "reason": "All validators encountered errors"}
 
         # Count decisions
         decisions = [v["decision"] for v in validations]
         decision_counts = {
             "VALID": decisions.count("VALID"),
             "NEEDS_CLARIFICATION": decisions.count("NEEDS_CLARIFICATION"),
-            "INVALID": decisions.count("INVALID")
+            "INVALID": decisions.count("INVALID"),
         }
 
         # Determine consensus (simple majority)
@@ -440,14 +432,10 @@ Respond in JSON format:
             "validator_count": num_validators,
             "decision_distribution": decision_counts,
             "validations": validations,
-            "paraphrases": [v.get("paraphrase", "") for v in validations]
+            "paraphrases": [v.get("paraphrase", "") for v in validations],
         }
 
-    def detect_semantic_drift(
-        self,
-        original: str,
-        paraphrase: str
-    ) -> dict[str, Any]:
+    def detect_semantic_drift(self, original: str, paraphrase: str) -> dict[str, Any]:
         """
         Detect semantic drift between original and paraphrase.
 
@@ -481,18 +469,20 @@ Assess whether they convey the same meaning. Respond in JSON:
             message = self.client.messages.create(
                 model=self.model,
                 max_tokens=512,
-                messages=[
-                    {"role": "user", "content": drift_prompt}
-                ]
+                messages=[{"role": "user", "content": drift_prompt}],
             )
 
             import json
 
             # Safe access to API response
             if not message.content:
-                raise ValueError("Empty response from API: no content returned during drift detection")
-            if not hasattr(message.content[0], 'text'):
-                raise ValueError("Invalid API response format: missing 'text' attribute in drift detection")
+                raise ValueError(
+                    "Empty response from API: no content returned during drift detection"
+                )
+            if not hasattr(message.content[0], "text"):
+                raise ValueError(
+                    "Invalid API response format: missing 'text' attribute in drift detection"
+                )
 
             response_text = message.content[0].text
 
@@ -502,32 +492,30 @@ Assess whether they convey the same meaning. Respond in JSON:
             try:
                 return json.loads(response_text)
             except json.JSONDecodeError as e:
-                raise ValueError(f"Failed to parse drift detection JSON: {e.msg} at position {e.pos}")
+                raise ValueError(
+                    f"Failed to parse drift detection JSON: {e.msg} at position {e.pos}"
+                )
 
         except json.JSONDecodeError as e:
             return {
                 "error": f"JSON parsing error: {e!s}",
                 "semantically_equivalent": None,
-                "drift_score": None
+                "drift_score": None,
             }
         except ValueError as e:
             return {
                 "error": f"Validation error: {e!s}",
                 "semantically_equivalent": None,
-                "drift_score": None
+                "drift_score": None,
             }
         except Exception as e:
             return {
                 "error": f"Unexpected error: {e!s}",
                 "semantically_equivalent": None,
-                "drift_score": None
+                "drift_score": None,
             }
 
-    def clarification_protocol(
-        self,
-        content: str,
-        ambiguities: list[str]
-    ) -> dict[str, Any]:
+    def clarification_protocol(self, content: str, ambiguities: list[str]) -> dict[str, Any]:
         """
         Generate clarification questions for ambiguous entries.
 
@@ -558,18 +546,20 @@ Generate specific clarification questions that would resolve these ambiguities. 
             message = self.client.messages.create(
                 model=self.model,
                 max_tokens=512,
-                messages=[
-                    {"role": "user", "content": clarification_prompt}
-                ]
+                messages=[{"role": "user", "content": clarification_prompt}],
             )
 
             import json
 
             # Safe access to API response
             if not message.content:
-                raise ValueError("Empty response from API: no content returned during clarification protocol")
-            if not hasattr(message.content[0], 'text'):
-                raise ValueError("Invalid API response format: missing 'text' attribute in clarification protocol")
+                raise ValueError(
+                    "Empty response from API: no content returned during clarification protocol"
+                )
+            if not hasattr(message.content[0], "text"):
+                raise ValueError(
+                    "Invalid API response format: missing 'text' attribute in clarification protocol"
+                )
 
             response_text = message.content[0].text
 
@@ -585,19 +575,19 @@ Generate specific clarification questions that would resolve these ambiguities. 
             return {
                 "error": f"JSON parsing error: {e!s}",
                 "clarification_questions": [],
-                "suggested_rewording": None
+                "suggested_rewording": None,
             }
         except ValueError as e:
             return {
                 "error": f"Validation error: {e!s}",
                 "clarification_questions": [],
-                "suggested_rewording": None
+                "suggested_rewording": None,
             }
         except Exception as e:
             return {
                 "error": f"Unexpected error: {e!s}",
                 "clarification_questions": [],
-                "suggested_rewording": None
+                "suggested_rewording": None,
             }
 
 
@@ -629,6 +619,7 @@ class HybridValidator:
         if self._term_registry is None and self.enable_term_validation:
             try:
                 from term_registry import get_registry
+
                 self._term_registry = get_registry()
             except ImportError:
                 # Term registry not available
@@ -638,11 +629,7 @@ class HybridValidator:
                 self._term_registry = None
         return self._term_registry
 
-    def validate_terms(
-        self,
-        content: str,
-        intent: str
-    ) -> dict[str, Any]:
+    def validate_terms(self, content: str, intent: str) -> dict[str, Any]:
         """
         Validate terms against NCIP-001 Canonical Term Registry.
 
@@ -663,12 +650,8 @@ class HybridValidator:
             "valid": True,
             "issues": [],
             "warnings": [],
-            "terms_found": {
-                "core": [],
-                "protocol_bound": [],
-                "extension": []
-            },
-            "synonym_recommendations": []
+            "terms_found": {"core": [], "protocol_bound": [], "extension": []},
+            "synonym_recommendations": [],
         }
 
         if not self.enable_term_validation or self.term_registry is None:
@@ -696,10 +679,7 @@ class HybridValidator:
                 result["warnings"].append(
                     f"Synonym '{used}' used instead of canonical term '{canonical}'"
                 )
-                result["synonym_recommendations"].append({
-                    "used": used,
-                    "canonical": canonical
-                })
+                result["synonym_recommendations"].append({"used": used, "canonical": canonical})
 
             # Set validity based on issues (not warnings)
             result["valid"] = len(result["issues"]) == 0
@@ -710,12 +690,7 @@ class HybridValidator:
 
         return result
 
-    def symbolic_validation(
-        self,
-        content: str,
-        intent: str,
-        author: str
-    ) -> dict[str, Any]:
+    def symbolic_validation(self, content: str, intent: str, author: str) -> dict[str, Any]:
         """
         Perform basic symbolic/rule-based validation.
 
@@ -751,13 +726,7 @@ class HybridValidator:
             issues.append("Author is empty")
 
         # Check for suspicious patterns
-        suspicious_patterns = [
-            "javascript:",
-            "<script>",
-            "eval(",
-            "exec(",
-            "__import__"
-        ]
+        suspicious_patterns = ["javascript:", "<script>", "eval(", "exec(", "__import__"]
 
         for pattern in suspicious_patterns:
             if pattern.lower() in content.lower():
@@ -774,7 +743,7 @@ class HybridValidator:
             "valid": len(issues) == 0,
             "issues": issues,
             "warnings": warnings,
-            "term_validation": term_validation
+            "term_validation": term_validation,
         }
 
     def validate(
@@ -783,7 +752,7 @@ class HybridValidator:
         intent: str,
         author: str,
         use_llm: bool = True,
-        multi_validator: bool = False
+        multi_validator: bool = False,
     ) -> dict[str, Any]:
         """
         Perform hybrid validation.
@@ -810,7 +779,7 @@ class HybridValidator:
         result = {
             "symbolic_validation": symbolic_result,
             "term_validation": symbolic_result.get("term_validation"),
-            "llm_validation": None
+            "llm_validation": None,
         }
 
         # Include term validation warnings in result
@@ -828,15 +797,11 @@ class HybridValidator:
         # LLM validation if enabled
         if use_llm:
             if multi_validator:
-                llm_result = self.llm_validator.multi_validator_consensus(
-                    content, intent, author
-                )
+                llm_result = self.llm_validator.multi_validator_consensus(content, intent, author)
                 result["llm_validation"] = llm_result
                 result["overall_decision"] = llm_result["consensus"]
             else:
-                llm_result = self.llm_validator.validate_entry(
-                    content, intent, author
-                )
+                llm_result = self.llm_validator.validate_entry(content, intent, author)
                 result["llm_validation"] = llm_result
                 if llm_result["status"] == "success":
                     result["overall_decision"] = llm_result["validation"]["decision"]
@@ -855,7 +820,7 @@ class HybridValidator:
         self,
         pou_data: dict[str, Any],
         contract_content: str,
-        contract_clauses: list[str] | None = None
+        contract_clauses: list[str] | None = None,
     ) -> dict[str, Any]:
         """
         Validate a Proof of Understanding submission per NCIP-004.
@@ -884,28 +849,24 @@ class HybridValidator:
             return {
                 "status": "unavailable",
                 "message": "NCIP-004 PoU scoring module not available",
-                "ncip_004_enabled": False
+                "ncip_004_enabled": False,
             }
 
         try:
             scorer = PoUScorer(validator_id="hybrid_validator")
-            return scorer.get_validator_response(
-                pou_data,
-                contract_content,
-                contract_clauses
-            )
+            return scorer.get_validator_response(pou_data, contract_content, contract_clauses)
         except Exception as e:
             return {
                 "status": "error",
                 "message": f"PoU validation failed: {e!s}",
-                "ncip_004_enabled": True
+                "ncip_004_enabled": True,
             }
 
     def validate_pou_with_llm(
         self,
         pou_data: dict[str, Any],
         contract_content: str,
-        contract_clauses: list[str] | None = None
+        contract_clauses: list[str] | None = None,
     ) -> dict[str, Any]:
         """
         Validate PoU with both NCIP-004 scoring and LLM semantic analysis.
@@ -923,11 +884,7 @@ class HybridValidator:
         Returns:
             Combined validation result
         """
-        result = {
-            "ncip_004_validation": None,
-            "llm_validation": None,
-            "combined_status": None
-        }
+        result = {"ncip_004_validation": None, "llm_validation": None, "combined_status": None}
 
         # Get NCIP-004 scores
         ncip_result = self.validate_pou(pou_data, contract_content, contract_clauses)
@@ -938,13 +895,8 @@ class HybridValidator:
 
         if summary and self.llm_validator:
             # Check for semantic drift between PoU summary and contract
-            drift_result = self.llm_validator.detect_semantic_drift(
-                contract_content,
-                summary
-            )
-            result["llm_validation"] = {
-                "drift_analysis": drift_result
-            }
+            drift_result = self.llm_validator.detect_semantic_drift(contract_content, summary)
+            result["llm_validation"] = {"drift_analysis": drift_result}
 
             # Combine results
             ncip_status = ncip_result.get("status", "error")
@@ -952,7 +904,11 @@ class HybridValidator:
 
             if ncip_status == "verified" and drift_score is not None and drift_score < 0.25:
                 result["combined_status"] = "verified"
-            elif ncip_status in ["verified", "marginal"] and drift_score is not None and drift_score < 0.45:
+            elif (
+                ncip_status in ["verified", "marginal"]
+                and drift_score is not None
+                and drift_score < 0.45
+            ):
                 result["combined_status"] = "marginal"
             elif ncip_status == "insufficient":
                 result["combined_status"] = "insufficient"
@@ -969,7 +925,7 @@ class HybridValidator:
         has_multilingual: bool = False,
         has_economic_obligations: bool = False,
         requires_human_ratification: bool = False,
-        has_mediator_escalation: bool = False
+        has_mediator_escalation: bool = False,
     ) -> bool:
         """
         Determine if PoU is required per NCIP-004 Section 3.
@@ -1037,7 +993,7 @@ class HybridValidator:
         validator_id: str,
         validator_type: str = "hybrid",
         model_version: str | None = None,
-        declared_capabilities: list[str] | None = None
+        declared_capabilities: list[str] | None = None,
     ) -> dict[str, Any]:
         """
         Register this validator with the trust scoring system per NCIP-007.
@@ -1055,7 +1011,7 @@ class HybridValidator:
             return {
                 "status": "unavailable",
                 "message": "NCIP-007 trust scoring module not available",
-                "ncip_007_enabled": False
+                "ncip_007_enabled": False,
             }
 
         try:
@@ -1066,7 +1022,7 @@ class HybridValidator:
                 "llm": ValidatorType.LLM,
                 "hybrid": ValidatorType.HYBRID,
                 "symbolic": ValidatorType.SYMBOLIC,
-                "human": ValidatorType.HUMAN
+                "human": ValidatorType.HUMAN,
             }
             vtype = type_map.get(validator_type.lower(), ValidatorType.HYBRID)
 
@@ -1076,10 +1032,10 @@ class HybridValidator:
                 "drift_detection": TrustScope.DRIFT_DETECTION,
                 "proof_of_understanding": TrustScope.PROOF_OF_UNDERSTANDING,
                 "dispute_analysis": TrustScope.DISPUTE_ANALYSIS,
-                "legal_translation_review": TrustScope.LEGAL_TRANSLATION_REVIEW
+                "legal_translation_review": TrustScope.LEGAL_TRANSLATION_REVIEW,
             }
             capabilities = []
-            for cap in (declared_capabilities or []):
+            for cap in declared_capabilities or []:
                 if cap.lower() in scope_map:
                     capabilities.append(scope_map[cap.lower()])
 
@@ -1087,7 +1043,7 @@ class HybridValidator:
                 validator_id=validator_id,
                 validator_type=vtype,
                 model_version=model_version,
-                declared_capabilities=capabilities
+                declared_capabilities=capabilities,
             )
 
             return {
@@ -1095,20 +1051,16 @@ class HybridValidator:
                 "validator_id": validator_id,
                 "trust_profile": profile.to_dict(),
                 "base_weight": BASE_WEIGHTS.get(vtype.value, 1.0),
-                "ncip_007_enabled": True
+                "ncip_007_enabled": True,
             }
 
         except ValueError as e:
-            return {
-                "status": "error",
-                "message": str(e),
-                "ncip_007_enabled": True
-            }
+            return {"status": "error", "message": str(e), "ncip_007_enabled": True}
         except Exception as e:
             return {
                 "status": "error",
                 "message": f"Registration failed: {e!s}",
-                "ncip_007_enabled": True
+                "ncip_007_enabled": True,
             }
 
     def get_trust_profile(self, validator_id: str) -> dict[str, Any]:
@@ -1124,7 +1076,7 @@ class HybridValidator:
         if not NCIP_007_AVAILABLE:
             return {
                 "status": "unavailable",
-                "message": "NCIP-007 trust scoring module not available"
+                "message": "NCIP-007 trust scoring module not available",
             }
 
         manager = get_trust_manager()
@@ -1135,7 +1087,7 @@ class HybridValidator:
         validator_id: str,
         outcome: str,
         scope: str = "semantic_parsing",
-        context: dict[str, Any] | None = None
+        context: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
         Record a validation outcome to update trust scores per NCIP-007.
@@ -1165,7 +1117,7 @@ class HybridValidator:
         if not NCIP_007_AVAILABLE:
             return {
                 "status": "unavailable",
-                "message": "NCIP-007 trust scoring module not available"
+                "message": "NCIP-007 trust scoring module not available",
             }
 
         manager = get_trust_manager()
@@ -1176,7 +1128,7 @@ class HybridValidator:
             "drift_detection": TrustScope.DRIFT_DETECTION,
             "proof_of_understanding": TrustScope.PROOF_OF_UNDERSTANDING,
             "dispute_analysis": TrustScope.DISPUTE_ANALYSIS,
-            "legal_translation_review": TrustScope.LEGAL_TRANSLATION_REVIEW
+            "legal_translation_review": TrustScope.LEGAL_TRANSLATION_REVIEW,
         }
         trust_scope = scope_map.get(scope.lower(), TrustScope.SEMANTIC_PARSING)
 
@@ -1186,14 +1138,14 @@ class HybridValidator:
             "pou_ratified": PositiveSignal.POU_RATIFIED,
             "correct_drift_flag": PositiveSignal.CORRECT_DRIFT_FLAG,
             "dispute_performance": PositiveSignal.DISPUTE_PERFORMANCE,
-            "consistency": PositiveSignal.CONSISTENCY
+            "consistency": PositiveSignal.CONSISTENCY,
         }
         negative_map = {
             "overruled_by_lock": NegativeSignal.OVERRULED_BY_LOCK,
             "false_positive_drift": NegativeSignal.FALSE_POSITIVE_DRIFT,
             "unauthorized_interpretation": NegativeSignal.UNAUTHORIZED_INTERPRETATION,
             "consensus_disagreement": NegativeSignal.CONSENSUS_DISAGREEMENT,
-            "harassment_pattern": NegativeSignal.HARASSMENT_PATTERN
+            "harassment_pattern": NegativeSignal.HARASSMENT_PATTERN,
         }
 
         outcome_lower = outcome.lower()
@@ -1204,25 +1156,22 @@ class HybridValidator:
                 validator_id=validator_id,
                 signal=positive_map[outcome_lower],
                 scope=trust_scope,
-                metadata=context or {}
+                metadata=context or {},
             )
         elif outcome_lower in negative_map:
             event = manager.record_negative_signal(
                 validator_id=validator_id,
                 signal=negative_map[outcome_lower],
                 scope=trust_scope,
-                metadata=context or {}
+                metadata=context or {},
             )
         else:
-            return {
-                "status": "error",
-                "message": f"Unknown outcome type: {outcome}"
-            }
+            return {"status": "error", "message": f"Unknown outcome type: {outcome}"}
 
         if event is None:
             return {
                 "status": "rejected",
-                "message": "Signal rejected (validator not found or frozen)"
+                "message": "Signal rejected (validator not found or frozen)",
             }
 
         return {
@@ -1231,14 +1180,11 @@ class HybridValidator:
             "validator_id": validator_id,
             "outcome": outcome,
             "scope": scope,
-            "new_score": manager.get_profile(validator_id).overall_score
+            "new_score": manager.get_profile(validator_id).overall_score,
         }
 
     def calculate_validator_weight(
-        self,
-        validator_id: str,
-        scope: str = "semantic_parsing",
-        scope_modifier: float = 1.0
+        self, validator_id: str, scope: str = "semantic_parsing", scope_modifier: float = 1.0
     ) -> dict[str, Any]:
         """
         Calculate the effective weight for a validator per NCIP-007.
@@ -1257,7 +1203,7 @@ class HybridValidator:
         if not NCIP_007_AVAILABLE:
             return {
                 "status": "unavailable",
-                "message": "NCIP-007 trust scoring module not available"
+                "message": "NCIP-007 trust scoring module not available",
             }
 
         manager = get_trust_manager()
@@ -1267,7 +1213,7 @@ class HybridValidator:
             "drift_detection": TrustScope.DRIFT_DETECTION,
             "proof_of_understanding": TrustScope.PROOF_OF_UNDERSTANDING,
             "dispute_analysis": TrustScope.DISPUTE_ANALYSIS,
-            "legal_translation_review": TrustScope.LEGAL_TRANSLATION_REVIEW
+            "legal_translation_review": TrustScope.LEGAL_TRANSLATION_REVIEW,
         }
         trust_scope = scope_map.get(scope.lower(), TrustScope.SEMANTIC_PARSING)
 
@@ -1275,10 +1221,7 @@ class HybridValidator:
         identity = manager.get_identity(validator_id)
 
         if not profile or not identity:
-            return {
-                "status": "error",
-                "message": f"Validator {validator_id} not found"
-            }
+            return {"status": "error", "message": f"Validator {validator_id} not found"}
 
         effective_weight = manager.calculate_effective_weight(
             validator_id, trust_scope, scope_modifier
@@ -1293,7 +1236,7 @@ class HybridValidator:
             "scope_modifier": scope_modifier,
             "effective_weight": effective_weight,
             "max_weight": MAX_EFFECTIVE_WEIGHT,
-            "is_capped": effective_weight == MAX_EFFECTIVE_WEIGHT
+            "is_capped": effective_weight == MAX_EFFECTIVE_WEIGHT,
         }
 
     def weighted_multi_validator_consensus(
@@ -1302,7 +1245,7 @@ class HybridValidator:
         intent: str,
         author: str,
         validator_ids: list[str] | None = None,
-        num_validators: int = 3
+        num_validators: int = 3,
     ) -> dict[str, Any]:
         """
         Achieve weighted consensus through multiple validator nodes per NCIP-007.
@@ -1342,9 +1285,7 @@ class HybridValidator:
             vid = validator_ids[i] if validator_ids and i < len(validator_ids) else f"validator_{i}"
 
             signal = manager.get_weighted_signal(
-                vid,
-                signal_value=validation,
-                scope=TrustScope.SEMANTIC_PARSING
+                vid, signal_value=validation, scope=TrustScope.SEMANTIC_PARSING
             )
             if signal:
                 weighted_signals.append(signal)
@@ -1370,7 +1311,7 @@ class HybridValidator:
                 {
                     "validator_id": s.validator_id,
                     "effective_weight": s.effective_weight,
-                    "decision": s.signal_value.get("decision")
+                    "decision": s.signal_value.get("decision"),
                 }
                 for s in weighted_signals
             ]
@@ -1384,15 +1325,12 @@ class HybridValidator:
     def get_ncip_007_status(self) -> dict[str, Any]:
         """Get NCIP-007 implementation status and configuration."""
         if not NCIP_007_AVAILABLE:
-            return {
-                "enabled": False,
-                "message": "NCIP-007 module not available"
-            }
+            return {"enabled": False, "message": "NCIP-007 module not available"}
 
         return {
             "enabled": True,
             "config": get_ncip_007_config(),
-            "registered_validators": len(get_trust_manager().profiles)
+            "registered_validators": len(get_trust_manager().profiles),
         }
 
     # =========================================================================
@@ -1409,15 +1347,12 @@ class HybridValidator:
         if not NCIP_012_AVAILABLE:
             return None
 
-        if not hasattr(self, '_cognitive_load_manager'):
+        if not hasattr(self, "_cognitive_load_manager"):
             self._cognitive_load_manager = CognitiveLoadManager()
         return self._cognitive_load_manager
 
     def create_ratification(
-        self,
-        ratification_id: str,
-        user_id: str,
-        context: str = "simple"
+        self, ratification_id: str, user_id: str, context: str = "simple"
     ) -> dict[str, Any]:
         """
         Create a new ratification state per NCIP-012.
@@ -1437,7 +1372,7 @@ class HybridValidator:
             return {
                 "status": "unavailable",
                 "message": "NCIP-012 cognitive load module not available",
-                "ncip_012_enabled": False
+                "ncip_012_enabled": False,
             }
 
         manager = self.get_cognitive_load_manager()
@@ -1447,7 +1382,7 @@ class HybridValidator:
             "financial": RatificationContext.FINANCIAL,
             "licensing": RatificationContext.LICENSING,
             "dispute": RatificationContext.DISPUTE,
-            "emergency": RatificationContext.EMERGENCY
+            "emergency": RatificationContext.EMERGENCY,
         }
         ctx = context_map.get(context.lower(), RatificationContext.SIMPLE)
 
@@ -1460,15 +1395,13 @@ class HybridValidator:
             "context": context,
             "cognitive_budget": {
                 "max_units": state.cognitive_budget.max_units,
-                "remaining": state.cognitive_budget.remaining
+                "remaining": state.cognitive_budget.remaining,
             },
-            "ncip_012_enabled": True
+            "ncip_012_enabled": True,
         }
 
     def check_cognitive_load_budget(
-        self,
-        ratification_id: str,
-        semantic_units: list[dict[str, Any]] | None = None
+        self, ratification_id: str, semantic_units: list[dict[str, Any]] | None = None
     ) -> dict[str, Any]:
         """
         Check if cognitive load budget is within limits per NCIP-012.
@@ -1483,17 +1416,14 @@ class HybridValidator:
         if not NCIP_012_AVAILABLE:
             return {
                 "status": "unavailable",
-                "message": "NCIP-012 cognitive load module not available"
+                "message": "NCIP-012 cognitive load module not available",
             }
 
         manager = self.get_cognitive_load_manager()
         state = manager.get_ratification(ratification_id)
 
         if not state:
-            return {
-                "status": "error",
-                "message": f"Ratification {ratification_id} not found"
-            }
+            return {"status": "error", "message": f"Ratification {ratification_id} not found"}
 
         # Add any new semantic units
         if semantic_units:
@@ -1502,7 +1432,7 @@ class HybridValidator:
                     id=unit_data.get("id", ""),
                     description=unit_data.get("description", ""),
                     complexity_weight=unit_data.get("complexity_weight", 1.0),
-                    category=unit_data.get("category", "general")
+                    category=unit_data.get("category", "general"),
                 )
                 manager.add_semantic_unit(state.cognitive_budget, unit)
 
@@ -1514,7 +1444,7 @@ class HybridValidator:
             "max_units": state.cognitive_budget.max_units,
             "current_units": len(state.cognitive_budget.current_units),
             "remaining": state.cognitive_budget.remaining,
-            "utilization": state.cognitive_budget.utilization
+            "utilization": state.cognitive_budget.utilization,
         }
 
         if state.cognitive_budget.is_exceeded:
@@ -1524,11 +1454,7 @@ class HybridValidator:
 
         return result
 
-    def check_rate_limits(
-        self,
-        user_id: str,
-        action_type: str = "ratification"
-    ) -> dict[str, Any]:
+    def check_rate_limits(self, user_id: str, action_type: str = "ratification") -> dict[str, Any]:
         """
         Check rate limits for a user per NCIP-012.
 
@@ -1547,7 +1473,7 @@ class HybridValidator:
         if not NCIP_012_AVAILABLE:
             return {
                 "status": "unavailable",
-                "message": "NCIP-012 cognitive load module not available"
+                "message": "NCIP-012 cognitive load module not available",
             }
 
         manager = self.get_cognitive_load_manager()
@@ -1555,7 +1481,7 @@ class HybridValidator:
         action_map = {
             "ratification": ActionType.RATIFICATION,
             "dispute_escalation": ActionType.DISPUTE_ESCALATION,
-            "license_grant": ActionType.LICENSE_GRANT
+            "license_grant": ActionType.LICENSE_GRANT,
         }
         action = action_map.get(action_type.lower(), ActionType.RATIFICATION)
 
@@ -1569,15 +1495,11 @@ class HybridValidator:
             "remaining_actions": {
                 "ratifications_this_hour": remaining.get(ActionType.RATIFICATION, 0),
                 "disputes_today": remaining.get(ActionType.DISPUTE_ESCALATION, 0),
-                "license_grants_today": remaining.get(ActionType.LICENSE_GRANT, 0)
-            }
+                "license_grants_today": remaining.get(ActionType.LICENSE_GRANT, 0),
+            },
         }
 
-    def check_cooling_period(
-        self,
-        user_id: str,
-        action_type: str = "agreement"
-    ) -> dict[str, Any]:
+    def check_cooling_period(self, user_id: str, action_type: str = "agreement") -> dict[str, Any]:
         """
         Check if a cooling period is active for a user per NCIP-012.
 
@@ -1597,7 +1519,7 @@ class HybridValidator:
         if not NCIP_012_AVAILABLE:
             return {
                 "status": "unavailable",
-                "message": "NCIP-012 cognitive load module not available"
+                "message": "NCIP-012 cognitive load module not available",
             }
 
         manager = self.get_cognitive_load_manager()
@@ -1606,30 +1528,25 @@ class HybridValidator:
             "agreement": ActionType.AGREEMENT,
             "settlement": ActionType.SETTLEMENT,
             "license_grant": ActionType.LICENSE_GRANT,
-            "dispute_escalation": ActionType.DISPUTE_ESCALATION
+            "dispute_escalation": ActionType.DISPUTE_ESCALATION,
         }
         action = action_map.get(action_type.lower(), ActionType.AGREEMENT)
 
         blocked, cooling = manager.check_cooling_period(user_id, action)
 
-        result = {
-            "status": "blocked" if blocked else "allowed",
-            "action_type": action_type
-        }
+        result = {"status": "blocked" if blocked else "allowed", "action_type": action_type}
 
         if blocked and cooling:
             result["cooling_period"] = {
                 "started_at": cooling.started_at.isoformat(),
                 "ends_at": cooling.ends_at.isoformat(),
-                "remaining_seconds": cooling.remaining_time.total_seconds()
+                "remaining_seconds": cooling.remaining_time.total_seconds(),
             }
 
         return result
 
     def validate_information_hierarchy(
-        self,
-        ratification_id: str,
-        levels_presented: list[str]
+        self, ratification_id: str, levels_presented: list[str]
     ) -> dict[str, Any]:
         """
         Validate information hierarchy compliance per NCIP-012.
@@ -1653,17 +1570,14 @@ class HybridValidator:
         if not NCIP_012_AVAILABLE:
             return {
                 "status": "unavailable",
-                "message": "NCIP-012 cognitive load module not available"
+                "message": "NCIP-012 cognitive load module not available",
             }
 
         manager = self.get_cognitive_load_manager()
         state = manager.get_ratification(ratification_id)
 
         if not state:
-            return {
-                "status": "error",
-                "message": f"Ratification {ratification_id} not found"
-            }
+            return {"status": "error", "message": f"Ratification {ratification_id} not found"}
 
         level_map = {
             "intent_summary": InformationLevel.INTENT_SUMMARY,
@@ -1672,16 +1586,14 @@ class HybridValidator:
             "risks_unknowns": InformationLevel.RISKS_UNKNOWNS,
             "alternatives": InformationLevel.ALTERNATIVES,
             "canonical_references": InformationLevel.CANONICAL_REFERENCES,
-            "full_text": InformationLevel.FULL_TEXT
+            "full_text": InformationLevel.FULL_TEXT,
         }
 
         errors = []
         for level_name in levels_presented:
             level = level_map.get(level_name.lower())
             if level:
-                success, msg = manager.present_information_level(
-                    state.information, level
-                )
+                success, msg = manager.present_information_level(state.information, level)
                 if not success:
                     errors.append(msg)
 
@@ -1691,7 +1603,7 @@ class HybridValidator:
             "status": "complete" if complete else "incomplete",
             "errors": errors,
             "missing_levels": [l.name.lower() for l in missing],
-            "presentation_order": [l.name.lower() for l in state.information.presentation_order]
+            "presentation_order": [l.name.lower() for l in state.information.presentation_order],
         }
 
     def validate_pou_gate(
@@ -1700,7 +1612,7 @@ class HybridValidator:
         paraphrase_viewed: bool = False,
         user_confirmed: bool = False,
         user_correction: str | None = None,
-        correction_drift: float | None = None
+        correction_drift: float | None = None,
     ) -> dict[str, Any]:
         """
         Validate Proof of Understanding gate per NCIP-012.
@@ -1726,26 +1638,21 @@ class HybridValidator:
         if not NCIP_012_AVAILABLE:
             return {
                 "status": "unavailable",
-                "message": "NCIP-012 cognitive load module not available"
+                "message": "NCIP-012 cognitive load module not available",
             }
 
         manager = self.get_cognitive_load_manager()
         state = manager.get_ratification(ratification_id)
 
         if not state:
-            return {
-                "status": "error",
-                "message": f"Ratification {ratification_id} not found"
-            }
+            return {"status": "error", "message": f"Ratification {ratification_id} not found"}
 
         if paraphrase_viewed:
             manager.view_pou_paraphrase(state.pou_confirmation)
 
         if user_confirmed:
             success, msg = manager.confirm_pou(
-                state.pou_confirmation,
-                user_correction,
-                correction_drift
+                state.pou_confirmation, user_correction, correction_drift
             )
 
             return {
@@ -1753,19 +1660,17 @@ class HybridValidator:
                 "message": msg,
                 "requires_clarification": state.pou_confirmation.requires_clarification,
                 "max_allowed_drift": state.pou_confirmation.max_allowed_drift,
-                "correction_drift": correction_drift
+                "correction_drift": correction_drift,
             }
 
         return {
             "status": "pending",
             "paraphrase_viewed": state.pou_confirmation.paraphrase_viewed,
-            "user_confirmed": state.pou_confirmation.user_confirmed
+            "user_confirmed": state.pou_confirmation.user_confirmed,
         }
 
     def validate_ui_compliance(
-        self,
-        ratification_id: str,
-        ui_elements: list[dict[str, Any]]
+        self, ratification_id: str, ui_elements: list[dict[str, Any]]
     ) -> dict[str, Any]:
         """
         Validate UI compliance with NCIP-012 safeguards.
@@ -1786,17 +1691,14 @@ class HybridValidator:
         if not NCIP_012_AVAILABLE:
             return {
                 "status": "unavailable",
-                "message": "NCIP-012 cognitive load module not available"
+                "message": "NCIP-012 cognitive load module not available",
             }
 
         manager = self.get_cognitive_load_manager()
         state = manager.get_ratification(ratification_id)
 
         if not state:
-            return {
-                "status": "error",
-                "message": f"Ratification {ratification_id} not found"
-            }
+            return {"status": "error", "message": f"Ratification {ratification_id} not found"}
 
         all_violations = []
         for element in ui_elements:
@@ -1804,9 +1706,7 @@ class HybridValidator:
             properties = element.get("properties", {})
 
             _compliant, violations = manager.validate_ui_element(
-                state.ui_validation,
-                element_type,
-                properties
+                state.ui_validation, element_type, properties
             )
             all_violations.extend(violations)
 
@@ -1814,13 +1714,11 @@ class HybridValidator:
             "status": "compliant" if state.ui_validation.is_compliant else "non_compliant",
             "violations": [v.value for v in state.ui_validation.violations],
             "violation_details": all_violations,
-            "violation_count": state.ui_validation.violation_count
+            "violation_count": state.ui_validation.violation_count,
         }
 
     def attempt_ratification(
-        self,
-        ratification_id: str,
-        action_type: str = "ratification"
+        self, ratification_id: str, action_type: str = "ratification"
     ) -> dict[str, Any]:
         """
         Attempt to complete a ratification per NCIP-012.
@@ -1843,7 +1741,7 @@ class HybridValidator:
         if not NCIP_012_AVAILABLE:
             return {
                 "status": "unavailable",
-                "message": "NCIP-012 cognitive load module not available"
+                "message": "NCIP-012 cognitive load module not available",
             }
 
         manager = self.get_cognitive_load_manager()
@@ -1853,7 +1751,7 @@ class HybridValidator:
             "dispute_escalation": ActionType.DISPUTE_ESCALATION,
             "license_grant": ActionType.LICENSE_GRANT,
             "agreement": ActionType.AGREEMENT,
-            "settlement": ActionType.SETTLEMENT
+            "settlement": ActionType.SETTLEMENT,
         }
         action = action_map.get(action_type.lower(), ActionType.RATIFICATION)
 
@@ -1861,10 +1759,7 @@ class HybridValidator:
 
         state = manager.get_ratification(ratification_id)
 
-        result = {
-            "status": "ratified" if success else "blocked",
-            "blockers": blockers
-        }
+        result = {"status": "ratified" if success else "blocked", "blockers": blockers}
 
         if success and state:
             result["ratified_at"] = state.ratified_at.isoformat() if state.ratified_at else None
@@ -1873,9 +1768,7 @@ class HybridValidator:
         return result
 
     def validator_measure_cognitive_load(
-        self,
-        content: str,
-        context: str = "simple"
+        self, content: str, context: str = "simple"
     ) -> dict[str, Any]:
         """
         Validator function to measure cognitive load per NCIP-012.
@@ -1892,7 +1785,7 @@ class HybridValidator:
         if not NCIP_012_AVAILABLE:
             return {
                 "status": "unavailable",
-                "message": "NCIP-012 cognitive load module not available"
+                "message": "NCIP-012 cognitive load module not available",
             }
 
         manager = self.get_cognitive_load_manager()
@@ -1902,7 +1795,7 @@ class HybridValidator:
             "financial": RatificationContext.FINANCIAL,
             "licensing": RatificationContext.LICENSING,
             "dispute": RatificationContext.DISPUTE,
-            "emergency": RatificationContext.EMERGENCY
+            "emergency": RatificationContext.EMERGENCY,
         }
         ctx = context_map.get(context.lower(), RatificationContext.SIMPLE)
 
@@ -1919,19 +1812,12 @@ class HybridValidator:
             "is_exceeded": budget.is_exceeded,
             "utilization": budget.utilization,
             "units": [
-                {
-                    "id": u.id,
-                    "description": u.description,
-                    "complexity_weight": u.complexity_weight
-                }
+                {"id": u.id, "description": u.description, "complexity_weight": u.complexity_weight}
                 for u in units
-            ]
+            ],
         }
 
-    def validator_detect_ux_violations(
-        self,
-        ui_snapshot: dict[str, Any]
-    ) -> dict[str, Any]:
+    def validator_detect_ux_violations(self, ui_snapshot: dict[str, Any]) -> dict[str, Any]:
         """
         Validator function to detect UX violations per NCIP-012.
 
@@ -1952,7 +1838,7 @@ class HybridValidator:
         if not NCIP_012_AVAILABLE:
             return {
                 "status": "unavailable",
-                "message": "NCIP-012 cognitive load module not available"
+                "message": "NCIP-012 cognitive load module not available",
             }
 
         manager = self.get_cognitive_load_manager()
@@ -1962,7 +1848,7 @@ class HybridValidator:
             "status": "compliant" if not violations else "violations_detected",
             "violations": [v.value for v in violations],
             "violation_count": len(violations),
-            "is_slashable": len(violations) > 2  # Per NCIP-010
+            "is_slashable": len(violations) > 2,  # Per NCIP-010
         }
 
     def is_ncip_012_enabled(self) -> bool:
@@ -1972,10 +1858,7 @@ class HybridValidator:
     def get_ncip_012_status(self) -> dict[str, Any]:
         """Get NCIP-012 implementation status and configuration."""
         if not NCIP_012_AVAILABLE:
-            return {
-                "enabled": False,
-                "message": "NCIP-012 module not available"
-            }
+            return {"enabled": False, "message": "NCIP-012 module not available"}
 
         manager = self.get_cognitive_load_manager()
 
@@ -1986,21 +1869,21 @@ class HybridValidator:
                 "financial": 9,
                 "licensing": 9,
                 "dispute": 5,
-                "emergency": 3
+                "emergency": 3,
             },
             "rate_limits": {
                 "ratifications_per_hour": 5,
                 "disputes_per_day": 2,
-                "license_grants_per_day": 3
+                "license_grants_per_day": 3,
             },
             "cooling_periods": {
                 "agreement": "12h",
                 "settlement": "24h",
                 "licensing": "24h",
-                "dispute": "6h"
+                "dispute": "6h",
             },
             "pou_max_drift": 0.20,
-            "active_ratifications": len(manager.ratification_states)
+            "active_ratifications": len(manager.ratification_states),
         }
 
     # =========================================================================
@@ -2017,7 +1900,7 @@ class HybridValidator:
         if not NCIP_014_AVAILABLE:
             return None
 
-        if not hasattr(self, '_amendment_manager'):
+        if not hasattr(self, "_amendment_manager"):
             self._amendment_manager = AmendmentManager()
         return self._amendment_manager
 
@@ -2030,7 +1913,7 @@ class HybridValidator:
         affected_artifacts: list[str],
         proposed_changes: str,
         migration_guidance: str | None = None,
-        effective_date: str | None = None
+        effective_date: str | None = None,
     ) -> dict[str, Any]:
         """
         Create a new amendment proposal per NCIP-014.
@@ -2059,7 +1942,7 @@ class HybridValidator:
             return {
                 "status": "unavailable",
                 "message": "NCIP-014 protocol amendments module not available",
-                "ncip_014_enabled": False
+                "ncip_014_enabled": False,
             }
 
         manager = self.get_amendment_manager()
@@ -2070,14 +1953,11 @@ class HybridValidator:
             "B": AmendmentClass.B,
             "C": AmendmentClass.C,
             "D": AmendmentClass.D,
-            "E": AmendmentClass.E
+            "E": AmendmentClass.E,
         }
         aclass = class_map.get(amendment_class.upper())
         if not aclass:
-            return {
-                "status": "error",
-                "message": f"Invalid amendment class: {amendment_class}"
-            }
+            return {"status": "error", "message": f"Invalid amendment class: {amendment_class}"}
 
         # Map artifact strings to enums
         artifact_map = {
@@ -2102,21 +1982,19 @@ class HybridValidator:
                 artifacts.append(artifact)
 
         if not artifacts:
-            return {
-                "status": "error",
-                "message": "No valid artifacts specified"
-            }
+            return {"status": "error", "message": "No valid artifacts specified"}
 
         # Parse effective date
         eff_date = None
         if effective_date:
             from datetime import datetime
+
             try:
                 eff_date = datetime.fromisoformat(effective_date.replace("Z", "+00:00"))
             except ValueError:
                 return {
                     "status": "error",
-                    "message": f"Invalid effective_date format: {effective_date}"
+                    "message": f"Invalid effective_date format: {effective_date}",
                 }
 
         # Generate amendment ID
@@ -2131,14 +2009,11 @@ class HybridValidator:
             affected_artifacts=artifacts,
             proposed_changes=proposed_changes,
             migration_guidance=migration_guidance,
-            effective_date=eff_date
+            effective_date=eff_date,
         )
 
         if errors:
-            return {
-                "status": "error",
-                "errors": errors
-            }
+            return {"status": "error", "errors": errors}
 
         return {
             "status": "created",
@@ -2147,7 +2022,7 @@ class HybridValidator:
             "title": title,
             "threshold": f"{manager.THRESHOLDS[aclass]:.0%}",
             "fork_required": amendment.fork_required,
-            "ncip_014_enabled": True
+            "ncip_014_enabled": True,
         }
 
     def propose_amendment(self, amendment_id: str) -> dict[str, Any]:
@@ -2162,20 +2037,14 @@ class HybridValidator:
             Proposal result
         """
         if not NCIP_014_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-014 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-014 module not available"}
 
         manager = self.get_amendment_manager()
         success, msg = manager.propose_amendment(amendment_id)
 
         amendment = manager.get_amendment(amendment_id)
 
-        result = {
-            "status": "proposed" if success else "error",
-            "message": msg
-        }
+        result = {"status": "proposed" if success else "error", "message": msg}
 
         if success and amendment:
             result["cooling_ends_at"] = amendment.cooling_ends_at.isoformat()
@@ -2193,7 +2062,7 @@ class HybridValidator:
         who_affected: str,
         rationale: str,
         validator_trust_score: float | None = None,
-        mediator_reputation: float | None = None
+        mediator_reputation: float | None = None,
     ) -> dict[str, Any]:
         """
         Cast a vote on an amendment per NCIP-014.
@@ -2219,10 +2088,7 @@ class HybridValidator:
             Vote result
         """
         if not NCIP_014_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-014 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-014 module not available"}
 
         manager = self.get_amendment_manager()
 
@@ -2231,7 +2097,7 @@ class HybridValidator:
             what_changes=what_changes,
             what_unchanged=what_unchanged,
             who_affected=who_affected,
-            rationale=rationale
+            rationale=rationale,
         )
 
         success, msg = manager.cast_vote(
@@ -2240,14 +2106,14 @@ class HybridValidator:
             vote=vote,
             pou=pou,
             validator_trust_score=validator_trust_score,
-            mediator_reputation=mediator_reputation
+            mediator_reputation=mediator_reputation,
         )
 
         return {
             "status": "recorded" if success else "error",
             "message": msg,
             "vote": vote,
-            "pou_hash": pou.compute_hash() if success else None
+            "pou_hash": pou.compute_hash() if success else None,
         }
 
     def get_amendment_tally(self, amendment_id: str) -> dict[str, Any]:
@@ -2261,10 +2127,7 @@ class HybridValidator:
             Vote tally with threshold comparison
         """
         if not NCIP_014_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-014 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-014 module not available"}
 
         manager = self.get_amendment_manager()
         return manager.tally_votes(amendment_id)
@@ -2282,10 +2145,7 @@ class HybridValidator:
             Ratification result
         """
         if not NCIP_014_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-014 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-014 module not available"}
 
         manager = self.get_amendment_manager()
         success, msg = manager.finalize_ratification(amendment_id)
@@ -2293,8 +2153,12 @@ class HybridValidator:
         amendment = manager.get_amendment(amendment_id)
 
         result = {
-            "status": "ratified" if success else "rejected" if "rejected" in msg.lower() else "forked",
-            "message": msg
+            "status": "ratified"
+            if success
+            else "rejected"
+            if "rejected" in msg.lower()
+            else "forked",
+            "message": msg,
         }
 
         if amendment:
@@ -2320,18 +2184,12 @@ class HybridValidator:
             Activation result
         """
         if not NCIP_014_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-014 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-014 module not available"}
 
         manager = self.get_amendment_manager()
         success, msg = manager.activate_amendment(amendment_id)
 
-        result = {
-            "status": "activated" if success else "error",
-            "message": msg
-        }
+        result = {"status": "activated" if success else "error", "message": msg}
 
         if success:
             result["constitution_version"] = manager.get_constitution_version()
@@ -2339,9 +2197,7 @@ class HybridValidator:
         return result
 
     def check_semantic_compatibility(
-        self,
-        amendment_id: str,
-        drift_scores: dict[str, float] | None = None
+        self, amendment_id: str, drift_scores: dict[str, float] | None = None
     ) -> dict[str, Any]:
         """
         Check semantic compatibility of an amendment per NCIP-014 Section 9.
@@ -2356,10 +2212,7 @@ class HybridValidator:
             Compatibility result
         """
         if not NCIP_014_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-014 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-014 module not available"}
 
         manager = self.get_amendment_manager()
         result = manager.check_semantic_compatibility(amendment_id, drift_scores)
@@ -2369,14 +2222,11 @@ class HybridValidator:
             "max_drift": result.max_drift,
             "requires_migration": result.requires_migration,
             "affected_ncips": result.affected_ncips,
-            "violations": result.violations
+            "violations": result.violations,
         }
 
     def create_emergency_amendment(
-        self,
-        reason: str,
-        proposed_changes: str,
-        max_duration_days: int = 7
+        self, reason: str, proposed_changes: str, max_duration_days: int = 7
     ) -> dict[str, Any]:
         """
         Create an emergency amendment per NCIP-014 Section 12.
@@ -2397,35 +2247,30 @@ class HybridValidator:
             Emergency amendment creation result
         """
         if not NCIP_014_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-014 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-014 module not available"}
 
         manager = self.get_amendment_manager()
 
         from datetime import datetime
+
         amendment_id = f"NCIP-014-EMERGENCY-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
 
         emergency, errors = manager.create_emergency_amendment(
             amendment_id=amendment_id,
             reason=reason,
             proposed_changes=proposed_changes,
-            max_duration_days=max_duration_days
+            max_duration_days=max_duration_days,
         )
 
         if errors:
-            return {
-                "status": "error",
-                "errors": errors
-            }
+            return {"status": "error", "errors": errors}
 
         return {
             "status": "created",
             "amendment_id": emergency.amendment_id,
             "reason": reason,
             "expires_at": emergency.expires_at.isoformat(),
-            "requires_ratification": True
+            "requires_ratification": True,
         }
 
     def get_constitution_version(self) -> dict[str, Any]:
@@ -2436,17 +2281,14 @@ class HybridValidator:
             Constitution version info
         """
         if not NCIP_014_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-014 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-014 module not available"}
 
         manager = self.get_amendment_manager()
 
         return {
             "status": "ok",
             "version": manager.get_constitution_version(),
-            "history_count": len(manager.constitution_history)
+            "history_count": len(manager.constitution_history),
         }
 
     def get_amendment_status_summary(self) -> dict[str, Any]:
@@ -2457,10 +2299,7 @@ class HybridValidator:
             Status summary including counts by status and class
         """
         if not NCIP_014_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-014 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-014 module not available"}
 
         manager = self.get_amendment_manager()
         return manager.get_status_summary()
@@ -2472,10 +2311,7 @@ class HybridValidator:
     def get_ncip_014_status(self) -> dict[str, Any]:
         """Get NCIP-014 implementation status and configuration."""
         if not NCIP_014_AVAILABLE:
-            return {
-                "enabled": False,
-                "message": "NCIP-014 module not available"
-            }
+            return {"enabled": False, "message": "NCIP-014 module not available"}
 
         manager = self.get_amendment_manager()
 
@@ -2487,12 +2323,14 @@ class HybridValidator:
                 "B": {"name": "Procedural", "threshold": "67%"},
                 "C": {"name": "Semantic", "threshold": "75%"},
                 "D": {"name": "Structural", "threshold": "90%"},
-                "E": {"name": "Existential", "threshold": "100% (fork-only)"}
+                "E": {"name": "Existential", "threshold": "100% (fork-only)"},
             },
             "min_cooling_period_days": 14,
             "total_amendments": len(manager.amendments),
-            "active_emergencies": len([e for e in manager.emergency_amendments.values() if e.is_active]),
-            "forks": len(manager.get_forks())
+            "active_emergencies": len(
+                [e for e in manager.emergency_amendments.values() if e.is_active]
+            ),
+            "forks": len(manager.get_forks()),
         }
 
     # =========================================================================
@@ -2509,14 +2347,12 @@ class HybridValidator:
         if not NCIP_003_AVAILABLE:
             return None
 
-        if not hasattr(self, '_multilingual_manager'):
+        if not hasattr(self, "_multilingual_manager"):
             self._multilingual_manager = MultilingualAlignmentManager()
         return self._multilingual_manager
 
     def create_multilingual_contract(
-        self,
-        contract_id: str,
-        canonical_anchor_language: str = "en"
+        self, contract_id: str, canonical_anchor_language: str = "en"
     ) -> dict[str, Any]:
         """
         Create a new multilingual contract with CSAL declaration.
@@ -2535,7 +2371,7 @@ class HybridValidator:
             return {
                 "status": "unavailable",
                 "message": "NCIP-003 multilingual module not available",
-                "ncip_003_enabled": False
+                "ncip_003_enabled": False,
             }
 
         manager = self.get_multilingual_manager()
@@ -2546,7 +2382,7 @@ class HybridValidator:
             "contract_id": contract_id,
             "csal": canonical_anchor_language,
             "csal_explicit": contract.is_csal_declared(),
-            "ncip_003_enabled": True
+            "ncip_003_enabled": True,
         }
 
     def add_contract_language(
@@ -2555,7 +2391,7 @@ class HybridValidator:
         language_code: str,
         role: str,
         content: str,
-        drift_tolerance: float = 0.25
+        drift_tolerance: float = 0.25,
     ) -> dict[str, Any]:
         """
         Add a language entry to a multilingual contract.
@@ -2576,30 +2412,24 @@ class HybridValidator:
             Language addition result
         """
         if not NCIP_003_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-003 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-003 module not available"}
 
         manager = self.get_multilingual_manager()
         contract = manager.get_contract(contract_id)
 
         if not contract:
-            return {
-                "status": "error",
-                "message": f"Contract {contract_id} not found"
-            }
+            return {"status": "error", "message": f"Contract {contract_id} not found"}
 
         role_map = {
             "anchor": LanguageRole.ANCHOR,
             "aligned": LanguageRole.ALIGNED,
-            "informational": LanguageRole.INFORMATIONAL
+            "informational": LanguageRole.INFORMATIONAL,
         }
         lang_role = role_map.get(role.lower())
         if not lang_role:
             return {
                 "status": "error",
-                "message": f"Invalid role: {role}. Must be anchor, aligned, or informational"
+                "message": f"Invalid role: {role}. Must be anchor, aligned, or informational",
             }
 
         success, msg = contract.add_language(language_code, lang_role, content, drift_tolerance)
@@ -2609,13 +2439,10 @@ class HybridValidator:
             "message": msg,
             "language_code": language_code,
             "role": role,
-            "is_executable": lang_role in [LanguageRole.ANCHOR, LanguageRole.ALIGNED]
+            "is_executable": lang_role in [LanguageRole.ANCHOR, LanguageRole.ALIGNED],
         }
 
-    def validate_multilingual_contract(
-        self,
-        contract_id: str
-    ) -> dict[str, Any]:
+    def validate_multilingual_contract(self, contract_id: str) -> dict[str, Any]:
         """
         Validate alignment of all languages in a multilingual contract.
 
@@ -2631,28 +2458,19 @@ class HybridValidator:
             Validation report with drift scores and actions
         """
         if not NCIP_003_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-003 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-003 module not available"}
 
         manager = self.get_multilingual_manager()
         contract = manager.get_contract(contract_id)
 
         if not contract:
-            return {
-                "status": "error",
-                "message": f"Contract {contract_id} not found"
-            }
+            return {"status": "error", "message": f"Contract {contract_id} not found"}
 
         _valid, report = manager.validate_contract_alignment(contract)
         return report
 
     def measure_cross_language_drift(
-        self,
-        anchor_text: str,
-        aligned_text: str,
-        language_code: str
+        self, anchor_text: str, aligned_text: str, language_code: str
     ) -> dict[str, Any]:
         """
         Measure semantic drift between anchor and aligned text.
@@ -2669,10 +2487,7 @@ class HybridValidator:
             Drift measurement result
         """
         if not NCIP_003_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-003 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-003 module not available"}
 
         manager = self.get_multilingual_manager()
         drift_score, drift_level = manager.measure_cross_language_drift(
@@ -2685,14 +2500,11 @@ class HybridValidator:
             "drift_score": drift_score,
             "drift_level": drift_level.value,
             "validator_action": action.value,
-            "within_d2_threshold": drift_score <= 0.45
+            "within_d2_threshold": drift_score <= 0.45,
         }
 
     def check_translation_violations(
-        self,
-        anchor_text: str,
-        aligned_text: str,
-        language_code: str
+        self, anchor_text: str, aligned_text: str, language_code: str
     ) -> dict[str, Any]:
         """
         Check for prohibited behaviors in aligned translation.
@@ -2712,28 +2524,20 @@ class HybridValidator:
             Violation check result
         """
         if not NCIP_003_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-003 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-003 module not available"}
 
         manager = self.get_multilingual_manager()
-        violations = manager.check_translation_violations(
-            anchor_text, aligned_text, language_code
-        )
+        violations = manager.check_translation_violations(anchor_text, aligned_text, language_code)
 
         return {
             "status": "checked",
             "has_violations": len(violations) > 0,
             "violations": [v.value for v in violations],
-            "violation_count": len(violations)
+            "violation_count": len(violations),
         }
 
     def create_multilingual_ratification(
-        self,
-        contract_id: str,
-        ratifier_id: str,
-        reviewed_languages: list[str]
+        self, contract_id: str, ratifier_id: str, reviewed_languages: list[str]
     ) -> dict[str, Any]:
         """
         Create multilingual ratification per NCIP-003 Section 8.
@@ -2752,19 +2556,13 @@ class HybridValidator:
             Ratification creation result
         """
         if not NCIP_003_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-003 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-003 module not available"}
 
         manager = self.get_multilingual_manager()
         contract = manager.get_contract(contract_id)
 
         if not contract:
-            return {
-                "status": "error",
-                "message": f"Contract {contract_id} not found"
-            }
+            return {"status": "error", "message": f"Contract {contract_id} not found"}
 
         ratification = manager.create_multilingual_ratification(
             contract, ratifier_id, reviewed_languages
@@ -2775,13 +2573,11 @@ class HybridValidator:
             "ratification_id": ratification.ratification_id,
             "anchor_language": ratification.anchor_language,
             "reviewed_languages": ratification.reviewed_languages,
-            "statement": ratification.statement
+            "statement": ratification.statement,
         }
 
     def confirm_multilingual_ratification(
-        self,
-        contract_id: str,
-        ratification_id: str
+        self, contract_id: str, ratification_id: str
     ) -> dict[str, Any]:
         """
         Confirm multilingual ratification binding.
@@ -2796,19 +2592,13 @@ class HybridValidator:
             Confirmation result
         """
         if not NCIP_003_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-003 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-003 module not available"}
 
         manager = self.get_multilingual_manager()
         contract = manager.get_contract(contract_id)
 
         if not contract:
-            return {
-                "status": "error",
-                "message": f"Contract {contract_id} not found"
-            }
+            return {"status": "error", "message": f"Contract {contract_id} not found"}
 
         # Find the ratification
         ratification = None
@@ -2818,24 +2608,17 @@ class HybridValidator:
                 break
 
         if not ratification:
-            return {
-                "status": "error",
-                "message": f"Ratification {ratification_id} not found"
-            }
+            return {"status": "error", "message": f"Ratification {ratification_id} not found"}
 
         success, statement = manager.confirm_ratification(ratification)
 
         return {
             "status": "confirmed" if success else "error",
             "message": statement if success else "Confirmation failed",
-            "binding_acknowledged": ratification.binding_acknowledged
+            "binding_acknowledged": ratification.binding_acknowledged,
         }
 
-    def get_validator_drift_report(
-        self,
-        contract_id: str,
-        language_code: str
-    ) -> dict[str, Any]:
+    def get_validator_drift_report(self, contract_id: str, language_code: str) -> dict[str, Any]:
         """
         Generate validator report for drift per NCIP-003 Section 6.
 
@@ -2853,18 +2636,12 @@ class HybridValidator:
             Validator drift report
         """
         if not NCIP_003_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-003 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-003 module not available"}
 
         manager = self.get_multilingual_manager()
         return manager.validator_report_drift(contract_id, language_code)
 
-    def generate_alignment_spec(
-        self,
-        contract_id: str
-    ) -> dict[str, Any]:
+    def generate_alignment_spec(self, contract_id: str) -> dict[str, Any]:
         """
         Generate machine-readable multilingual alignment spec.
 
@@ -2877,19 +2654,13 @@ class HybridValidator:
             YAML-compatible alignment specification
         """
         if not NCIP_003_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-003 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-003 module not available"}
 
         manager = self.get_multilingual_manager()
         contract = manager.get_contract(contract_id)
 
         if not contract:
-            return {
-                "status": "error",
-                "message": f"Contract {contract_id} not found"
-            }
+            return {"status": "error", "message": f"Contract {contract_id} not found"}
 
         return manager.generate_alignment_spec(contract)
 
@@ -2899,7 +2670,7 @@ class HybridValidator:
         term_id: str,
         anchor_term: str,
         translated_term: str,
-        language_code: str
+        language_code: str,
     ) -> dict[str, Any]:
         """
         Validate canonical term mapping across languages.
@@ -2920,19 +2691,13 @@ class HybridValidator:
             Term mapping validation result
         """
         if not NCIP_003_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-003 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-003 module not available"}
 
         manager = self.get_multilingual_manager()
         contract = manager.get_contract(contract_id)
 
         if not contract:
-            return {
-                "status": "error",
-                "message": f"Contract {contract_id} not found"
-            }
+            return {"status": "error", "message": f"Contract {contract_id} not found"}
 
         success, msg = manager.validate_term_mapping(
             contract, term_id, anchor_term, translated_term, language_code
@@ -2944,7 +2709,7 @@ class HybridValidator:
             "term_id": term_id,
             "anchor_term": anchor_term,
             "translated_term": translated_term,
-            "language_code": language_code
+            "language_code": language_code,
         }
 
     def is_ncip_003_enabled(self) -> bool:
@@ -2954,10 +2719,7 @@ class HybridValidator:
     def get_ncip_003_status(self) -> dict[str, Any]:
         """Get NCIP-003 implementation status and configuration."""
         if not NCIP_003_AVAILABLE:
-            return {
-                "enabled": False,
-                "message": "NCIP-003 module not available"
-            }
+            return {"enabled": False, "message": "NCIP-003 module not available"}
 
         manager = self.get_multilingual_manager()
         summary = manager.get_status_summary()
@@ -2973,8 +2735,8 @@ class HybridValidator:
                 "D0-D1": "accept",
                 "D2": "pause_clarify",
                 "D3": "require_ratification",
-                "D4": "reject_escalate"
-            }
+                "D4": "reject_escalate",
+            },
         }
 
     # -------------------------------------------------------------------------
@@ -2991,10 +2753,7 @@ class HybridValidator:
             self._jurisdictional_manager = JurisdictionalManager()
         return self._jurisdictional_manager
 
-    def create_jurisdictional_bridge(
-        self,
-        prose_contract_id: str
-    ) -> dict[str, Any]:
+    def create_jurisdictional_bridge(self, prose_contract_id: str) -> dict[str, Any]:
         """
         Create a jurisdictional bridge for a Prose Contract.
 
@@ -3002,10 +2761,7 @@ class HybridValidator:
         MUST declare governing jurisdictions.
         """
         if not NCIP_006_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-006 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-006 module not available"}
 
         manager = self.get_jurisdictional_manager()
         bridge = manager.create_bridge(prose_contract_id)
@@ -3015,15 +2771,10 @@ class HybridValidator:
             "prose_contract_id": prose_contract_id,
             "semantic_authority": bridge.semantic_authority_source,
             "allow_external_override": bridge.allow_external_semantic_override,
-            "ltas_authoritative": bridge.ltas_authoritative
+            "ltas_authoritative": bridge.ltas_authoritative,
         }
 
-    def add_jurisdiction(
-        self,
-        prose_contract_id: str,
-        code: str,
-        role: str
-    ) -> dict[str, Any]:
+    def add_jurisdiction(self, prose_contract_id: str, code: str, role: str) -> dict[str, Any]:
         """
         Add a jurisdiction declaration to a bridge.
 
@@ -3033,26 +2784,20 @@ class HybridValidator:
             role: Jurisdiction role ("enforcement", "interpretive", "procedural")
         """
         if not NCIP_006_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-006 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-006 module not available"}
 
         manager = self.get_jurisdictional_manager()
         bridge = manager.get_bridge(prose_contract_id)
 
         if not bridge:
-            return {
-                "status": "error",
-                "message": f"No bridge found for {prose_contract_id}"
-            }
+            return {"status": "error", "message": f"No bridge found for {prose_contract_id}"}
 
         try:
             jurisdiction_role = JurisdictionRole(role)
         except ValueError:
             return {
                 "status": "error",
-                "message": f"Invalid role: {role}. Use: enforcement, interpretive, procedural"
+                "message": f"Invalid role: {role}. Use: enforcement, interpretive, procedural",
             }
 
         success, msg = bridge.add_jurisdiction(code, jurisdiction_role)
@@ -3061,13 +2806,10 @@ class HybridValidator:
             "status": "added" if success else "error",
             "message": msg,
             "code": code,
-            "role": role
+            "role": role,
         }
 
-    def validate_jurisdiction_declaration(
-        self,
-        prose_contract_id: str
-    ) -> dict[str, Any]:
+    def validate_jurisdiction_declaration(self, prose_contract_id: str) -> dict[str, Any]:
         """
         Validate jurisdiction declaration for a Prose Contract.
 
@@ -3075,10 +2817,7 @@ class HybridValidator:
         and execution pauses until declared.
         """
         if not NCIP_006_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-006 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-006 module not available"}
 
         manager = self.get_jurisdictional_manager()
         result = manager.validator_check_jurisdiction(prose_contract_id)
@@ -3092,7 +2831,7 @@ class HybridValidator:
         legal_prose: str,
         registry_version: str,
         temporal_fixity_timestamp: str,
-        referenced_terms: list[str] | None = None
+        referenced_terms: list[str] | None = None,
     ) -> dict[str, Any]:
         """
         Create a Legal Translation Artifact (LTA).
@@ -3101,20 +2840,18 @@ class HybridValidator:
         of Prose Contracts. They are derived and non-authoritative.
         """
         if not NCIP_006_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-006 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-006 module not available"}
 
         manager = self.get_jurisdictional_manager()
 
         from datetime import datetime
+
         try:
             t0 = datetime.fromisoformat(temporal_fixity_timestamp)
         except ValueError:
             return {
                 "status": "error",
-                "message": f"Invalid timestamp format: {temporal_fixity_timestamp}"
+                "message": f"Invalid timestamp format: {temporal_fixity_timestamp}",
             }
 
         lta, errors = manager.create_lta(
@@ -3123,14 +2860,11 @@ class HybridValidator:
             legal_prose=legal_prose,
             registry_version=registry_version,
             temporal_fixity_timestamp=t0,
-            referenced_terms=referenced_terms
+            referenced_terms=referenced_terms,
         )
 
         if errors:
-            return {
-                "status": "error",
-                "errors": errors
-            }
+            return {"status": "error", "errors": errors}
 
         return {
             "status": "created",
@@ -3138,14 +2872,11 @@ class HybridValidator:
             "prose_contract_id": lta.prose_contract_id,
             "target_jurisdiction": lta.target_jurisdiction,
             "has_required_references": lta.has_required_references,
-            "disclaimer_present": bool(lta.semantic_authority_disclaimer)
+            "disclaimer_present": bool(lta.semantic_authority_disclaimer),
         }
 
     def validate_legal_translation_artifact(
-        self,
-        lta_id: str,
-        prose_contract_id: str,
-        original_prose: str
+        self, lta_id: str, prose_contract_id: str, original_prose: str
     ) -> dict[str, Any]:
         """
         Validate a Legal Translation Artifact against its source.
@@ -3157,26 +2888,17 @@ class HybridValidator:
         - Claim semantic authority
         """
         if not NCIP_006_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-006 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-006 module not available"}
 
         manager = self.get_jurisdictional_manager()
         bridge = manager.get_bridge(prose_contract_id)
 
         if not bridge:
-            return {
-                "status": "error",
-                "message": f"No bridge found for {prose_contract_id}"
-            }
+            return {"status": "error", "message": f"No bridge found for {prose_contract_id}"}
 
         lta = bridge.ltas.get(lta_id)
         if not lta:
-            return {
-                "status": "error",
-                "message": f"LTA {lta_id} not found"
-            }
+            return {"status": "error", "message": f"LTA {lta_id} not found"}
 
         result = manager.validator_check_lta(lta, original_prose)
 
@@ -3188,7 +2910,7 @@ class HybridValidator:
         jurisdiction: str,
         ruling_type: str,
         summary: str,
-        enforcement_outcome: str | None = None
+        enforcement_outcome: str | None = None,
     ) -> dict[str, Any]:
         """
         Handle a court ruling per NCIP-006 Section 8.
@@ -3200,27 +2922,21 @@ class HybridValidator:
         - Semantic override rulings are automatically rejected
         """
         if not NCIP_006_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-006 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-006 module not available"}
 
         manager = self.get_jurisdictional_manager()
 
         try:
             ruling_type_enum = CourtRulingType(ruling_type)
         except ValueError:
-            return {
-                "status": "error",
-                "message": f"Invalid ruling type: {ruling_type}"
-            }
+            return {"status": "error", "message": f"Invalid ruling type: {ruling_type}"}
 
         ruling = manager.handle_court_ruling(
             prose_contract_id=prose_contract_id,
             jurisdiction=jurisdiction,
             ruling_type=ruling_type_enum,
             summary=summary,
-            enforcement_outcome=enforcement_outcome
+            enforcement_outcome=enforcement_outcome,
         )
 
         return {
@@ -3231,15 +2947,11 @@ class HybridValidator:
             "rejected": ruling.rejected,
             "rejection_reason": ruling.rejection_reason,
             "execution_halted": ruling.execution_halted,
-            "enforcement_outcome": ruling.enforcement_outcome
+            "enforcement_outcome": ruling.enforcement_outcome,
         }
 
     def handle_jurisdiction_conflict(
-        self,
-        prose_contract_id: str,
-        jurisdictions: list[str],
-        conflict_type: str,
-        description: str
+        self, prose_contract_id: str, jurisdictions: list[str], conflict_type: str, description: str
     ) -> dict[str, Any]:
         """
         Handle cross-jurisdiction conflict per NCIP-006 Section 10.
@@ -3250,10 +2962,7 @@ class HybridValidator:
         - Meaning remains unchanged
         """
         if not NCIP_006_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-006 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-006 module not available"}
 
         manager = self.get_jurisdictional_manager()
 
@@ -3261,7 +2970,7 @@ class HybridValidator:
             prose_contract_id=prose_contract_id,
             jurisdictions=jurisdictions,
             conflict_type=conflict_type,
-            description=description
+            description=description,
         )
 
         return {
@@ -3269,7 +2978,7 @@ class HybridValidator:
             "conflict_id": conflict.conflict_id,
             "jurisdictions": conflict.jurisdictions,
             "conflict_type": conflict.conflict_type,
-            "semantic_lock_applied": conflict.semantic_lock_applied
+            "semantic_lock_applied": conflict.semantic_lock_applied,
         }
 
     def resolve_jurisdiction_conflict(
@@ -3277,23 +2986,17 @@ class HybridValidator:
         prose_contract_id: str,
         conflict_id: str,
         most_restrictive_outcome: str,
-        resolution_notes: str
+        resolution_notes: str,
     ) -> dict[str, Any]:
         """Resolve a jurisdiction conflict with most restrictive outcome."""
         if not NCIP_006_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-006 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-006 module not available"}
 
         manager = self.get_jurisdictional_manager()
         bridge = manager.get_bridge(prose_contract_id)
 
         if not bridge:
-            return {
-                "status": "error",
-                "message": f"No bridge found for {prose_contract_id}"
-            }
+            return {"status": "error", "message": f"No bridge found for {prose_contract_id}"}
 
         conflict = None
         for c in bridge.conflicts:
@@ -3302,10 +3005,7 @@ class HybridValidator:
                 break
 
         if not conflict:
-            return {
-                "status": "error",
-                "message": f"Conflict {conflict_id} not found"
-            }
+            return {"status": "error", "message": f"Conflict {conflict_id} not found"}
 
         manager.resolve_conflict(conflict, most_restrictive_outcome, resolution_notes)
 
@@ -3314,16 +3014,13 @@ class HybridValidator:
             "conflict_id": conflict_id,
             "most_restrictive_outcome": most_restrictive_outcome,
             "resolution_notes": resolution_notes,
-            "resolved_at": conflict.resolved_at.isoformat() if conflict.resolved_at else None
+            "resolved_at": conflict.resolved_at.isoformat() if conflict.resolved_at else None,
         }
 
     def generate_bridge_spec(self, prose_contract_id: str) -> dict[str, Any]:
         """Generate machine-readable jurisdiction bridge spec per NCIP-006 Section 11."""
         if not NCIP_006_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-006 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-006 module not available"}
 
         manager = self.get_jurisdictional_manager()
         return manager.generate_bridge_spec(prose_contract_id)
@@ -3335,10 +3032,7 @@ class HybridValidator:
     def get_ncip_006_status(self) -> dict[str, Any]:
         """Get NCIP-006 implementation status and configuration."""
         if not NCIP_006_AVAILABLE:
-            return {
-                "enabled": False,
-                "message": "NCIP-006 module not available"
-            }
+            return {"enabled": False, "message": "NCIP-006 module not available"}
 
         manager = self.get_jurisdictional_manager()
         summary = manager.get_status_summary()
@@ -3355,7 +3049,7 @@ class HybridValidator:
             "total_ltas": summary["total_ltas"],
             "total_court_rulings": summary["total_court_rulings"],
             "total_conflicts": summary["total_conflicts"],
-            "principle": "Law constrains enforcement, not meaning"
+            "principle": "Law constrains enforcement, not meaning",
         }
 
     # -------------------------------------------------------------------------
@@ -3381,19 +3075,12 @@ class HybridValidator:
         - Not appealable: term_registry_mapping, settlement_outcome
         """
         if not NCIP_008_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-008 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-008 module not available"}
 
         manager = self.get_appeals_manager()
         is_appealable, msg = manager.is_appealable(item_type)
 
-        return {
-            "item_type": item_type,
-            "appealable": is_appealable,
-            "message": msg
-        }
+        return {"item_type": item_type, "appealable": is_appealable, "message": msg}
 
     def create_semantic_appeal(
         self,
@@ -3405,7 +3092,7 @@ class HybridValidator:
         disputed_terms: list[str],
         appeal_rationale: str,
         original_prose: str | None = None,
-        pou_ids: list[str] | None = None
+        pou_ids: list[str] | None = None,
     ) -> dict[str, Any]:
         """
         Create a semantic appeal per NCIP-008 Section 3.
@@ -3416,27 +3103,21 @@ class HybridValidator:
         - Pay non-refundable burn fee
         """
         if not NCIP_008_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-008 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-008 module not available"}
 
         manager = self.get_appeals_manager()
 
         try:
             appeal_type_enum = AppealableItem(appeal_type)
         except ValueError:
-            return {
-                "status": "error",
-                "message": f"Invalid appeal type: {appeal_type}"
-            }
+            return {"status": "error", "message": f"Invalid appeal type: {appeal_type}"}
 
         try:
             drift_enum = AppealsDriftLevel(drift_classification)
         except ValueError:
             return {
                 "status": "error",
-                "message": f"Invalid drift classification: {drift_classification}"
+                "message": f"Invalid drift classification: {drift_classification}",
             }
 
         appeal, warnings = manager.create_appeal(
@@ -3448,14 +3129,11 @@ class HybridValidator:
             disputed_terms=disputed_terms,
             appeal_rationale=appeal_rationale,
             original_prose=original_prose,
-            pou_ids=pou_ids
+            pou_ids=pou_ids,
         )
 
         if appeal is None:
-            return {
-                "status": "error",
-                "errors": warnings
-            }
+            return {"status": "error", "errors": warnings}
 
         return {
             "status": "created",
@@ -3463,15 +3141,13 @@ class HybridValidator:
             "status_state": appeal.status.value,
             "disputed_terms": appeal.disputed_terms,
             "burn_fee_paid": appeal.burn_fee_paid,
-            "review_deadline": appeal.review_deadline.isoformat() if appeal.review_deadline else None,
-            "warnings": warnings
+            "review_deadline": appeal.review_deadline.isoformat()
+            if appeal.review_deadline
+            else None,
+            "warnings": warnings,
         }
 
-    def apply_appeal_semantic_lock(
-        self,
-        appeal_id: str,
-        lock_id: str
-    ) -> dict[str, Any]:
+    def apply_appeal_semantic_lock(self, appeal_id: str, lock_id: str) -> dict[str, Any]:
         """
         Apply scoped semantic lock for an appeal.
 
@@ -3480,58 +3156,40 @@ class HybridValidator:
         - Lock does not block unrelated amendments
         """
         if not NCIP_008_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-008 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-008 module not available"}
 
         manager = self.get_appeals_manager()
         appeal = manager.get_appeal(appeal_id)
 
         if not appeal:
-            return {
-                "status": "error",
-                "message": f"Appeal {appeal_id} not found"
-            }
+            return {"status": "error", "message": f"Appeal {appeal_id} not found"}
 
         result = manager.apply_scoped_lock(appeal, lock_id)
         return result
 
     def create_appeal_review_panel(
-        self,
-        appeal_id: str,
-        original_validator_ids: list[str]
+        self, appeal_id: str, original_validator_ids: list[str]
     ) -> dict[str, Any]:
         """Create a review panel for an appeal."""
         if not NCIP_008_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-008 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-008 module not available"}
 
         manager = self.get_appeals_manager()
         appeal = manager.get_appeal(appeal_id)
 
         if not appeal:
-            return {
-                "status": "error",
-                "message": f"Appeal {appeal_id} not found"
-            }
+            return {"status": "error", "message": f"Appeal {appeal_id} not found"}
 
         panel = manager.create_review_panel(appeal, original_validator_ids)
 
         return {
             "status": "created",
             "appeal_id": appeal_id,
-            "original_validators_excluded": list(panel.original_validator_ids)
+            "original_validators_excluded": list(panel.original_validator_ids),
         }
 
     def add_panel_member(
-        self,
-        appeal_id: str,
-        validator_id: str,
-        implementation_type: str,
-        trust_score: float = 0.5
+        self, appeal_id: str, validator_id: str, implementation_type: str, trust_score: float = 0.5
     ) -> dict[str, Any]:
         """
         Add a member to the appeal review panel.
@@ -3542,24 +3200,18 @@ class HybridValidator:
         - No overlap with original validators
         """
         if not NCIP_008_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-008 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-008 module not available"}
 
         manager = self.get_appeals_manager()
         appeal = manager.get_appeal(appeal_id)
 
         if not appeal or not appeal.review_panel:
-            return {
-                "status": "error",
-                "message": f"Appeal {appeal_id} or panel not found"
-            }
+            return {"status": "error", "message": f"Appeal {appeal_id} or panel not found"}
 
         member = ReviewPanelMember(
             validator_id=validator_id,
             implementation_type=implementation_type,
-            trust_score=trust_score
+            trust_score=trust_score,
         )
 
         success, msg = appeal.review_panel.add_member(member)
@@ -3568,32 +3220,26 @@ class HybridValidator:
             "status": "added" if success else "error",
             "message": msg,
             "panel_size": len(appeal.review_panel.members),
-            "panel_valid": appeal.review_panel.is_valid
+            "panel_valid": appeal.review_panel.is_valid,
         }
 
     def begin_appeal_review(self, appeal_id: str) -> dict[str, Any]:
         """Begin the review process for an appeal."""
         if not NCIP_008_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-008 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-008 module not available"}
 
         manager = self.get_appeals_manager()
         appeal = manager.get_appeal(appeal_id)
 
         if not appeal:
-            return {
-                "status": "error",
-                "message": f"Appeal {appeal_id} not found"
-            }
+            return {"status": "error", "message": f"Appeal {appeal_id} not found"}
 
         success, msg = manager.begin_review(appeal)
 
         return {
             "status": "started" if success else "error",
             "message": msg,
-            "appeal_status": appeal.status.value
+            "appeal_status": appeal.status.value,
         }
 
     def record_appeal_vote(
@@ -3602,31 +3248,22 @@ class HybridValidator:
         validator_id: str,
         vote: str,
         revised_classification: str | None = None,
-        rationale: str = ""
+        rationale: str = "",
     ) -> dict[str, Any]:
         """Record a vote from a panel member."""
         if not NCIP_008_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-008 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-008 module not available"}
 
         manager = self.get_appeals_manager()
         appeal = manager.get_appeal(appeal_id)
 
         if not appeal:
-            return {
-                "status": "error",
-                "message": f"Appeal {appeal_id} not found"
-            }
+            return {"status": "error", "message": f"Appeal {appeal_id} not found"}
 
         try:
             vote_enum = AppealOutcome(vote)
         except ValueError:
-            return {
-                "status": "error",
-                "message": f"Invalid vote: {vote}"
-            }
+            return {"status": "error", "message": f"Invalid vote: {vote}"}
 
         revised_enum = None
         if revised_classification:
@@ -3635,17 +3272,15 @@ class HybridValidator:
             except ValueError:
                 return {
                     "status": "error",
-                    "message": f"Invalid classification: {revised_classification}"
+                    "message": f"Invalid classification: {revised_classification}",
                 }
 
-        success, msg = manager.record_vote(
-            appeal, validator_id, vote_enum, revised_enum, rationale
-        )
+        success, msg = manager.record_vote(appeal, validator_id, vote_enum, revised_enum, rationale)
 
         return {
             "status": "recorded" if success else "error",
             "message": msg,
-            "appeal_status": appeal.status.value
+            "appeal_status": appeal.status.value,
         }
 
     def resolve_semantic_appeal(
@@ -3655,7 +3290,7 @@ class HybridValidator:
         revised_classification: str | None,
         rationale_summary: str,
         human_ratifier_id: str,
-        prior_cases: list[str] | None = None
+        prior_cases: list[str] | None = None,
     ) -> dict[str, Any]:
         """
         Resolve an appeal and generate Semantic Case Record.
@@ -3663,27 +3298,18 @@ class HybridValidator:
         Per NCIP-008 Section 4.1: Human ratification required for outcome finalization.
         """
         if not NCIP_008_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-008 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-008 module not available"}
 
         manager = self.get_appeals_manager()
         appeal = manager.get_appeal(appeal_id)
 
         if not appeal:
-            return {
-                "status": "error",
-                "message": f"Appeal {appeal_id} not found"
-            }
+            return {"status": "error", "message": f"Appeal {appeal_id} not found"}
 
         try:
             outcome_enum = AppealOutcome(outcome)
         except ValueError:
-            return {
-                "status": "error",
-                "message": f"Invalid outcome: {outcome}"
-            }
+            return {"status": "error", "message": f"Invalid outcome: {outcome}"}
 
         revised_enum = None
         if revised_classification:
@@ -3692,19 +3318,15 @@ class HybridValidator:
             except ValueError:
                 return {
                     "status": "error",
-                    "message": f"Invalid classification: {revised_classification}"
+                    "message": f"Invalid classification: {revised_classification}",
                 }
 
         scr, errors = manager.resolve_appeal(
-            appeal, outcome_enum, revised_enum,
-            rationale_summary, human_ratifier_id, prior_cases
+            appeal, outcome_enum, revised_enum, rationale_summary, human_ratifier_id, prior_cases
         )
 
         if errors:
-            return {
-                "status": "error",
-                "errors": errors
-            }
+            return {"status": "error", "errors": errors}
 
         return {
             "status": "resolved",
@@ -3713,7 +3335,7 @@ class HybridValidator:
             "outcome": outcome,
             "upheld": scr.upheld,
             "revised_classification": revised_classification,
-            "human_ratification": scr.human_ratification
+            "human_ratification": scr.human_ratification,
         }
 
     def query_precedents(
@@ -3721,7 +3343,7 @@ class HybridValidator:
         canonical_term_id: str | None = None,
         drift_class: str | None = None,
         jurisdiction_context: str | None = None,
-        include_zero_weight: bool = False
+        include_zero_weight: bool = False,
     ) -> dict[str, Any]:
         """
         Query precedents per NCIP-008 Section 11.
@@ -3729,10 +3351,7 @@ class HybridValidator:
         Precedent is advisory signal, not binding.
         """
         if not NCIP_008_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-008 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-008 module not available"}
 
         manager = self.get_appeals_manager()
 
@@ -3745,7 +3364,7 @@ class HybridValidator:
             canonical_term_id=canonical_term_id,
             drift_class=drift_enum,
             jurisdiction_context=jurisdiction_context,
-            include_zero_weight=include_zero_weight
+            include_zero_weight=include_zero_weight,
         )
 
         return {
@@ -3759,46 +3378,34 @@ class HybridValidator:
                     "outcome": p.scr.outcome.value,
                     "upheld": p.scr.upheld,
                     "weight": p.weight.value,
-                    "age_months": round(p.age_months, 1)
+                    "age_months": round(p.age_months, 1),
                 }
                 for p in results[:10]  # Limit to 10
             ],
             "advisory_only": True,
-            "binding": False
+            "binding": False,
         }
 
-    def get_precedent_signal(
-        self,
-        term_id: str,
-        drift_class: str
-    ) -> dict[str, Any]:
+    def get_precedent_signal(self, term_id: str, drift_class: str) -> dict[str, Any]:
         """
         Get advisory precedent signal for a term.
 
         Per NCIP-008 Section 6.1: Precedent is advisory, not binding.
         """
         if not NCIP_008_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-008 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-008 module not available"}
 
         manager = self.get_appeals_manager()
 
         try:
             drift_enum = AppealsDriftLevel(drift_class)
         except ValueError:
-            return {
-                "status": "error",
-                "message": f"Invalid drift class: {drift_class}"
-            }
+            return {"status": "error", "message": f"Invalid drift class: {drift_class}"}
 
         return manager.get_precedent_signal(term_id, drift_enum)
 
     def check_precedent_divergence(
-        self,
-        term_id: str,
-        proposed_classification: str
+        self, term_id: str, proposed_classification: str
     ) -> dict[str, Any]:
         """
         Check if proposed classification diverges from strong precedent.
@@ -3807,10 +3414,7 @@ class HybridValidator:
         when diverging from strong precedent.
         """
         if not NCIP_008_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-008 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-008 module not available"}
 
         manager = self.get_appeals_manager()
 
@@ -3819,7 +3423,7 @@ class HybridValidator:
         except ValueError:
             return {
                 "status": "error",
-                "message": f"Invalid classification: {proposed_classification}"
+                "message": f"Invalid classification: {proposed_classification}",
             }
 
         warning = manager.check_precedent_divergence(term_id, classification_enum)
@@ -3829,38 +3433,26 @@ class HybridValidator:
             "proposed_classification": proposed_classification,
             "divergence_detected": warning is not None,
             "warning": warning,
-            "principle": "Explicit prose takes priority over precedent"
+            "principle": "Explicit prose takes priority over precedent",
         }
 
     def get_semantic_case_record(self, case_id: str) -> dict[str, Any]:
         """Get a Semantic Case Record by ID."""
         if not NCIP_008_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-008 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-008 module not available"}
 
         manager = self.get_appeals_manager()
         scr = manager.get_scr(case_id)
 
         if not scr:
-            return {
-                "status": "error",
-                "message": f"SCR {case_id} not found"
-            }
+            return {"status": "error", "message": f"SCR {case_id} not found"}
 
-        return {
-            "status": "found",
-            "scr": scr.to_yaml_dict()
-        }
+        return {"status": "found", "scr": scr.to_yaml_dict()}
 
     def generate_scr_index(self) -> dict[str, Any]:
         """Generate machine-readable SCR index per NCIP-008 Section 11."""
         if not NCIP_008_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-008 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-008 module not available"}
 
         manager = self.get_appeals_manager()
         return manager.generate_scr_index()
@@ -3872,10 +3464,7 @@ class HybridValidator:
     def get_ncip_008_status(self) -> dict[str, Any]:
         """Get NCIP-008 implementation status and configuration."""
         if not NCIP_008_AVAILABLE:
-            return {
-                "enabled": False,
-                "message": "NCIP-008 module not available"
-            }
+            return {"enabled": False, "message": "NCIP-008 module not available"}
 
         manager = self.get_appeals_manager()
         summary = manager.get_status_summary()
@@ -3890,19 +3479,16 @@ class HybridValidator:
                 "validator_rejection",
                 "drift_classification",
                 "pou_mismatch",
-                "mediator_interpretation"
+                "mediator_interpretation",
             ],
-            "non_appealable_items": [
-                "term_registry_mapping",
-                "settlement_outcome"
-            ],
+            "non_appealable_items": ["term_registry_mapping", "settlement_outcome"],
             "precedent_weight_decay": {
                 "high": "< 3 months",
                 "medium": "3-12 months",
                 "low": "> 12 months",
-                "zero": "superseded registry"
+                "zero": "superseded registry",
             },
-            "principle": summary["principle"]
+            "principle": summary["principle"],
         }
 
     # -------------------------------------------------------------------------
@@ -3919,32 +3505,21 @@ class HybridValidator:
             self._coupling_manager = ValidatorMediatorCoupling()
         return self._coupling_manager
 
-    def check_role_permission(
-        self,
-        actor_id: str,
-        actor_role: str,
-        action: str
-    ) -> dict[str, Any]:
+    def check_role_permission(self, actor_id: str, actor_role: str, action: str) -> dict[str, Any]:
         """
         Check if an actor has permission for an action.
 
         Per NCIP-011 Section 3: Any attempt to cross roles triggers PV-V3.
         """
         if not NCIP_011_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-011 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-011 module not available"}
 
         manager = self.get_coupling_manager()
 
         try:
             role_enum = ActorRole(actor_role)
         except ValueError:
-            return {
-                "status": "error",
-                "message": f"Invalid role: {actor_role}"
-            }
+            return {"status": "error", "message": f"Invalid role: {actor_role}"}
 
         allowed, violation = manager.check_role_permission(actor_id, role_enum, action)
 
@@ -3952,14 +3527,14 @@ class HybridValidator:
             "actor_id": actor_id,
             "actor_role": actor_role,
             "action": action,
-            "allowed": allowed
+            "allowed": allowed,
         }
 
         if violation:
             result["violation"] = {
                 "violation_id": violation.violation_id,
                 "type": violation.violation_type.value,
-                "details": violation.details
+                "details": violation.details,
             }
 
         return result
@@ -3970,19 +3545,19 @@ class HybridValidator:
         historical_accuracy: float = 0.5,
         drift_precision: float = 0.5,
         pou_consistency: float = 0.5,
-        appeal_survival_rate: float = 0.5
+        appeal_survival_rate: float = 0.5,
     ) -> dict[str, Any]:
         """Register a validator with weight components per NCIP-011."""
         if not NCIP_011_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-011 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-011 module not available"}
 
         manager = self.get_coupling_manager()
         vw = manager.register_validator(
-            validator_id, historical_accuracy, drift_precision,
-            pou_consistency, appeal_survival_rate
+            validator_id,
+            historical_accuracy,
+            drift_precision,
+            pou_consistency,
+            appeal_survival_rate,
         )
 
         return {
@@ -3993,8 +3568,8 @@ class HybridValidator:
                 "historical_accuracy": historical_accuracy,
                 "drift_precision": drift_precision,
                 "pou_consistency": pou_consistency,
-                "appeal_survival_rate": appeal_survival_rate
-            }
+                "appeal_survival_rate": appeal_survival_rate,
+            },
         }
 
     def register_mediator_coupling(
@@ -4003,19 +3578,19 @@ class HybridValidator:
         acceptance_rate: float = 0.5,
         settlement_completion: float = 0.5,
         post_settlement_dispute_frequency: float = 0.5,
-        time_efficiency: float = 0.5
+        time_efficiency: float = 0.5,
     ) -> dict[str, Any]:
         """Register a mediator with weight components per NCIP-011."""
         if not NCIP_011_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-011 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-011 module not available"}
 
         manager = self.get_coupling_manager()
         mw = manager.register_mediator(
-            mediator_id, acceptance_rate, settlement_completion,
-            post_settlement_dispute_frequency, time_efficiency
+            mediator_id,
+            acceptance_rate,
+            settlement_completion,
+            post_settlement_dispute_frequency,
+            time_efficiency,
         )
 
         return {
@@ -4026,15 +3601,12 @@ class HybridValidator:
                 "acceptance_rate": acceptance_rate,
                 "settlement_completion": settlement_completion,
                 "post_settlement_dispute_frequency": post_settlement_dispute_frequency,
-                "time_efficiency": time_efficiency
-            }
+                "time_efficiency": time_efficiency,
+            },
         }
 
     def submit_mediator_proposal(
-        self,
-        mediator_id: str,
-        proposal_type: str,
-        content: str
+        self, mediator_id: str, proposal_type: str, content: str
     ) -> dict[str, Any]:
         """
         Submit a mediator proposal.
@@ -4042,19 +3614,13 @@ class HybridValidator:
         The proposal must pass the influence gate to be presented.
         """
         if not NCIP_011_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-011 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-011 module not available"}
 
         manager = self.get_coupling_manager()
         proposal, errors = manager.submit_proposal(mediator_id, proposal_type, content)
 
         if errors:
-            return {
-                "status": "error",
-                "errors": errors
-            }
+            return {"status": "error", "errors": errors}
 
         return {
             "status": "submitted",
@@ -4062,7 +3628,7 @@ class HybridValidator:
             "mediator_id": mediator_id,
             "proposal_type": proposal_type,
             "gate_threshold": proposal.gate_threshold,
-            "message": "Awaiting semantic consistency scoring from validators"
+            "message": "Awaiting semantic consistency scoring from validators",
         }
 
     def compute_semantic_consistency(
@@ -4072,7 +3638,7 @@ class HybridValidator:
         intent_alignment: float,
         term_registry_consistency: float,
         drift_risk_projection: float,
-        pou_symmetry: float
+        pou_symmetry: float,
     ) -> dict[str, Any]:
         """
         Compute semantic consistency score for a proposal.
@@ -4081,16 +3647,16 @@ class HybridValidator:
         It only gates whether it may be presented.
         """
         if not NCIP_011_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-011 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-011 module not available"}
 
         manager = self.get_coupling_manager()
         score = manager.compute_semantic_consistency(
-            proposal_id, validator_id,
-            intent_alignment, term_registry_consistency,
-            drift_risk_projection, pou_symmetry
+            proposal_id,
+            validator_id,
+            intent_alignment,
+            term_registry_consistency,
+            drift_risk_projection,
+            pou_symmetry,
         )
 
         return {
@@ -4102,9 +3668,9 @@ class HybridValidator:
                 "intent_alignment": intent_alignment,
                 "term_registry_consistency": term_registry_consistency,
                 "drift_risk_projection": drift_risk_projection,
-                "pou_symmetry": pou_symmetry
+                "pou_symmetry": pou_symmetry,
             },
-            "note": "Score does NOT approve proposal, only gates visibility"
+            "note": "Score does NOT approve proposal, only gates visibility",
         }
 
     def check_influence_gate(self, proposal_id: str) -> dict[str, Any]:
@@ -4115,10 +3681,7 @@ class HybridValidator:
         ∑(Validator VW × semantic_consistency_score) >= GateThreshold
         """
         if not NCIP_011_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-011 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-011 module not available"}
 
         manager = self.get_coupling_manager()
         result = manager.check_influence_gate(proposal_id)
@@ -4130,7 +3693,7 @@ class HybridValidator:
             "gate_score": result.gate_score,
             "threshold": result.threshold,
             "validator_contributions": result.validator_contributions,
-            "message": result.message
+            "message": result.message,
         }
 
     def get_visible_proposals(self) -> dict[str, Any]:
@@ -4140,10 +3703,7 @@ class HybridValidator:
         Per NCIP-011 Section 7: Proposals below gate are hidden.
         """
         if not NCIP_011_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-011 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-011 module not available"}
 
         manager = self.get_coupling_manager()
         visible = manager.get_visible_proposals()
@@ -4158,23 +3718,16 @@ class HybridValidator:
                     "proposal_type": p.proposal_type,
                     "gate_score": p.gate_score,
                     "competition_rank": p.competition_rank,
-                    "selected": p.selected
+                    "selected": p.selected,
                 }
                 for p in visible
-            ]
+            ],
         }
 
-    def select_proposal(
-        self,
-        proposal_id: str,
-        selector_id: str
-    ) -> dict[str, Any]:
+    def select_proposal(self, proposal_id: str, selector_id: str) -> dict[str, Any]:
         """Human selects a proposal from visible options."""
         if not NCIP_011_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-011 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-011 module not available"}
 
         manager = self.get_coupling_manager()
         success, msg = manager.select_proposal(proposal_id, selector_id)
@@ -4183,7 +3736,7 @@ class HybridValidator:
             "status": "selected" if success else "error",
             "proposal_id": proposal_id,
             "selector_id": selector_id,
-            "message": msg
+            "message": msg,
         }
 
     def enter_coupling_dispute_phase(self, contract_id: str) -> dict[str, Any]:
@@ -4196,36 +3749,23 @@ class HybridValidator:
         - No new proposals allowed
         """
         if not NCIP_011_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-011 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-011 module not available"}
 
         manager = self.get_coupling_manager()
         return manager.enter_dispute_phase(contract_id)
 
     def exit_coupling_dispute_phase(
-        self,
-        contract_id: str,
-        resolution_outcome: str
+        self, contract_id: str, resolution_outcome: str
     ) -> dict[str, Any]:
         """Exit dispute phase after resolution."""
         if not NCIP_011_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-011 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-011 module not available"}
 
         manager = self.get_coupling_manager()
         return manager.exit_dispute_phase(contract_id, resolution_outcome)
 
     def schedule_coupling_weight_update(
-        self,
-        actor_id: str,
-        actor_role: str,
-        field_name: str,
-        new_value: float,
-        reason: str
+        self, actor_id: str, actor_role: str, field_name: str, new_value: float, reason: str
     ) -> dict[str, Any]:
         """
         Schedule a weight update with delay.
@@ -4233,30 +3773,19 @@ class HybridValidator:
         Per NCIP-011 Section 8.2: Weight changes are delayed (anti-gaming).
         """
         if not NCIP_011_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-011 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-011 module not available"}
 
         manager = self.get_coupling_manager()
 
         try:
             role_enum = ActorRole(actor_role)
         except ValueError:
-            return {
-                "status": "error",
-                "message": f"Invalid role: {actor_role}"
-            }
+            return {"status": "error", "message": f"Invalid role: {actor_role}"}
 
-        update = manager.schedule_weight_update(
-            actor_id, role_enum, field_name, new_value, reason
-        )
+        update = manager.schedule_weight_update(actor_id, role_enum, field_name, new_value, reason)
 
         if not update:
-            return {
-                "status": "error",
-                "message": f"Actor {actor_id} not found or invalid field"
-            }
+            return {"status": "error", "message": f"Actor {actor_id} not found or invalid field"}
 
         return {
             "status": "scheduled",
@@ -4266,24 +3795,17 @@ class HybridValidator:
             "old_value": update.old_value,
             "new_value": update.new_value,
             "apply_after": update.apply_after.isoformat() if update.apply_after else None,
-            "delay_epochs": update.delay_epochs
+            "delay_epochs": update.delay_epochs,
         }
 
-    def detect_collusion_signals(
-        self,
-        validator_id: str,
-        mediator_id: str
-    ) -> dict[str, Any]:
+    def detect_collusion_signals(self, validator_id: str, mediator_id: str) -> dict[str, Any]:
         """
         Detect potential collusion signals.
 
         Per NCIP-011 Section 10: Collusion resistance mechanisms.
         """
         if not NCIP_011_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-011 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-011 module not available"}
 
         manager = self.get_coupling_manager()
         return manager.detect_collusion_signals(validator_id, mediator_id)
@@ -4291,10 +3813,7 @@ class HybridValidator:
     def generate_coupling_schema(self) -> dict[str, Any]:
         """Generate machine-readable coupling schema per NCIP-011 Section 11."""
         if not NCIP_011_AVAILABLE:
-            return {
-                "status": "unavailable",
-                "message": "NCIP-011 module not available"
-            }
+            return {"status": "unavailable", "message": "NCIP-011 module not available"}
 
         manager = self.get_coupling_manager()
         return manager.generate_coupling_schema()
@@ -4306,10 +3825,7 @@ class HybridValidator:
     def get_ncip_011_status(self) -> dict[str, Any]:
         """Get NCIP-011 implementation status and configuration."""
         if not NCIP_011_AVAILABLE:
-            return {
-                "enabled": False,
-                "message": "NCIP-011 module not available"
-            }
+            return {"enabled": False, "message": "NCIP-011 module not available"}
 
         manager = self.get_coupling_manager()
         summary = manager.get_status_summary()
@@ -4329,7 +3845,7 @@ class HybridValidator:
             "role_separation": {
                 "validator": ["assess_semantic_validity", "assess_drift", "assess_pou_quality"],
                 "mediator": ["propose_alignments", "propose_settlements"],
-                "human": ["ratify", "reject", "escalate"]
+                "human": ["ratify", "reject", "escalate"],
             },
-            "principle": summary["principle"]
+            "principle": summary["principle"],
         }

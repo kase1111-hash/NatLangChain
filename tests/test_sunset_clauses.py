@@ -16,7 +16,7 @@ import os
 import sys
 from datetime import datetime, timedelta
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from sunset_clauses import (
     DEFAULT_SUNSET_YEARS,
@@ -48,9 +48,7 @@ class TestSunsetTriggerTypes:
 
         sunset_date = datetime.utcnow() + timedelta(days=30)
         clause, errors = manager.declare_sunset(
-            entry.entry_id,
-            SunsetTriggerType.TIME_BASED,
-            trigger_datetime=sunset_date
+            entry.entry_id, SunsetTriggerType.TIME_BASED, trigger_datetime=sunset_date
         )
 
         assert clause is not None
@@ -63,9 +61,7 @@ class TestSunsetTriggerTypes:
         entry = manager.create_entry(EntryType.LICENSE, "Test license")
 
         clause, _errors = manager.declare_sunset(
-            entry.entry_id,
-            SunsetTriggerType.EVENT_BASED,
-            trigger_event="Acquisition of Company X"
+            entry.entry_id, SunsetTriggerType.EVENT_BASED, trigger_event="Acquisition of Company X"
         )
 
         assert clause is not None
@@ -79,7 +75,7 @@ class TestSunsetTriggerTypes:
         clause, _errors = manager.declare_sunset(
             entry.entry_id,
             SunsetTriggerType.CONDITION_FULFILLED,
-            trigger_condition="All deliverables accepted"
+            trigger_condition="All deliverables accepted",
         )
 
         assert clause is not None
@@ -91,9 +87,7 @@ class TestSunsetTriggerTypes:
         entry = manager.create_entry(EntryType.LICENSE, "Test license")
 
         clause, _errors = manager.declare_sunset(
-            entry.entry_id,
-            SunsetTriggerType.EXHAUSTION,
-            max_uses=100
+            entry.entry_id, SunsetTriggerType.EXHAUSTION, max_uses=100
         )
 
         assert clause is not None
@@ -107,7 +101,7 @@ class TestSunsetTriggerTypes:
         clause, _errors = manager.declare_sunset(
             entry.entry_id,
             SunsetTriggerType.REVOCATION,
-            revocation_terms="May be revoked with 30 days notice"
+            revocation_terms="May be revoked with 30 days notice",
         )
 
         assert clause is not None
@@ -119,9 +113,7 @@ class TestSunsetTriggerTypes:
         entry = manager.create_entry(EntryType.CONTRACT, "Test contract")
 
         clause, _errors = manager.declare_sunset(
-            entry.entry_id,
-            SunsetTriggerType.CONSTITUTIONAL,
-            amendment_id="AMEND-2025-001"
+            entry.entry_id, SunsetTriggerType.CONSTITUTIONAL, amendment_id="AMEND-2025-001"
         )
 
         assert clause is not None
@@ -139,7 +131,7 @@ class TestSunsetClauseExplicitness:
         # Try to create time-based without datetime
         clause, errors = manager.declare_sunset(
             entry.entry_id,
-            SunsetTriggerType.TIME_BASED
+            SunsetTriggerType.TIME_BASED,
             # Missing trigger_datetime
         )
 
@@ -153,7 +145,7 @@ class TestSunsetClauseExplicitness:
 
         clause, errors = manager.declare_sunset(
             entry.entry_id,
-            SunsetTriggerType.EXHAUSTION
+            SunsetTriggerType.EXHAUSTION,
             # Missing max_uses
         )
 
@@ -177,13 +169,13 @@ class TestStateMachine:
 
         # Create temporal context for ratification
         context = TemporalContext(
-            registry_version="1.0",
-            language_variant="en",
-            jurisdiction_context="US"
+            registry_version="1.0", language_variant="en", jurisdiction_context="US"
         )
 
         # DRAFT → RATIFIED
-        success, _ = manager.transition_state(entry.entry_id, EntryState.RATIFIED, context, "Original meaning")
+        success, _ = manager.transition_state(
+            entry.entry_id, EntryState.RATIFIED, context, "Original meaning"
+        )
         assert success is True
         assert entry.state == EntryState.RATIFIED
 
@@ -352,7 +344,7 @@ class TestTemporalContextBinding:
             registry_version="1.2.3",
             language_variant="en-US",
             jurisdiction_context="US-CA",
-            proof_of_understanding_ids=["POU-001", "POU-002"]
+            proof_of_understanding_ids=["POU-001", "POU-002"],
         )
 
         manager.transition_state(entry.entry_id, EntryState.RATIFIED, context)
@@ -368,9 +360,7 @@ class TestTemporalContextBinding:
         entry = manager.create_entry(EntryType.CONTRACT, "Test")
 
         context = TemporalContext(
-            registry_version="1.0",
-            language_variant="en",
-            jurisdiction_context="US"
+            registry_version="1.0", language_variant="en", jurisdiction_context="US"
         )
 
         manager.transition_state(entry.entry_id, EntryState.RATIFIED, context)
@@ -385,9 +375,7 @@ class TestTemporalContextBinding:
     def test_temporal_context_generates_hash(self):
         """Test temporal context generates immutable hash."""
         context = TemporalContext(
-            registry_version="1.0",
-            language_variant="en",
-            jurisdiction_context="US"
+            registry_version="1.0", language_variant="en", jurisdiction_context="US"
         )
 
         hash1 = context.to_hash()
@@ -406,7 +394,9 @@ class TestHistoricalSemantics:
         entry = manager.create_entry(EntryType.CONTRACT, "Test")
 
         context = TemporalContext("1.0", "en", "US")
-        manager.transition_state(entry.entry_id, EntryState.RATIFIED, context, "Original meaning at T₀")
+        manager.transition_state(
+            entry.entry_id, EntryState.RATIFIED, context, "Original meaning at T₀"
+        )
         manager.transition_state(entry.entry_id, EntryState.ACTIVE)
         manager.transition_state(entry.entry_id, EntryState.SUNSET_PENDING)
         manager.transition_state(entry.entry_id, EntryState.SUNSET)
@@ -552,9 +542,7 @@ class TestSunsetTriggering:
         # Set sunset to past
         past_date = datetime.utcnow() - timedelta(days=1)
         manager.declare_sunset(
-            entry.entry_id,
-            SunsetTriggerType.TIME_BASED,
-            trigger_datetime=past_date
+            entry.entry_id, SunsetTriggerType.TIME_BASED, trigger_datetime=past_date
         )
 
         context = TemporalContext("1.0", "en", "US")
@@ -570,11 +558,7 @@ class TestSunsetTriggering:
         manager = SunsetManager()
         entry = manager.create_entry(EntryType.LICENSE, "Test")
 
-        manager.declare_sunset(
-            entry.entry_id,
-            SunsetTriggerType.EXHAUSTION,
-            max_uses=3
-        )
+        manager.declare_sunset(entry.entry_id, SunsetTriggerType.EXHAUSTION, max_uses=3)
 
         context = TemporalContext("1.0", "en", "US")
         manager.transition_state(entry.entry_id, EntryState.RATIFIED, context)
@@ -594,9 +578,7 @@ class TestSunsetTriggering:
         entry = manager.create_entry(EntryType.LICENSE, "Test")
 
         manager.declare_sunset(
-            entry.entry_id,
-            SunsetTriggerType.EVENT_BASED,
-            trigger_event="Company acquisition"
+            entry.entry_id, SunsetTriggerType.EVENT_BASED, trigger_event="Company acquisition"
         )
 
         context = TemporalContext("1.0", "en", "US")
@@ -615,7 +597,7 @@ class TestSunsetTriggering:
         manager.declare_sunset(
             entry.entry_id,
             SunsetTriggerType.REVOCATION,
-            revocation_terms="May be revoked with notice"
+            revocation_terms="May be revoked with notice",
         )
 
         context = TemporalContext("1.0", "en", "US")
@@ -686,9 +668,7 @@ class TestMachineReadableSchema:
 
         sunset_date = datetime.utcnow() + timedelta(days=365)
         manager.declare_sunset(
-            entry.entry_id,
-            SunsetTriggerType.TIME_BASED,
-            trigger_datetime=sunset_date
+            entry.entry_id, SunsetTriggerType.TIME_BASED, trigger_datetime=sunset_date
         )
 
         context = TemporalContext("1.0", "en", "US")
@@ -747,9 +727,7 @@ class TestStatusReporting:
         # Set sunset to 10 days from now
         sunset_date = datetime.utcnow() + timedelta(days=10)
         manager.declare_sunset(
-            entry.entry_id,
-            SunsetTriggerType.TIME_BASED,
-            trigger_datetime=sunset_date
+            entry.entry_id, SunsetTriggerType.TIME_BASED, trigger_datetime=sunset_date
         )
 
         context = TemporalContext("1.0", "en", "US")

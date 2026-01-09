@@ -33,10 +33,10 @@ if TYPE_CHECKING:
     from storage.postgresql import PostgreSQLStorage
 
 __all__ = [
-    "StorageBackend",
-    "StorageError",
     "JSONFileStorage",
     "MemoryStorage",
+    "StorageBackend",
+    "StorageError",
     "get_storage_backend",
 ]
 
@@ -62,10 +62,9 @@ def get_storage_backend() -> StorageBackend:
     elif backend_type == "postgresql" or backend_type == "postgres":
         database_url = os.getenv("DATABASE_URL")
         if not database_url:
-            raise StorageError(
-                "DATABASE_URL environment variable required for PostgreSQL backend"
-            )
+            raise StorageError("DATABASE_URL environment variable required for PostgreSQL backend")
         from storage.postgresql import PostgreSQLStorage
+
         return PostgreSQLStorage(database_url)
 
     elif backend_type == "memory":

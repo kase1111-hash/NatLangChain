@@ -4,40 +4,41 @@ Tests for Boundary Daemon - RBAC Integration
 Tests the unified security layer combining trust boundaries and access control.
 """
 
-import pytest
-from unittest.mock import MagicMock, patch
 import os
 import sys
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 # Add src to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from boundary_daemon import (
     BoundaryDaemon,
-    EnforcementMode,
     DataClassification,
-)
-from rbac import (
-    Permission,
-    Role,
-    RBACManager,
-    APIKeyInfo,
+    EnforcementMode,
 )
 from boundary_rbac_integration import (
-    BoundaryRBACGateway,
-    AccessLevel,
-    SecurityEvent,
     ACCESS_LEVEL_RESTRICTIONS,
     ACCESS_LEVEL_TO_ENFORCEMENT,
     ROLE_TO_CLASSIFICATION,
+    AccessLevel,
+    BoundaryRBACGateway,
+    SecurityEvent,
     get_security_gateway,
     set_boundary_mode,
 )
-
+from rbac import (
+    APIKeyInfo,
+    Permission,
+    RBACManager,
+    Role,
+)
 
 # =============================================================================
 # Fixtures
 # =============================================================================
+
 
 @pytest.fixture
 def rbac_manager():
@@ -76,6 +77,7 @@ def gateway(rbac_manager):
 # =============================================================================
 # Mode Mapping Tests
 # =============================================================================
+
 
 class TestModeMapping:
     """Test boundary mode to enforcement mode mapping."""
@@ -132,6 +134,7 @@ class TestRoleToClassification:
 # =============================================================================
 # Gateway Authorization Tests
 # =============================================================================
+
 
 class TestGatewayAuthorization:
     """Test the unified authorization flow."""
@@ -297,6 +300,7 @@ class TestBoundaryDataFlowIntegration:
 # Audit Trail Tests
 # =============================================================================
 
+
 class TestAuditTrail:
     """Test security event audit trail."""
 
@@ -406,6 +410,7 @@ class TestSecurityEventChainEntry:
 # Integration Helpers Tests
 # =============================================================================
 
+
 class TestChainIntegration:
     """Test chain integration helpers."""
 
@@ -431,6 +436,7 @@ class TestChainIntegration:
 # =============================================================================
 # Global Gateway Tests
 # =============================================================================
+
 
 class TestGlobalGateway:
     """Test global gateway management."""
@@ -461,6 +467,7 @@ class TestGlobalGateway:
 # =============================================================================
 # Edge Cases
 # =============================================================================
+
 
 class TestEdgeCases:
     """Test edge cases and error handling."""

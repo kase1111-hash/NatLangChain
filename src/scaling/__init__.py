@@ -23,23 +23,23 @@ Usage:
 import os
 from typing import TYPE_CHECKING
 
-from scaling.locking import LockManager, LocalLockManager
 from scaling.cache import Cache, LocalCache
 from scaling.coordinator import InstanceCoordinator
+from scaling.locking import LocalLockManager, LockManager
 
 if TYPE_CHECKING:
-    from scaling.locking import RedisLockManager
     from scaling.cache import RedisCache
+    from scaling.locking import RedisLockManager
 
 __all__ = [
-    "LockManager",
-    "LocalLockManager",
     "Cache",
-    "LocalCache",
     "InstanceCoordinator",
-    "get_lock_manager",
+    "LocalCache",
+    "LocalLockManager",
+    "LockManager",
     "get_cache",
     "get_coordinator",
+    "get_lock_manager",
 ]
 
 # Singleton instances
@@ -61,6 +61,7 @@ def get_lock_manager() -> LockManager:
         if redis_url:
             try:
                 from scaling.locking import RedisLockManager
+
                 _lock_manager = RedisLockManager(redis_url)
             except ImportError:
                 _lock_manager = LocalLockManager()
@@ -81,6 +82,7 @@ def get_cache() -> Cache:
         if redis_url:
             try:
                 from scaling.cache import RedisCache
+
                 _cache = RedisCache(redis_url)
             except ImportError:
                 _cache = LocalCache()

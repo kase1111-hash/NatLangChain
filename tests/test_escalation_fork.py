@@ -7,7 +7,7 @@ import sys
 import unittest
 
 # Add src to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from escalation_fork import EscalationForkManager, ForkStatus, TriggerReason
 
@@ -28,7 +28,7 @@ class TestEscalationForkManager(unittest.TestCase):
             original_mediator="mediator_node_1",
             original_pool=100.0,
             burn_tx_hash="0xabc123",
-            evidence_of_failure={"failed_proposals": ["PROP-001"]}
+            evidence_of_failure={"failed_proposals": ["PROP-001"]},
         )
 
         self.assertIn("fork_id", fork_data)
@@ -47,7 +47,7 @@ class TestEscalationForkManager(unittest.TestCase):
             triggering_party="alice",
             original_mediator="mediator_1",
             original_pool=100.0,
-            burn_tx_hash="0x111"
+            burn_tx_hash="0x111",
         )
 
         fork2 = self.manager.trigger_fork(
@@ -56,7 +56,7 @@ class TestEscalationForkManager(unittest.TestCase):
             triggering_party="bob",
             original_mediator="mediator_2",
             original_pool=200.0,
-            burn_tx_hash="0x222"
+            burn_tx_hash="0x222",
         )
 
         self.assertNotEqual(fork1["fork_id"], fork2["fork_id"])
@@ -74,7 +74,7 @@ class TestProposalSubmission(unittest.TestCase):
             triggering_party="alice",
             original_mediator="mediator_1",
             original_pool=100.0,
-            burn_tx_hash="0xabc"
+            burn_tx_hash="0xabc",
         )
         self.fork_id = self.fork_data["fork_id"]
 
@@ -87,7 +87,7 @@ class TestProposalSubmission(unittest.TestCase):
             fork_id=self.fork_id,
             solver="solver_1",
             proposal_content=proposal_content,
-            addresses_concerns=["rate_dispute", "timeline"]
+            addresses_concerns=["rate_dispute", "timeline"],
         )
 
         self.assertTrue(success)
@@ -104,7 +104,7 @@ class TestProposalSubmission(unittest.TestCase):
             fork_id=self.fork_id,
             solver="solver_1",
             proposal_content=short_proposal,
-            addresses_concerns=["concern"]
+            addresses_concerns=["concern"],
         )
 
         self.assertFalse(success)
@@ -120,7 +120,7 @@ class TestProposalSubmission(unittest.TestCase):
             fork_id=self.fork_id,
             solver="solver_1",
             proposal_content=proposal_content,
-            addresses_concerns=["concern"]
+            addresses_concerns=["concern"],
         )
 
         # Second proposal from same solver
@@ -128,7 +128,7 @@ class TestProposalSubmission(unittest.TestCase):
             fork_id=self.fork_id,
             solver="solver_1",
             proposal_content=proposal_content + " additional content",
-            addresses_concerns=["concern", "new_concern"]
+            addresses_concerns=["concern", "new_concern"],
         )
 
         self.assertEqual(result1["iteration"], 1)
@@ -147,7 +147,7 @@ class TestRatification(unittest.TestCase):
             triggering_party="alice",
             original_mediator="mediator_1",
             original_pool=100.0,
-            burn_tx_hash="0xabc"
+            burn_tx_hash="0xabc",
         )
         self.fork_id = self.fork_data["fork_id"]
 
@@ -157,7 +157,7 @@ class TestRatification(unittest.TestCase):
             fork_id=self.fork_id,
             solver="solver_1",
             proposal_content=proposal_content,
-            addresses_concerns=["concern"]
+            addresses_concerns=["concern"],
         )
         self.proposal_id = self.proposal_data["proposal_id"]
 
@@ -168,7 +168,7 @@ class TestRatification(unittest.TestCase):
             proposal_id=self.proposal_id,
             ratifying_party="alice",
             satisfaction_rating=85,
-            comments="Good proposal"
+            comments="Good proposal",
         )
 
         self.assertTrue(success)
@@ -181,7 +181,7 @@ class TestRatification(unittest.TestCase):
             fork_id=self.fork_id,
             proposal_id=self.proposal_id,
             ratifying_party="alice",
-            satisfaction_rating=85
+            satisfaction_rating=85,
         )
 
         # Second ratification
@@ -189,7 +189,7 @@ class TestRatification(unittest.TestCase):
             fork_id=self.fork_id,
             proposal_id=self.proposal_id,
             ratifying_party="bob",
-            satisfaction_rating=90
+            satisfaction_rating=90,
         )
 
         self.assertTrue(success)
@@ -210,7 +210,7 @@ class TestVeto(unittest.TestCase):
             triggering_party="alice",
             original_mediator="mediator_1",
             original_pool=100.0,
-            burn_tx_hash="0xabc"
+            burn_tx_hash="0xabc",
         )
         self.fork_id = self.fork_data["fork_id"]
 
@@ -219,7 +219,7 @@ class TestVeto(unittest.TestCase):
             fork_id=self.fork_id,
             solver="solver_1",
             proposal_content=proposal_content,
-            addresses_concerns=["concern"]
+            addresses_concerns=["concern"],
         )
         self.proposal_id = self.proposal_data["proposal_id"]
 
@@ -232,7 +232,7 @@ class TestVeto(unittest.TestCase):
             proposal_id=self.proposal_id,
             vetoing_party="bob",
             veto_reason=veto_reason,
-            evidence_refs=["EVIDENCE-001"]
+            evidence_refs=["EVIDENCE-001"],
         )
 
         self.assertTrue(success)
@@ -247,7 +247,7 @@ class TestVeto(unittest.TestCase):
             fork_id=self.fork_id,
             proposal_id=self.proposal_id,
             vetoing_party="bob",
-            veto_reason=short_reason
+            veto_reason=short_reason,
         )
 
         self.assertFalse(success)
@@ -265,13 +265,13 @@ class TestVeto(unittest.TestCase):
                 fork_id=self.fork_id,
                 solver=f"solver_{i}",
                 proposal_content=proposal_content,
-                addresses_concerns=["concern"]
+                addresses_concerns=["concern"],
             )
             self.manager.veto_proposal(
                 fork_id=self.fork_id,
                 proposal_id=prop["proposal_id"],
                 vetoing_party="bob",
-                veto_reason=veto_reason
+                veto_reason=veto_reason,
             )
 
         # Fourth veto should fail
@@ -279,13 +279,13 @@ class TestVeto(unittest.TestCase):
             fork_id=self.fork_id,
             solver="solver_4",
             proposal_content=proposal_content,
-            addresses_concerns=["concern"]
+            addresses_concerns=["concern"],
         )
         success, result = self.manager.veto_proposal(
             fork_id=self.fork_id,
             proposal_id=prop4["proposal_id"],
             vetoing_party="bob",
-            veto_reason=veto_reason
+            veto_reason=veto_reason,
         )
 
         self.assertFalse(success)
@@ -307,7 +307,7 @@ class TestForkStatus(unittest.TestCase):
             triggering_party="alice",
             original_mediator="mediator_1",
             original_pool=100.0,
-            burn_tx_hash="0xabc"
+            burn_tx_hash="0xabc",
         )
 
         status = self.manager.get_fork_status(fork_data["fork_id"])
@@ -325,7 +325,7 @@ class TestForkStatus(unittest.TestCase):
             triggering_party="alice",
             original_mediator="mediator_1",
             original_pool=100.0,
-            burn_tx_hash="0x111"
+            burn_tx_hash="0x111",
         )
 
         self.manager.trigger_fork(
@@ -334,7 +334,7 @@ class TestForkStatus(unittest.TestCase):
             triggering_party="bob",
             original_mediator="mediator_2",
             original_pool=200.0,
-            burn_tx_hash="0x222"
+            burn_tx_hash="0x222",
         )
 
         active_forks = self.manager.list_active_forks()
@@ -355,7 +355,7 @@ class TestAuditTrail(unittest.TestCase):
             triggering_party="alice",
             original_mediator="mediator_1",
             original_pool=100.0,
-            burn_tx_hash="0xabc"
+            burn_tx_hash="0xabc",
         )
 
         fork_id = fork_data["fork_id"]
@@ -366,7 +366,7 @@ class TestAuditTrail(unittest.TestCase):
             fork_id=fork_id,
             solver="solver_1",
             proposal_content=proposal_content,
-            addresses_concerns=["concern"]
+            addresses_concerns=["concern"],
         )
 
         trail = manager.get_fork_audit_trail(fork_id)
@@ -395,7 +395,7 @@ class TestEffortCalculation(unittest.TestCase):
             triggering_party="alice",
             original_mediator="mediator_1",
             original_pool=100.0,
-            burn_tx_hash="0xabc"
+            burn_tx_hash="0xabc",
         )
 
         fork_id = fork_data["fork_id"]
@@ -406,7 +406,7 @@ class TestEffortCalculation(unittest.TestCase):
             fork_id=fork_id,
             solver="solver_1",
             proposal_content=proposal_content,
-            addresses_concerns=["concern"]
+            addresses_concerns=["concern"],
         )
 
         # Dual ratification
@@ -414,19 +414,19 @@ class TestEffortCalculation(unittest.TestCase):
             fork_id=fork_id,
             proposal_id=proposal["proposal_id"],
             ratifying_party="alice",
-            satisfaction_rating=85
+            satisfaction_rating=85,
         )
 
         _success, result = manager.ratify_proposal(
             fork_id=fork_id,
             proposal_id=proposal["proposal_id"],
             ratifying_party="bob",
-            satisfaction_rating=90
+            satisfaction_rating=90,
         )
 
         # Single solver should get full bounty
         self.assertEqual(result["distribution"]["solver_1"], 50.0)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

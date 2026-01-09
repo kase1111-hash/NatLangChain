@@ -39,12 +39,12 @@ class TestAmendmentClasses:
             amendment_class=AmendmentClass.E,
             title="Core Principle Change",
             rationale="This is a significant rationale explaining the core principle change "
-                     "that requires careful consideration by all participants.",
+            "that requires careful consideration by all participants.",
             scope_of_impact="Affects all protocol participants and future entries",
             affected_artifacts=[ConstitutionalArtifact.CORE_DOCTRINES],
             proposed_changes="Proposed modification to core refusal doctrine with detailed explanation "
-                           "of how this will affect all participants going forward.",
-            migration_guidance="Complete protocol migration required with 6-month transition period."
+            "of how this will affect all participants going forward.",
+            migration_guidance="Complete protocol migration required with 6-month transition period.",
         )
 
         assert amendment is not None
@@ -73,11 +73,11 @@ class TestAmendmentCreation:
             amendment_class=AmendmentClass.A,
             title="Clarify Term Definition",
             rationale="The current wording of term X is ambiguous and needs clarification "
-                     "to prevent misinterpretation by validators.",
+            "to prevent misinterpretation by validators.",
             scope_of_impact="Affects validator interpretation of term X",
             affected_artifacts=[ConstitutionalArtifact.CANONICAL_TERM_REGISTRY],
             proposed_changes="Change definition from Y to Z with explicit boundary conditions "
-                           "that prevent the ambiguity that currently exists."
+            "that prevent the ambiguity that currently exists.",
         )
 
         assert amendment is not None
@@ -96,7 +96,7 @@ class TestAmendmentCreation:
                 scope_of_impact="Test scope of impact for validation",
                 affected_artifacts=[ConstitutionalArtifact.NCIP_001],
                 proposed_changes="Test proposed changes that are at least 50 characters for validation",
-                retroactive=True  # PROHIBITED
+                retroactive=True,  # PROHIBITED
             )
 
     def test_require_rationale(self):
@@ -111,7 +111,7 @@ class TestAmendmentCreation:
             scope_of_impact="Affects interpretation of existing terms",
             affected_artifacts=[ConstitutionalArtifact.NCIP_001],
             proposed_changes="Detailed proposed changes that explain what will be modified "
-                           "in the protocol documentation."
+            "in the protocol documentation.",
         )
 
         assert amendment is None
@@ -126,12 +126,12 @@ class TestAmendmentCreation:
             amendment_class=AmendmentClass.D,
             title="Structural Change",
             rationale="Major structural change to governance model requiring careful consideration "
-                     "and detailed transition planning.",
+            "and detailed transition planning.",
             scope_of_impact="Affects all governance participants",
             affected_artifacts=[ConstitutionalArtifact.CORE_DOCTRINES],
             proposed_changes="Complete restructuring of authority boundaries with new delegation model "
-                           "that changes how validators and mediators interact.",
-            migration_guidance=None  # Required but missing
+            "that changes how validators and mediators interact.",
+            migration_guidance=None,  # Required but missing
         )
 
         assert amendment is None
@@ -152,7 +152,7 @@ class TestAmendmentCreation:
             rationale="Test rationale that meets the minimum length requirement of fifty characters",
             scope_of_impact="Test scope that meets the minimum length requirement",
             affected_artifacts=[ConstitutionalArtifact.NCIP_002],
-            proposed_changes="Test changes that meet the minimum length requirement of fifty characters"
+            proposed_changes="Test changes that meet the minimum length requirement of fifty characters",
         )
 
         id2 = manager.generate_amendment_id(AmendmentClass.B, 2025)
@@ -169,12 +169,12 @@ class TestRatificationProcess:
             amendment_class=AmendmentClass.A,
             title="Test Amendment",
             rationale="This is a test rationale that explains the purpose of the amendment "
-                     "in sufficient detail for review.",
+            "in sufficient detail for review.",
             scope_of_impact="This affects test scope with limited impact",
             affected_artifacts=[ConstitutionalArtifact.NCIP_001],
             proposed_changes="These are the proposed changes that detail exactly what will be modified "
-                           "in the protocol.",
-            effective_date=datetime.utcnow() + timedelta(days=30)
+            "in the protocol.",
+            effective_date=datetime.utcnow() + timedelta(days=30),
         )
         return amendment
 
@@ -262,15 +262,12 @@ class TestRatificationProcess:
             what_changes="Term definition X changes to include condition Y",
             what_unchanged="All other term definitions remain the same",
             who_affected="Validators interpreting term X",
-            rationale="This clarifies ambiguity that has caused issues"
+            rationale="This clarifies ambiguity that has caused issues",
         )
 
         for i in range(10):
             manager.cast_vote(
-                amendment.amendment_id,
-                voter_id=f"voter_{i}",
-                vote="approve",
-                pou=pou
+                amendment.amendment_id, voter_id=f"voter_{i}", vote="approve", pou=pou
             )
 
         # Stage 5: Finalize ratification
@@ -300,7 +297,7 @@ class TestVoting:
             rationale="Test rationale meeting minimum length requirement for validation purposes",
             scope_of_impact="Test scope meeting minimum length requirement",
             affected_artifacts=[ConstitutionalArtifact.NCIP_001],
-            proposed_changes="Test changes meeting minimum length requirement for validation"
+            proposed_changes="Test changes meeting minimum length requirement for validation",
         )
 
         manager.propose_amendment(amendment.amendment_id)
@@ -316,14 +313,11 @@ class TestVoting:
             what_changes="",  # Missing
             what_unchanged="Everything else",
             who_affected="Everyone",
-            rationale="I agree"
+            rationale="I agree",
         )
 
         success, msg = manager.cast_vote(
-            amendment.amendment_id,
-            voter_id="voter1",
-            vote="approve",
-            pou=incomplete_pou
+            amendment.amendment_id, voter_id="voter1", vote="approve", pou=incomplete_pou
         )
 
         assert not success
@@ -340,7 +334,7 @@ class TestVoting:
             rationale="Test rationale meeting minimum length requirement for validation purposes",
             scope_of_impact="Test scope meeting minimum length requirement",
             affected_artifacts=[ConstitutionalArtifact.NCIP_001],
-            proposed_changes="Test changes meeting minimum length requirement for validation"
+            proposed_changes="Test changes meeting minimum length requirement for validation",
         )
 
         # Fast-forward to voting
@@ -356,7 +350,7 @@ class TestVoting:
             what_changes="Term definition changes from X to Y",
             what_unchanged="All other definitions remain unchanged",
             who_affected="Validators and mediators",
-            rationale="This improvement clarifies ambiguity"
+            rationale="This improvement clarifies ambiguity",
         )
 
         # Vote with trust score
@@ -366,7 +360,7 @@ class TestVoting:
             vote="approve",
             pou=pou,
             weight=1.0,
-            validator_trust_score=0.9
+            validator_trust_score=0.9,
         )
 
         assert success
@@ -383,7 +377,7 @@ class TestVoting:
             rationale="Test rationale meeting minimum length requirement for validation purposes",
             scope_of_impact="Test scope meeting minimum length requirement",
             affected_artifacts=[ConstitutionalArtifact.NCIP_002],
-            proposed_changes="Test changes meeting minimum length requirement for validation"
+            proposed_changes="Test changes meeting minimum length requirement for validation",
         )
 
         # Fast-forward to voting
@@ -399,7 +393,7 @@ class TestVoting:
             what_changes="Procedure X changes to procedure Y",
             what_unchanged="All semantic definitions unchanged",
             who_affected="Validators implementing procedure X",
-            rationale="Procedure improvement for efficiency"
+            rationale="Procedure improvement for efficiency",
         )
 
         # Cast votes: 7 approve, 3 reject
@@ -425,12 +419,12 @@ class TestVoting:
             amendment_class=AmendmentClass.E,
             title="Existential Change",
             rationale="Fundamental change to core protocol principles requiring unanimous consent "
-                     "or constitutional fork.",
+            "or constitutional fork.",
             scope_of_impact="Affects fundamental protocol operation",
             affected_artifacts=[ConstitutionalArtifact.CORE_DOCTRINES],
             proposed_changes="Complete restructuring of refusal doctrine with new approach to automation "
-                           "boundaries.",
-            migration_guidance="Full protocol migration with 12-month transition."
+            "boundaries.",
+            migration_guidance="Full protocol migration with 12-month transition.",
         )
 
         # Fast-forward to voting
@@ -446,7 +440,7 @@ class TestVoting:
             what_changes="Core refusal doctrine restructured",
             what_unchanged="Historical entries unaffected",
             who_affected="All protocol participants",
-            rationale="Evolution of protocol principles"
+            rationale="Evolution of protocol principles",
         )
 
         # Cast votes: 9 approve, 1 reject (not unanimous)
@@ -473,17 +467,17 @@ class TestSemanticCompatibility:
             amendment_class=AmendmentClass.C,
             title="Semantic Change",
             rationale="Semantic change to term definition requiring careful compatibility analysis "
-                     "for existing entries.",
+            "for existing entries.",
             scope_of_impact="Affects interpretation of term definitions",
             affected_artifacts=[ConstitutionalArtifact.CANONICAL_TERM_REGISTRY],
             proposed_changes="Change canonical definition of term X with new semantic scope that extends "
-                           "beyond current boundaries.",
-            migration_guidance=None  # Missing
+            "beyond current boundaries.",
+            migration_guidance=None,  # Missing
         )
 
         result = manager.check_semantic_compatibility(
             amendment.amendment_id,
-            drift_scores={"ncip_001": 0.50}  # D3 drift
+            drift_scores={"ncip_001": 0.50},  # D3 drift
         )
 
         assert not result.is_compatible
@@ -499,17 +493,16 @@ class TestSemanticCompatibility:
             amendment_class=AmendmentClass.C,
             title="Semantic Change with Migration",
             rationale="Semantic change with proper migration guidance for smooth transition "
-                     "of existing entries.",
+            "of existing entries.",
             scope_of_impact="Affects interpretation of term definitions",
             affected_artifacts=[ConstitutionalArtifact.CANONICAL_TERM_REGISTRY],
             proposed_changes="Change canonical definition of term X with new semantic scope that extends "
-                           "beyond current boundaries.",
-            migration_guidance="Three-phase migration: 1) Announce, 2) Dual-mode, 3) Cutover"
+            "beyond current boundaries.",
+            migration_guidance="Three-phase migration: 1) Announce, 2) Dual-mode, 3) Cutover",
         )
 
         result = manager.check_semantic_compatibility(
-            amendment.amendment_id,
-            drift_scores={"ncip_001": 0.50}
+            amendment.amendment_id, drift_scores={"ncip_001": 0.50}
         )
 
         assert result.is_compatible
@@ -527,7 +520,7 @@ class TestEmergencyAmendments:
         emergency, errors = manager.create_emergency_amendment(
             amendment_id="NCIP-014-EMERGENCY-001",
             reason="validator_halt",
-            proposed_changes="Temporarily halt validators for security review"
+            proposed_changes="Temporarily halt validators for security review",
         )
 
         assert emergency is not None
@@ -542,7 +535,7 @@ class TestEmergencyAmendments:
         emergency, errors = manager.create_emergency_amendment(
             amendment_id="NCIP-014-EMERGENCY-002",
             reason="exploit_mitigation",
-            proposed_changes="Change the semantic definition of terms"  # Contains "semantic"
+            proposed_changes="Change the semantic definition of terms",  # Contains "semantic"
         )
 
         assert emergency is None
@@ -556,7 +549,7 @@ class TestEmergencyAmendments:
             amendment_id="NCIP-014-EMERGENCY-003",
             reason="network_safety_pause",
             proposed_changes="Pause network operations",
-            max_duration_days=1
+            max_duration_days=1,
         )
 
         # Simulate expiry
@@ -573,7 +566,7 @@ class TestEmergencyAmendments:
         emergency, _ = manager.create_emergency_amendment(
             amendment_id="NCIP-014-EMERGENCY-004",
             reason="validator_halt",
-            proposed_changes="Halt validators"
+            proposed_changes="Halt validators",
         )
 
         success, _msg = manager.ratify_emergency_amendment(emergency.amendment_id)
@@ -608,7 +601,7 @@ class TestConstitutionVersioning:
             rationale="Test rationale meeting minimum length requirement for validation purposes",
             scope_of_impact="Test scope meeting minimum length requirement",
             affected_artifacts=[ConstitutionalArtifact.NCIP_001],
-            proposed_changes="Test changes meeting minimum length requirement for validation"
+            proposed_changes="Test changes meeting minimum length requirement for validation",
         )
 
         # Fast-forward through ratification
@@ -624,7 +617,7 @@ class TestConstitutionVersioning:
             what_changes="Editorial changes only",
             what_unchanged="All substance unchanged",
             who_affected="Documentation readers",
-            rationale="Clarity improvement"
+            rationale="Clarity improvement",
         )
 
         for i in range(10):
@@ -663,11 +656,11 @@ class TestProhibitedActions:
             amendment_class=AmendmentClass.A,
             title="Bad Amendment",
             rationale="This amendment would retroactive reinterpret prior agreements "
-                     "which is constitutionally prohibited.",
+            "which is constitutionally prohibited.",
             scope_of_impact="Would affect historical entries",
             affected_artifacts=[ConstitutionalArtifact.NCIP_001],
             proposed_changes="Reinterpret prior entries using new definition which changes "
-                           "the meaning of historical records."
+            "the meaning of historical records.",
         )
 
         valid, errors = manager.validate_amendment_proposal(amendment)
@@ -686,12 +679,11 @@ class TestProhibitedActions:
             rationale="Test rationale meeting minimum length requirement for validation purposes",
             scope_of_impact="Test scope meeting minimum length requirement",
             affected_artifacts=[ConstitutionalArtifact.NCIP_001],
-            proposed_changes="Test changes meeting minimum length requirement for validation"
+            proposed_changes="Test changes meeting minimum length requirement for validation",
         )
 
         success, _msg = manager.void_amendment(
-            amendment.amendment_id,
-            "Contains prohibited retroactive provisions"
+            amendment.amendment_id, "Contains prohibited retroactive provisions"
         )
 
         assert success
@@ -713,7 +705,7 @@ class TestQueryMethods:
                 rationale="Test rationale meeting minimum length requirement for validation purposes",
                 scope_of_impact="Test scope meeting minimum length requirement",
                 affected_artifacts=[ConstitutionalArtifact.NCIP_001],
-                proposed_changes="Test changes meeting minimum length requirement for validation"
+                proposed_changes="Test changes meeting minimum length requirement for validation",
             )
 
         drafts = manager.get_amendments_by_status(AmendmentStatus.DRAFT)
@@ -730,7 +722,7 @@ class TestQueryMethods:
             rationale="Test rationale meeting minimum length requirement for validation purposes",
             scope_of_impact="Test scope meeting minimum length requirement",
             affected_artifacts=[ConstitutionalArtifact.NCIP_001],
-            proposed_changes="Test changes meeting minimum length requirement for validation"
+            proposed_changes="Test changes meeting minimum length requirement for validation",
         )
 
         summary = manager.get_status_summary()
@@ -752,7 +744,7 @@ class TestPoUStatement:
             what_changes="Term X changes to include condition Y",
             what_unchanged="All other terms remain the same",
             who_affected="Validators and mediators",
-            rationale="This clarifies existing ambiguity"
+            rationale="This clarifies existing ambiguity",
         )
 
         statement = pou.to_statement()
@@ -770,7 +762,7 @@ class TestPoUStatement:
             what_changes="Term X changes",
             what_unchanged="Everything else",
             who_affected="Everyone",
-            rationale="Because"
+            rationale="Because",
         )
 
         hash1 = pou.compute_hash()
@@ -794,7 +786,7 @@ class TestEdgeCases:
             rationale="Test rationale meeting minimum length requirement for validation purposes",
             scope_of_impact="Test scope meeting minimum length requirement",
             affected_artifacts=[ConstitutionalArtifact.NCIP_001],
-            proposed_changes="Test changes meeting minimum length requirement for validation"
+            proposed_changes="Test changes meeting minimum length requirement for validation",
         )
 
         # Try to start voting directly
@@ -813,7 +805,7 @@ class TestEdgeCases:
             scope_of_impact="Test scope meeting minimum length requirement",
             affected_artifacts=[ConstitutionalArtifact.NCIP_001],
             proposed_changes="Test changes meeting minimum length requirement for validation",
-            effective_date=datetime.utcnow() + timedelta(days=30)
+            effective_date=datetime.utcnow() + timedelta(days=30),
         )
 
         # Fast-forward to ratified
@@ -829,7 +821,7 @@ class TestEdgeCases:
             what_changes="Test changes",
             what_unchanged="Everything else",
             who_affected="Test users",
-            rationale="Test reason"
+            rationale="Test reason",
         )
 
         for i in range(10):
@@ -853,7 +845,7 @@ class TestEdgeCases:
             rationale="Test rationale meeting minimum length requirement for validation purposes",
             scope_of_impact="Test scope meeting minimum length requirement",
             affected_artifacts=[ConstitutionalArtifact.NCIP_001],
-            proposed_changes="Test changes meeting minimum length requirement for validation"
+            proposed_changes="Test changes meeting minimum length requirement for validation",
         )
 
         # Fast-forward to voting
@@ -869,7 +861,7 @@ class TestEdgeCases:
             what_changes="Test changes apply",
             what_unchanged="Everything else unchanged",
             who_affected="Test users affected",
-            rationale="Reason for vote"
+            rationale="Reason for vote",
         )
 
         manager.cast_vote(amendment.amendment_id, "voter1", "approve", pou)

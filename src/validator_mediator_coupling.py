@@ -20,6 +20,7 @@ from typing import Any
 
 class ActorRole(Enum):
     """Roles per NCIP-011 Section 3."""
+
     VALIDATOR = "validator"
     MEDIATOR = "mediator"
     HUMAN = "human"
@@ -27,6 +28,7 @@ class ActorRole(Enum):
 
 class ProtocolViolationType(Enum):
     """Protocol violation types."""
+
     PV_V3_ROLE_CROSSING = "PV-V3"  # Crossing roles
     PV_V3_VALIDATOR_PROPOSING = "PV-V3-validator-proposing"
     PV_V3_MEDIATOR_VALIDATING = "PV-V3-mediator-validating"
@@ -35,6 +37,7 @@ class ProtocolViolationType(Enum):
 
 class ValidatorAction(Enum):
     """Actions validators MAY do per NCIP-011 Section 3."""
+
     ASSESS_SEMANTIC_VALIDITY = "assess_semantic_validity"
     ASSESS_DRIFT = "assess_drift"
     ASSESS_POU_QUALITY = "assess_pou_quality"
@@ -45,6 +48,7 @@ class ValidatorAction(Enum):
 
 class ValidatorProhibitedAction(Enum):
     """Actions validators may NOT do per NCIP-011 Section 3."""
+
     PROPOSE_TERMS = "propose_terms"
     NEGOTIATE_OUTCOMES = "negotiate_outcomes"
     RANK_PROPOSALS = "rank_proposals"
@@ -53,12 +57,14 @@ class ValidatorProhibitedAction(Enum):
 
 class MediatorAction(Enum):
     """Actions mediators MAY do per NCIP-011 Section 3."""
+
     PROPOSE_ALIGNMENTS = "propose_alignments"
     PROPOSE_SETTLEMENTS = "propose_settlements"
 
 
 class MediatorProhibitedAction(Enum):
     """Actions mediators may NOT do per NCIP-011 Section 3."""
+
     VALIDATE_SEMANTICS = "validate_semantics"
     OVERRIDE_DRIFT_RULINGS = "override_drift_rulings"
     GAME_VALIDATION = "game_validation"
@@ -66,15 +72,17 @@ class MediatorProhibitedAction(Enum):
 
 class DisputePhase(Enum):
     """Dispute phases affecting weight interactions."""
+
     NONE = "none"
-    ACTIVE = "active"          # During dispute
+    ACTIVE = "active"  # During dispute
     POST_RESOLUTION = "post_resolution"
 
 
 class WeightUpdateStatus(Enum):
     """Status of weight updates."""
-    PENDING = "pending"        # In delay period
-    APPLIED = "applied"        # Applied to ledger
+
+    PENDING = "pending"  # In delay period
+    APPLIED = "applied"  # Applied to ledger
     RETROACTIVE = "retroactive"  # Retroactively adjusted
 
 
@@ -89,6 +97,7 @@ class ValidatorWeight:
     - PoU consistency
     - Appeal survival rate
     """
+
     validator_id: str
     historical_accuracy: float = 0.5
     drift_precision: float = 0.5
@@ -105,10 +114,10 @@ class ValidatorWeight:
             return self._weight
         # Equal weighting of components
         self._weight = (
-            self.historical_accuracy * 0.25 +
-            self.drift_precision * 0.25 +
-            self.pou_consistency * 0.25 +
-            self.appeal_survival_rate * 0.25
+            self.historical_accuracy * 0.25
+            + self.drift_precision * 0.25
+            + self.pou_consistency * 0.25
+            + self.appeal_survival_rate * 0.25
         )
         return self._weight
 
@@ -128,6 +137,7 @@ class MediatorWeight:
     - Post-settlement dispute frequency
     - Time-to-alignment efficiency
     """
+
     mediator_id: str
     acceptance_rate: float = 0.5
     settlement_completion: float = 0.5
@@ -145,10 +155,10 @@ class MediatorWeight:
         # Post-settlement dispute frequency is inverted (lower is better)
         dispute_score = 1.0 - self.post_settlement_dispute_frequency
         self._weight = (
-            self.acceptance_rate * 0.25 +
-            self.settlement_completion * 0.25 +
-            dispute_score * 0.25 +
-            self.time_efficiency * 0.25
+            self.acceptance_rate * 0.25
+            + self.settlement_completion * 0.25
+            + dispute_score * 0.25
+            + self.time_efficiency * 0.25
         )
         return self._weight
 
@@ -168,6 +178,7 @@ class SemanticConsistencyScore:
     - Drift risk projection
     - PoU symmetry
     """
+
     proposal_id: str
     validator_id: str
 
@@ -189,16 +200,17 @@ class SemanticConsistencyScore:
         # Drift risk is inverted (lower risk = higher score)
         drift_score = 1.0 - self.drift_risk_projection
         return (
-            self.intent_alignment * 0.30 +
-            self.term_registry_consistency * 0.25 +
-            drift_score * 0.25 +
-            self.pou_symmetry * 0.20
+            self.intent_alignment * 0.30
+            + self.term_registry_consistency * 0.25
+            + drift_score * 0.25
+            + self.pou_symmetry * 0.20
         )
 
 
 @dataclass
 class MediatorProposal:
     """A mediator proposal subject to influence gate."""
+
     proposal_id: str
     mediator_id: str
     proposal_type: str  # "alignment" or "settlement"
@@ -225,6 +237,7 @@ class MediatorProposal:
 @dataclass
 class InfluenceGateResult:
     """Result of the influence gate check."""
+
     proposal_id: str
     passed: bool
     gate_score: float
@@ -240,6 +253,7 @@ class WeightUpdate:
 
     Weight changes are delayed (anti-gaming).
     """
+
     update_id: str
     actor_id: str
     actor_role: ActorRole
@@ -259,6 +273,7 @@ class WeightUpdate:
 @dataclass
 class ProtocolViolation:
     """A protocol violation for role crossing."""
+
     violation_id: str
     violation_type: ProtocolViolationType
     actor_id: str
@@ -311,10 +326,7 @@ class ValidatorMediatorCoupling:
     # -------------------------------------------------------------------------
 
     def check_role_permission(
-        self,
-        actor_id: str,
-        actor_role: ActorRole,
-        action: str
+        self, actor_id: str, actor_role: ActorRole, action: str
     ) -> tuple[bool, ProtocolViolation | None]:
         """
         Check if an actor has permission for an action.
@@ -328,8 +340,10 @@ class ValidatorMediatorCoupling:
                 # This is a prohibited action
                 violation = self._create_violation(
                     ProtocolViolationType.PV_V3_VALIDATOR_PROPOSING,
-                    actor_id, actor_role, action,
-                    "Validators may NOT propose terms or negotiate outcomes"
+                    actor_id,
+                    actor_role,
+                    action,
+                    "Validators may NOT propose terms or negotiate outcomes",
                 )
                 return (False, violation)
             except ValueError:
@@ -348,8 +362,10 @@ class ValidatorMediatorCoupling:
                 MediatorProhibitedAction(action)
                 violation = self._create_violation(
                     ProtocolViolationType.PV_V3_MEDIATOR_VALIDATING,
-                    actor_id, actor_role, action,
-                    "Mediators may NOT validate semantics or override drift rulings"
+                    actor_id,
+                    actor_role,
+                    action,
+                    "Mediators may NOT validate semantics or override drift rulings",
                 )
                 return (False, violation)
             except ValueError:
@@ -368,8 +384,10 @@ class ValidatorMediatorCoupling:
             if action == "delegate_final_authority":
                 violation = self._create_violation(
                     ProtocolViolationType.PV_V3_HUMAN_DELEGATING,
-                    actor_id, actor_role, action,
-                    "Humans may NOT delegate final authority"
+                    actor_id,
+                    actor_role,
+                    action,
+                    "Humans may NOT delegate final authority",
                 )
                 return (False, violation)
             return (True, None)
@@ -382,7 +400,7 @@ class ValidatorMediatorCoupling:
         actor_id: str,
         actor_role: ActorRole,
         action: str,
-        details: str
+        details: str,
     ) -> ProtocolViolation:
         """Create and record a protocol violation."""
         self.violation_counter += 1
@@ -392,7 +410,7 @@ class ValidatorMediatorCoupling:
             actor_id=actor_id,
             actor_role=actor_role,
             attempted_action=action,
-            details=details
+            details=details,
         )
         self.violations.append(violation)
         return violation
@@ -407,7 +425,7 @@ class ValidatorMediatorCoupling:
         historical_accuracy: float = 0.5,
         drift_precision: float = 0.5,
         pou_consistency: float = 0.5,
-        appeal_survival_rate: float = 0.5
+        appeal_survival_rate: float = 0.5,
     ) -> ValidatorWeight:
         """Register a validator with initial weights."""
         vw = ValidatorWeight(
@@ -415,7 +433,7 @@ class ValidatorMediatorCoupling:
             historical_accuracy=historical_accuracy,
             drift_precision=drift_precision,
             pou_consistency=pou_consistency,
-            appeal_survival_rate=appeal_survival_rate
+            appeal_survival_rate=appeal_survival_rate,
         )
         self.validator_weights[validator_id] = vw
         return vw
@@ -426,7 +444,7 @@ class ValidatorMediatorCoupling:
         acceptance_rate: float = 0.5,
         settlement_completion: float = 0.5,
         post_settlement_dispute_frequency: float = 0.5,
-        time_efficiency: float = 0.5
+        time_efficiency: float = 0.5,
     ) -> MediatorWeight:
         """Register a mediator with initial weights."""
         mw = MediatorWeight(
@@ -434,7 +452,7 @@ class ValidatorMediatorCoupling:
             acceptance_rate=acceptance_rate,
             settlement_completion=settlement_completion,
             post_settlement_dispute_frequency=post_settlement_dispute_frequency,
-            time_efficiency=time_efficiency
+            time_efficiency=time_efficiency,
         )
         self.mediator_weights[mediator_id] = mw
         return mw
@@ -450,12 +468,7 @@ class ValidatorMediatorCoupling:
         return mw.weight if mw else None
 
     def schedule_weight_update(
-        self,
-        actor_id: str,
-        actor_role: ActorRole,
-        field_name: str,
-        new_value: float,
-        reason: str
+        self, actor_id: str, actor_role: ActorRole, field_name: str, new_value: float, reason: str
     ) -> WeightUpdate | None:
         """
         Schedule a weight update with delay.
@@ -488,7 +501,7 @@ class ValidatorMediatorCoupling:
             old_value=old_value,
             new_value=new_value,
             reason=reason,
-            delay_epochs=self.delay_epochs
+            delay_epochs=self.delay_epochs,
         )
         # Set apply_after based on delay (assume 1 epoch = 1 day for simplicity)
         update.apply_after = datetime.utcnow() + timedelta(days=self.delay_epochs)
@@ -535,7 +548,7 @@ class ValidatorMediatorCoupling:
         intent_alignment: float,
         term_registry_consistency: float,
         drift_risk_projection: float,
-        pou_symmetry: float
+        pou_symmetry: float,
     ) -> SemanticConsistencyScore:
         """
         Compute semantic consistency score for a proposal.
@@ -549,7 +562,7 @@ class ValidatorMediatorCoupling:
             intent_alignment=intent_alignment,
             term_registry_consistency=term_registry_consistency,
             drift_risk_projection=drift_risk_projection,
-            pou_symmetry=pou_symmetry
+            pou_symmetry=pou_symmetry,
         )
 
         # Store in proposal if exists
@@ -564,10 +577,7 @@ class ValidatorMediatorCoupling:
     # -------------------------------------------------------------------------
 
     def submit_proposal(
-        self,
-        mediator_id: str,
-        proposal_type: str,
-        content: str
+        self, mediator_id: str, proposal_type: str, content: str
     ) -> tuple[MediatorProposal | None, list[str]]:
         """
         Submit a mediator proposal.
@@ -597,16 +607,13 @@ class ValidatorMediatorCoupling:
             mediator_id=mediator_id,
             proposal_type=proposal_type,
             content=content,
-            gate_threshold=self.gate_threshold
+            gate_threshold=self.gate_threshold,
         )
 
         self.proposals[proposal_id] = proposal
         return (proposal, [])
 
-    def check_influence_gate(
-        self,
-        proposal_id: str
-    ) -> InfluenceGateResult:
+    def check_influence_gate(self, proposal_id: str) -> InfluenceGateResult:
         """
         Check if a proposal passes the influence gate.
 
@@ -624,7 +631,7 @@ class ValidatorMediatorCoupling:
                 passed=False,
                 gate_score=0.0,
                 threshold=self.gate_threshold,
-                message=f"Proposal {proposal_id} not found"
+                message=f"Proposal {proposal_id} not found",
             )
 
         # Compute weighted sum
@@ -652,17 +659,14 @@ class ValidatorMediatorCoupling:
             gate_score=total_score,
             threshold=self.gate_threshold,
             validator_contributions=contributions,
-            message="Gate passed" if passed else "Gate failed - proposal hidden"
+            message="Gate passed" if passed else "Gate failed - proposal hidden",
         )
 
     # -------------------------------------------------------------------------
     # Competitive Mediation
     # -------------------------------------------------------------------------
 
-    def get_visible_proposals(
-        self,
-        contract_id: str | None = None
-    ) -> list[MediatorProposal]:
+    def get_visible_proposals(self, contract_id: str | None = None) -> list[MediatorProposal]:
         """
         Get all visible proposals (those that passed the gate).
 
@@ -684,11 +688,7 @@ class ValidatorMediatorCoupling:
 
         return visible
 
-    def select_proposal(
-        self,
-        proposal_id: str,
-        selector_id: str
-    ) -> tuple[bool, str]:
+    def select_proposal(self, proposal_id: str, selector_id: str) -> tuple[bool, str]:
         """
         Human selects a proposal from visible options.
 
@@ -709,10 +709,7 @@ class ValidatorMediatorCoupling:
     # Dispute Handling
     # -------------------------------------------------------------------------
 
-    def enter_dispute_phase(
-        self,
-        contract_id: str
-    ) -> dict[str, Any]:
+    def enter_dispute_phase(self, contract_id: str) -> dict[str, Any]:
         """
         Enter dispute phase for a contract.
 
@@ -728,14 +725,10 @@ class ValidatorMediatorCoupling:
             "phase": DisputePhase.ACTIVE.value,
             "validator_authority": "elevated",
             "mediator_influence": "reduced",
-            "new_proposals_allowed": False
+            "new_proposals_allowed": False,
         }
 
-    def exit_dispute_phase(
-        self,
-        contract_id: str,
-        resolution_outcome: str
-    ) -> dict[str, Any]:
+    def exit_dispute_phase(self, contract_id: str, resolution_outcome: str) -> dict[str, Any]:
         """
         Exit dispute phase after resolution.
 
@@ -751,7 +744,7 @@ class ValidatorMediatorCoupling:
             "contract_id": contract_id,
             "phase": DisputePhase.POST_RESOLUTION.value,
             "resolution_outcome": resolution_outcome,
-            "weight_updates": "delayed per anti-gaming rules"
+            "weight_updates": "delayed per anti-gaming rules",
         }
 
     def is_in_dispute(self, contract_id: str) -> bool:
@@ -773,11 +766,7 @@ class ValidatorMediatorCoupling:
     # -------------------------------------------------------------------------
 
     def record_appeal_outcome(
-        self,
-        validator_id: str,
-        mediator_id: str,
-        appeal_upheld: bool,
-        slashing_applied: bool
+        self, validator_id: str, mediator_id: str, appeal_upheld: bool, slashing_applied: bool
     ) -> dict[str, Any]:
         """
         Record appeal outcome and schedule weight updates.
@@ -795,9 +784,11 @@ class ValidatorMediatorCoupling:
             # If appeal upheld, validator's decision was correct
             new_survival = min(1.0, vw.appeal_survival_rate + (0.05 if appeal_upheld else -0.05))
             update = self.schedule_weight_update(
-                validator_id, ActorRole.VALIDATOR,
-                "appeal_survival_rate", new_survival,
-                f"Appeal {'upheld' if appeal_upheld else 'overturned'}"
+                validator_id,
+                ActorRole.VALIDATOR,
+                "appeal_survival_rate",
+                new_survival,
+                f"Appeal {'upheld' if appeal_upheld else 'overturned'}",
             )
             if update:
                 updates.append(update.update_id)
@@ -808,9 +799,11 @@ class ValidatorMediatorCoupling:
             if mw:
                 new_freq = min(1.0, mw.post_settlement_dispute_frequency + 0.1)
                 update = self.schedule_weight_update(
-                    mediator_id, ActorRole.MEDIATOR,
-                    "post_settlement_dispute_frequency", new_freq,
-                    "Slashing applied after appeal"
+                    mediator_id,
+                    ActorRole.MEDIATOR,
+                    "post_settlement_dispute_frequency",
+                    new_freq,
+                    "Slashing applied after appeal",
                 )
                 if update:
                     updates.append(update.update_id)
@@ -820,18 +813,14 @@ class ValidatorMediatorCoupling:
             "mediator_id": mediator_id,
             "appeal_upheld": appeal_upheld,
             "slashing_applied": slashing_applied,
-            "scheduled_updates": updates
+            "scheduled_updates": updates,
         }
 
     # -------------------------------------------------------------------------
     # Collusion Resistance
     # -------------------------------------------------------------------------
 
-    def detect_collusion_signals(
-        self,
-        validator_id: str,
-        mediator_id: str
-    ) -> dict[str, Any]:
+    def detect_collusion_signals(self, validator_id: str, mediator_id: str) -> dict[str, Any]:
         """
         Detect potential collusion signals.
 
@@ -863,10 +852,8 @@ class ValidatorMediatorCoupling:
                 risk_level = "medium"
 
         # Check for synchronized weight changes
-        validator_updates = [u for u in self.pending_updates.values()
-                          if u.actor_id == validator_id]
-        mediator_updates = [u for u in self.pending_updates.values()
-                          if u.actor_id == mediator_id]
+        validator_updates = [u for u in self.pending_updates.values() if u.actor_id == validator_id]
+        mediator_updates = [u for u in self.pending_updates.values() if u.actor_id == mediator_id]
 
         if validator_updates and mediator_updates:
             # Check if updates are close in time
@@ -883,7 +870,7 @@ class ValidatorMediatorCoupling:
             "mediator_id": mediator_id,
             "signals": signals,
             "risk_level": risk_level,
-            "recommendation": "Public audit trail" if signals else "No action needed"
+            "recommendation": "Public audit trail" if signals else "No action needed",
         }
 
     # -------------------------------------------------------------------------
@@ -897,40 +884,33 @@ class ValidatorMediatorCoupling:
         return {
             "validator_mediator_coupling": {
                 "version": "1.0",
-                "role_separation": {
-                    "enforce_strict": True,
-                    "violation_code": "PV-V3"
-                },
+                "role_separation": {"enforce_strict": True, "violation_code": "PV-V3"},
                 "validator_weight": {
                     "source": "NCIP-007",
-                    "applies_to": [
-                        "semantic_validation",
-                        "drift_detection",
-                        "appeals"
-                    ]
+                    "applies_to": ["semantic_validation", "drift_detection", "appeals"],
                 },
                 "mediator_weight": {
                     "source": "NCIP-010",
                     "applies_to": [
                         "proposal_visibility",
                         "fee_priority",
-                        "matching_competitiveness"
-                    ]
+                        "matching_competitiveness",
+                    ],
                 },
                 "influence_gate": {
                     "enabled": True,
                     "threshold": self.gate_threshold,
-                    "aggregation": "weighted_sum"
+                    "aggregation": "weighted_sum",
                 },
                 "during_dispute": {
                     "mediator_influence": "reduced",
                     "validator_authority": "elevated",
-                    "allow_new_proposals": False
+                    "allow_new_proposals": False,
                 },
                 "weight_updates": {
                     "delayed_epochs": self.delay_epochs,
-                    "retroactive_adjustment": "allowed"
-                }
+                    "retroactive_adjustment": "allowed",
+                },
             }
         }
 
@@ -946,11 +926,12 @@ class ValidatorMediatorCoupling:
             "total_proposals": len(self.proposals),
             "visible_proposals": sum(1 for p in self.proposals.values() if not p.hidden),
             "hidden_proposals": sum(1 for p in self.proposals.values() if p.hidden),
-            "pending_weight_updates": len([u for u in self.pending_updates.values()
-                                          if u.status == WeightUpdateStatus.PENDING]),
+            "pending_weight_updates": len(
+                [u for u in self.pending_updates.values() if u.status == WeightUpdateStatus.PENDING]
+            ),
             "protocol_violations": len(self.violations),
             "active_disputes": len(self.active_disputes),
             "gate_threshold": self.gate_threshold,
             "delay_epochs": self.delay_epochs,
-            "principle": "Validators measure meaning. Mediators surface alignment. Neither may substitute for the other."
+            "principle": "Validators measure meaning. Mediators surface alignment. Neither may substitute for the other.",
         }

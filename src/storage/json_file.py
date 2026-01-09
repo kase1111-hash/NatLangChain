@@ -26,7 +26,7 @@ from storage.base import (
 )
 
 # Gzip magic bytes for detection
-GZIP_MAGIC = b'\x1f\x8b'
+GZIP_MAGIC = b"\x1f\x8b"
 
 
 class JSONFileStorage(StorageBackend):
@@ -86,6 +86,7 @@ class JSONFileStorage(StorageBackend):
                 encrypt_chain_data,
                 is_encrypted,
             )
+
             self._encrypt_fn = encrypt_chain_data
             self._decrypt_fn = decrypt_chain_data
             self._is_encrypted_fn = is_encrypted
@@ -117,7 +118,7 @@ class JSONFileStorage(StorageBackend):
                     return None
 
                 # Read file as binary to detect compression
-                with open(self.file_path, 'rb') as f:
+                with open(self.file_path, "rb") as f:
                     raw_bytes = f.read()
 
                 if not raw_bytes:
@@ -129,16 +130,16 @@ class JSONFileStorage(StorageBackend):
                 # Handle encrypted data first (encryption wraps compression)
                 if self.encryption_enabled and self._is_encrypted_fn:
                     # Encryption produces text, so decode first
-                    raw_data = raw_bytes.decode('utf-8')
+                    raw_data = raw_bytes.decode("utf-8")
                     if self._is_encrypted_fn(raw_data):
                         if self._decrypt_fn:
                             raw_data = self._decrypt_fn(raw_data)
                             # After decryption, might be compressed
-                            raw_bytes = raw_data.encode('utf-8') if isinstance(raw_data, str) else raw_data
-                        else:
-                            raise StorageReadError(
-                                "Data is encrypted but decryption not available"
+                            raw_bytes = (
+                                raw_data.encode("utf-8") if isinstance(raw_data, str) else raw_data
                             )
+                        else:
+                            raise StorageReadError("Data is encrypted but decryption not available")
 
                 # Check for gzip compression
                 if self._is_gzip_compressed(raw_bytes):
@@ -149,7 +150,7 @@ class JSONFileStorage(StorageBackend):
                         raise StorageReadError(f"Invalid gzip data: {e}") from e
 
                 # Decode and parse JSON
-                raw_data = raw_bytes.decode('utf-8')
+                raw_data = raw_bytes.decode("utf-8")
                 return json.loads(raw_data)
 
             except FileNotFoundError:
@@ -180,8 +181,8 @@ class JSONFileStorage(StorageBackend):
         with self._lock:
             try:
                 # Serialize to JSON (compact format for compression efficiency)
-                json_str = json.dumps(chain_data, separators=(',', ':'), ensure_ascii=False)
-                data_bytes = json_str.encode('utf-8')
+                json_str = json.dumps(chain_data, separators=(",", ":"), ensure_ascii=False)
+                data_bytes = json_str.encode("utf-8")
 
                 # Track uncompressed size
                 original_size = len(data_bytes)
@@ -200,20 +201,18 @@ class JSONFileStorage(StorageBackend):
                     # Encryption expects string, encode compressed bytes as base64 or pass through
                     data_bytes = self._encrypt_fn(data_bytes)
                     if isinstance(data_bytes, str):
-                        data_bytes = data_bytes.encode('utf-8')
+                        data_bytes = data_bytes.encode("utf-8")
 
                 # Write to file atomically (write to temp, then rename)
                 temp_path = f"{self.file_path}.tmp"
-                with open(temp_path, 'wb') as f:
+                with open(temp_path, "wb") as f:
                     f.write(data_bytes)
 
                 # Atomic rename
                 os.replace(temp_path, self.file_path)
 
             except PermissionError as e:
-                raise StorageWriteError(
-                    f"Permission denied: {self.file_path}"
-                ) from e
+                raise StorageWriteError(f"Permission denied: {self.file_path}") from e
             except OSError as e:
                 raise StorageWriteError(f"OS error: {e}") from e
             except Exception as e:
@@ -238,13 +237,15 @@ class JSONFileStorage(StorageBackend):
     def get_info(self) -> dict[str, Any]:
         """Get storage backend information."""
         info = super().get_info()
-        info.update({
-            "file_path": self.file_path,
-            "file_exists": os.path.exists(self.file_path),
-            "encryption_enabled": self.encryption_enabled,
-            "compression_enabled": self.compression_enabled,
-            "compression_level": self.compression_level if self.compression_enabled else None,
-        })
+        info.update(
+            {
+                "file_path": self.file_path,
+                "file_exists": os.path.exists(self.file_path),
+                "encryption_enabled": self.encryption_enabled,
+                "compression_enabled": self.compression_enabled,
+                "compression_level": self.compression_level if self.compression_enabled else None,
+            }
+        )
 
         if os.path.exists(self.file_path):
             try:

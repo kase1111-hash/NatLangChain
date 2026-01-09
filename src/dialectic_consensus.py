@@ -38,12 +38,7 @@ class DialecticConsensus:
         self.client = Anthropic(api_key=self.api_key)
         self.model = "claude-3-5-sonnet-20241022"
 
-    def validate_entry(
-        self,
-        content: str,
-        intent: str,
-        author: str
-    ) -> dict[str, Any]:
+    def validate_entry(self, content: str, intent: str, author: str) -> dict[str, Any]:
         """
         Validate an entry through dialectic debate.
 
@@ -67,10 +62,7 @@ class DialecticConsensus:
 
             # Step 3: Reconciliation
             final_decision = self._reconcile_perspectives(
-                content,
-                intent,
-                skeptic_analysis,
-                facilitator_analysis
+                content, intent, skeptic_analysis, facilitator_analysis
             )
 
             return {
@@ -79,15 +71,11 @@ class DialecticConsensus:
                 "skeptic_perspective": skeptic_analysis,
                 "facilitator_perspective": facilitator_analysis,
                 "final_decision": final_decision,
-                "decision": final_decision.get("status", "ERROR")
+                "decision": final_decision.get("status", "ERROR"),
             }
 
         except Exception as e:
-            return {
-                "status": "error",
-                "error": str(e),
-                "decision": "ERROR"
-            }
+            return {"status": "error", "error": str(e), "decision": "ERROR"}
 
     def _skeptic_review(self, content: str, intent: str) -> dict[str, Any]:
         """
@@ -170,11 +158,7 @@ Return JSON:
         return self._call_llm(prompt, role="Facilitator")
 
     def _reconcile_perspectives(
-        self,
-        content: str,
-        intent: str,
-        skeptic: dict[str, Any],
-        facilitator: dict[str, Any]
+        self, content: str, intent: str, skeptic: dict[str, Any], facilitator: dict[str, Any]
     ) -> dict[str, Any]:
         """
         Reconcile Skeptic and Facilitator perspectives.
@@ -222,7 +206,7 @@ Return JSON:
         status_map = {
             "ACCEPT": "VALID",
             "NEEDS_CLARIFICATION": "NEEDS_CLARIFICATION",
-            "REJECT": "INVALID"
+            "REJECT": "INVALID",
         }
 
         result["decision"] = status_map.get(result.get("status", "REJECT"), "ERROR")
@@ -242,15 +226,13 @@ Return JSON:
         """
         try:
             message = self.client.messages.create(
-                model=self.model,
-                max_tokens=1024,
-                messages=[{"role": "user", "content": prompt}]
+                model=self.model, max_tokens=1024, messages=[{"role": "user", "content": prompt}]
             )
 
             # Safe access to API response
             if not message.content:
                 raise ValueError(f"Empty response from API in {role}: no content returned")
-            if not hasattr(message.content[0], 'text'):
+            if not hasattr(message.content[0], "text"):
                 raise ValueError(f"Invalid API response format in {role}: missing 'text' attribute")
 
             response_text = message.content[0].text
@@ -264,23 +246,11 @@ Return JSON:
                 raise ValueError(f"Failed to parse JSON in {role}: {e.msg} at position {e.pos}")
 
         except json.JSONDecodeError as e:
-            return {
-                "error": f"JSON parsing error: {e!s}",
-                "role": role,
-                "status": "ERROR"
-            }
+            return {"error": f"JSON parsing error: {e!s}", "role": role, "status": "ERROR"}
         except ValueError as e:
-            return {
-                "error": f"Validation error: {e!s}",
-                "role": role,
-                "status": "ERROR"
-            }
+            return {"error": f"Validation error: {e!s}", "role": role, "status": "ERROR"}
         except Exception as e:
-            return {
-                "error": f"Unexpected error: {e!s}",
-                "role": role,
-                "status": "ERROR"
-            }
+            return {"error": f"Unexpected error: {e!s}", "role": role, "status": "ERROR"}
 
     def _extract_json_from_response(self, response_text: str) -> str:
         """

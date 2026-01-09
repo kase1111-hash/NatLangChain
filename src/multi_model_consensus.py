@@ -19,15 +19,12 @@ By supporting 6+ providers including 2 local options, any node can participate
 in validation without depending on a single cloud provider.
 """
 
-import json
 import logging
 from typing import Any
 
 from src.llm_providers import (
     LLMProvider,
-    LLMResponse,
     ProviderManager,
-    ProviderStrength,
     ProviderType,
 )
 
@@ -171,14 +168,16 @@ Return JSON:
                 if response.success and response.content:
                     parsed = provider.parse_json_response(response.content)
                     if parsed:
-                        validations.append({
-                            "model": name,
-                            "strength": provider.config.strength.value,
-                            "weight": provider.config.weight,
-                            "type": provider.config.provider_type.value,
-                            "latency_ms": response.latency_ms,
-                            "result": parsed,
-                        })
+                        validations.append(
+                            {
+                                "model": name,
+                                "strength": provider.config.strength.value,
+                                "weight": provider.config.weight,
+                                "type": provider.config.provider_type.value,
+                                "latency_ms": response.latency_ms,
+                                "result": parsed,
+                            }
+                        )
 
                         if provider.config.provider_type == ProviderType.CLOUD:
                             cloud_responses += 1
@@ -274,14 +273,16 @@ Return JSON:
             consensus_decision = "NO_CONSENSUS"
 
         # Aggregate confidence (weighted average)
-        avg_confidence = sum(
-            v["result"].get("confidence", 0.5) * v["weight"] for v in validations
-        ) / total_weight
+        avg_confidence = (
+            sum(v["result"].get("confidence", 0.5) * v["weight"] for v in validations)
+            / total_weight
+        )
 
         # Aggregate clarity (weighted average)
-        avg_clarity = sum(
-            v["result"].get("clarity_score", 0.5) * v["weight"] for v in validations
-        ) / total_weight
+        avg_clarity = (
+            sum(v["result"].get("clarity_score", 0.5) * v["weight"] for v in validations)
+            / total_weight
+        )
 
         # Collect all issues with provider attribution
         all_issues = []
@@ -364,14 +365,16 @@ Return JSON:
                 if response.success and response.content:
                     result = provider.parse_json_response(response.content)
                     if result:
-                        scores.append({
-                            "model": name,
-                            "type": provider.config.provider_type.value,
-                            "score": result.get("match_score", 0),
-                            "compatible": result.get("compatible", False),
-                            "confidence": result.get("confidence", 0.5),
-                            "latency_ms": response.latency_ms,
-                        })
+                        scores.append(
+                            {
+                                "model": name,
+                                "type": provider.config.provider_type.value,
+                                "score": result.get("match_score", 0),
+                                "compatible": result.get("compatible", False),
+                                "confidence": result.get("confidence", 0.5),
+                                "latency_ms": response.latency_ms,
+                            }
+                        )
             except Exception as e:
                 logger.warning(
                     "Provider '%s' contract match verification failed: %s: %s",
@@ -477,11 +480,13 @@ class HallucinationDetector:
                 if response.success and response.content:
                     result = provider.parse_json_response(response.content)
                     if result:
-                        responses.append({
-                            "model": name,
-                            "type": provider.config.provider_type.value,
-                            "response": result,
-                        })
+                        responses.append(
+                            {
+                                "model": name,
+                                "type": provider.config.provider_type.value,
+                                "response": result,
+                            }
+                        )
             except Exception as e:
                 logger.warning(
                     "Provider '%s' hallucination detection failed: %s: %s",
@@ -497,22 +502,16 @@ class HallucinationDetector:
             }
 
         # Check for significant disagreement
-        unique_decisions = {
-            str(r["response"].get("valid", "unknown")) for r in responses
-        }
+        unique_decisions = {str(r["response"].get("valid", "unknown")) for r in responses}
 
         disagreement = len(unique_decisions) > 1
 
         # Check if local and cloud providers agree
         cloud_decisions = {
-            str(r["response"].get("valid", "unknown"))
-            for r in responses
-            if r["type"] == "cloud"
+            str(r["response"].get("valid", "unknown")) for r in responses if r["type"] == "cloud"
         }
         local_decisions = {
-            str(r["response"].get("valid", "unknown"))
-            for r in responses
-            if r["type"] == "local"
+            str(r["response"].get("valid", "unknown")) for r in responses if r["type"] == "local"
         }
 
         cross_type_agreement = bool(

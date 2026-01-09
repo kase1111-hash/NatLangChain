@@ -34,6 +34,7 @@ try:
         is_action_allowed_during_cooling,
         is_action_forbidden_during_lock,
     )
+
     NCIP_005_AVAILABLE = True
 except ImportError:
     NCIP_005_AVAILABLE = False
@@ -53,6 +54,7 @@ try:
         get_ncip_010_config,
         get_reputation_manager,
     )
+
     NCIP_010_AVAILABLE = True
 except ImportError:
     NCIP_010_AVAILABLE = False
@@ -109,7 +111,7 @@ class DisputeManager:
         contested_refs: list[dict[str, Any]],
         description: str,
         escalation_path: str = ESCALATION_MEDIATOR,
-        supporting_evidence: list[str] | None = None
+        supporting_evidence: list[str] | None = None,
     ) -> dict[str, Any]:
         """
         Create a new dispute declaration.
@@ -141,7 +143,7 @@ class DisputeManager:
             "frozen_at": datetime.utcnow().isoformat(),
             "supporting_evidence": supporting_evidence or [],
             "resolution": None,
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.utcnow().isoformat(),
         }
 
         # Freeze contested entries
@@ -150,16 +152,12 @@ class DisputeManager:
 
         return dispute_data
 
-    def _generate_dispute_id(
-        self,
-        claimant: str,
-        contested_refs: list[dict]
-    ) -> str:
+    def _generate_dispute_id(self, claimant: str, contested_refs: list[dict]) -> str:
         """Generate unique dispute ID."""
         data = {
             "claimant": claimant,
             "contested_refs": contested_refs,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         }
         hash_input = json.dumps(data, sort_keys=True)
         return f"DISPUTE-{hashlib.sha256(hash_input.encode()).hexdigest()[:12].upper()}"
@@ -176,7 +174,7 @@ class DisputeManager:
         self.frozen_entries[ref_key] = {
             "dispute_id": dispute_id,
             "frozen_at": datetime.utcnow().isoformat(),
-            "ref": ref
+            "ref": ref,
         }
 
     def is_entry_frozen(self, block_index: int, entry_index: int) -> tuple[bool, str | None]:
@@ -201,7 +199,7 @@ class DisputeManager:
         author: str,
         evidence_content: str,
         evidence_type: str = "document",
-        evidence_hash: str | None = None
+        evidence_hash: str | None = None,
     ) -> dict[str, Any]:
         """
         Add evidence to an existing dispute.
@@ -226,15 +224,11 @@ class DisputeManager:
             "evidence_author": author,
             "evidence_type": evidence_type,
             "evidence_hash": evidence_hash,
-            "submitted_at": datetime.utcnow().isoformat()
+            "submitted_at": datetime.utcnow().isoformat(),
         }
 
     def request_clarification(
-        self,
-        dispute_id: str,
-        author: str,
-        clarification_request: str,
-        directed_to: str
+        self, dispute_id: str, author: str, clarification_request: str, directed_to: str
     ) -> dict[str, Any]:
         """
         Request clarification from a party.
@@ -256,7 +250,7 @@ class DisputeManager:
             "directed_to": directed_to,
             "status": self.STATUS_CLARIFYING,
             "clarification_request": clarification_request,
-            "requested_at": datetime.utcnow().isoformat()
+            "requested_at": datetime.utcnow().isoformat(),
         }
 
     def escalate_dispute(
@@ -265,7 +259,7 @@ class DisputeManager:
         escalating_party: str,
         escalation_path: str,
         escalation_reason: str,
-        escalation_authority: str | None = None
+        escalation_authority: str | None = None,
     ) -> dict[str, Any]:
         """
         Escalate a dispute to higher authority.
@@ -289,7 +283,7 @@ class DisputeManager:
             "escalation_reason": escalation_reason,
             "escalation_authority": escalation_authority,
             "status": self.STATUS_ESCALATED,
-            "escalated_at": datetime.utcnow().isoformat()
+            "escalated_at": datetime.utcnow().isoformat(),
         }
 
     def record_resolution(
@@ -299,7 +293,7 @@ class DisputeManager:
         resolution_type: str,
         resolution_content: str,
         findings: dict[str, Any] | None = None,
-        remedies: list[str] | None = None
+        remedies: list[str] | None = None,
     ) -> dict[str, Any]:
         """
         Record the resolution of a dispute.
@@ -320,8 +314,7 @@ class DisputeManager:
         """
         # Unfreeze entries when resolved
         entries_to_unfreeze = [
-            key for key, val in self.frozen_entries.items()
-            if val.get("dispute_id") == dispute_id
+            key for key, val in self.frozen_entries.items() if val.get("dispute_id") == dispute_id
         ]
         for key in entries_to_unfreeze:
             del self.frozen_entries[key]
@@ -336,14 +329,11 @@ class DisputeManager:
             "remedies": remedies or [],
             "entries_unfrozen": len(entries_to_unfreeze),
             "status": self.STATUS_RESOLVED,
-            "resolved_at": datetime.utcnow().isoformat()
+            "resolved_at": datetime.utcnow().isoformat(),
         }
 
     def generate_dispute_package(
-        self,
-        dispute_id: str,
-        blockchain,
-        include_frozen_entries: bool = True
+        self, dispute_id: str, blockchain, include_frozen_entries: bool = True
     ) -> dict[str, Any]:
         """
         Generate a complete dispute package for external arbitration.
@@ -370,8 +360,8 @@ class DisputeManager:
             "frozen_entries": [],
             "chain_verification": {
                 "chain_valid": blockchain.validate_chain(),
-                "total_blocks": len(blockchain.chain)
-            }
+                "total_blocks": len(blockchain.chain),
+            },
         }
 
         # Collect all dispute-related entries
@@ -384,7 +374,7 @@ class DisputeManager:
                         "block_index": block.index,
                         "block_hash": block.hash,
                         "entry_index": entry_idx,
-                        "entry": entry.to_dict()
+                        "entry": entry.to_dict(),
                     }
 
                     dispute_type = metadata.get("dispute_type")
@@ -410,13 +400,15 @@ class DisputeManager:
                         block = blockchain.chain[block_idx]
                         if entry_idx < len(block.entries):
                             entry = block.entries[entry_idx]
-                            package["frozen_entries"].append({
-                                "block_index": block_idx,
-                                "entry_index": entry_idx,
-                                "block_hash": block.hash,
-                                "frozen_at": freeze_data.get("frozen_at"),
-                                "entry": entry.to_dict()
-                            })
+                            package["frozen_entries"].append(
+                                {
+                                    "block_index": block_idx,
+                                    "entry_index": entry_idx,
+                                    "block_hash": block.hash,
+                                    "frozen_at": freeze_data.get("frozen_at"),
+                                    "entry": entry.to_dict(),
+                                }
+                            )
 
         # Generate package hash for integrity
         package_content = json.dumps(package, sort_keys=True)
@@ -424,7 +416,9 @@ class DisputeManager:
 
         return package
 
-    def analyze_dispute(self, dispute_description: str, contested_content: str) -> dict[str, Any] | None:
+    def analyze_dispute(
+        self, dispute_description: str, contested_content: str
+    ) -> dict[str, Any] | None:
         """
         Use LLM to analyze a dispute and identify key issues.
 
@@ -466,9 +460,7 @@ Provide analysis in JSON format:
 }}"""
 
             message = self.client.messages.create(
-                model=self.model,
-                max_tokens=1024,
-                messages=[{"role": "user", "content": prompt}]
+                model=self.model, max_tokens=1024, messages=[{"role": "user", "content": prompt}]
             )
 
             response_text = message.content[0].text
@@ -503,7 +495,15 @@ Provide analysis in JSON format:
         if len(description.strip()) < 50:
             return False, "Dispute description too brief. Please provide more detail."
 
-        required_elements = ["contested", "dispute", "claim", "issue", "disagree", "violation", "breach"]
+        required_elements = [
+            "contested",
+            "dispute",
+            "claim",
+            "issue",
+            "disagree",
+            "violation",
+            "breach",
+        ]
         description_lower = description.lower()
 
         has_dispute_language = any(elem in description_lower for elem in required_elements)
@@ -534,9 +534,7 @@ Return JSON:
 }}"""
 
             message = self.client.messages.create(
-                model=self.model,
-                max_tokens=512,
-                messages=[{"role": "user", "content": prompt}]
+                model=self.model, max_tokens=512, messages=[{"role": "user", "content": prompt}]
             )
 
             response_text = message.content[0].text
@@ -553,7 +551,10 @@ Return JSON:
             result = json.loads(response_text)
 
             if result.get("recommendation") == "TOO_VAGUE":
-                return False, f"Dispute too vague: {result.get('guidance', 'Please provide more detail.')}"
+                return (
+                    False,
+                    f"Dispute too vague: {result.get('guidance', 'Please provide more detail.')}",
+                )
 
             if result.get("recommendation") == "NEEDS_CLARIFICATION":
                 missing = result.get("missing_elements", [])
@@ -566,10 +567,7 @@ Return JSON:
             return True, "Basic validation passed (LLM validation unavailable)"
 
     def format_dispute_entry(
-        self,
-        dispute_type: str,
-        content: str,
-        dispute_id: str | None = None
+        self, dispute_type: str, content: str, dispute_id: str | None = None
     ) -> str:
         """
         Format a dispute entry with proper tags.
@@ -609,7 +607,7 @@ Return JSON:
             "evidence_count": 0,
             "escalation_count": 0,
             "is_resolved": False,
-            "frozen_entries_count": 0
+            "frozen_entries_count": 0,
         }
 
         found = False
@@ -629,7 +627,7 @@ Return JSON:
                         "claimant": metadata.get("claimant"),
                         "respondent": metadata.get("respondent"),
                         "contested_refs": metadata.get("contested_refs"),
-                        "created_at": metadata.get("created_at")
+                        "created_at": metadata.get("created_at"),
                     }
                     status["status"] = metadata.get("status", self.STATUS_OPEN)
 
@@ -646,7 +644,7 @@ Return JSON:
                     status["resolution"] = {
                         "resolution_type": metadata.get("resolution_type"),
                         "resolution_authority": metadata.get("resolution_authority"),
-                        "resolved_at": metadata.get("resolved_at")
+                        "resolved_at": metadata.get("resolved_at"),
                     }
 
         if not found:
@@ -673,7 +671,7 @@ Return JSON:
         registry_version: str,
         prose_content: str,
         anchor_language: str = "en",
-        verified_pou_hashes: list[str] | None = None
+        verified_pou_hashes: list[str] | None = None,
     ) -> dict[str, Any]:
         """
         Create a dispute with NCIP-005 semantic locking.
@@ -702,11 +700,11 @@ Return JSON:
             return {
                 "status": "unavailable",
                 "message": "NCIP-005 semantic locking not available",
-                "ncip_005_enabled": False
+                "ncip_005_enabled": False,
             }
 
         # Get or create lock manager
-        if not hasattr(self, '_lock_manager'):
+        if not hasattr(self, "_lock_manager"):
             self._lock_manager = SemanticLockManager(validator_id="dispute_manager")
 
         # Map trigger string to enum
@@ -717,14 +715,14 @@ Return JSON:
             "pou_contradiction": DisputeTrigger.POU_CONTRADICTION,
             "conflicting_ratifications": DisputeTrigger.CONFLICTING_RATIFICATIONS,
             "multilingual_misalignment": DisputeTrigger.MULTILINGUAL_MISALIGNMENT,
-            "material_breach": DisputeTrigger.MATERIAL_BREACH
+            "material_breach": DisputeTrigger.MATERIAL_BREACH,
         }
 
         dispute_trigger = trigger_map.get(trigger)
         if not dispute_trigger:
             return {
                 "status": "error",
-                "message": f"Unknown trigger: {trigger}. Valid triggers: {list(trigger_map.keys())}"
+                "message": f"Unknown trigger: {trigger}. Valid triggers: {list(trigger_map.keys())}",
             }
 
         try:
@@ -737,7 +735,7 @@ Return JSON:
                 registry_version=registry_version,
                 prose_content=prose_content,
                 anchor_language=anchor_language,
-                verified_pou_hashes=verified_pou_hashes
+                verified_pou_hashes=verified_pou_hashes,
             )
 
             # Create traditional dispute data
@@ -746,7 +744,7 @@ Return JSON:
                 respondent=respondent,
                 contested_refs=[{"contract_id": contract_id}],
                 description=claimed_divergence,
-                escalation_path=self.ESCALATION_MEDIATOR
+                escalation_path=self.ESCALATION_MEDIATOR,
             )
 
             # Add NCIP-005 lock info
@@ -761,23 +759,16 @@ Return JSON:
                 "locked_state": {
                     "registry_version": lock.locked_state.registry_version,
                     "anchor_language": lock.locked_state.anchor_language,
-                    "prose_hash": lock.locked_state.prose_content_hash[:16] + "..."
-                }
+                    "prose_hash": lock.locked_state.prose_content_hash[:16] + "...",
+                },
             }
 
             return dispute_data
 
         except ValueError as e:
-            return {
-                "status": "error",
-                "message": str(e)
-            }
+            return {"status": "error", "message": str(e)}
 
-    def check_action_allowed(
-        self,
-        contract_id: str,
-        action: str
-    ) -> dict[str, Any]:
+    def check_action_allowed(self, contract_id: str, action: str) -> dict[str, Any]:
         """
         Check if an action is allowed given any active semantic lock.
 
@@ -790,18 +781,12 @@ Return JSON:
         Returns:
             Dict with allowed status and reason
         """
-        if not NCIP_005_AVAILABLE or not hasattr(self, '_lock_manager'):
-            return {
-                "allowed": True,
-                "reason": "No NCIP-005 lock manager active"
-            }
+        if not NCIP_005_AVAILABLE or not hasattr(self, "_lock_manager"):
+            return {"allowed": True, "reason": "No NCIP-005 lock manager active"}
 
         lock = self._lock_manager.get_lock_by_contract(contract_id)
         if not lock:
-            return {
-                "allowed": True,
-                "reason": "No active lock for this contract"
-            }
+            return {"allowed": True, "reason": "No active lock for this contract"}
 
         # Map action string to enum
         action_map = {
@@ -815,15 +800,12 @@ Return JSON:
             "contract_amendment": LockAction.CONTRACT_AMENDMENT,
             "re_translation": LockAction.RE_TRANSLATION,
             "registry_upgrade": LockAction.REGISTRY_UPGRADE,
-            "pou_regeneration": LockAction.POU_REGENERATION
+            "pou_regeneration": LockAction.POU_REGENERATION,
         }
 
         lock_action = action_map.get(action)
         if not lock_action:
-            return {
-                "allowed": True,
-                "reason": f"Unknown action: {action}"
-            }
+            return {"allowed": True, "reason": f"Unknown action: {action}"}
 
         return self._lock_manager.get_validator_response(lock.lock_id, lock_action)
 
@@ -837,7 +819,7 @@ Return JSON:
         Returns:
             Cooling period status or None
         """
-        if not NCIP_005_AVAILABLE or not hasattr(self, '_lock_manager'):
+        if not NCIP_005_AVAILABLE or not hasattr(self, "_lock_manager"):
             return None
 
         lock = self._lock_manager.get_lock_by_contract(contract_id)
@@ -855,14 +837,11 @@ Return JSON:
             "duration_hours": status.duration_hours,
             "is_active": status.is_active,
             "time_remaining_seconds": status.time_remaining_seconds,
-            "time_remaining_hours": status.time_remaining_seconds / 3600
+            "time_remaining_hours": status.time_remaining_seconds / 3600,
         }
 
     def advance_escalation(
-        self,
-        contract_id: str,
-        actor_id: str,
-        reason: str | None = None
+        self, contract_id: str, actor_id: str, reason: str | None = None
     ) -> dict[str, Any]:
         """
         Advance to the next escalation stage per NCIP-005 Section 7.
@@ -878,18 +857,12 @@ Return JSON:
         Returns:
             Result of advancement attempt
         """
-        if not NCIP_005_AVAILABLE or not hasattr(self, '_lock_manager'):
-            return {
-                "success": False,
-                "message": "NCIP-005 not available"
-            }
+        if not NCIP_005_AVAILABLE or not hasattr(self, "_lock_manager"):
+            return {"success": False, "message": "NCIP-005 not available"}
 
         lock = self._lock_manager.get_lock_by_contract(contract_id)
         if not lock:
-            return {
-                "success": False,
-                "message": "No active lock for this contract"
-            }
+            return {"success": False, "message": "No active lock for this contract"}
 
         success, message, new_stage = self._lock_manager.advance_stage(
             lock.lock_id, actor_id, reason
@@ -899,7 +872,7 @@ Return JSON:
             "success": success,
             "message": message,
             "new_stage": new_stage.value if new_stage else None,
-            "lock_id": lock.lock_id
+            "lock_id": lock.lock_id,
         }
 
     def resolve_dispute_ncip_005(
@@ -908,7 +881,7 @@ Return JSON:
         outcome: str,
         resolution_authority: str,
         resolution_details: str,
-        findings: dict[str, Any] | None = None
+        findings: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
         Resolve a dispute and release the semantic lock per NCIP-005.
@@ -923,18 +896,12 @@ Return JSON:
         Returns:
             Resolution result
         """
-        if not NCIP_005_AVAILABLE or not hasattr(self, '_lock_manager'):
-            return {
-                "success": False,
-                "message": "NCIP-005 not available"
-            }
+        if not NCIP_005_AVAILABLE or not hasattr(self, "_lock_manager"):
+            return {"success": False, "message": "NCIP-005 not available"}
 
         lock = self._lock_manager.get_lock_by_contract(contract_id)
         if not lock:
-            return {
-                "success": False,
-                "message": "No active lock for this contract"
-            }
+            return {"success": False, "message": "No active lock for this contract"}
 
         # Map outcome string to enum
         outcome_map = {
@@ -942,34 +909,25 @@ Return JSON:
             "clarified": ResolutionOutcome.CLARIFIED,
             "amended": ResolutionOutcome.AMENDED,
             "terminated": ResolutionOutcome.TERMINATED,
-            "compensated": ResolutionOutcome.COMPENSATED
+            "compensated": ResolutionOutcome.COMPENSATED,
         }
 
         resolution_outcome = outcome_map.get(outcome)
         if not resolution_outcome:
             return {
                 "success": False,
-                "message": f"Unknown outcome: {outcome}. Valid: {list(outcome_map.keys())}"
+                "message": f"Unknown outcome: {outcome}. Valid: {list(outcome_map.keys())}",
             }
 
         success, message = self._lock_manager.resolve_dispute(
-            lock.lock_id,
-            resolution_outcome,
-            resolution_authority,
-            resolution_details,
-            findings
+            lock.lock_id, resolution_outcome, resolution_authority, resolution_details, findings
         )
 
-        return {
-            "success": success,
-            "message": message,
-            "outcome": outcome,
-            "lock_id": lock.lock_id
-        }
+        return {"success": success, "message": message, "outcome": outcome, "lock_id": lock.lock_id}
 
     def get_lock_summary(self, contract_id: str) -> dict[str, Any] | None:
         """Get a summary of the semantic lock for a contract."""
-        if not NCIP_005_AVAILABLE or not hasattr(self, '_lock_manager'):
+        if not NCIP_005_AVAILABLE or not hasattr(self, "_lock_manager"):
             return None
 
         lock = self._lock_manager.get_lock_by_contract(contract_id)
@@ -980,7 +938,7 @@ Return JSON:
 
     def is_execution_halted(self, contract_id: str) -> bool:
         """Check if execution is halted for a contract due to dispute."""
-        if not NCIP_005_AVAILABLE or not hasattr(self, '_lock_manager'):
+        if not NCIP_005_AVAILABLE or not hasattr(self, "_lock_manager"):
             return False
 
         lock = self._lock_manager.get_lock_by_contract(contract_id)
@@ -995,7 +953,7 @@ Return JSON:
         mediator_id: str,
         stake_amount: float = DEFAULT_BOND,
         supported_domains: list[str] | None = None,
-        models_used: list[str] | None = None
+        models_used: list[str] | None = None,
     ) -> dict[str, Any]:
         """
         Register a mediator with required bond per NCIP-010.
@@ -1018,7 +976,7 @@ Return JSON:
             return {
                 "status": "unavailable",
                 "message": "NCIP-010 mediator reputation not available",
-                "ncip_010_enabled": False
+                "ncip_010_enabled": False,
             }
 
         try:
@@ -1027,7 +985,7 @@ Return JSON:
                 mediator_id=mediator_id,
                 stake_amount=stake_amount,
                 supported_domains=supported_domains,
-                models_used=models_used
+                models_used=models_used,
             )
 
             return {
@@ -1035,15 +993,11 @@ Return JSON:
                 "mediator_id": mediator_id,
                 "bond_amount": profile.bond.amount,
                 "composite_trust_score": profile.composite_trust_score,
-                "ncip_010_enabled": True
+                "ncip_010_enabled": True,
             }
 
         except ValueError as e:
-            return {
-                "status": "error",
-                "message": str(e),
-                "ncip_010_enabled": True
-            }
+            return {"status": "error", "message": str(e), "ncip_010_enabled": True}
 
     def get_mediator_reputation(self, mediator_id: str) -> dict[str, Any]:
         """
@@ -1058,7 +1012,7 @@ Return JSON:
         if not NCIP_010_AVAILABLE:
             return {
                 "status": "unavailable",
-                "message": "NCIP-010 mediator reputation not available"
+                "message": "NCIP-010 mediator reputation not available",
             }
 
         manager = get_reputation_manager()
@@ -1070,7 +1024,7 @@ Return JSON:
         accepted: bool,
         semantic_drift_score: float | None = None,
         latency_seconds: float | None = None,
-        coercion_detected: bool = False
+        coercion_detected: bool = False,
     ) -> dict[str, Any]:
         """
         Record a mediation proposal outcome per NCIP-010.
@@ -1094,7 +1048,7 @@ Return JSON:
         if not NCIP_010_AVAILABLE:
             return {
                 "status": "unavailable",
-                "message": "NCIP-010 mediator reputation not available"
+                "message": "NCIP-010 mediator reputation not available",
             }
 
         manager = get_reputation_manager()
@@ -1103,7 +1057,7 @@ Return JSON:
             accepted=accepted,
             semantic_drift_score=semantic_drift_score,
             latency_seconds=latency_seconds,
-            coercion_detected=coercion_detected
+            coercion_detected=coercion_detected,
         )
 
     def slash_mediator(
@@ -1112,7 +1066,7 @@ Return JSON:
         offense: str,
         severity: float = 0.5,
         evidence: dict[str, Any] | None = None,
-        affected_party_id: str | None = None
+        affected_party_id: str | None = None,
     ) -> dict[str, Any]:
         """
         Slash a mediator's bond for an offense per NCIP-010 Section 6.
@@ -1139,7 +1093,7 @@ Return JSON:
         if not NCIP_010_AVAILABLE:
             return {
                 "status": "unavailable",
-                "message": "NCIP-010 mediator reputation not available"
+                "message": "NCIP-010 mediator reputation not available",
             }
 
         # Map offense string to enum
@@ -1148,14 +1102,14 @@ Return JSON:
             "repeated_invalid_proposals": SlashingOffense.REPEATED_INVALID_PROPOSALS,
             "coercive_framing": SlashingOffense.COERCIVE_FRAMING,
             "appeal_reversal": SlashingOffense.APPEAL_REVERSAL,
-            "collusion_signals": SlashingOffense.COLLUSION_SIGNALS
+            "collusion_signals": SlashingOffense.COLLUSION_SIGNALS,
         }
 
         slash_offense = offense_map.get(offense.lower())
         if not slash_offense:
             return {
                 "status": "error",
-                "message": f"Unknown offense: {offense}. Valid: {list(offense_map.keys())}"
+                "message": f"Unknown offense: {offense}. Valid: {list(offense_map.keys())}",
             }
 
         manager = get_reputation_manager()
@@ -1164,14 +1118,11 @@ Return JSON:
             offense=slash_offense,
             severity=severity,
             evidence=evidence,
-            affected_party_id=affected_party_id
+            affected_party_id=affected_party_id,
         )
 
         if event is None:
-            return {
-                "status": "error",
-                "message": f"Mediator {mediator_id} not found"
-            }
+            return {"status": "error", "message": f"Mediator {mediator_id} not found"}
 
         return {
             "status": "slashed",
@@ -1181,13 +1132,11 @@ Return JSON:
             "amount_slashed": event.amount_slashed,
             "percentage": event.percentage,
             "treasury_portion": event.treasury_portion,
-            "affected_party_portion": event.affected_party_portion
+            "affected_party_portion": event.affected_party_portion,
         }
 
     def rank_mediator_proposals(
-        self,
-        mediator_ids: list[str],
-        include_cts: bool = True
+        self, mediator_ids: list[str], include_cts: bool = True
     ) -> list[dict[str, Any]]:
         """
         Rank mediator proposals by Composite Trust Score per NCIP-010 Section 8.
@@ -1210,11 +1159,7 @@ Return JSON:
         manager = get_reputation_manager()
         return manager.get_proposal_ranking(mediator_ids, include_cts)
 
-    def sample_mediators_by_trust(
-        self,
-        mediator_ids: list[str],
-        sample_size: int = 3
-    ) -> list[str]:
+    def sample_mediators_by_trust(self, mediator_ids: list[str], sample_size: int = 3) -> list[str]:
         """
         Sample mediators proportional to trust for validator attention.
 
@@ -1247,27 +1192,24 @@ Return JSON:
         if not NCIP_010_AVAILABLE:
             return {
                 "status": "unavailable",
-                "message": "NCIP-010 mediator reputation not available"
+                "message": "NCIP-010 mediator reputation not available",
             }
 
         manager = get_reputation_manager()
         # Import staking currency from mediator_reputation if available
         try:
             from .mediator_reputation import DEFAULT_STAKING_CURRENCY
+
             token = DEFAULT_STAKING_CURRENCY
         except ImportError:
             token = "USDC"  # Default fallback
         return {
             "status": "ok",
             "balance": manager.get_treasury_balance(),
-            "token": token  # Currency-agnostic: uses configured staking currency
+            "token": token,  # Currency-agnostic: uses configured staking currency
         }
 
-    def allocate_defensive_subsidy(
-        self,
-        amount: float,
-        purpose: str
-    ) -> dict[str, Any]:
+    def allocate_defensive_subsidy(self, amount: float, purpose: str) -> dict[str, Any]:
         """
         Allocate treasury funds for defensive purposes per NCIP-010 Section 9.
 
@@ -1286,7 +1228,7 @@ Return JSON:
         if not NCIP_010_AVAILABLE:
             return {
                 "status": "unavailable",
-                "message": "NCIP-010 mediator reputation not available"
+                "message": "NCIP-010 mediator reputation not available",
             }
 
         manager = get_reputation_manager()
@@ -1299,15 +1241,12 @@ Return JSON:
     def get_ncip_010_status(self) -> dict[str, Any]:
         """Get NCIP-010 implementation status and configuration."""
         if not NCIP_010_AVAILABLE:
-            return {
-                "enabled": False,
-                "message": "NCIP-010 module not available"
-            }
+            return {"enabled": False, "message": "NCIP-010 module not available"}
 
         manager = get_reputation_manager()
         return {
             "enabled": True,
             "config": get_ncip_010_config(),
             "registered_mediators": len(manager.mediators),
-            "treasury_balance": manager.get_treasury_balance()
+            "treasury_balance": manager.get_treasury_balance(),
         }
