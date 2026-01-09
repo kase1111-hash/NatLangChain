@@ -11,3 +11,4 @@ export { DerivativesClient } from './derivatives';
 export { EndowmentClient } from './endowment';
 export { AnchoringClient } from './anchoring';
 export { IdentityClient } from './identity';
+export { ComposabilityClient } from './composability';

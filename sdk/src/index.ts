@@ -47,6 +47,7 @@ import { DerivativesClient } from './clients/derivatives';
 import { EndowmentClient } from './clients/endowment';
 import { AnchoringClient } from './clients/anchoring';
 import { IdentityClient } from './clients/identity';
+import { ComposabilityClient } from './clients/composability';
 import type { NatLangChainConfig } from './types';
 
 // Re-export all types
@@ -141,6 +142,42 @@ export type {
   IdentityEventsResponse,
   DeactivateResponse,
 } from './clients/identity';
+export type {
+  StreamType,
+  CommitType,
+  StreamState,
+  SchemaType,
+  LinkType,
+  StreamMetadata,
+  StreamCommit,
+  Stream,
+  CrossAppLink,
+  Schema,
+  Application,
+  CreateStreamRequest,
+  CreateStreamResponse,
+  UpdateStreamRequest,
+  UpdateStreamResponse,
+  AnchorStreamRequest,
+  RegisterSchemaRequest,
+  RegisterAppRequest,
+  CreateLinkRequest,
+  CreateContractStreamRequest,
+  ExportRequest,
+  ExportPackage,
+  ImportRequest,
+  ImportResult,
+  QueryStreamsOptions,
+  StreamsResponse,
+  SchemasResponse,
+  ApplicationsResponse,
+  LinksResponse,
+  LinkedStreamsResponse,
+  StreamHistoryResponse,
+  ComposabilityStatistics,
+  ComposabilityEvent,
+  ComposabilityEventsResponse,
+} from './clients/composability';
 
 /**
  * NatLangChain SDK Client
@@ -343,6 +380,36 @@ export class NatLangChain {
   public readonly identity: IdentityClient;
 
   /**
+   * Composability operations: cross-application data sharing
+   *
+   * Stream-based data model for versioned, composable content across applications.
+   * Inspired by Ceramic Network.
+   *
+   * @example
+   * ```ts
+   * // Create a composable stream
+   * const stream = await client.composability.createStream({
+   *   stream_type: 'contract_stream',
+   *   content: { terms: '...' },
+   *   controller: 'did:nlc:...'
+   * });
+   *
+   * // Link streams across applications
+   * await client.composability.createLink({
+   *   source_stream_id: stream.stream_id,
+   *   target_stream_id: 'kjzl_...',
+   *   link_type: 'reference'
+   * });
+   *
+   * // Export for sharing
+   * const pkg = await client.composability.export({
+   *   stream_ids: [stream.stream_id]
+   * });
+   * ```
+   */
+  public readonly composability: ComposabilityClient;
+
+  /**
    * Create a new NatLangChain client
    *
    * @param config - Client configuration
@@ -359,6 +426,7 @@ export class NatLangChain {
     this.endowment = new EndowmentClient(this.http);
     this.anchoring = new AnchoringClient(this.http);
     this.identity = new IdentityClient(this.http);
+    this.composability = new ComposabilityClient(this.http);
   }
 
   /**

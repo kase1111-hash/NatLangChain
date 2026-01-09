@@ -30,6 +30,7 @@ Future blueprints (to be extracted from api.py):
 from .anchoring import anchoring_bp
 from .boundary import boundary_bp
 from .chat import chat_bp
+from .composability import composability_bp
 from .contracts import contracts_bp
 from .core import core_bp
 from .derivatives import derivatives_bp
@@ -57,6 +58,7 @@ ALL_BLUEPRINTS = [
     (endowment_bp, ""),  # Permanence endowment routes (/endowment/*)
     (anchoring_bp, ""),  # External anchoring routes (/anchoring/*)
     (identity_bp, ""),  # DID identity routes (/identity/*)
+    (composability_bp, ""),  # Data composability routes (/composability/*)
 ]
 
 
@@ -208,3 +210,12 @@ def init_managers(api_key: str = None):
         print("DID identity service initialized")
     except Exception as e:
         print(f"Warning: Could not initialize identity service: {e}")
+
+    # Initialize data composability service (cross-application data sharing)
+    try:
+        from data_composability import ComposabilityService
+
+        managers.composability_service = ComposabilityService()
+        print("Data composability service initialized")
+    except Exception as e:
+        print(f"Warning: Could not initialize composability service: {e}")

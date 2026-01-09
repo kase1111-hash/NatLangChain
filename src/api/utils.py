@@ -266,6 +266,7 @@ class ManagerRegistry:
     fido2_manager: Any = None
     zk_privacy_manager: Any = None
     identity_service: Any = None  # DID identity layer
+    composability_service: Any = None  # Cross-application data composability
 
     # Advanced features
     negotiation_engine: Any = None
@@ -301,6 +302,10 @@ class ManagerRegistry:
     def is_identity_enabled(self) -> bool:
         """Check if DID identity service is available."""
         return self.identity_service is not None
+
+    def is_composability_enabled(self) -> bool:
+        """Check if composability service is available."""
+        return self.composability_service is not None
 
     def is_p2p_enabled(self) -> bool:
         """Check if P2P network is available."""
