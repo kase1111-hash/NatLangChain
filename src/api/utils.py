@@ -265,6 +265,7 @@ class ManagerRegistry:
     # Authentication and privacy
     fido2_manager: Any = None
     zk_privacy_manager: Any = None
+    identity_service: Any = None  # DID identity layer
 
     # Advanced features
     negotiation_engine: Any = None
@@ -296,6 +297,10 @@ class ManagerRegistry:
     def is_anchoring_enabled(self) -> bool:
         """Check if external anchoring is available."""
         return self.anchoring_service is not None
+
+    def is_identity_enabled(self) -> bool:
+        """Check if DID identity service is available."""
+        return self.identity_service is not None
 
     def is_p2p_enabled(self) -> bool:
         """Check if P2P network is available."""

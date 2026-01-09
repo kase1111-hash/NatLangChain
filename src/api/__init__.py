@@ -35,6 +35,7 @@ from .core import core_bp
 from .derivatives import derivatives_bp
 from .endowment import endowment_bp
 from .help import help_bp
+from .identity import identity_bp
 from .marketplace import marketplace_bp
 from .mobile import mobile_bp
 from .monitoring import monitoring_bp
@@ -55,6 +56,7 @@ ALL_BLUEPRINTS = [
     (derivatives_bp, ""),  # Derivative tracking routes (/derivatives/*)
     (endowment_bp, ""),  # Permanence endowment routes (/endowment/*)
     (anchoring_bp, ""),  # External anchoring routes (/anchoring/*)
+    (identity_bp, ""),  # DID identity routes (/identity/*)
 ]
 
 
@@ -197,3 +199,12 @@ def init_managers(api_key: str = None):
         print("External anchoring service initialized")
     except Exception as e:
         print(f"Warning: Could not initialize external anchoring: {e}")
+
+    # Initialize DID identity service (W3C-compliant decentralized identity)
+    try:
+        from did_identity import IdentityService
+
+        managers.identity_service = IdentityService()
+        print("DID identity service initialized")
+    except Exception as e:
+        print(f"Warning: Could not initialize identity service: {e}")

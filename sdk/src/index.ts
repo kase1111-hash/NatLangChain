@@ -46,6 +46,7 @@ import { SettlementsClient } from './clients/settlements';
 import { DerivativesClient } from './clients/derivatives';
 import { EndowmentClient } from './clients/endowment';
 import { AnchoringClient } from './clients/anchoring';
+import { IdentityClient } from './clients/identity';
 import type { NatLangChainConfig } from './types';
 
 // Re-export all types
@@ -103,6 +104,43 @@ export type {
   AnchoringEvent,
   EventsResponse,
 } from './clients/anchoring';
+export type {
+  VerificationMethodType,
+  VerificationRelationship,
+  ServiceType,
+  DIDStatus,
+  VerificationMethod,
+  ServiceEndpoint,
+  DIDDocument,
+  DIDDocumentMetadata,
+  DIDResolutionResult,
+  CreateDIDRequest,
+  CreateDIDResponse,
+  UpdateDIDRequest,
+  UpdateDIDResponse,
+  AddKeyRequest,
+  AddKeyResponse,
+  RevokeKeyResponse,
+  RotateKeyRequest,
+  RotateKeyResponse,
+  AddServiceRequest,
+  AddServiceResponse,
+  Delegation,
+  GrantDelegationRequest,
+  DelegationsResponse,
+  LinkAuthorRequest,
+  ResolveAuthorResponse,
+  VerifyAuthorshipRequest,
+  VerifyAuthorshipResponse,
+  VerifyAuthenticationRequest,
+  VerifyAuthenticationResponse,
+  IdentityStatistics,
+  DIDEvent,
+  KeyRotationRecord,
+  DIDHistoryResponse,
+  IdentityEventsResponse,
+  DeactivateResponse,
+} from './clients/identity';
 
 /**
  * NatLangChain SDK Client
@@ -277,6 +315,34 @@ export class NatLangChain {
   public readonly anchoring: AnchoringClient;
 
   /**
+   * Identity operations: DID management, key rotation, verification
+   *
+   * W3C-compliant Decentralized Identifier (DID) system for NatLangChain.
+   *
+   * @example
+   * ```ts
+   * // Create a new identity
+   * const identity = await client.identity.createDID({
+   *   display_name: 'Alice',
+   *   email: 'alice@example.com'
+   * });
+   *
+   * // Resolve a DID
+   * const resolved = await client.identity.resolve(identity.did);
+   *
+   * // Rotate a key
+   * await client.identity.rotateKey(identity.did, 'key-1');
+   *
+   * // Verify authorship
+   * await client.identity.verifyAuthorship({
+   *   entry_hash: 'abc123...',
+   *   claimed_author: 'alice@example.com'
+   * });
+   * ```
+   */
+  public readonly identity: IdentityClient;
+
+  /**
    * Create a new NatLangChain client
    *
    * @param config - Client configuration
@@ -292,6 +358,7 @@ export class NatLangChain {
     this.derivatives = new DerivativesClient(this.http);
     this.endowment = new EndowmentClient(this.http);
     this.anchoring = new AnchoringClient(this.http);
+    this.identity = new IdentityClient(this.http);
   }
 
   /**
