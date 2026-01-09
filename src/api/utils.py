@@ -267,6 +267,7 @@ class ManagerRegistry:
     zk_privacy_manager: Any = None
     identity_service: Any = None  # DID identity layer
     composability_service: Any = None  # Cross-application data composability
+    compute_service: Any = None  # Privacy-preserving compute-to-data
 
     # Advanced features
     negotiation_engine: Any = None
@@ -306,6 +307,10 @@ class ManagerRegistry:
     def is_composability_enabled(self) -> bool:
         """Check if composability service is available."""
         return self.composability_service is not None
+
+    def is_compute_enabled(self) -> bool:
+        """Check if compute-to-data service is available."""
+        return self.compute_service is not None
 
     def is_p2p_enabled(self) -> bool:
         """Check if P2P network is available."""

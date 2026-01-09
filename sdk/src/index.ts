@@ -48,6 +48,7 @@ import { EndowmentClient } from './clients/endowment';
 import { AnchoringClient } from './clients/anchoring';
 import { IdentityClient } from './clients/identity';
 import { ComposabilityClient } from './clients/composability';
+import { ComputeClient } from './clients/compute';
 import type { NatLangChainConfig } from './types';
 
 // Re-export all types
@@ -178,6 +179,31 @@ export type {
   ComposabilityEvent,
   ComposabilityEventsResponse,
 } from './clients/composability';
+export type {
+  DataAssetType,
+  ComputeAlgorithmType,
+  AccessLevel,
+  JobStatus,
+  PrivacyLevel,
+  ComputeEventType,
+  DataAsset,
+  ComputeAlgorithm,
+  AccessToken,
+  ComputeJob,
+  ComputeResult,
+  ComputeEvent,
+  RegisterAssetRequest,
+  UpdateAssetRequest,
+  GrantAccessRequest,
+  RegisterAlgorithmRequest,
+  SubmitJobRequest,
+  AssetsResponse,
+  AlgorithmsResponse,
+  AccessTokensResponse,
+  JobsResponse,
+  ComputeEventsResponse,
+  ComputeStatistics,
+} from './clients/compute';
 
 /**
  * NatLangChain SDK Client
@@ -410,6 +436,46 @@ export class NatLangChain {
   public readonly composability: ComposabilityClient;
 
   /**
+   * Compute operations: privacy-preserving computation on data
+   *
+   * Run algorithms on private data without exposing the underlying content.
+   * Inspired by Ocean Protocol's compute-to-data paradigm.
+   *
+   * @example
+   * ```ts
+   * // Register a data asset
+   * const asset = await client.compute.registerAsset({
+   *   asset_type: 'contract',
+   *   owner: 'did:nlc:...',
+   *   name: 'Private Contracts',
+   *   data: contractData,
+   *   privacy_level: 'aggregated'
+   * });
+   *
+   * // Grant compute access
+   * const token = await client.compute.grantAccess({
+   *   asset_id: asset.asset_id,
+   *   owner: 'did:nlc:...',
+   *   grantee: 'did:nlc:analyst...',
+   *   access_level: 'compute_only'
+   * });
+   *
+   * // Submit a compute job
+   * const job = await client.compute.submitJob({
+   *   asset_id: asset.asset_id,
+   *   algorithm_id: 'builtin_count',
+   *   access_token_id: token.token_id,
+   *   requester: 'did:nlc:analyst...',
+   *   parameters: { field: 'status', value: 'active' }
+   * });
+   *
+   * // Get privacy-filtered result
+   * const result = await client.compute.getJobResult(job.job_id, 'did:nlc:analyst...');
+   * ```
+   */
+  public readonly compute: ComputeClient;
+
+  /**
    * Create a new NatLangChain client
    *
    * @param config - Client configuration
@@ -427,6 +493,7 @@ export class NatLangChain {
     this.anchoring = new AnchoringClient(this.http);
     this.identity = new IdentityClient(this.http);
     this.composability = new ComposabilityClient(this.http);
+    this.compute = new ComputeClient(this.http);
   }
 
   /**

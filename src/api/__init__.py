@@ -31,6 +31,7 @@ from .anchoring import anchoring_bp
 from .boundary import boundary_bp
 from .chat import chat_bp
 from .composability import composability_bp
+from .compute import compute_bp
 from .contracts import contracts_bp
 from .core import core_bp
 from .derivatives import derivatives_bp
@@ -59,6 +60,7 @@ ALL_BLUEPRINTS = [
     (anchoring_bp, ""),  # External anchoring routes (/anchoring/*)
     (identity_bp, ""),  # DID identity routes (/identity/*)
     (composability_bp, ""),  # Data composability routes (/composability/*)
+    (compute_bp, ""),  # Compute-to-data routes (/compute/*)
 ]
 
 
@@ -219,3 +221,12 @@ def init_managers(api_key: str = None):
         print("Data composability service initialized")
     except Exception as e:
         print(f"Warning: Could not initialize composability service: {e}")
+
+    # Initialize compute-to-data service (privacy-preserving computation)
+    try:
+        from compute_to_data import ComputeToDataService
+
+        managers.compute_service = ComputeToDataService()
+        print("Compute-to-data service initialized")
+    except Exception as e:
+        print(f"Warning: Could not initialize compute service: {e}")
