@@ -80,6 +80,24 @@ DEFAULT_MAX_ENTRY_SIZE = 10000  # ~2500 words, sufficient for detailed contracts
 DEFAULT_MIN_ENTRY_SIZE = 20    # Minimum meaningful content
 DEFAULT_QUALITY_STRICT_MODE = False  # If True, warnings become rejections
 
+# Derivative tracking constants
+# Types of derivation relationships
+DERIVATIVE_TYPE_AMENDMENT = "amendment"      # Modifies terms of parent
+DERIVATIVE_TYPE_EXTENSION = "extension"      # Adds to parent without modifying
+DERIVATIVE_TYPE_RESPONSE = "response"        # Response to parent entry
+DERIVATIVE_TYPE_REVISION = "revision"        # Supersedes parent entirely
+DERIVATIVE_TYPE_REFERENCE = "reference"      # Simply references parent
+DERIVATIVE_TYPE_FULFILLMENT = "fulfillment"  # Fulfills/completes parent intent
+
+VALID_DERIVATIVE_TYPES = {
+    DERIVATIVE_TYPE_AMENDMENT,
+    DERIVATIVE_TYPE_EXTENSION,
+    DERIVATIVE_TYPE_RESPONSE,
+    DERIVATIVE_TYPE_REVISION,
+    DERIVATIVE_TYPE_REFERENCE,
+    DERIVATIVE_TYPE_FULFILLMENT,
+}
+
 # Import entry quality analyzer (for chain bloat prevention)
 try:
     from src.entry_quality import (
@@ -315,6 +333,325 @@ class AssetRegistry:
         registry._ownership = data.get("ownership", {})
         registry._pending_transfers = data.get("pending_transfers", {})
         registry._transfer_history = data.get("transfer_history", [])
+        return registry
+
+
+class DerivativeRegistry:
+    """
+    Registry for tracking entry derivation relationships.
+
+    Enables intent evolution tracking by maintaining a directed graph of
+    parent-child relationships between entries. This allows:
+    1. Tracking how intents evolve over time (amendments, revisions)
+    2. Finding all derivatives of a given entry
+    3. Tracing the full lineage/ancestry of an entry
+    4. Understanding the complete derivation tree
+    """
+
+    def __init__(self):
+        """Initialize the derivative registry."""
+        # Forward references: parent -> list of children
+        # Key: "block_index:entry_index", Value: list of child refs
+        self._derivatives: dict[str, list[dict[str, Any]]] = {}
+
+        # Reverse references: child -> list of parents
+        # Key: "block_index:entry_index", Value: list of parent refs
+        self._parents: dict[str, list[dict[str, Any]]] = {}
+
+        # Entry metadata cache for quick lookups
+        self._entry_cache: dict[str, dict[str, Any]] = {}
+
+    @staticmethod
+    def _make_ref_key(block_index: int, entry_index: int) -> str:
+        """Create a unique key for an entry reference."""
+        return f"{block_index}:{entry_index}"
+
+    @staticmethod
+    def _parse_ref_key(key: str) -> tuple[int, int]:
+        """Parse a reference key into block and entry indices."""
+        parts = key.split(":")
+        return int(parts[0]), int(parts[1])
+
+    def register_derivative(
+        self,
+        child_block: int,
+        child_entry: int,
+        parent_refs: list[dict[str, Any]],
+        derivative_type: str,
+        child_metadata: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        """
+        Register a derivative relationship between entries.
+
+        Args:
+            child_block: Block index of the derivative entry
+            child_entry: Entry index of the derivative entry
+            parent_refs: List of parent references, each containing:
+                        - block_index: Parent block index
+                        - entry_index: Parent entry index
+                        - relationship: Optional specific relationship type
+            derivative_type: Type of derivation (amendment, extension, etc.)
+            child_metadata: Optional metadata about the child entry
+
+        Returns:
+            Dict with registration result
+        """
+        if derivative_type not in VALID_DERIVATIVE_TYPES:
+            return {
+                "success": False,
+                "reason": "invalid_derivative_type",
+                "message": f"Invalid derivative type: {derivative_type}",
+                "valid_types": list(VALID_DERIVATIVE_TYPES)
+            }
+
+        child_key = self._make_ref_key(child_block, child_entry)
+
+        # Store parent references for the child
+        parent_entries = []
+        for parent_ref in parent_refs:
+            parent_block = parent_ref.get("block_index")
+            parent_entry = parent_ref.get("entry_index")
+
+            if parent_block is None or parent_entry is None:
+                continue
+
+            parent_key = self._make_ref_key(parent_block, parent_entry)
+            relationship = parent_ref.get("relationship", derivative_type)
+
+            parent_entry_data = {
+                "block_index": parent_block,
+                "entry_index": parent_entry,
+                "relationship": relationship
+            }
+            parent_entries.append(parent_entry_data)
+
+            # Add to forward references (parent -> children)
+            if parent_key not in self._derivatives:
+                self._derivatives[parent_key] = []
+
+            child_entry_data = {
+                "block_index": child_block,
+                "entry_index": child_entry,
+                "derivative_type": derivative_type,
+                "relationship": relationship,
+                "registered_at": time.time()
+            }
+            self._derivatives[parent_key].append(child_entry_data)
+
+        # Store reverse references (child -> parents)
+        self._parents[child_key] = parent_entries
+
+        # Cache child metadata
+        if child_metadata:
+            self._entry_cache[child_key] = child_metadata
+
+        return {
+            "success": True,
+            "message": f"Registered derivative at {child_key}",
+            "child_ref": {"block_index": child_block, "entry_index": child_entry},
+            "parent_count": len(parent_entries),
+            "derivative_type": derivative_type
+        }
+
+    def get_derivatives(
+        self,
+        block_index: int,
+        entry_index: int,
+        recursive: bool = False,
+        max_depth: int = 10
+    ) -> list[dict[str, Any]]:
+        """
+        Get all direct derivatives of an entry.
+
+        Args:
+            block_index: Block index of the parent entry
+            entry_index: Entry index of the parent entry
+            recursive: If True, get all descendants recursively
+            max_depth: Maximum recursion depth (prevents infinite loops)
+
+        Returns:
+            List of derivative entry references
+        """
+        key = self._make_ref_key(block_index, entry_index)
+
+        if not recursive:
+            return self._derivatives.get(key, []).copy()
+
+        # Recursive traversal with depth limiting
+        visited = set()
+        result = []
+
+        def traverse(current_key: str, depth: int):
+            if depth > max_depth or current_key in visited:
+                return
+            visited.add(current_key)
+
+            children = self._derivatives.get(current_key, [])
+            for child in children:
+                child_with_depth = {**child, "depth": depth}
+                result.append(child_with_depth)
+                child_key = self._make_ref_key(
+                    child["block_index"],
+                    child["entry_index"]
+                )
+                traverse(child_key, depth + 1)
+
+        traverse(key, 1)
+        return result
+
+    def get_parents(
+        self,
+        block_index: int,
+        entry_index: int
+    ) -> list[dict[str, Any]]:
+        """
+        Get the direct parent entries of a derivative.
+
+        Args:
+            block_index: Block index of the derivative entry
+            entry_index: Entry index of the derivative entry
+
+        Returns:
+            List of parent entry references
+        """
+        key = self._make_ref_key(block_index, entry_index)
+        return self._parents.get(key, []).copy()
+
+    def get_lineage(
+        self,
+        block_index: int,
+        entry_index: int,
+        max_depth: int = 10
+    ) -> list[dict[str, Any]]:
+        """
+        Get the full ancestry/lineage of an entry.
+
+        Traces back through all parent relationships to find
+        the original root entries.
+
+        Args:
+            block_index: Block index of the entry
+            entry_index: Entry index of the entry
+            max_depth: Maximum traversal depth
+
+        Returns:
+            List of ancestor entries with depth information
+        """
+        visited = set()
+        result = []
+
+        def traverse(current_key: str, depth: int):
+            if depth > max_depth or current_key in visited:
+                return
+            visited.add(current_key)
+
+            parents = self._parents.get(current_key, [])
+            for parent in parents:
+                parent_with_depth = {**parent, "depth": depth}
+                result.append(parent_with_depth)
+                parent_key = self._make_ref_key(
+                    parent["block_index"],
+                    parent["entry_index"]
+                )
+                traverse(parent_key, depth + 1)
+
+        key = self._make_ref_key(block_index, entry_index)
+        traverse(key, 1)
+        return result
+
+    def get_roots(
+        self,
+        block_index: int,
+        entry_index: int,
+        max_depth: int = 10
+    ) -> list[dict[str, Any]]:
+        """
+        Get the root entries (entries with no parents) in the lineage.
+
+        Args:
+            block_index: Block index of the entry
+            entry_index: Entry index of the entry
+            max_depth: Maximum traversal depth
+
+        Returns:
+            List of root entry references
+        """
+        lineage = self.get_lineage(block_index, entry_index, max_depth)
+
+        if not lineage:
+            # This entry itself is a root
+            return [{"block_index": block_index, "entry_index": entry_index}]
+
+        roots = []
+        for ancestor in lineage:
+            ancestor_key = self._make_ref_key(
+                ancestor["block_index"],
+                ancestor["entry_index"]
+            )
+            if not self._parents.get(ancestor_key):
+                roots.append({
+                    "block_index": ancestor["block_index"],
+                    "entry_index": ancestor["entry_index"]
+                })
+
+        return roots if roots else [{"block_index": block_index, "entry_index": entry_index}]
+
+    def get_derivation_tree(
+        self,
+        block_index: int,
+        entry_index: int,
+        max_depth: int = 10
+    ) -> dict[str, Any]:
+        """
+        Get the complete derivation tree for an entry.
+
+        Returns both ancestors and descendants in a tree structure.
+
+        Args:
+            block_index: Block index of the entry
+            entry_index: Entry index of the entry
+            max_depth: Maximum traversal depth in each direction
+
+        Returns:
+            Dict containing the full derivation tree
+        """
+        return {
+            "entry": {
+                "block_index": block_index,
+                "entry_index": entry_index
+            },
+            "parents": self.get_parents(block_index, entry_index),
+            "lineage": self.get_lineage(block_index, entry_index, max_depth),
+            "roots": self.get_roots(block_index, entry_index, max_depth),
+            "derivatives": self.get_derivatives(block_index, entry_index, recursive=False),
+            "all_descendants": self.get_derivatives(block_index, entry_index, recursive=True, max_depth=max_depth)
+        }
+
+    def has_derivatives(self, block_index: int, entry_index: int) -> bool:
+        """Check if an entry has any derivatives."""
+        key = self._make_ref_key(block_index, entry_index)
+        return bool(self._derivatives.get(key))
+
+    def is_derivative(self, block_index: int, entry_index: int) -> bool:
+        """Check if an entry is a derivative of another entry."""
+        key = self._make_ref_key(block_index, entry_index)
+        return bool(self._parents.get(key))
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize the registry."""
+        return {
+            "derivatives": {k: v.copy() for k, v in self._derivatives.items()},
+            "parents": {k: v.copy() for k, v in self._parents.items()},
+            "entry_cache": {k: v.copy() for k, v in self._entry_cache.items()}
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> 'DerivativeRegistry':
+        """Deserialize the registry."""
+        registry = cls()
+        registry._derivatives = data.get("derivatives", {})
+        registry._parents = data.get("parents", {})
+        registry._entry_cache = data.get("entry_cache", {})
         return registry
 
 
@@ -703,6 +1040,10 @@ class NaturalLanguageEntry:
     """
     A natural language entry in the blockchain.
     The core innovation: prose as the primary substrate.
+
+    Supports derivative tracking for intent evolution:
+    - parent_refs: References to parent entries this derives from
+    - derivative_type: Type of derivation relationship
     """
 
     def __init__(
@@ -710,7 +1051,9 @@ class NaturalLanguageEntry:
         content: str,
         author: str,
         intent: str,
-        metadata: dict[str, Any] | None = None
+        metadata: dict[str, Any] | None = None,
+        parent_refs: list[dict[str, Any]] | None = None,
+        derivative_type: str | None = None
     ):
         """
         Create a natural language entry.
@@ -720,6 +1063,11 @@ class NaturalLanguageEntry:
             author: Identifier of the entry creator
             intent: Brief summary of the entry's purpose
             metadata: Optional additional structured data
+            parent_refs: Optional list of parent entry references for derivatives.
+                        Each ref contains: block_index, entry_index, relationship (optional)
+            derivative_type: Type of derivation if this is a derivative entry.
+                           Valid types: amendment, extension, response, revision,
+                           reference, fulfillment
         """
         self.content = content
         self.author = author
@@ -729,9 +1077,17 @@ class NaturalLanguageEntry:
         self.validation_status = "pending"
         self.validation_paraphrases = []
 
+        # Derivative tracking fields
+        self.parent_refs = parent_refs or []
+        self.derivative_type = derivative_type
+
+    def is_derivative(self) -> bool:
+        """Check if this entry is a derivative of another entry."""
+        return bool(self.parent_refs)
+
     def to_dict(self) -> dict[str, Any]:
         """Convert entry to dictionary for serialization."""
-        return {
+        result = {
             "content": self.content,
             "author": self.author,
             "intent": self.intent,
@@ -741,6 +1097,14 @@ class NaturalLanguageEntry:
             "validation_paraphrases": self.validation_paraphrases
         }
 
+        # Include derivative fields if present
+        if self.parent_refs:
+            result["parent_refs"] = self.parent_refs
+        if self.derivative_type:
+            result["derivative_type"] = self.derivative_type
+
+        return result
+
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> 'NaturalLanguageEntry':
         """Create entry from dictionary."""
@@ -748,7 +1112,9 @@ class NaturalLanguageEntry:
             content=data["content"],
             author=data["author"],
             intent=data["intent"],
-            metadata=data.get("metadata", {})
+            metadata=data.get("metadata", {}),
+            parent_refs=data.get("parent_refs", []),
+            derivative_type=data.get("derivative_type")
         )
         entry.timestamp = data.get("timestamp", entry.timestamp)
         entry.validation_status = data.get("validation_status", "pending")
@@ -854,7 +1220,9 @@ class NatLangChain:
         enable_quality_checks: bool = True,
         max_entry_size: int = DEFAULT_MAX_ENTRY_SIZE,
         min_entry_size: int = DEFAULT_MIN_ENTRY_SIZE,
-        quality_strict_mode: bool = DEFAULT_QUALITY_STRICT_MODE
+        quality_strict_mode: bool = DEFAULT_QUALITY_STRICT_MODE,
+        enable_derivative_tracking: bool = True,
+        derivative_registry: DerivativeRegistry | None = None
     ):
         """
         Initialize the blockchain with genesis block.
@@ -896,6 +1264,10 @@ class NatLangChain:
             max_entry_size: Maximum entry size in characters (default 10000).
             min_entry_size: Minimum entry size in characters (default 20).
             quality_strict_mode: If True, quality warnings become rejections.
+            enable_derivative_tracking: If True, track entry derivation relationships.
+                                       Default is True to enable intent evolution tracking.
+            derivative_registry: Optional pre-configured DerivativeRegistry instance.
+                                If None and enable_derivative_tracking is True, a new registry is created.
         """
         self.chain: list[Block] = []
         self.pending_entries: list[NaturalLanguageEntry] = []
@@ -935,6 +1307,12 @@ class NatLangChain:
         self.quality_strict_mode = quality_strict_mode
         self._quality_analyzer = self._init_quality_analyzer(
             enable_quality_checks, max_entry_size, min_entry_size, quality_strict_mode
+        )
+
+        # Initialize derivative tracking
+        self.enable_derivative_tracking = enable_derivative_tracking
+        self._derivative_registry = self._init_derivative_registry(
+            enable_derivative_tracking, derivative_registry
         )
 
         self.create_genesis_block()
@@ -980,6 +1358,16 @@ class NatLangChain:
             min_size=min_size,
             strict_mode=strict_mode
         )
+
+    def _init_derivative_registry(
+        self,
+        enabled: bool,
+        registry: DerivativeRegistry | None
+    ) -> DerivativeRegistry | None:
+        """Initialize derivative registry for intent evolution tracking."""
+        if registry:
+            return registry
+        return DerivativeRegistry() if enabled else None
 
     def create_genesis_block(self):
         """Create the first block in the chain."""
@@ -1658,6 +2046,23 @@ class NatLangChain:
                         fingerprint=fingerprint
                     )
 
+        # Register derivative relationships for mined entries
+        if self.enable_derivative_tracking and self._derivative_registry is not None:
+            block_index = new_block.index
+            for entry_index, entry in enumerate(self.pending_entries):
+                if entry.is_derivative() and entry.parent_refs:
+                    self._derivative_registry.register_derivative(
+                        child_block=block_index,
+                        child_entry=entry_index,
+                        parent_refs=entry.parent_refs,
+                        derivative_type=entry.derivative_type or DERIVATIVE_TYPE_REFERENCE,
+                        child_metadata={
+                            "author": entry.author,
+                            "intent": entry.intent,
+                            "timestamp": entry.timestamp
+                        }
+                    )
+
         self.pending_entries = []
 
         return new_block
@@ -1725,6 +2130,194 @@ class NatLangChain:
                     })
         return entries
 
+    # =========================================================================
+    # Derivative Tracking Methods
+    # =========================================================================
+
+    def get_derivatives(
+        self,
+        block_index: int,
+        entry_index: int,
+        recursive: bool = False,
+        max_depth: int = 10,
+        include_entries: bool = False
+    ) -> dict[str, Any]:
+        """
+        Get all derivatives of a specific entry.
+
+        Args:
+            block_index: Block containing the parent entry
+            entry_index: Index of the parent entry within the block
+            recursive: If True, get all descendants recursively
+            max_depth: Maximum recursion depth
+            include_entries: If True, include full entry data
+
+        Returns:
+            Dict with derivative information
+        """
+        if not self.enable_derivative_tracking or not self._derivative_registry:
+            return {
+                "error": "Derivative tracking not enabled",
+                "derivatives": []
+            }
+
+        derivatives = self._derivative_registry.get_derivatives(
+            block_index, entry_index, recursive=recursive, max_depth=max_depth
+        )
+
+        # Optionally include full entry data
+        if include_entries:
+            for deriv in derivatives:
+                entry = self._get_entry_at(deriv["block_index"], deriv["entry_index"])
+                if entry:
+                    deriv["entry"] = entry.to_dict()
+
+        return {
+            "parent": {"block_index": block_index, "entry_index": entry_index},
+            "derivative_count": len(derivatives),
+            "recursive": recursive,
+            "derivatives": derivatives
+        }
+
+    def get_lineage(
+        self,
+        block_index: int,
+        entry_index: int,
+        max_depth: int = 10,
+        include_entries: bool = False
+    ) -> dict[str, Any]:
+        """
+        Get the full ancestry/lineage of an entry.
+
+        Args:
+            block_index: Block containing the entry
+            entry_index: Index of the entry within the block
+            max_depth: Maximum traversal depth
+            include_entries: If True, include full entry data
+
+        Returns:
+            Dict with lineage information
+        """
+        if not self.enable_derivative_tracking or not self._derivative_registry:
+            return {
+                "error": "Derivative tracking not enabled",
+                "lineage": []
+            }
+
+        lineage = self._derivative_registry.get_lineage(
+            block_index, entry_index, max_depth=max_depth
+        )
+        roots = self._derivative_registry.get_roots(
+            block_index, entry_index, max_depth=max_depth
+        )
+
+        # Optionally include full entry data
+        if include_entries:
+            for ancestor in lineage:
+                entry = self._get_entry_at(ancestor["block_index"], ancestor["entry_index"])
+                if entry:
+                    ancestor["entry"] = entry.to_dict()
+            for root in roots:
+                entry = self._get_entry_at(root["block_index"], root["entry_index"])
+                if entry:
+                    root["entry"] = entry.to_dict()
+
+        return {
+            "entry": {"block_index": block_index, "entry_index": entry_index},
+            "ancestor_count": len(lineage),
+            "lineage": lineage,
+            "roots": roots
+        }
+
+    def get_derivation_tree(
+        self,
+        block_index: int,
+        entry_index: int,
+        max_depth: int = 10,
+        include_entries: bool = False
+    ) -> dict[str, Any]:
+        """
+        Get the complete derivation tree for an entry.
+
+        Returns both ancestors and descendants in a tree structure.
+
+        Args:
+            block_index: Block containing the entry
+            entry_index: Index of the entry within the block
+            max_depth: Maximum traversal depth in each direction
+            include_entries: If True, include full entry data
+
+        Returns:
+            Dict containing the full derivation tree
+        """
+        if not self.enable_derivative_tracking or not self._derivative_registry:
+            return {
+                "error": "Derivative tracking not enabled",
+                "tree": {}
+            }
+
+        tree = self._derivative_registry.get_derivation_tree(
+            block_index, entry_index, max_depth=max_depth
+        )
+
+        # Optionally include full entry data
+        if include_entries:
+            # Include entry data for the target
+            entry = self._get_entry_at(block_index, entry_index)
+            if entry:
+                tree["entry"]["data"] = entry.to_dict()
+
+            # Include entry data for parents
+            for parent in tree.get("parents", []):
+                parent_entry = self._get_entry_at(parent["block_index"], parent["entry_index"])
+                if parent_entry:
+                    parent["entry"] = parent_entry.to_dict()
+
+            # Include entry data for lineage
+            for ancestor in tree.get("lineage", []):
+                ancestor_entry = self._get_entry_at(ancestor["block_index"], ancestor["entry_index"])
+                if ancestor_entry:
+                    ancestor["entry"] = ancestor_entry.to_dict()
+
+            # Include entry data for derivatives
+            for deriv in tree.get("derivatives", []):
+                deriv_entry = self._get_entry_at(deriv["block_index"], deriv["entry_index"])
+                if deriv_entry:
+                    deriv["entry"] = deriv_entry.to_dict()
+
+            # Include entry data for all descendants
+            for desc in tree.get("all_descendants", []):
+                desc_entry = self._get_entry_at(desc["block_index"], desc["entry_index"])
+                if desc_entry:
+                    desc["entry"] = desc_entry.to_dict()
+
+        return tree
+
+    def _get_entry_at(
+        self,
+        block_index: int,
+        entry_index: int
+    ) -> NaturalLanguageEntry | None:
+        """Get an entry at a specific block and entry index."""
+        if block_index < 0 or block_index >= len(self.chain):
+            return None
+        block = self.chain[block_index]
+        if entry_index < 0 or entry_index >= len(block.entries):
+            return None
+        return block.entries[entry_index]
+
+    def is_derivative(self, block_index: int, entry_index: int) -> bool:
+        """Check if an entry is a derivative of another entry."""
+        if not self.enable_derivative_tracking or not self._derivative_registry:
+            return False
+        return self._derivative_registry.is_derivative(block_index, entry_index)
+
+    def has_derivatives(self, block_index: int, entry_index: int) -> bool:
+        """Check if an entry has any derivatives."""
+        if not self.enable_derivative_tracking or not self._derivative_registry:
+            return False
+        return self._derivative_registry.has_derivatives(block_index, entry_index)
+
     def get_full_narrative(self) -> str:
         """
         Get the full narrative of the blockchain as readable text.
@@ -1759,10 +2352,16 @@ class NatLangChain:
 
     def to_dict(self) -> dict[str, Any]:
         """Export the entire chain as dictionary."""
-        return {
+        result = {
             "chain": [block.to_dict() for block in self.chain],
             "pending_entries": [entry.to_dict() for entry in self.pending_entries]
         }
+
+        # Include derivative registry if enabled
+        if self.enable_derivative_tracking and self._derivative_registry:
+            result["derivative_registry"] = self._derivative_registry.to_dict()
+
+        return result
 
     @classmethod
     def from_dict(
@@ -1783,7 +2382,9 @@ class NatLangChain:
         metadata_sanitize_mode: str = DEFAULT_SANITIZE_MODE,
         forbidden_metadata_fields: set | None = None,
         enable_asset_tracking: bool = True,
-        asset_registry: AssetRegistry | None = None
+        asset_registry: AssetRegistry | None = None,
+        enable_derivative_tracking: bool = True,
+        derivative_registry: DerivativeRegistry | None = None
     ) -> 'NatLangChain':
         """
         Import chain from dictionary.
@@ -1807,6 +2408,8 @@ class NatLangChain:
             forbidden_metadata_fields: Custom set of forbidden field names.
             enable_asset_tracking: Whether to track asset ownership.
             asset_registry: Optional pre-configured AssetRegistry instance.
+            enable_derivative_tracking: Whether to track entry derivations.
+            derivative_registry: Optional pre-configured DerivativeRegistry instance.
         """
         chain = cls.__new__(cls)
         chain.chain = [Block.from_dict(b) for b in data["chain"]]
@@ -1837,4 +2440,16 @@ class NatLangChain:
         chain._asset_registry = asset_registry if asset_registry else (
             AssetRegistry() if enable_asset_tracking else None
         )
+
+        # Initialize derivative tracking
+        chain.enable_derivative_tracking = enable_derivative_tracking
+        if derivative_registry:
+            chain._derivative_registry = derivative_registry
+        elif "derivative_registry" in data and enable_derivative_tracking:
+            chain._derivative_registry = DerivativeRegistry.from_dict(
+                data["derivative_registry"]
+            )
+        else:
+            chain._derivative_registry = DerivativeRegistry() if enable_derivative_tracking else None
+
         return chain

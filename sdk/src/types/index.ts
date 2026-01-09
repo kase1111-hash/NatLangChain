@@ -8,6 +8,13 @@
 // Core Types
 // ============================================================================
 
+/** Parent reference for derivative entries */
+export interface EntryParentRef {
+  block_index: number;
+  entry_index: number;
+  relationship?: string;
+}
+
 /** Natural language entry - the fundamental unit of NatLangChain */
 export interface Entry {
   content: string;
@@ -17,6 +24,10 @@ export interface Entry {
   metadata: Record<string, unknown>;
   validation_status: ValidationStatus;
   validation_paraphrases: string[];
+  /** Parent references if this is a derivative entry */
+  parent_refs?: EntryParentRef[];
+  /** Type of derivation if this is a derivative entry */
+  derivative_type?: 'amendment' | 'extension' | 'response' | 'revision' | 'reference' | 'fulfillment';
 }
 
 /** Block containing entries */
@@ -55,6 +66,10 @@ export interface CreateEntryRequest {
   auto_mine?: boolean;
   validation_mode?: ValidationMode;
   multi_validator?: boolean;
+  /** Parent references if creating a derivative entry */
+  parent_refs?: EntryParentRef[];
+  /** Type of derivation if creating a derivative entry */
+  derivative_type?: 'amendment' | 'extension' | 'response' | 'revision' | 'reference' | 'fulfillment';
 }
 
 /** Request to validate an entry without submitting */
