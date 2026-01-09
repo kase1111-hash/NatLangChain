@@ -259,6 +259,7 @@ class ManagerRegistry:
     observance_burn_manager: Any = None
     anti_harassment_manager: Any = None
     treasury: Any = None
+    permanence_endowment: Any = None  # Pay-once-store-forever system
 
     # Authentication and privacy
     fido2_manager: Any = None
@@ -286,6 +287,10 @@ class ManagerRegistry:
     def is_economic_enabled(self) -> bool:
         """Check if economic features (burn, treasury) are available."""
         return self.treasury is not None
+
+    def is_permanence_enabled(self) -> bool:
+        """Check if permanence endowment is available."""
+        return self.permanence_endowment is not None
 
     def is_p2p_enabled(self) -> bool:
         """Check if P2P network is available."""

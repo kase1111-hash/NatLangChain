@@ -32,6 +32,7 @@ from .chat import chat_bp
 from .contracts import contracts_bp
 from .core import core_bp
 from .derivatives import derivatives_bp
+from .endowment import endowment_bp
 from .help import help_bp
 from .marketplace import marketplace_bp
 from .mobile import mobile_bp
@@ -51,6 +52,7 @@ ALL_BLUEPRINTS = [
     (chat_bp, ""),  # Chat routes (/chat/*)
     (contracts_bp, ""),  # Contract routes (/contract/*)
     (derivatives_bp, ""),  # Derivative tracking routes (/derivatives/*)
+    (endowment_bp, ""),  # Permanence endowment routes (/endowment/*)
 ]
 
 
@@ -175,3 +177,12 @@ def init_managers(api_key: str = None):
         print("Marketplace initialized with RRA-Module registered")
     except Exception as e:
         print(f"Warning: Could not initialize marketplace: {e}")
+
+    # Initialize permanence endowment (Arweave-inspired pay-once-store-forever)
+    try:
+        from permanence_endowment import PermanenceEndowment
+
+        managers.permanence_endowment = PermanenceEndowment()
+        print("Permanence endowment initialized")
+    except Exception as e:
+        print(f"Warning: Could not initialize permanence endowment: {e}")

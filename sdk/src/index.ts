@@ -44,6 +44,7 @@ import { ContractsClient } from './clients/contracts';
 import { DisputesClient } from './clients/disputes';
 import { SettlementsClient } from './clients/settlements';
 import { DerivativesClient } from './clients/derivatives';
+import { EndowmentClient } from './clients/endowment';
 import type { NatLangChainConfig } from './types';
 
 // Re-export all types
@@ -209,6 +210,28 @@ export class NatLangChain {
   public readonly derivatives: DerivativesClient;
 
   /**
+   * Endowment operations: permanence guarantees, yield management
+   *
+   * Pay-once-store-forever system inspired by Arweave.
+   *
+   * @example
+   * ```ts
+   * // Calculate permanence fee
+   * const fee = await client.endowment.calculateFee(2048);
+   *
+   * // Create permanence guarantee
+   * await client.endowment.createGuarantee(entryHash, 2048, fee.total_fee, 'alice');
+   *
+   * // Get pool status
+   * const status = await client.endowment.getPoolStatus();
+   *
+   * // Get sustainability report
+   * const report = await client.endowment.getSustainabilityReport();
+   * ```
+   */
+  public readonly endowment: EndowmentClient;
+
+  /**
    * Create a new NatLangChain client
    *
    * @param config - Client configuration
@@ -222,6 +245,7 @@ export class NatLangChain {
     this.disputes = new DisputesClient(this.http);
     this.settlements = new SettlementsClient(this.http);
     this.derivatives = new DerivativesClient(this.http);
+    this.endowment = new EndowmentClient(this.http);
   }
 
   /**
