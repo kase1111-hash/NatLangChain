@@ -260,6 +260,7 @@ class ManagerRegistry:
     anti_harassment_manager: Any = None
     treasury: Any = None
     permanence_endowment: Any = None  # Pay-once-store-forever system
+    anchoring_service: Any = None  # External blockchain anchoring
 
     # Authentication and privacy
     fido2_manager: Any = None
@@ -291,6 +292,10 @@ class ManagerRegistry:
     def is_permanence_enabled(self) -> bool:
         """Check if permanence endowment is available."""
         return self.permanence_endowment is not None
+
+    def is_anchoring_enabled(self) -> bool:
+        """Check if external anchoring is available."""
+        return self.anchoring_service is not None
 
     def is_p2p_enabled(self) -> bool:
         """Check if P2P network is available."""

@@ -45,6 +45,7 @@ import { DisputesClient } from './clients/disputes';
 import { SettlementsClient } from './clients/settlements';
 import { DerivativesClient } from './clients/derivatives';
 import { EndowmentClient } from './clients/endowment';
+import { AnchoringClient } from './clients/anchoring';
 import type { NatLangChainConfig } from './types';
 
 // Re-export all types
@@ -81,6 +82,27 @@ export type {
   GetDerivativesOptions,
   GetLineageOptions,
 } from './clients/derivatives';
+export type {
+  AnchorChain,
+  AnchorBatchStatus,
+  QueueEntryRequest,
+  QueueBlockRequest,
+  CreateAnchorRequest,
+  VerifyProofRequest,
+  QueueResult,
+  QueueStatus,
+  MerkleProof,
+  AnchorBatch,
+  AnchorResult,
+  VerifyProofResult,
+  LegalProof,
+  ChainCostEstimate,
+  CostEstimation,
+  AnchoringStatistics,
+  AnchorProvider,
+  AnchoringEvent,
+  EventsResponse,
+} from './clients/anchoring';
 
 /**
  * NatLangChain SDK Client
@@ -232,6 +254,29 @@ export class NatLangChain {
   public readonly endowment: EndowmentClient;
 
   /**
+   * Anchoring operations: external blockchain anchoring
+   *
+   * Anchor NatLangChain entries to external blockchains (Ethereum, Arweave)
+   * for independent verification and legal proof generation.
+   *
+   * @example
+   * ```ts
+   * // Queue entry for anchoring
+   * await client.anchoring.queueEntry({ entry_hash: 'abc123...' });
+   *
+   * // Create anchor batch
+   * const anchor = await client.anchoring.createAnchor({ chain: 'ethereum_mainnet' });
+   *
+   * // Get proof for entry
+   * const proof = await client.anchoring.getProof('abc123...');
+   *
+   * // Generate legal proof document
+   * const legal = await client.anchoring.getLegalProof('abc123...');
+   * ```
+   */
+  public readonly anchoring: AnchoringClient;
+
+  /**
    * Create a new NatLangChain client
    *
    * @param config - Client configuration
@@ -246,6 +291,7 @@ export class NatLangChain {
     this.settlements = new SettlementsClient(this.http);
     this.derivatives = new DerivativesClient(this.http);
     this.endowment = new EndowmentClient(this.http);
+    this.anchoring = new AnchoringClient(this.http);
   }
 
   /**

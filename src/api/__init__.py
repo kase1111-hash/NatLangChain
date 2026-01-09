@@ -27,6 +27,7 @@ Future blueprints (to be extracted from api.py):
 - p2p: Peer-to-peer network operations
 """
 
+from .anchoring import anchoring_bp
 from .boundary import boundary_bp
 from .chat import chat_bp
 from .contracts import contracts_bp
@@ -53,6 +54,7 @@ ALL_BLUEPRINTS = [
     (contracts_bp, ""),  # Contract routes (/contract/*)
     (derivatives_bp, ""),  # Derivative tracking routes (/derivatives/*)
     (endowment_bp, ""),  # Permanence endowment routes (/endowment/*)
+    (anchoring_bp, ""),  # External anchoring routes (/anchoring/*)
 ]
 
 
@@ -186,3 +188,12 @@ def init_managers(api_key: str = None):
         print("Permanence endowment initialized")
     except Exception as e:
         print(f"Warning: Could not initialize permanence endowment: {e}")
+
+    # Initialize external anchoring service (Ethereum/Arweave anchoring)
+    try:
+        from external_anchoring import ExternalAnchoringService
+
+        managers.anchoring_service = ExternalAnchoringService()
+        print("External anchoring service initialized")
+    except Exception as e:
+        print(f"Warning: Could not initialize external anchoring: {e}")
