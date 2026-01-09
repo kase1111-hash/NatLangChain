@@ -27,6 +27,7 @@ The API is organized into modular Flask blueprints in `src/api/`:
 | `help` | `/api/help` | Governance documentation |
 | `chat` | `/chat` | Ollama LLM chat assistant |
 | `contracts` | `/contract` | Live contract management |
+| `derivatives` | `/derivatives` | Intent evolution tracking |
 
 See `ARCHITECTURE.md` for detailed module documentation.
 
@@ -965,18 +966,19 @@ This section provides a comprehensive reference for all **212+ API endpoints** o
 4. [Dialectic Validation](#dialectic-validation-endpoints)
 5. [Semantic Oracle](#semantic-oracle-endpoints)
 6. [Live Contracts](#live-contract-endpoints)
-7. [Dispute Resolution](#dispute-resolution-endpoints)
-8. [Escalation Forks](#escalation-fork-endpoints)
-9. [Observance Burn](#observance-burn-endpoints)
-10. [Anti-Harassment](#anti-harassment-endpoints)
-11. [Treasury](#treasury-endpoints)
-12. [FIDO2 Authentication](#fido2-authentication-endpoints)
-13. [ZK Privacy](#zk-privacy-endpoints)
-14. [Negotiation Engine](#negotiation-engine-endpoints)
-15. [Market Pricing](#market-pricing-endpoints)
-16. [Mobile Deployment](#mobile-deployment-endpoints)
-17. [P2P Network](#p2p-network-endpoints)
-18. [Help & Documentation](#help-documentation-endpoints)
+7. [Derivatives (Intent Evolution)](#derivatives-endpoints)
+8. [Dispute Resolution](#dispute-resolution-endpoints)
+9. [Escalation Forks](#escalation-fork-endpoints)
+10. [Observance Burn](#observance-burn-endpoints)
+11. [Anti-Harassment](#anti-harassment-endpoints)
+12. [Treasury](#treasury-endpoints)
+13. [FIDO2 Authentication](#fido2-authentication-endpoints)
+14. [ZK Privacy](#zk-privacy-endpoints)
+15. [Negotiation Engine](#negotiation-engine-endpoints)
+16. [Market Pricing](#market-pricing-endpoints)
+17. [Mobile Deployment](#mobile-deployment-endpoints)
+18. [P2P Network](#p2p-network-endpoints)
+19. [Help & Documentation](#help-documentation-endpoints)
 
 ---
 
@@ -1064,6 +1066,204 @@ Self-seeking live contracts with AI-mediated matching. These endpoints are serve
 **Contract Statuses:** `open`, `matched`, `negotiating`, `closed`, `cancelled`
 
 **Required:** `ANTHROPIC_API_KEY` environment variable for contract parsing features.
+
+---
+
+### Derivatives Endpoints
+
+Track intent evolution over time with derivative relationships between entries. Served by the `api/derivatives.py` blueprint.
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/derivatives/types` | Get all valid derivative types |
+| GET | `/derivatives/<block>/<entry>` | Get derivatives of an entry |
+| GET | `/derivatives/<block>/<entry>/lineage` | Get ancestry/lineage to root entries |
+| GET | `/derivatives/<block>/<entry>/tree` | Get complete derivation tree |
+| GET | `/derivatives/<block>/<entry>/status` | Check derivative status |
+| POST | `/derivatives/validate` | Validate parent refs before creation |
+
+#### Derivative Types
+
+| Type | Description |
+|------|-------------|
+| `amendment` | Modifies terms of parent entry |
+| `extension` | Adds to parent without modifying |
+| `response` | Response to parent entry |
+| `revision` | Supersedes parent entirely |
+| `reference` | Simply references parent |
+| `fulfillment` | Fulfills/completes parent intent |
+
+#### `GET /derivatives/types`
+
+Get all valid derivative types.
+
+**Response:**
+```json
+{
+  "types": ["amendment", "extension", "response", "revision", "reference", "fulfillment"],
+  "descriptions": {
+    "amendment": "Modifies terms of parent entry",
+    "extension": "Adds to parent without modifying",
+    "response": "Response to parent entry",
+    "revision": "Supersedes parent entirely",
+    "reference": "Simply references parent",
+    "fulfillment": "Fulfills/completes parent intent"
+  }
+}
+```
+
+#### `GET /derivatives/<block_index>/<entry_index>`
+
+Get all derivatives of a specific entry.
+
+**Query Parameters:**
+- `recursive`: If `true`, get all descendants recursively (default: `false`)
+- `max_depth`: Maximum recursion depth (default: `10`, max: `50`)
+- `include_entries`: If `true`, include full entry data (default: `false`)
+
+**Example:**
+```bash
+curl "http://localhost:5000/derivatives/5/2?recursive=true&max_depth=5"
+```
+
+**Response:**
+```json
+{
+  "parent": {
+    "block_index": 5,
+    "entry_index": 2
+  },
+  "derivatives": [
+    {
+      "block_index": 6,
+      "entry_index": 0,
+      "derivative_type": "amendment",
+      "author": "alice@example.com"
+    },
+    {
+      "block_index": 7,
+      "entry_index": 1,
+      "derivative_type": "fulfillment",
+      "author": "bob@example.com"
+    }
+  ],
+  "count": 2
+}
+```
+
+#### `GET /derivatives/<block_index>/<entry_index>/lineage`
+
+Get the full ancestry/lineage of an entry back to root entries.
+
+**Query Parameters:**
+- `max_depth`: Maximum traversal depth (default: `10`, max: `50`)
+- `include_entries`: If `true`, include full entry data (default: `false`)
+
+**Response:**
+```json
+{
+  "entry": {
+    "block_index": 8,
+    "entry_index": 0
+  },
+  "lineage": [
+    {
+      "block_index": 5,
+      "entry_index": 2,
+      "derivative_type": "amendment",
+      "depth": 1
+    },
+    {
+      "block_index": 3,
+      "entry_index": 0,
+      "derivative_type": null,
+      "depth": 2
+    }
+  ],
+  "roots": [
+    {
+      "block_index": 3,
+      "entry_index": 0
+    }
+  ],
+  "depth": 2
+}
+```
+
+#### `GET /derivatives/<block_index>/<entry_index>/tree`
+
+Get the complete derivation tree (ancestors and descendants).
+
+**Response:**
+```json
+{
+  "entry": {
+    "block_index": 5,
+    "entry_index": 2
+  },
+  "ancestors": [...],
+  "descendants": [...],
+  "roots": [...],
+  "leaves": [...]
+}
+```
+
+#### `GET /derivatives/<block_index>/<entry_index>/status`
+
+Check derivative status for an entry.
+
+**Response:**
+```json
+{
+  "block_index": 5,
+  "entry_index": 2,
+  "is_derivative": true,
+  "has_derivatives": true,
+  "derivative_type": "amendment",
+  "parent_count": 1,
+  "parent_refs": [
+    {"block_index": 3, "entry_index": 0}
+  ]
+}
+```
+
+#### `POST /derivatives/validate`
+
+Validate parent references before creating a derivative entry.
+
+**Request Body:**
+```json
+{
+  "parent_refs": [
+    {"block_index": 5, "entry_index": 2}
+  ],
+  "derivative_type": "amendment"
+}
+```
+
+**Response:**
+```json
+{
+  "valid": true,
+  "derivative_type": "amendment",
+  "total_refs": 1,
+  "valid_refs": [
+    {
+      "block_index": 5,
+      "entry_index": 2,
+      "author": "alice@example.com",
+      "intent": "Original contract"
+    }
+  ],
+  "issues": []
+}
+```
+
+**Use Cases:**
+- Track contract amendments and revisions
+- Follow response chains in negotiations
+- Trace fulfillment records back to original intents
+- Build intent evolution graphs for audit trails
 
 ---
 

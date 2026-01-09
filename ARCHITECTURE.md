@@ -59,8 +59,8 @@ NatLangChain transforms professional relationships by using natural language as 
 
 ```
 NatLangChain/
-├── src/                    # Python source code (78 modules)
-│   ├── api/               # Modular API blueprints (9 modules)
+├── src/                    # Python source code (78+ modules)
+│   ├── api/               # Modular API blueprints (10 modules)
 │   │   ├── __init__.py    # Blueprint registration (ALL_BLUEPRINTS)
 │   │   ├── core.py        # Core chain operations
 │   │   ├── search.py      # Semantic search, drift detection
@@ -71,6 +71,7 @@ NatLangChain/
 │   │   ├── help.py        # Governance help documentation
 │   │   ├── chat.py        # Ollama chat helper endpoints
 │   │   ├── contracts.py   # Live contract management
+│   │   ├── derivatives.py # Intent evolution tracking (NEW)
 │   │   ├── state.py       # Shared state (blockchain instance)
 │   │   └── utils.py       # Shared utilities (auth, managers)
 │   ├── api.py             # Main API (7656 lines, being modularized)
@@ -78,7 +79,21 @@ NatLangChain/
 │   ├── validator.py       # LLM-powered validation
 │   └── ...                # Feature modules
 │
-├── tests/                 # Test suite (46 test files)
+├── sdk/                   # TypeScript SDK (v1.0.0) (NEW)
+│   ├── src/
+│   │   ├── clients/       # API client modules
+│   │   │   ├── core.ts        # Entry, block, chain operations
+│   │   │   ├── search.ts      # Semantic search, drift detection
+│   │   │   ├── contracts.ts   # Contract management
+│   │   │   ├── disputes.ts    # Dispute resolution
+│   │   │   ├── settlements.ts # Settlement operations
+│   │   │   └── derivatives.ts # Intent evolution tracking
+│   │   ├── types/         # TypeScript type definitions
+│   │   └── utils/         # HTTP client, error handling
+│   ├── package.json       # NPM package configuration
+│   └── README.md          # SDK documentation
+│
+├── tests/                 # Test suite (64 test files)
 ├── frontend/             # Svelte + Tauri desktop app
 ├── docs/                 # Documentation (NCIP framework)
 ├── specs/               # Integration specifications
@@ -129,7 +144,7 @@ Validation modes:
 
 ### 3. API Layer (`api.py`, `api/`)
 
-REST API with **212+ endpoints** organized into 9 blueprints:
+REST API with **212+ endpoints** organized into 10 blueprints:
 
 | Blueprint | Routes | Description |
 |-----------|--------|-------------|
@@ -142,6 +157,7 @@ REST API with **212+ endpoints** organized into 9 blueprints:
 | help | `/api/help/*` | Governance documentation (NCIPs, MP specs) |
 | chat | `/chat/*` | Ollama LLM chat assistant |
 | contracts | `/contract/*` | Live contract parsing and matching |
+| derivatives | `/derivatives/*` | Intent evolution tracking and lineage |
 
 Additional routes in `api.py` (being modularized):
 - `/dispute/*` - Dispute management (MP-03)
@@ -159,6 +175,44 @@ Additional routes in `api.py` (being modularized):
 - **External Boundary-SIEM**: OAuth2/GraphQL/Kafka integration with external SIEM systems
 - **FIDO2/WebAuthn**: Hardware security key support
 - **ZK Privacy**: Zero-knowledge proofs for sensitive data
+
+### 5. TypeScript SDK (`sdk/`)
+
+Official TypeScript SDK for NatLangChain:
+
+```
+NatLangChain (SDK)
+├── core           # Entry/block operations, chain management
+├── search         # Semantic search, drift detection, oracles
+├── contracts      # Offer/seek posting, matching, responses
+├── disputes       # Filing, evidence, escalation, resolution
+├── settlements    # Proposals, acceptance, mediator operations
+└── derivatives    # Lineage tracking, derivation trees
+```
+
+**Features:**
+- Full TypeScript support with exported types
+- Configurable retry logic with exponential backoff
+- Custom error handling (NatLangChainError, NetworkError)
+- Factory methods: `NatLangChain.local()`, `.testnet()`, `.mainnet()`
+- Node.js 18+ support
+
+**Installation:**
+```bash
+npm install @natlangchain/sdk
+```
+
+**Usage:**
+```typescript
+import { NatLangChain } from '@natlangchain/sdk';
+
+const client = NatLangChain.local();
+
+// Create entry, search, post contracts, file disputes, etc.
+await client.core.createEntry({ ... });
+await client.search.semantic({ query: 'delivery agreement' });
+await client.derivatives.getLineage(5, 2);
+```
 
 ## Data Flow
 

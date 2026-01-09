@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+#### TypeScript SDK (`sdk/`)
+- **Official TypeScript SDK** (v1.0.0): Full-featured client for NatLangChain API
+  - `@natlangchain/sdk` NPM package with ESM and CommonJS support
+  - **6 Client Modules**:
+    - `CoreClient`: Entry creation, block mining, chain stats, narrative retrieval
+    - `SearchClient`: Semantic search, drift detection, dialectic validation, oracle verification
+    - `ContractsClient`: Offer/seek posting, contract matching, responses
+    - `DisputesClient`: File disputes, evidence submission, AI analysis, escalation
+    - `SettlementsClient`: Settlement proposals, party acceptance, mediator operations
+    - `DerivativesClient`: Lineage tracking, derivation trees, derivative status
+  - Convenience factory methods: `NatLangChain.local()`, `.testnet()`, `.mainnet()`
+  - Full TypeScript types with exported interfaces
+  - Custom error handling: `NatLangChainError`, `NetworkError`
+  - Configurable retry logic with exponential backoff
+  - Node.js 18+ support
+
+#### Intent Evolution Tracking (`src/api/derivatives.py`)
+- **Derivative Tracking Blueprint**: Track relationships between entries over time
+  - `GET /derivatives/types`: List all valid derivative types
+  - `GET /derivatives/<block>/<entry>`: Get derivatives of an entry (supports recursive traversal)
+  - `GET /derivatives/<block>/<entry>/lineage`: Get full ancestry/lineage back to root entries
+  - `GET /derivatives/<block>/<entry>/tree`: Get complete derivation tree (ancestors + descendants)
+  - `GET /derivatives/<block>/<entry>/status`: Check if entry is/has derivatives
+  - `POST /derivatives/validate`: Validate parent references before creating derivative
+- **Derivative Types**: amendment, extension, response, revision, reference, fulfillment
+- **Use Cases**: Track contract amendments, intent revisions, response chains, fulfillment records
+
+#### End-to-End Test Suite (`tests/test_e2e_*.py`)
+- Comprehensive E2E tests for all blockchain pipelines
+- Test coverage for negotiation, contracts, disputes, and security flows
+- Integration with CI/CD pipeline
+
 ### Changed
 
 #### Code Quality Improvements

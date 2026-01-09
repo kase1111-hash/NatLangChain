@@ -120,6 +120,48 @@ kubectl apply -f argocd/apps/root.yaml
 
 See [API.md](API.md) for complete API documentation and [INSTALLATION.md](INSTALLATION.md) for detailed setup instructions.
 
+### TypeScript SDK
+
+The official TypeScript SDK provides a type-safe client for all NatLangChain APIs:
+
+```bash
+npm install @natlangchain/sdk
+```
+
+```typescript
+import { NatLangChain } from '@natlangchain/sdk';
+
+// Create client (local, testnet, or mainnet)
+const client = NatLangChain.local();
+
+// Create an entry
+const entry = await client.core.createEntry({
+  content: 'Alice agrees to deliver 100 widgets to Bob by March 15th',
+  author: 'alice@example.com',
+  intent: 'Widget delivery agreement',
+  validate: true
+});
+
+// Semantic search
+const results = await client.search.semantic({
+  query: 'widget delivery',
+  top_k: 5
+});
+
+// Post a contract offer
+const offer = await client.contracts.post({
+  content: 'Offering Python development at $150/hour',
+  author: 'dev@example.com',
+  intent: 'Service offering',
+  contract_type: 'offer'
+});
+
+// Track intent evolution
+const lineage = await client.derivatives.getLineage(5, 2);
+```
+
+See [sdk/README.md](sdk/README.md) for full SDK documentation.
+
 ### API Documentation
 
 - **Swagger UI**: http://localhost:5000/docs (interactive)
@@ -222,6 +264,7 @@ NatLangChain reframes distributed trust around linguistic participation. By addr
 | [INSTALLATION.md](INSTALLATION.md) | Setup guide (Windows, Linux, Docker, Kubernetes) |
 | [API.md](API.md) | Complete REST API reference (212+ endpoints) |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | System design and components |
+| [sdk/README.md](sdk/README.md) | TypeScript SDK documentation |
 | [SPEC.md](SPEC.md) | Technical specification and protocol details |
 | [SECURITY.md](SECURITY.md) | Security audit and configuration |
 | [docs/](docs/README.md) | Full documentation index |
@@ -230,7 +273,9 @@ NatLangChain reframes distributed trust around linguistic participation. By addr
 
 - **Natural Language Entries**: Prose-first blockchain with readable, auditable records
 - **LLM Validation**: Proof of Understanding consensus with multi-model support
-- **212+ API Endpoints**: Core blockchain, semantic search, contracts, disputes, treasury, FIDO2 auth, ZK privacy, negotiation, mobile, P2P network
+- **TypeScript SDK**: Official `@natlangchain/sdk` package with full TypeScript support
+- **Intent Evolution Tracking**: Track derivatives, amendments, and lineage of entries
+- **212+ API Endpoints**: Core blockchain, semantic search, contracts, disputes, treasury, FIDO2 auth, ZK privacy, negotiation, mobile, P2P network, derivatives
 - **Production Ready**: Health probes, rate limiting, RBAC, distributed tracing, PostgreSQL, automated backups
 - **Multiple Deployment Options**: Docker, Kubernetes/Helm, ArgoCD GitOps
 - **Full Monitoring Stack**: Prometheus, Grafana, Alertmanager
