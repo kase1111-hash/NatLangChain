@@ -21,26 +21,29 @@ from .utils import managers, require_api_key
 # Try to import ContractParser for type constants
 try:
     from contract_parser import ContractParser
+
     CONTRACT_AVAILABLE = True
 except ImportError:
     CONTRACT_AVAILABLE = False
     ContractParser = None
 
 # Create the blueprint
-contracts_bp = Blueprint('contracts', __name__, url_prefix='/contract')
+contracts_bp = Blueprint("contracts", __name__, url_prefix="/contract")
 
 
 def _check_contract_features():
     """Check if contract features are available."""
     if not managers.contract_parser:
-        return jsonify({
-            "error": "Contract features not available",
-            "reason": "ANTHROPIC_API_KEY not configured"
-        }), 503
+        return jsonify(
+            {
+                "error": "Contract features not available",
+                "reason": "ANTHROPIC_API_KEY not configured",
+            }
+        ), 503
     return None
 
 
-@contracts_bp.route('/parse', methods=['POST'])
+@contracts_bp.route("/parse", methods=["POST"])
 def parse_contract_endpoint():
     """
     Parse natural language contract content and extract structured terms.
@@ -53,7 +56,7 @@ def parse_contract_endpoint():
     Returns:
         Parsed contract with extracted terms, type, and structure
     """
-    if (error := _check_contract_features()):
+    if error := _check_contract_features():
         return error
 
     data = request.get_json()
@@ -64,25 +67,16 @@ def parse_contract_endpoint():
     content = data.get("content")
 
     if not content:
-        return jsonify({
-            "error": "Missing required field",
-            "required": ["content"]
-        }), 400
+        return jsonify({"error": "Missing required field", "required": ["content"]}), 400
 
     try:
         parsed = managers.contract_parser.parse_contract(content)
-        return jsonify({
-            "status": "success",
-            "parsed": parsed
-        })
+        return jsonify({"status": "success", "parsed": parsed})
     except Exception as e:
-        return jsonify({
-            "error": "Failed to parse contract",
-            "details": str(e)
-        }), 500
+        return jsonify({"error": "Failed to parse contract", "details": str(e)}), 500
 
 
-@contracts_bp.route('/match', methods=['POST'])
+@contracts_bp.route("/match", methods=["POST"])
 def match_contracts():
     """
     Find matching contracts for pending entries.
@@ -97,10 +91,12 @@ def match_contracts():
         List of matched contract proposals
     """
     if not managers.contract_matcher:
-        return jsonify({
-            "error": "Contract features not available",
-            "reason": "ANTHROPIC_API_KEY not configured"
-        }), 503
+        return jsonify(
+            {
+                "error": "Contract features not available",
+                "reason": "ANTHROPIC_API_KEY not configured",
+            }
+        ), 503
 
     data = request.get_json()
 
@@ -115,22 +111,19 @@ def match_contracts():
         pending_entries = blockchain.pending_entries
 
     try:
-        matches = managers.contract_matcher.find_matches(
-            blockchain, pending_entries, miner_id
+        matches = managers.contract_matcher.find_matches(blockchain, pending_entries, miner_id)
+        return jsonify(
+            {
+                "status": "success",
+                "matches": [m.to_dict() if hasattr(m, "to_dict") else m for m in matches],
+                "count": len(matches),
+            }
         )
-        return jsonify({
-            "status": "success",
-            "matches": [m.to_dict() if hasattr(m, 'to_dict') else m for m in matches],
-            "count": len(matches)
-        })
     except Exception as e:
-        return jsonify({
-            "error": "Failed to find matches",
-            "details": str(e)
-        }), 500
+        return jsonify({"error": "Failed to find matches", "details": str(e)}), 500
 
 
-@contracts_bp.route('/post', methods=['POST'])
+@contracts_bp.route("/post", methods=["POST"])
 @require_api_key
 def post_contract():
     """
@@ -149,7 +142,7 @@ def post_contract():
     Returns:
         Contract entry with validation results
     """
-    if (error := _check_contract_features()):
+    if error := _check_contract_features():
         return error
 
     data = request.get_json()
@@ -166,10 +159,9 @@ def post_contract():
     contract_type = data.get("contract_type", default_type)
 
     if not all([content, author, intent]):
-        return jsonify({
-            "error": "Missing required fields",
-            "required": ["content", "author", "intent"]
-        }), 400
+        return jsonify(
+            {"error": "Missing required fields", "required": ["content", "author", "intent"]}
+        ), 400
 
     try:
         # Parse contract
@@ -186,17 +178,11 @@ def post_contract():
         # Validate clarity
         is_valid, reason = managers.contract_parser.validate_contract_clarity(content)
         if not is_valid:
-            return jsonify({
-                "error": "Contract validation failed",
-                "reason": reason
-            }), 400
+            return jsonify({"error": "Contract validation failed", "reason": reason}), 400
 
         # Create entry with contract metadata (encrypted sensitive fields)
         entry = create_entry_with_encryption(
-            content=content,
-            author=author,
-            intent=intent,
-            metadata=contract_data
+            content=content, author=author, intent=intent, metadata=contract_data
         )
 
         entry.validation_status = "valid"
@@ -211,28 +197,18 @@ def post_contract():
             mined_block = blockchain.mine_pending_entries()
             save_chain()
 
-        response = {
-            "status": "success",
-            "entry": result,
-            "contract_metadata": contract_data
-        }
+        response = {"status": "success", "entry": result, "contract_metadata": contract_data}
 
         if mined_block:
-            response["mined_block"] = {
-                "index": mined_block.index,
-                "hash": mined_block.hash
-            }
+            response["mined_block"] = {"index": mined_block.index, "hash": mined_block.hash}
 
         return jsonify(response), 201
 
     except Exception as e:
-        return jsonify({
-            "error": "Contract posting failed",
-            "reason": str(e)
-        }), 500
+        return jsonify({"error": "Contract posting failed", "reason": str(e)}), 500
 
 
-@contracts_bp.route('/list', methods=['GET'])
+@contracts_bp.route("/list", methods=["GET"])
 def list_contracts():
     """
     List all contracts, optionally filtered by status or type.
@@ -245,9 +221,9 @@ def list_contracts():
     Returns:
         List of contract entries
     """
-    status_filter = request.args.get('status')
-    type_filter = request.args.get('type')
-    author_filter = request.args.get('author')
+    status_filter = request.args.get("status")
+    type_filter = request.args.get("type")
+    author_filter = request.args.get("author")
 
     contracts = []
 
@@ -267,19 +243,14 @@ def list_contracts():
             if author_filter and entry.author != author_filter:
                 continue
 
-            contracts.append({
-                "block_index": block.index,
-                "block_hash": block.hash,
-                "entry": entry.to_dict()
-            })
+            contracts.append(
+                {"block_index": block.index, "block_hash": block.hash, "entry": entry.to_dict()}
+            )
 
-    return jsonify({
-        "count": len(contracts),
-        "contracts": contracts
-    })
+    return jsonify({"count": len(contracts), "contracts": contracts})
 
 
-@contracts_bp.route('/respond', methods=['POST'])
+@contracts_bp.route("/respond", methods=["POST"])
 @require_api_key
 def respond_to_contract():
     """
@@ -299,9 +270,7 @@ def respond_to_contract():
         Response entry with mediation if counter-offer
     """
     if not managers.contract_parser or not managers.contract_matcher:
-        return jsonify({
-            "error": "Contract features not available"
-        }), 503
+        return jsonify({"error": "Contract features not available"}), 503
 
     data = request.get_json()
 
@@ -315,10 +284,12 @@ def respond_to_contract():
     response_type = data.get("response_type", "counter")
 
     if not all([to_block is not None, to_entry is not None, response_content, author]):
-        return jsonify({
-            "error": "Missing required fields",
-            "required": ["to_block", "to_entry", "response_content", "author"]
-        }), 400
+        return jsonify(
+            {
+                "error": "Missing required fields",
+                "required": ["to_block", "to_entry", "response_content", "author"],
+            }
+        ), 400
 
     # Get original entry
     if to_block < 0 or to_block >= len(blockchain.chain):
@@ -340,7 +311,7 @@ def respond_to_contract():
         "contract_type": response_type_const,
         "response_type": response_type,
         "links": [block.hash],  # Link to original
-        "terms": data.get("counter_terms", {})
+        "terms": data.get("counter_terms", {}),
     }
 
     # If counter-offer, get mediation
@@ -351,7 +322,7 @@ def respond_to_contract():
             original_entry.metadata.get("terms", {}),
             response_content,
             data.get("counter_terms", {}),
-            original_entry.metadata.get("negotiation_round", 0) + 1
+            original_entry.metadata.get("negotiation_round", 0) + 1,
         )
 
         response_metadata["mediation"] = mediation_result
@@ -363,13 +334,11 @@ def respond_to_contract():
         content=f"[RESPONSE TO: {block.hash[:8]}] {response_content}",
         author=author,
         intent=f"Response to contract: {response_type}",
-        metadata=response_metadata
+        metadata=response_metadata,
     )
 
     blockchain.add_entry(response_entry)
 
-    return jsonify({
-        "status": "success",
-        "response": response_entry.to_dict(),
-        "mediation": mediation_result
-    }), 201
+    return jsonify(
+        {"status": "success", "response": response_entry.to_dict(), "mediation": mediation_result}
+    ), 201

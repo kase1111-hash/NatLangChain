@@ -15,7 +15,8 @@ import sys
 import pytest
 
 # Add src to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+
 
 # Check if cryptography is available before importing
 # This prevents pyo3 panic errors from crashing test collection
@@ -23,9 +24,11 @@ def _check_cryptography_available():
     """Check if cryptography module is usable."""
     try:
         # First check if cffi is available (required by cryptography)
-        import _cffi_backend  # noqa: F401
+        import _cffi_backend
+
         # Then try the actual cryptography import
-        from cryptography.hazmat.primitives import hashes  # noqa: F401
+        from cryptography.hazmat.primitives import hashes
+
         return True, None
     except Exception as e:
         return False, str(e)
@@ -35,10 +38,7 @@ _crypto_available, _crypto_error = _check_cryptography_available()
 
 if not _crypto_available:
     # Skip the entire module if cryptography is not available
-    pytest.skip(
-        f"cryptography module not available: {_crypto_error}",
-        allow_module_level=True
-    )
+    pytest.skip(f"cryptography module not available: {_crypto_error}", allow_module_level=True)
 
 # Only import if available
 from encryption import (
@@ -68,6 +68,7 @@ class TestKeyGeneration:
     def test_generate_key_is_base64(self):
         """Generated key should be valid base64."""
         import base64
+
         key = generate_encryption_key()
         # Should not raise
         decoded = base64.b64decode(key)
@@ -120,7 +121,7 @@ class TestEncryptDecrypt:
 
     def test_encrypt_with_unicode(self, test_key):
         """Should handle unicode characters."""
-        plaintext = "Hello, \u4e16\u754c! \U0001F600"
+        plaintext = "Hello, \u4e16\u754c! \U0001f600"
         encrypted = encrypt_data(plaintext, key=test_key)
         decrypted = decrypt_data(encrypted, key=test_key, return_type="str")
 
@@ -207,7 +208,7 @@ class TestSensitiveFields:
         metadata = {
             "wallet_address": "0x1234567890abcdef",
             "author": "Alice",
-            "timestamp": "2024-01-01"
+            "timestamp": "2024-01-01",
         }
 
         encrypted = encrypt_sensitive_fields(metadata)
@@ -218,10 +219,7 @@ class TestSensitiveFields:
 
     def test_decrypt_sensitive_field(self):
         """Should decrypt encrypted fields."""
-        metadata = {
-            "wallet_address": "0x1234567890abcdef",
-            "author": "Alice"
-        }
+        metadata = {"wallet_address": "0x1234567890abcdef", "author": "Alice"}
 
         encrypted = encrypt_sensitive_fields(metadata)
         decrypted = decrypt_sensitive_fields(encrypted)
@@ -231,10 +229,7 @@ class TestSensitiveFields:
 
     def test_encrypt_payment_amount(self):
         """Should encrypt payment_amount field."""
-        metadata = {
-            "payment_amount": 50000,
-            "currency": "USD"
-        }
+        metadata = {"payment_amount": 50000, "currency": "USD"}
 
         encrypted = encrypt_sensitive_fields(metadata)
 
@@ -243,10 +238,7 @@ class TestSensitiveFields:
 
     def test_encrypt_contract_terms(self):
         """Should encrypt contract_terms field."""
-        metadata = {
-            "contract_terms": {"price": 100, "delivery": "30 days"},
-            "type": "purchase"
-        }
+        metadata = {"contract_terms": {"price": 100, "delivery": "30 days"}, "type": "purchase"}
 
         encrypted = encrypt_sensitive_fields(metadata)
 
@@ -265,15 +257,9 @@ class TestSensitiveFields:
 
     def test_custom_sensitive_fields(self):
         """Should encrypt custom sensitive fields."""
-        metadata = {
-            "custom_secret": "very secret",
-            "normal_field": "normal"
-        }
+        metadata = {"custom_secret": "very secret", "normal_field": "normal"}
 
-        encrypted = encrypt_sensitive_fields(
-            metadata,
-            additional_fields={"custom_secret"}
-        )
+        encrypted = encrypt_sensitive_fields(metadata, additional_fields={"custom_secret"})
 
         assert is_encrypted(encrypted["custom_secret"])
         assert encrypted["normal_field"] == "normal"
@@ -297,9 +283,9 @@ class TestChainDataEncryption:
                         {
                             "content": "Genesis block",
                             "author": "system",
-                            "metadata": {"type": "genesis"}
+                            "metadata": {"type": "genesis"},
                         }
-                    ]
+                    ],
                 },
                 {
                     "index": 1,
@@ -308,15 +294,12 @@ class TestChainDataEncryption:
                         {
                             "content": "I offer to sell 100 shares",
                             "author": "Alice",
-                            "metadata": {
-                                "is_contract": True,
-                                "payment_amount": 5000
-                            }
+                            "metadata": {"is_contract": True, "payment_amount": 5000},
                         }
-                    ]
-                }
+                    ],
+                },
             ],
-            "pending_entries": []
+            "pending_entries": [],
         }
 
     def test_encrypt_chain_data(self, test_key, sample_chain_data):

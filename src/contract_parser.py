@@ -58,13 +58,19 @@ class ContractParser:
             True if content is a contract
         """
         # Check for explicit contract tags
-        if re.search(r'\[CONTRACT:', content, re.IGNORECASE):
+        if re.search(r"\[CONTRACT:", content, re.IGNORECASE):
             return True
 
         # Check for contract keywords
         contract_keywords = [
-            'offer', 'seeking', 'contract for', 'proposal',
-            'terms:', 'fee:', 'escrow:', 'facilitation:'
+            "offer",
+            "seeking",
+            "contract for",
+            "proposal",
+            "terms:",
+            "fee:",
+            "escrow:",
+            "facilitation:",
         ]
 
         content_lower = content.lower()
@@ -88,7 +94,7 @@ class ContractParser:
             "status": self.STATUS_OPEN,
             "links": [],  # Links to other contract hashes
             "match_score": None,
-            "negotiation_round": 0
+            "negotiation_round": 0,
         }
 
         if not self.is_contract(content):
@@ -122,41 +128,47 @@ class ContractParser:
         result = {}
 
         # Extract contract type
-        type_match = re.search(r'\[CONTRACT:\s*(\w+)\]', content, re.IGNORECASE)
+        type_match = re.search(r"\[CONTRACT:\s*(\w+)\]", content, re.IGNORECASE)
         if type_match:
             contract_type = type_match.group(1).lower()
-            if contract_type in [self.TYPE_OFFER, self.TYPE_SEEK, self.TYPE_PROPOSAL,
-                                 self.TYPE_RESPONSE, self.TYPE_CLOSURE, self.TYPE_PAYOUT]:
+            if contract_type in [
+                self.TYPE_OFFER,
+                self.TYPE_SEEK,
+                self.TYPE_PROPOSAL,
+                self.TYPE_RESPONSE,
+                self.TYPE_CLOSURE,
+                self.TYPE_PAYOUT,
+            ]:
                 result["contract_type"] = contract_type
 
         # Extract terms
-        terms_match = re.search(r'\[TERMS:\s*(.*?)\]', content, re.IGNORECASE)
+        terms_match = re.search(r"\[TERMS:\s*(.*?)\]", content, re.IGNORECASE)
         if terms_match:
             terms_str = terms_match.group(1)
             terms = {}
 
             # Parse key=value pairs
-            for pair in re.split(r',\s*', terms_str):
-                if '=' in pair:
-                    key, value = pair.split('=', 1)
+            for pair in re.split(r",\s*", terms_str):
+                if "=" in pair:
+                    key, value = pair.split("=", 1)
                     terms[key.strip()] = value.strip()
 
             result["terms"] = terms
 
         # Extract links to other contracts
-        links_match = re.search(r'\[LINKS:\s*(.*?)\]', content, re.IGNORECASE)
+        links_match = re.search(r"\[LINKS:\s*(.*?)\]", content, re.IGNORECASE)
         if links_match:
             links_str = links_match.group(1)
-            result["links"] = [link.strip() for link in links_str.split(',')]
+            result["links"] = [link.strip() for link in links_str.split(",")]
 
         # Extract response reference
-        response_match = re.search(r'\[RESPONSE TO:\s*([a-f0-9]+)\]', content, re.IGNORECASE)
+        response_match = re.search(r"\[RESPONSE TO:\s*([a-f0-9]+)\]", content, re.IGNORECASE)
         if response_match:
             result["contract_type"] = self.TYPE_RESPONSE
             result["links"] = [response_match.group(1)]
 
         # Extract match score
-        score_match = re.search(r'\[PROPOSAL:\s*Match\s*(\d+)%\]', content, re.IGNORECASE)
+        score_match = re.search(r"\[PROPOSAL:\s*Match\s*(\d+)%\]", content, re.IGNORECASE)
         if score_match:
             result["contract_type"] = self.TYPE_PROPOSAL
             result["match_score"] = int(score_match.group(1))
@@ -202,16 +214,18 @@ Return JSON only:
 If a term is not present, omit it. Return {{}} if no clear terms found."""
 
             message = self.client.messages.create(
-                model=self.model,
-                max_tokens=512,
-                messages=[{"role": "user", "content": prompt}]
+                model=self.model, max_tokens=512, messages=[{"role": "user", "content": prompt}]
             )
 
             # Safe access to API response
             if not message.content:
-                raise ValueError("Empty response from API: no content returned during term extraction")
-            if not hasattr(message.content[0], 'text'):
-                raise ValueError("Invalid API response format: missing 'text' attribute in term extraction")
+                raise ValueError(
+                    "Empty response from API: no content returned during term extraction"
+                )
+            if not hasattr(message.content[0], "text"):
+                raise ValueError(
+                    "Invalid API response format: missing 'text' attribute in term extraction"
+                )
 
             response_text = message.content[0].text
 
@@ -221,7 +235,9 @@ If a term is not present, omit it. Return {{}} if no clear terms found."""
             try:
                 terms = json.loads(response_text)
             except json.JSONDecodeError as e:
-                raise ValueError(f"Failed to parse term extraction JSON: {e.msg} at position {e.pos}")
+                raise ValueError(
+                    f"Failed to parse term extraction JSON: {e.msg} at position {e.pos}"
+                )
 
             # Flatten other_terms
             if "other_terms" in terms:
@@ -286,7 +302,7 @@ If a term is not present, omit it. Return {{}} if no clear terms found."""
             if len(content.strip()) < 20:
                 return False, "Contract too short"
 
-            vague_terms = ['maybe', 'soon', 'approximately', 'some', 'later']
+            vague_terms = ["maybe", "soon", "approximately", "some", "later"]
             content_lower = content.lower()
 
             for term in vague_terms:
@@ -315,16 +331,18 @@ Return JSON:
 }}"""
 
             message = self.client.messages.create(
-                model=self.model,
-                max_tokens=512,
-                messages=[{"role": "user", "content": prompt}]
+                model=self.model, max_tokens=512, messages=[{"role": "user", "content": prompt}]
             )
 
             # Safe access to API response
             if not message.content:
-                raise ValueError("Empty response from API: no content returned during clarity validation")
-            if not hasattr(message.content[0], 'text'):
-                raise ValueError("Invalid API response format: missing 'text' attribute in clarity validation")
+                raise ValueError(
+                    "Empty response from API: no content returned during clarity validation"
+                )
+            if not hasattr(message.content[0], "text"):
+                raise ValueError(
+                    "Invalid API response format: missing 'text' attribute in clarity validation"
+                )
 
             response_text = message.content[0].text
 
@@ -334,14 +352,19 @@ Return JSON:
             try:
                 result = json.loads(response_text)
             except json.JSONDecodeError as e:
-                raise ValueError(f"Failed to parse clarity validation JSON: {e.msg} at position {e.pos}")
+                raise ValueError(
+                    f"Failed to parse clarity validation JSON: {e.msg} at position {e.pos}"
+                )
 
             if result.get("recommendation") == "REJECT":
                 issues = result.get("ambiguities", []) + result.get("missing_critical", [])
                 return False, f"Contract validation failed: {'; '.join(issues)}"
 
             if result.get("recommendation") == "NEEDS_CLARIFICATION":
-                return False, f"Contract needs clarification: {result.get('reasoning', 'Unclear terms')}"
+                return (
+                    False,
+                    f"Contract needs clarification: {result.get('reasoning', 'Unclear terms')}",
+                )
 
             return True, "Contract is clear and enforceable"
 
@@ -360,7 +383,7 @@ Return JSON:
         contract_type: str,
         content: str,
         terms: dict[str, str] | None = None,
-        links: list[str] | None = None
+        links: list[str] | None = None,
     ) -> str:
         """
         Format a contract with proper tags.

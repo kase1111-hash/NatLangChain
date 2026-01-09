@@ -21,45 +21,55 @@ except ImportError:
         from src.blockchain import VALID_DERIVATIVE_TYPES
     except ImportError:
         VALID_DERIVATIVE_TYPES = {
-            "amendment", "extension", "response",
-            "revision", "reference", "fulfillment"
+            "amendment",
+            "extension",
+            "response",
+            "revision",
+            "reference",
+            "fulfillment",
         }
 
 # Create the blueprint
-derivatives_bp = Blueprint('derivatives', __name__, url_prefix='/derivatives')
+derivatives_bp = Blueprint("derivatives", __name__, url_prefix="/derivatives")
 
 
 def _check_derivative_tracking():
     """Check if derivative tracking is enabled."""
     if not blockchain.enable_derivative_tracking:
-        return jsonify({
-            "error": "Derivative tracking not enabled",
-            "reason": "enable_derivative_tracking is False"
-        }), 503
+        return jsonify(
+            {
+                "error": "Derivative tracking not enabled",
+                "reason": "enable_derivative_tracking is False",
+            }
+        ), 503
     return None
 
 
 def _validate_entry_ref(block_index: int, entry_index: int):
     """Validate that a block/entry reference exists."""
     if block_index < 0 or block_index >= len(blockchain.chain):
-        return jsonify({
-            "error": "Block not found",
-            "block_index": block_index,
-            "valid_range": f"0-{len(blockchain.chain) - 1}"
-        }), 404
+        return jsonify(
+            {
+                "error": "Block not found",
+                "block_index": block_index,
+                "valid_range": f"0-{len(blockchain.chain) - 1}",
+            }
+        ), 404
 
     block = blockchain.chain[block_index]
     if entry_index < 0 or entry_index >= len(block.entries):
-        return jsonify({
-            "error": "Entry not found",
-            "entry_index": entry_index,
-            "valid_range": f"0-{len(block.entries) - 1}"
-        }), 404
+        return jsonify(
+            {
+                "error": "Entry not found",
+                "entry_index": entry_index,
+                "valid_range": f"0-{len(block.entries) - 1}",
+            }
+        ), 404
 
     return None
 
 
-@derivatives_bp.route('/types', methods=['GET'])
+@derivatives_bp.route("/types", methods=["GET"])
 def get_derivative_types():
     """
     Get all valid derivative types.
@@ -67,20 +77,22 @@ def get_derivative_types():
     Returns:
         List of valid derivative type strings
     """
-    return jsonify({
-        "types": list(VALID_DERIVATIVE_TYPES),
-        "descriptions": {
-            "amendment": "Modifies terms of parent entry",
-            "extension": "Adds to parent without modifying",
-            "response": "Response to parent entry",
-            "revision": "Supersedes parent entirely",
-            "reference": "Simply references parent",
-            "fulfillment": "Fulfills/completes parent intent"
+    return jsonify(
+        {
+            "types": list(VALID_DERIVATIVE_TYPES),
+            "descriptions": {
+                "amendment": "Modifies terms of parent entry",
+                "extension": "Adds to parent without modifying",
+                "response": "Response to parent entry",
+                "revision": "Supersedes parent entirely",
+                "reference": "Simply references parent",
+                "fulfillment": "Fulfills/completes parent intent",
+            },
         }
-    })
+    )
 
 
-@derivatives_bp.route('/<int:block_index>/<int:entry_index>', methods=['GET'])
+@derivatives_bp.route("/<int:block_index>/<int:entry_index>", methods=["GET"])
 def get_derivatives(block_index: int, entry_index: int):
     """
     Get all derivatives of a specific entry.
@@ -97,30 +109,31 @@ def get_derivatives(block_index: int, entry_index: int):
     Returns:
         List of derivative entry references
     """
-    if (error := _check_derivative_tracking()):
+    if error := _check_derivative_tracking():
         return error
 
-    if (error := _validate_entry_ref(block_index, entry_index)):
+    if error := _validate_entry_ref(block_index, entry_index):
         return error
 
-    recursive = request.args.get('recursive', 'false').lower() == 'true'
-    max_depth = request.args.get('max_depth', 10, type=int)
-    include_entries = request.args.get('include_entries', 'false').lower() == 'true'
+    recursive = request.args.get("recursive", "false").lower() == "true"
+    max_depth = request.args.get("max_depth", 10, type=int)
+    include_entries = request.args.get("include_entries", "false").lower() == "true"
 
     # Bound max_depth to prevent abuse
     max_depth = min(max(1, max_depth), 50)
 
     result = blockchain.get_derivatives(
-        block_index, entry_index,
+        block_index,
+        entry_index,
         recursive=recursive,
         max_depth=max_depth,
-        include_entries=include_entries
+        include_entries=include_entries,
     )
 
     return jsonify(result)
 
 
-@derivatives_bp.route('/<int:block_index>/<int:entry_index>/lineage', methods=['GET'])
+@derivatives_bp.route("/<int:block_index>/<int:entry_index>/lineage", methods=["GET"])
 def get_lineage(block_index: int, entry_index: int):
     """
     Get the full ancestry/lineage of an entry.
@@ -139,28 +152,26 @@ def get_lineage(block_index: int, entry_index: int):
     Returns:
         Lineage information including ancestors and roots
     """
-    if (error := _check_derivative_tracking()):
+    if error := _check_derivative_tracking():
         return error
 
-    if (error := _validate_entry_ref(block_index, entry_index)):
+    if error := _validate_entry_ref(block_index, entry_index):
         return error
 
-    max_depth = request.args.get('max_depth', 10, type=int)
-    include_entries = request.args.get('include_entries', 'false').lower() == 'true'
+    max_depth = request.args.get("max_depth", 10, type=int)
+    include_entries = request.args.get("include_entries", "false").lower() == "true"
 
     # Bound max_depth
     max_depth = min(max(1, max_depth), 50)
 
     result = blockchain.get_lineage(
-        block_index, entry_index,
-        max_depth=max_depth,
-        include_entries=include_entries
+        block_index, entry_index, max_depth=max_depth, include_entries=include_entries
     )
 
     return jsonify(result)
 
 
-@derivatives_bp.route('/<int:block_index>/<int:entry_index>/tree', methods=['GET'])
+@derivatives_bp.route("/<int:block_index>/<int:entry_index>/tree", methods=["GET"])
 def get_derivation_tree(block_index: int, entry_index: int):
     """
     Get the complete derivation tree for an entry.
@@ -178,28 +189,26 @@ def get_derivation_tree(block_index: int, entry_index: int):
     Returns:
         Complete derivation tree with parents, lineage, roots, and derivatives
     """
-    if (error := _check_derivative_tracking()):
+    if error := _check_derivative_tracking():
         return error
 
-    if (error := _validate_entry_ref(block_index, entry_index)):
+    if error := _validate_entry_ref(block_index, entry_index):
         return error
 
-    max_depth = request.args.get('max_depth', 10, type=int)
-    include_entries = request.args.get('include_entries', 'false').lower() == 'true'
+    max_depth = request.args.get("max_depth", 10, type=int)
+    include_entries = request.args.get("include_entries", "false").lower() == "true"
 
     # Bound max_depth
     max_depth = min(max(1, max_depth), 50)
 
     result = blockchain.get_derivation_tree(
-        block_index, entry_index,
-        max_depth=max_depth,
-        include_entries=include_entries
+        block_index, entry_index, max_depth=max_depth, include_entries=include_entries
     )
 
     return jsonify(result)
 
 
-@derivatives_bp.route('/<int:block_index>/<int:entry_index>/status', methods=['GET'])
+@derivatives_bp.route("/<int:block_index>/<int:entry_index>/status", methods=["GET"])
 def get_derivative_status(block_index: int, entry_index: int):
     """
     Get derivative status for an entry.
@@ -213,10 +222,10 @@ def get_derivative_status(block_index: int, entry_index: int):
     Returns:
         Derivative status information
     """
-    if (error := _check_derivative_tracking()):
+    if error := _check_derivative_tracking():
         return error
 
-    if (error := _validate_entry_ref(block_index, entry_index)):
+    if error := _validate_entry_ref(block_index, entry_index):
         return error
 
     is_derivative = blockchain.is_derivative(block_index, entry_index)
@@ -231,7 +240,7 @@ def get_derivative_status(block_index: int, entry_index: int):
         "is_derivative": is_derivative,
         "has_derivatives": has_derivatives,
         "derivative_type": entry.derivative_type if is_derivative else None,
-        "parent_count": len(entry.parent_refs) if entry.parent_refs else 0
+        "parent_count": len(entry.parent_refs) if entry.parent_refs else 0,
     }
 
     if is_derivative and entry.parent_refs:
@@ -240,7 +249,7 @@ def get_derivative_status(block_index: int, entry_index: int):
     return jsonify(result)
 
 
-@derivatives_bp.route('/validate', methods=['POST'])
+@derivatives_bp.route("/validate", methods=["POST"])
 @require_api_key
 def validate_derivative_refs():
     """
@@ -258,7 +267,7 @@ def validate_derivative_refs():
     Returns:
         Validation result with any issues found
     """
-    if (error := _check_derivative_tracking()):
+    if error := _check_derivative_tracking():
         return error
 
     data = request.get_json()
@@ -267,9 +276,7 @@ def validate_derivative_refs():
         return jsonify({"error": "No data provided"}), 400
 
     is_valid, error_msg = validate_json_schema(
-        data,
-        required_fields={"parent_refs": list, "derivative_type": str},
-        optional_fields={}
+        data, required_fields={"parent_refs": list, "derivative_type": str}, optional_fields={}
     )
 
     if not is_valid:
@@ -280,12 +287,14 @@ def validate_derivative_refs():
 
     # Validate derivative type
     if derivative_type not in VALID_DERIVATIVE_TYPES:
-        return jsonify({
-            "valid": False,
-            "error": "Invalid derivative type",
-            "derivative_type": derivative_type,
-            "valid_types": list(VALID_DERIVATIVE_TYPES)
-        }), 400
+        return jsonify(
+            {
+                "valid": False,
+                "error": "Invalid derivative type",
+                "derivative_type": derivative_type,
+                "valid_types": list(VALID_DERIVATIVE_TYPES),
+            }
+        ), 400
 
     # Validate each parent reference
     issues = []
@@ -296,42 +305,35 @@ def validate_derivative_refs():
         entry_idx = ref.get("entry_index")
 
         if block_idx is None or entry_idx is None:
-            issues.append({
-                "ref_index": i,
-                "error": "Missing block_index or entry_index"
-            })
+            issues.append({"ref_index": i, "error": "Missing block_index or entry_index"})
             continue
 
         if block_idx < 0 or block_idx >= len(blockchain.chain):
-            issues.append({
-                "ref_index": i,
-                "block_index": block_idx,
-                "error": "Block not found"
-            })
+            issues.append({"ref_index": i, "block_index": block_idx, "error": "Block not found"})
             continue
 
         block = blockchain.chain[block_idx]
         if entry_idx < 0 or entry_idx >= len(block.entries):
-            issues.append({
-                "ref_index": i,
-                "entry_index": entry_idx,
-                "error": "Entry not found"
-            })
+            issues.append({"ref_index": i, "entry_index": entry_idx, "error": "Entry not found"})
             continue
 
         # Valid reference
         entry = block.entries[entry_idx]
-        valid_refs.append({
-            "block_index": block_idx,
-            "entry_index": entry_idx,
-            "author": entry.author,
-            "intent": entry.intent
-        })
+        valid_refs.append(
+            {
+                "block_index": block_idx,
+                "entry_index": entry_idx,
+                "author": entry.author,
+                "intent": entry.intent,
+            }
+        )
 
-    return jsonify({
-        "valid": len(issues) == 0,
-        "derivative_type": derivative_type,
-        "total_refs": len(parent_refs),
-        "valid_refs": valid_refs,
-        "issues": issues
-    })
+    return jsonify(
+        {
+            "valid": len(issues) == 0,
+            "derivative_type": derivative_type,
+            "total_refs": len(parent_refs),
+            "valid_refs": valid_refs,
+            "issues": issues,
+        }
+    )

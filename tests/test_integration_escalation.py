@@ -9,7 +9,7 @@ import sys
 from datetime import datetime
 
 # Add src to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from escalation_fork import EscalationForkManager, TriggerReason
 from observance_burn import BurnReason, ObservanceBurnManager
@@ -24,16 +24,21 @@ SCENARIOS = [
     {"name": "Kate vs Leo - Deliverable Dispute", "escalate": True, "resolve": True},
     {"name": "Mike vs Nancy - IP Rights", "escalate": False, "resolve": True},
     {"name": "Oscar vs Paula - Contract Interpretation", "escalate": True, "resolve": True},
-    {"name": "Quinn vs Rita - Milestone Completion", "escalate": True, "resolve": True, "veto": True},
+    {
+        "name": "Quinn vs Rita - Milestone Completion",
+        "escalate": True,
+        "resolve": True,
+        "veto": True,
+    },
     {"name": "Sam vs Tina - Force Majeure", "escalate": True, "resolve": True},
 ]
 
 
 def print_header(text):
     """Print a formatted header."""
-    print(f"\n{'='*70}")
+    print(f"\n{'=' * 70}")
     print(f"  {text}")
-    print(f"{'='*70}")
+    print(f"{'=' * 70}")
 
 
 def print_subheader(text):
@@ -43,21 +48,50 @@ def print_subheader(text):
 
 def print_result(label, value, indent=4):
     """Print a formatted result."""
-    print(f"{' '*indent}{label}: {value}")
+    print(f"{' ' * indent}{label}: {value}")
 
 
 def generate_proposal(word_count=600):
     """Generate a proposal with specified word count."""
-    words = ["fair", "reasonable", "agreement", "terms", "both", "parties",
-             "shall", "agree", "propose", "resolution", "contract", "amended",
-             "rate", "timeline", "deliverable", "scope", "payment", "milestone"]
+    words = [
+        "fair",
+        "reasonable",
+        "agreement",
+        "terms",
+        "both",
+        "parties",
+        "shall",
+        "agree",
+        "propose",
+        "resolution",
+        "contract",
+        "amended",
+        "rate",
+        "timeline",
+        "deliverable",
+        "scope",
+        "payment",
+        "milestone",
+    ]
     return " ".join(random.choices(words, k=word_count))
 
 
 def generate_veto_reason(word_count=150):
     """Generate a veto reason with specified word count."""
-    words = ["reject", "insufficient", "fails", "address", "concern", "evidence",
-             "ignored", "proposal", "inadequate", "missing", "key", "provision"]
+    words = [
+        "reject",
+        "insufficient",
+        "fails",
+        "address",
+        "concern",
+        "evidence",
+        "ignored",
+        "proposal",
+        "inadequate",
+        "missing",
+        "key",
+        "provision",
+    ]
     return " ".join(random.choices(words, k=word_count))
 
 
@@ -85,12 +119,7 @@ def run_scenario(scenario_num, scenario, fork_manager, burn_manager):
         # Resolved without escalation
         print_subheader("OUTCOME: Resolved without escalation")
         print_result("Status", "✅ Mediation successful - no fork needed")
-        return {
-            "scenario": name,
-            "escalated": False,
-            "resolved": True,
-            "fork_id": None
-        }
+        return {"scenario": name, "escalated": False, "resolved": True, "fork_id": None}
 
     # Scenario requires escalation
     print_subheader("STEP 1: Perform Observance Burn")
@@ -103,7 +132,7 @@ def run_scenario(scenario_num, scenario, fork_manager, burn_manager):
         amount=burn_amount,
         reason=BurnReason.ESCALATION_COMMITMENT,
         intent_hash=dispute_id,
-        epitaph=f"Escalating {dispute_topic} dispute fairly"
+        epitaph=f"Escalating {dispute_topic} dispute fairly",
     )
 
     if not success:
@@ -131,8 +160,8 @@ def run_scenario(scenario_num, scenario, fork_manager, burn_manager):
         burn_tx_hash=burn_result["tx_hash"],
         evidence_of_failure={
             "failed_proposals": [f"PROP-{scenario_num:03d}-001"],
-            "rejection_reasons": [f"{dispute_topic} terms unacceptable"]
-        }
+            "rejection_reasons": [f"{dispute_topic} terms unacceptable"],
+        },
     )
 
     fork_id = fork_data["fork_id"]
@@ -150,19 +179,22 @@ def run_scenario(scenario_num, scenario, fork_manager, burn_manager):
     proposals = []
 
     for i in range(num_solvers):
-        solver_name = f"solver_{scenario_num}_{chr(65+i)}"
+        solver_name = f"solver_{scenario_num}_{chr(65 + i)}"
         proposal_content = generate_proposal(random.randint(500, 1200))
 
         success, proposal = fork_manager.submit_proposal(
             fork_id=fork_id,
             solver=solver_name,
             proposal_content=proposal_content,
-            addresses_concerns=[dispute_topic.lower().replace(" ", "_"), "fair_resolution"]
+            addresses_concerns=[dispute_topic.lower().replace(" ", "_"), "fair_resolution"],
         )
 
         if success:
             proposals.append(proposal)
-            print_result(f"Proposal {i+1}", f"{proposal['proposal_id']} by {solver_name} ({proposal['word_count']} words)")
+            print_result(
+                f"Proposal {i + 1}",
+                f"{proposal['proposal_id']} by {solver_name} ({proposal['word_count']} words)",
+            )
 
     if not proposals:
         print_result("Status", "❌ No valid proposals submitted")
@@ -180,7 +212,7 @@ def run_scenario(scenario_num, scenario, fork_manager, burn_manager):
             proposal_id=veto_target["proposal_id"],
             vetoing_party=party_b,
             veto_reason=veto_reason,
-            evidence_refs=[f"EVIDENCE-{scenario_num:03d}"]
+            evidence_refs=[f"EVIDENCE-{scenario_num:03d}"],
         )
 
         if success:
@@ -192,15 +224,19 @@ def run_scenario(scenario_num, scenario, fork_manager, burn_manager):
         # Simulate timeout (for reporting purposes)
         print_subheader("OUTCOME: Solver Window Timeout")
         print_result("Status", "⏱️ No ratified resolution within 7 days")
-        print_result("Refund", f"90% returned to parties ({fork_data['bounty_pool'] * 0.9:.2f} tokens)")
-        print_result("Burned", f"10% via Observance Burn ({fork_data['bounty_pool'] * 0.1:.2f} tokens)")
+        print_result(
+            "Refund", f"90% returned to parties ({fork_data['bounty_pool'] * 0.9:.2f} tokens)"
+        )
+        print_result(
+            "Burned", f"10% via Observance Burn ({fork_data['bounty_pool'] * 0.1:.2f} tokens)"
+        )
 
         return {
             "scenario": name,
             "escalated": True,
             "resolved": False,
             "fork_id": fork_id,
-            "timeout": True
+            "timeout": True,
         }
 
     # Ratification
@@ -214,7 +250,7 @@ def run_scenario(scenario_num, scenario, fork_manager, burn_manager):
         proposal_id=winning_proposal["proposal_id"],
         ratifying_party=party_a,
         satisfaction_rating=random.randint(70, 95),
-        comments=f"{party_a} accepts the proposed resolution"
+        comments=f"{party_a} accepts the proposed resolution",
     )
     print_result(f"{party_a} Ratification", "✅ Accepted" if success else "❌ Failed")
 
@@ -224,7 +260,7 @@ def run_scenario(scenario_num, scenario, fork_manager, burn_manager):
         proposal_id=winning_proposal["proposal_id"],
         ratifying_party=party_b,
         satisfaction_rating=random.randint(70, 95),
-        comments=f"{party_b} accepts the proposed resolution"
+        comments=f"{party_b} accepts the proposed resolution",
     )
     print_result(f"{party_b} Ratification", "✅ Accepted" if success else "❌ Failed")
 
@@ -245,23 +281,18 @@ def run_scenario(scenario_num, scenario, fork_manager, burn_manager):
             "resolved": True,
             "fork_id": fork_id,
             "winning_solver": result["solver"],
-            "distribution": result["distribution"]
+            "distribution": result["distribution"],
         }
 
-    return {
-        "scenario": name,
-        "escalated": True,
-        "resolved": False,
-        "fork_id": fork_id
-    }
+    return {"scenario": name, "escalated": True, "resolved": False, "fork_id": fork_id}
 
 
 def run_all_tests():
     """Run all 10 test scenarios."""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("  ESCALATION FORK & OBSERVANCE BURN - 10 RUN INTEGRATION TEST")
     print("  " + datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-    print("="*70)
+    print("=" * 70)
 
     # Initialize managers
     fork_manager = EscalationForkManager()
@@ -303,13 +334,15 @@ def run_all_tests():
 
     print_subheader("Scenario Results")
     for i, result in enumerate(results, 1):
-        status = "✅" if result.get("resolved") else ("⏱️ TIMEOUT" if result.get("timeout") else "❌")
+        status = (
+            "✅" if result.get("resolved") else ("⏱️ TIMEOUT" if result.get("timeout") else "❌")
+        )
         escalate_status = "→ FORK" if result.get("escalated") else "→ DIRECT"
         print(f"    {i:2d}. {result['scenario'][:40]:<40} {escalate_status:<10} {status}")
 
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("  TEST COMPLETE")
-    print("="*70 + "\n")
+    print("=" * 70 + "\n")
 
     return results
 
@@ -319,8 +352,7 @@ if __name__ == "__main__":
 
     # Return exit code based on results
     all_expected_resolved = all(
-        r.get("resolved") == SCENARIOS[i].get("resolve", True)
-        for i, r in enumerate(results)
+        r.get("resolved") == SCENARIOS[i].get("resolve", True) for i, r in enumerate(results)
     )
 
     if all_expected_resolved:

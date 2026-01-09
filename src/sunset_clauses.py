@@ -22,12 +22,13 @@ class SunsetTriggerType(Enum):
     """
     Sunset trigger types per NCIP-015 Section 3.2.
     """
-    TIME_BASED = "time_based"              # Fixed datetime or duration
-    EVENT_BASED = "event_based"            # External or oracle-verified event
+
+    TIME_BASED = "time_based"  # Fixed datetime or duration
+    EVENT_BASED = "event_based"  # External or oracle-verified event
     CONDITION_FULFILLED = "condition_fulfilled"  # Explicit semantic completion
-    EXHAUSTION = "exhaustion"              # Finite-use depletion
-    REVOCATION = "revocation"              # Explicit revocation under allowed terms
-    CONSTITUTIONAL = "constitutional"       # Triggered by NCIP-014 amendment
+    EXHAUSTION = "exhaustion"  # Finite-use depletion
+    REVOCATION = "revocation"  # Explicit revocation under allowed terms
+    CONSTITUTIONAL = "constitutional"  # Triggered by NCIP-014 amendment
 
 
 class EntryState(Enum):
@@ -37,22 +38,24 @@ class EntryState(Enum):
     State machine: DRAFT → RATIFIED → ACTIVE → SUNSET_PENDING → SUNSET → ARCHIVED
     No backward transitions permitted.
     """
+
     DRAFT = "draft"
     RATIFIED = "ratified"
     ACTIVE = "active"
     SUNSET_PENDING = "sunset_pending"  # Allows notice & cooling
-    SUNSET = "sunset"                   # Ends enforceability
-    ARCHIVED = "archived"               # Locks semantics permanently
+    SUNSET = "sunset"  # Ends enforceability
+    ARCHIVED = "archived"  # Locks semantics permanently
 
 
 class EntryType(Enum):
     """Types of entries with default sunset policies."""
-    CONTRACT = "contract"           # Default: 20 years
-    LICENSE = "license"             # Default: 10 years
-    DELEGATION = "delegation"       # Default: 2 years
+
+    CONTRACT = "contract"  # Default: 20 years
+    LICENSE = "license"  # Default: 10 years
+    DELEGATION = "delegation"  # Default: 2 years
     STANDING_INTENT = "standing_intent"  # Default: 1 year
-    DISPUTE = "dispute"             # Default: On resolution
-    SETTLEMENT = "settlement"       # Default: Immediate archive
+    DISPUTE = "dispute"  # Default: On resolution
+    SETTLEMENT = "settlement"  # Default: Immediate archive
 
 
 # Default sunset durations per NCIP-015 Section 14
@@ -61,8 +64,8 @@ DEFAULT_SUNSET_YEARS = {
     EntryType.LICENSE: 10,
     EntryType.DELEGATION: 2,
     EntryType.STANDING_INTENT: 1,
-    EntryType.DISPUTE: None,        # On resolution
-    EntryType.SETTLEMENT: 0,        # Immediate archive
+    EntryType.DISPUTE: None,  # On resolution
+    EntryType.SETTLEMENT: 0,  # Immediate archive
 }
 
 # Valid state transitions (forward only)
@@ -83,6 +86,7 @@ class TemporalContext:
 
     This bundle is immutable once archived.
     """
+
     registry_version: str
     language_variant: str
     jurisdiction_context: str
@@ -112,17 +116,18 @@ class SunsetClause:
     - Delete or redact records
     - Enable reinterpretation
     """
+
     clause_id: str
     entry_id: str
     trigger_type: SunsetTriggerType
 
     # Trigger conditions
     trigger_datetime: datetime | None = None  # For time_based
-    trigger_event: str | None = None          # For event_based
-    trigger_condition: str | None = None      # For condition_fulfilled
-    max_uses: int | None = None               # For exhaustion
-    revocation_terms: str | None = None       # For revocation
-    amendment_id: str | None = None           # For constitutional
+    trigger_event: str | None = None  # For event_based
+    trigger_condition: str | None = None  # For condition_fulfilled
+    max_uses: int | None = None  # For exhaustion
+    revocation_terms: str | None = None  # For revocation
+    amendment_id: str | None = None  # For constitutional
 
     # Configuration
     notice_period_days: int = 30
@@ -185,6 +190,7 @@ class ArchivedEntry:
     - No reinterpretation is permitted
     - Entry is admissible as historical fact only
     """
+
     archive_id: str
     entry_id: str
     entry_type: EntryType
@@ -206,8 +212,8 @@ class ArchivedEntry:
     sunset_clause: SunsetClause | None = None
 
     # Archive properties
-    enforceable: bool = False      # Always False for archived
-    negotiable: bool = False       # Always False for archived
+    enforceable: bool = False  # Always False for archived
+    negotiable: bool = False  # Always False for archived
     referential_only: bool = True  # Always True for archived
     drift_detection_disabled: bool = True  # Always True for archived
 
@@ -238,6 +244,7 @@ class ManagedEntry:
     """
     An entry managed through the sunset lifecycle.
     """
+
     entry_id: str
     entry_type: EntryType
     prose_content: str
@@ -308,10 +315,7 @@ class SunsetManager:
     # -------------------------------------------------------------------------
 
     def create_entry(
-        self,
-        entry_type: EntryType,
-        prose_content: str,
-        entry_id: str | None = None
+        self, entry_type: EntryType, prose_content: str, entry_id: str | None = None
     ) -> ManagedEntry:
         """Create a new entry in DRAFT state."""
         self.entry_counter += 1
@@ -322,7 +326,7 @@ class SunsetManager:
             entry_id=entry_id,
             entry_type=entry_type,
             prose_content=prose_content,
-            state=EntryState.DRAFT
+            state=EntryState.DRAFT,
         )
 
         self.entries[entry_id] = entry
@@ -341,7 +345,7 @@ class SunsetManager:
         entry_id: str,
         new_state: EntryState,
         temporal_context: TemporalContext | None = None,
-        original_meaning: str | None = None
+        original_meaning: str | None = None,
     ) -> tuple[bool, str]:
         """
         Transition entry to a new state per NCIP-015 Section 4.
@@ -354,13 +358,19 @@ class SunsetManager:
 
         # Check for emergency pause
         if entry.emergency_paused and new_state in [EntryState.SUNSET_PENDING, EntryState.SUNSET]:
-            return (False, "Cannot transition during emergency pause - sunset timers paused per NCIP-013")
+            return (
+                False,
+                "Cannot transition during emergency pause - sunset timers paused per NCIP-013",
+            )
 
         # Validate transition
         valid_next_states = VALID_TRANSITIONS.get(entry.state, [])
         if new_state not in valid_next_states:
-            return (False, f"Invalid transition: {entry.state.value} → {new_state.value}. "
-                         f"Valid transitions: {[s.value for s in valid_next_states]}")
+            return (
+                False,
+                f"Invalid transition: {entry.state.value} → {new_state.value}. "
+                f"Valid transitions: {[s.value for s in valid_next_states]}",
+            )
 
         now = datetime.utcnow()
         old_state = entry.state
@@ -416,7 +426,7 @@ class SunsetManager:
             entry_id=entry.entry_id,
             trigger_type=SunsetTriggerType.TIME_BASED,
             trigger_datetime=trigger_datetime,
-            notice_period_days=30
+            notice_period_days=30,
         )
 
         entry.sunset_clause = clause
@@ -451,7 +461,7 @@ class SunsetManager:
         max_uses: int | None = None,
         revocation_terms: str | None = None,
         amendment_id: str | None = None,
-        notice_period_days: int = 30
+        notice_period_days: int = 30,
     ) -> tuple[SunsetClause | None, list[str]]:
         """
         Declare a sunset clause per NCIP-015 Section 3.
@@ -483,7 +493,7 @@ class SunsetManager:
             max_uses=max_uses,
             revocation_terms=revocation_terms,
             amendment_id=amendment_id,
-            notice_period_days=notice_period_days
+            notice_period_days=notice_period_days,
         )
 
         # Validate explicitness
@@ -511,20 +521,18 @@ class SunsetManager:
             if entry.sunset_clause:
                 should_trigger, reason = entry.sunset_clause.check_trigger(now)
                 if should_trigger:
-                    triggered.append({
-                        "entry_id": entry_id,
-                        "clause_id": entry.sunset_clause.clause_id,
-                        "trigger_type": entry.sunset_clause.trigger_type.value,
-                        "reason": reason
-                    })
+                    triggered.append(
+                        {
+                            "entry_id": entry_id,
+                            "clause_id": entry.sunset_clause.clause_id,
+                            "trigger_type": entry.sunset_clause.trigger_type.value,
+                            "reason": reason,
+                        }
+                    )
 
         return triggered
 
-    def trigger_sunset(
-        self,
-        entry_id: str,
-        trigger_reason: str
-    ) -> tuple[bool, str]:
+    def trigger_sunset(self, entry_id: str, trigger_reason: str) -> tuple[bool, str]:
         """
         Trigger sunset for an entry.
 
@@ -560,7 +568,9 @@ class SunsetManager:
 
         # Check notice period
         if entry.sunset_pending_at and entry.sunset_clause:
-            notice_end = entry.sunset_pending_at + timedelta(days=entry.sunset_clause.notice_period_days)
+            notice_end = entry.sunset_pending_at + timedelta(
+                days=entry.sunset_clause.notice_period_days
+            )
             if datetime.utcnow() < notice_end:
                 days_remaining = (notice_end - datetime.utcnow()).days
                 return (False, f"Notice period not complete. {days_remaining} days remaining.")
@@ -568,10 +578,7 @@ class SunsetManager:
         return self.transition_state(entry_id, EntryState.SUNSET)
 
     def record_event_trigger(
-        self,
-        entry_id: str,
-        event_description: str,
-        oracle_evidence: str | None = None
+        self, entry_id: str, event_description: str, oracle_evidence: str | None = None
     ) -> tuple[bool, str]:
         """Record an event trigger for event-based sunset."""
         entry = self.entries.get(entry_id)
@@ -587,9 +594,7 @@ class SunsetManager:
         return self.trigger_sunset(entry_id, f"Event occurred: {event_description}")
 
     def record_condition_fulfilled(
-        self,
-        entry_id: str,
-        fulfillment_description: str
+        self, entry_id: str, fulfillment_description: str
     ) -> tuple[bool, str]:
         """Record condition fulfillment for condition-based sunset."""
         entry = self.entries.get(entry_id)
@@ -622,21 +627,21 @@ class SunsetManager:
             "status": "recorded",
             "entry_id": entry_id,
             "current_uses": entry.sunset_clause.current_uses,
-            "max_uses": entry.sunset_clause.max_uses
+            "max_uses": entry.sunset_clause.max_uses,
         }
 
         # Check if exhausted
         if entry.sunset_clause.current_uses >= entry.sunset_clause.max_uses:
-            self.trigger_sunset(entry_id, f"Exhaustion limit reached: {entry.sunset_clause.current_uses}/{entry.sunset_clause.max_uses}")
+            self.trigger_sunset(
+                entry_id,
+                f"Exhaustion limit reached: {entry.sunset_clause.current_uses}/{entry.sunset_clause.max_uses}",
+            )
             result["sunset_triggered"] = True
 
         return result
 
     def process_revocation(
-        self,
-        entry_id: str,
-        revoker_id: str,
-        revocation_reason: str
+        self, entry_id: str, revoker_id: str, revocation_reason: str
     ) -> tuple[bool, str]:
         """Process explicit revocation under allowed terms."""
         entry = self.entries.get(entry_id)
@@ -655,10 +660,7 @@ class SunsetManager:
     # Archival
     # -------------------------------------------------------------------------
 
-    def archive_entry(
-        self,
-        entry_id: str
-    ) -> tuple[ArchivedEntry | None, str]:
+    def archive_entry(self, entry_id: str) -> tuple[ArchivedEntry | None, str]:
         """
         Archive an entry per NCIP-015 Section 5.
 
@@ -693,7 +695,7 @@ class SunsetManager:
             entry.temporal_context = TemporalContext(
                 registry_version="unknown",
                 language_variant="en",
-                jurisdiction_context="unspecified"
+                jurisdiction_context="unspecified",
             )
 
         archive = ArchivedEntry(
@@ -707,7 +709,7 @@ class SunsetManager:
             activated_at=entry.activated_at or entry.created_at,
             sunset_at=entry.sunset_at or datetime.utcnow(),
             archived_at=datetime.utcnow(),
-            sunset_clause=entry.sunset_clause
+            sunset_clause=entry.sunset_clause,
         )
 
         self.archives[archive_id] = archive
@@ -727,7 +729,10 @@ class SunsetManager:
             return {"eligible": False, "reason": "Already archived"}
 
         if entry.state != EntryState.SUNSET:
-            return {"eligible": False, "reason": f"Must be in SUNSET state, currently: {entry.state.value}"}
+            return {
+                "eligible": False,
+                "reason": f"Must be in SUNSET state, currently: {entry.state.value}",
+            }
 
         # Check archive delay
         if entry.sunset_at:
@@ -736,7 +741,7 @@ class SunsetManager:
                 days_remaining = (archive_eligible_at - datetime.utcnow()).days
                 return {
                     "eligible": False,
-                    "reason": f"Archive delay not complete. {days_remaining} days remaining."
+                    "reason": f"Archive delay not complete. {days_remaining} days remaining.",
                 }
 
         return {"eligible": True, "reason": "Entry is eligible for archival"}
@@ -746,9 +751,7 @@ class SunsetManager:
     # -------------------------------------------------------------------------
 
     def validate_historical_reference(
-        self,
-        archived_entry_id: str,
-        proposed_interpretation: str
+        self, archived_entry_id: str, proposed_interpretation: str
     ) -> dict[str, Any]:
         """
         Validate a reference to historical/archived entry.
@@ -757,10 +760,7 @@ class SunsetManager:
         """
         archive = self.archives.get(f"ARCHIVE-{archived_entry_id}")
         if not archive:
-            return {
-                "valid": False,
-                "reason": f"Archived entry {archived_entry_id} not found"
-            }
+            return {"valid": False, "reason": f"Archived entry {archived_entry_id} not found"}
 
         return {
             "valid": True,
@@ -770,13 +770,11 @@ class SunsetManager:
             "registry_version": archive.temporal_context.registry_version,
             "warning": "Historical entry - referential only, not enforceable",
             "reinterpretation_rejected": True,
-            "rule": "Historical entries retain original meaning at T₀"
+            "rule": "Historical entries retain original meaning at T₀",
         }
 
     def reject_retroactive_application(
-        self,
-        archived_entry_id: str,
-        attempted_action: str
+        self, archived_entry_id: str, attempted_action: str
     ) -> dict[str, Any]:
         """
         Reject attempt to apply new definitions retroactively.
@@ -788,7 +786,7 @@ class SunsetManager:
             "archived_entry_id": archived_entry_id,
             "attempted_action": attempted_action,
             "reason": "Cannot apply new definitions retroactively to archived entries",
-            "rule": "NCIP-015 Section 6.2: Validators MUST reject retroactive application"
+            "rule": "NCIP-015 Section 6.2: Validators MUST reject retroactive application",
         }
 
     # -------------------------------------------------------------------------
@@ -817,29 +815,26 @@ class SunsetManager:
                 "referential_only": True,
                 "integrity_verified": archive.verify_integrity(),
                 "validator_action": "reject_new_obligations_unless_restated",
-                "principle": "Meaning may expire. History must not."
+                "principle": "Meaning may expire. History must not.",
             }
 
         if not entry:
-            return {
-                "entry_id": entry_id,
-                "status": "not_found"
-            }
+            return {"entry_id": entry_id, "status": "not_found"}
 
         checks = {
-            "has_explicit_sunset": entry.sunset_clause is not None and entry.sunset_clause.is_explicit(),
+            "has_explicit_sunset": entry.sunset_clause is not None
+            and entry.sunset_clause.is_explicit(),
             "state_valid": entry.state in EntryState,
-            "temporal_context_bound": entry.temporal_context is not None if entry.state != EntryState.DRAFT else True
+            "temporal_context_bound": entry.temporal_context is not None
+            if entry.state != EntryState.DRAFT
+            else True,
         }
 
         # Check if sunset should trigger
         sunset_status = None
         if entry.sunset_clause and entry.state == EntryState.ACTIVE:
             should_trigger, reason = entry.sunset_clause.check_trigger()
-            sunset_status = {
-                "should_trigger": should_trigger,
-                "reason": reason
-            }
+            sunset_status = {"should_trigger": should_trigger, "reason": reason}
 
         return {
             "entry_id": entry_id,
@@ -848,7 +843,7 @@ class SunsetManager:
             "sunset_status": sunset_status,
             "drift_detection_enabled": entry.state not in [EntryState.SUNSET, EntryState.ARCHIVED],
             "enforceable": entry.state == EntryState.ACTIVE,
-            "principle": "Meaning may expire. History must not."
+            "principle": "Meaning may expire. History must not.",
         }
 
     # -------------------------------------------------------------------------
@@ -867,7 +862,7 @@ class SunsetManager:
                 "can_cite": True,
                 "as_context_only": True,
                 "can_propose_action": False,
-                "reason": "Archived entries can be cited as context but cannot compel action"
+                "reason": "Archived entries can be cited as context but cannot compel action",
             }
 
         entry = self.entries.get(entry_id)
@@ -878,13 +873,11 @@ class SunsetManager:
             "can_cite": True,
             "as_context_only": entry.state in [EntryState.SUNSET, EntryState.ARCHIVED],
             "can_propose_action": entry.state == EntryState.ACTIVE,
-            "current_state": entry.state.value
+            "current_state": entry.state.value,
         }
 
     def mediator_restatement_required(
-        self,
-        archived_entry_id: str,
-        proposed_reactivation: str
+        self, archived_entry_id: str, proposed_reactivation: str
     ) -> dict[str, Any]:
         """
         Check if mediator properly restates historical semantics.
@@ -896,7 +889,7 @@ class SunsetManager:
         if not archive:
             return {
                 "restatement_required": False,
-                "reason": f"Entry {archived_entry_id} is not archived"
+                "reason": f"Entry {archived_entry_id} is not archived",
             }
 
         return {
@@ -904,18 +897,14 @@ class SunsetManager:
             "original_meaning": archive.original_meaning,
             "proposed_reactivation": proposed_reactivation,
             "rule": "Mediators MUST restate historical semantics to reactivate",
-            "guidance": "History can inform. It cannot compel."
+            "guidance": "History can inform. It cannot compel.",
         }
 
     # -------------------------------------------------------------------------
     # Emergency Integration (NCIP-013)
     # -------------------------------------------------------------------------
 
-    def pause_sunset_timer(
-        self,
-        entry_id: str,
-        emergency_id: str
-    ) -> tuple[bool, str]:
+    def pause_sunset_timer(self, entry_id: str, emergency_id: str) -> tuple[bool, str]:
         """
         Pause sunset timer during emergency per NCIP-015 Section 11.
 
@@ -931,10 +920,7 @@ class SunsetManager:
 
         return (True, f"Sunset timer paused for {entry_id} during emergency {emergency_id}")
 
-    def resume_sunset_timer(
-        self,
-        entry_id: str
-    ) -> tuple[bool, str]:
+    def resume_sunset_timer(self, entry_id: str) -> tuple[bool, str]:
         """Resume sunset timer after emergency resolution."""
         entry = self.entries.get(entry_id)
         if not entry:
@@ -966,13 +952,15 @@ class SunsetManager:
                     "entry_id": entry_id,
                     "state": "archived",
                     "sunset": {
-                        "type": archive.sunset_clause.trigger_type.value if archive.sunset_clause else "default",
-                        "triggered_at": archive.sunset_at.isoformat()
+                        "type": archive.sunset_clause.trigger_type.value
+                        if archive.sunset_clause
+                        else "default",
+                        "triggered_at": archive.sunset_at.isoformat(),
                     },
                     "post_sunset_state": {
                         "enforceable": False,
                         "negotiable": False,
-                        "referential_only": True
+                        "referential_only": True,
                     },
                     "archival": {
                         "archived_at": archive.archived_at.isoformat(),
@@ -982,14 +970,14 @@ class SunsetManager:
                             "language",
                             "jurisdiction",
                             "proof_of_understanding",
-                            "validator_snapshot"
+                            "validator_snapshot",
                         ],
-                        "archive_hash": archive.archive_hash
+                        "archive_hash": archive.archive_hash,
                     },
                     "validator_rules": {
                         "reject_reactivation_without_restatement": True,
-                        "disable_drift_detection": True
-                    }
+                        "disable_drift_detection": True,
+                    },
                 }
             }
 
@@ -1000,7 +988,7 @@ class SunsetManager:
         if entry.sunset_clause:
             sunset_config = {
                 "type": entry.sunset_clause.trigger_type.value,
-                "notice_period_days": entry.sunset_clause.notice_period_days
+                "notice_period_days": entry.sunset_clause.notice_period_days,
             }
             if entry.sunset_clause.trigger_datetime:
                 sunset_config["trigger"] = {
@@ -1009,7 +997,7 @@ class SunsetManager:
             if entry.sunset_clause.max_uses:
                 sunset_config["trigger"] = {
                     "max_uses": entry.sunset_clause.max_uses,
-                    "current_uses": entry.sunset_clause.current_uses
+                    "current_uses": entry.sunset_clause.current_uses,
                 }
 
         return {
@@ -1021,7 +1009,7 @@ class SunsetManager:
                 "post_sunset_state": {
                     "enforceable": False,
                     "negotiable": False,
-                    "referential_only": True
+                    "referential_only": True,
                 },
                 "archival": {
                     "auto_archive": True,
@@ -1032,13 +1020,14 @@ class SunsetManager:
                         "language",
                         "jurisdiction",
                         "proof_of_understanding",
-                        "validator_snapshot"
-                    ]
+                        "validator_snapshot",
+                    ],
                 },
                 "validator_rules": {
                     "reject_reactivation_without_restatement": True,
-                    "disable_drift_detection": entry.state in [EntryState.SUNSET, EntryState.ARCHIVED]
-                }
+                    "disable_drift_detection": entry.state
+                    in [EntryState.SUNSET, EntryState.ARCHIVED],
+                },
             }
         }
 
@@ -1062,13 +1051,18 @@ class SunsetManager:
             if not entry.sunset_clause:
                 continue
             if entry.sunset_clause.trigger_type == SunsetTriggerType.TIME_BASED:
-                if entry.sunset_clause.trigger_datetime and entry.sunset_clause.trigger_datetime <= cutoff:
-                    expiring.append({
-                        "entry_id": entry.entry_id,
-                        "entry_type": entry.entry_type.value,
-                        "sunset_date": entry.sunset_clause.trigger_datetime.isoformat(),
-                        "days_until_sunset": (entry.sunset_clause.trigger_datetime - now).days
-                    })
+                if (
+                    entry.sunset_clause.trigger_datetime
+                    and entry.sunset_clause.trigger_datetime <= cutoff
+                ):
+                    expiring.append(
+                        {
+                            "entry_id": entry.entry_id,
+                            "entry_type": entry.entry_type.value,
+                            "sunset_date": entry.sunset_clause.trigger_datetime.isoformat(),
+                            "days_until_sunset": (entry.sunset_clause.trigger_datetime - now).days,
+                        }
+                    )
 
         return sorted(expiring, key=lambda x: x["days_until_sunset"])
 
@@ -1091,5 +1085,5 @@ class SunsetManager:
             "type_counts": type_counts,
             "sunset_clauses_defined": len(self.sunset_clauses),
             "emergency_paused_entries": sum(1 for e in self.entries.values() if e.emergency_paused),
-            "principle": "Meaning may expire. History must not."
+            "principle": "Meaning may expire. History must not.",
         }

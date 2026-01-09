@@ -31,9 +31,7 @@ class TemporalFixity:
         self.t0_snapshots = {}  # Maps entry hash to T0 snapshot
 
     def create_t0_snapshot(
-        self,
-        entry: NaturalLanguageEntry,
-        block_context: dict[str, Any] | None = None
+        self, entry: NaturalLanguageEntry, block_context: dict[str, Any] | None = None
     ) -> dict[str, Any]:
         """
         Create immutable T0 snapshot of entry context.
@@ -57,39 +55,34 @@ class TemporalFixity:
         snapshot = {
             "t0_timestamp": t0_timestamp,
             "t0_date_iso": datetime.fromisoformat(t0_timestamp).strftime("%Y-%m-%d %H:%M:%S UTC"),
-
             # Original content (immutable)
             "canonical_prose": entry.content,
             "stated_intent": entry.intent,
             "author": entry.author,
             "author_authority": entry.metadata.get("author_authority", "unverified"),
-
             # Linguistic context
             "language": entry.metadata.get("language", "en-US"),
             "prose_hash": hashlib.sha256(entry.content.encode()).hexdigest(),
-
             # Legal/regulatory context at T0
             "jurisdiction": entry.metadata.get("jurisdiction", "unspecified"),
             "applicable_law_version": entry.metadata.get("law_version", "T0"),
             "regulatory_framework": entry.metadata.get("regulatory_framework", {}),
-
             # Contract-specific fixity
-            "contract_terms_t0": entry.metadata.get("terms", {}) if entry.metadata.get("is_contract") else None,
+            "contract_terms_t0": entry.metadata.get("terms", {})
+            if entry.metadata.get("is_contract")
+            else None,
             "parties": entry.metadata.get("parties", []),
-
             # Validation state at T0
             "validation_status_t0": entry.validation_status,
             "validation_paraphrases_t0": entry.validation_paraphrases.copy(),
-
             # Block context (if provided)
             "block_index": block_context.get("block_index") if block_context else None,
             "block_hash": block_context.get("block_hash") if block_context else None,
             "previous_block_hash": block_context.get("previous_hash") if block_context else None,
-
             # Metadata
             "snapshot_type": "T0_IMMUTABLE",
             "fixity_protocol_version": "1.0",
-            "intended_for_worm_archival": True
+            "intended_for_worm_archival": True,
         }
 
         # Generate snapshot hash for integrity
@@ -99,9 +92,7 @@ class TemporalFixity:
         return snapshot
 
     def add_t0_snapshot_to_entry(
-        self,
-        entry: NaturalLanguageEntry,
-        block_context: dict[str, Any] | None = None
+        self, entry: NaturalLanguageEntry, block_context: dict[str, Any] | None = None
     ) -> NaturalLanguageEntry:
         """
         Enhance entry with T0 snapshot metadata.
@@ -125,9 +116,7 @@ class TemporalFixity:
         return entry
 
     def verify_temporal_integrity(
-        self,
-        entry: NaturalLanguageEntry,
-        t_current: str | None = None
+        self, entry: NaturalLanguageEntry, t_current: str | None = None
     ) -> dict[str, Any]:
         """
         Verify that entry's T0 snapshot matches current content.
@@ -142,11 +131,7 @@ class TemporalFixity:
             Verification result
         """
         if "t0_snapshot" not in entry.metadata:
-            return {
-                "verified": False,
-                "reason": "No T0 snapshot found",
-                "temporal_fixity": False
-            }
+            return {"verified": False, "reason": "No T0 snapshot found", "temporal_fixity": False}
 
         t0_snapshot = entry.metadata["t0_snapshot"]
         t_current = t_current or datetime.utcnow().isoformat()
@@ -155,7 +140,7 @@ class TemporalFixity:
         current_prose_hash = hashlib.sha256(entry.content.encode()).hexdigest()
         t0_prose_hash = t0_snapshot["prose_hash"]
 
-        prose_intact = (current_prose_hash == t0_prose_hash)
+        prose_intact = current_prose_hash == t0_prose_hash
 
         # Check for any modifications
         modifications = []
@@ -171,7 +156,9 @@ class TemporalFixity:
 
         # Calculate time delta
         t0_dt = datetime.fromisoformat(t0_snapshot["t0_timestamp"])
-        t_current_dt = datetime.fromisoformat(t_current) if isinstance(t_current, str) else t_current
+        t_current_dt = (
+            datetime.fromisoformat(t_current) if isinstance(t_current, str) else t_current
+        )
         years_elapsed = (t_current_dt - t0_dt).days / 365.25
 
         return {
@@ -183,13 +170,11 @@ class TemporalFixity:
             "years_elapsed": round(years_elapsed, 2),
             "temporal_fixity": prose_intact,
             "original_context_preserved": len(modifications) == 0,
-            "snapshot_hash": t0_snapshot["snapshot_hash"]
+            "snapshot_hash": t0_snapshot["snapshot_hash"],
         }
 
     def generate_legal_certificate(
-        self,
-        entry: NaturalLanguageEntry,
-        purpose: str = "legal_defense"
+        self, entry: NaturalLanguageEntry, purpose: str = "legal_defense"
     ) -> dict[str, Any]:
         """
         Generate legal certificate proving T0 context.
@@ -217,35 +202,30 @@ class TemporalFixity:
             "certificate_type": "T0_TEMPORAL_FIXITY",
             "purpose": purpose,
             "generated_at": datetime.utcnow().isoformat(),
-
             # Primary evidence
             "canonical_prose_t0": t0_snapshot["canonical_prose"],
             "prose_hash_t0": t0_snapshot["prose_hash"],
             "timestamp_t0": t0_snapshot["t0_timestamp"],
-
             # Context at T0
             "legal_context_t0": {
                 "jurisdiction": t0_snapshot["jurisdiction"],
                 "applicable_law": t0_snapshot["applicable_law_version"],
-                "regulatory_framework": t0_snapshot["regulatory_framework"]
+                "regulatory_framework": t0_snapshot["regulatory_framework"],
             },
-
             # Verification
             "temporal_integrity_verified": verification["verified"],
             "prose_unmodified": verification["prose_hash_match"],
             "time_elapsed_years": verification["years_elapsed"],
-
             # Chain of custody
             "block_hash": t0_snapshot.get("block_hash"),
             "snapshot_hash": t0_snapshot["snapshot_hash"],
-
             # Legal statements
             "statements": {
                 "immutability": "This record is cryptographically immutable and has been verified against its T0 snapshot",
                 "temporal_fixity": f"The linguistic meaning and legal context are fixed to {t0_snapshot['t0_date_iso']}",
                 "non_repudiation": "The prose hash provides non-repudiable proof of original content",
-                "standard_met": "Meets SEC 17a-4, HIPAA, and WORM archival standards"
-            }
+                "standard_met": "Meets SEC 17a-4, HIPAA, and WORM archival standards",
+            },
         }
 
         # Add contract-specific info
@@ -259,7 +239,7 @@ class TemporalFixity:
                 "physician": entry.author,
                 "ai_interaction": entry.metadata.get("ai_model"),
                 "decision_pathway": entry.content,
-                "hipaa_compliant": True
+                "hipaa_compliant": True,
             }
 
         # Certificate hash
@@ -269,10 +249,7 @@ class TemporalFixity:
         return certificate
 
     def export_for_worm_archival(
-        self,
-        blockchain: NatLangChain,
-        start_block: int = 0,
-        end_block: int | None = None
+        self, blockchain: NatLangChain, start_block: int = 0, end_block: int | None = None
     ) -> dict[str, Any]:
         """
         Export blockchain data formatted for WORM media archival.
@@ -297,27 +274,23 @@ class TemporalFixity:
             "archive_type": "NATLANGCHAIN_WORM_ARCHIVE",
             "archive_version": "1.0",
             "archive_timestamp": datetime.utcnow().isoformat(),
-
             # Archive metadata
             "blockchain_info": {
                 "total_blocks": len(blockchain.chain),
                 "archived_blocks": f"{start_block}-{end_block}",
-                "genesis_hash": blockchain.chain[0].hash if blockchain.chain else None
+                "genesis_hash": blockchain.chain[0].hash if blockchain.chain else None,
             },
-
             # Full blocks with T0 snapshots
             "blocks": [],
-
             # Legal compliance
             "compliance": {
                 "sec_17a4_compliant": True,
                 "hipaa_compliant": True,
                 "worm_media_required": True,
-                "retention_recommendation": "permanent"
+                "retention_recommendation": "permanent",
             },
-
             # Verification data
-            "integrity_proofs": []
+            "integrity_proofs": [],
         }
 
         # Export each block
@@ -333,26 +306,27 @@ class TemporalFixity:
                 "timestamp": block.timestamp,
                 "previous_hash": block.previous_hash,
                 "nonce": block.nonce,
-
                 # Entries with T0 snapshots
-                "entries": []
+                "entries": [],
             }
 
             for entry in block.entries:
                 # Ensure T0 snapshot exists
                 if "t0_snapshot" not in entry.metadata:
-                    self.add_t0_snapshot_to_entry(entry, {
-                        "block_index": block.index,
-                        "block_hash": block.hash,
-                        "previous_hash": block.previous_hash
-                    })
+                    self.add_t0_snapshot_to_entry(
+                        entry,
+                        {
+                            "block_index": block.index,
+                            "block_hash": block.hash,
+                            "previous_hash": block.previous_hash,
+                        },
+                    )
 
                 entry_export = entry.to_dict()
 
                 # Add legal certificate
                 entry_export["legal_certificate"] = self.generate_legal_certificate(
-                    entry,
-                    purpose="worm_archival"
+                    entry, purpose="worm_archival"
                 )
 
                 block_export["entries"].append(entry_export)
@@ -360,12 +334,14 @@ class TemporalFixity:
             export["blocks"].append(block_export)
 
             # Add integrity proof
-            export["integrity_proofs"].append({
-                "block_index": block.index,
-                "block_hash": block.hash,
-                "entry_count": len(block.entries),
-                "verified_at": datetime.utcnow().isoformat()
-            })
+            export["integrity_proofs"].append(
+                {
+                    "block_index": block.index,
+                    "block_hash": block.hash,
+                    "entry_count": len(block.entries),
+                    "verified_at": datetime.utcnow().isoformat(),
+                }
+            )
 
         # Archive hash (for integrity verification)
         archive_json = json.dumps(export["blocks"], sort_keys=True)
@@ -377,15 +353,14 @@ class TemporalFixity:
             "format": "JSON with SHA-256 integrity proofs",
             "storage_requirements": "Air-gapped, climate-controlled, redundant",
             "verification_procedure": "Hash verification against archive_hash",
-            "legal_status": "Constitutes primary evidence under applicable law"
+            "legal_status": "Constitutes primary evidence under applicable law",
         }
 
         return export
 
 
 def enhance_entry_with_temporal_fixity(
-    entry: NaturalLanguageEntry,
-    block_context: dict[str, Any] | None = None
+    entry: NaturalLanguageEntry, block_context: dict[str, Any] | None = None
 ) -> NaturalLanguageEntry:
     """
     Convenience function to enhance an entry with temporal fixity.

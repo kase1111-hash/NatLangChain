@@ -8,29 +8,30 @@ Tests cover:
 - Price Suggestions
 """
 
-import pytest
 import sys
 from datetime import datetime
+
+import pytest
 
 sys.path.insert(0, "src")
 
 from market_pricing import (
     AssetClass,
-    MarketCondition,
-    PricingStrategy,
-    TrendDirection,
-    PriceData,
     HistoricalPrice,
     MarketAnalysis,
-    PriceSuggestion,
-    MarketDataOracle,
     MarketAnalyzer,
+    MarketCondition,
+    MarketDataOracle,
+    PriceData,
+    PriceSuggestion,
+    PricingStrategy,
+    TrendDirection,
 )
-
 
 # ============================================================
 # Market Data Oracle Tests
 # ============================================================
+
 
 class TestMarketDataOracle:
     """Tests for MarketDataOracle."""
@@ -119,10 +120,7 @@ class TestMarketDataOracle:
     def test_add_custom_asset(self, oracle):
         """Should add custom asset."""
         oracle.add_custom_asset(
-            asset="CUSTOM",
-            price=100.0,
-            asset_class=AssetClass.CUSTOM,
-            volatility=0.05
+            asset="CUSTOM", price=100.0, asset_class=AssetClass.CUSTOM, volatility=0.05
         )
 
         price = oracle.get_price("CUSTOM")
@@ -165,6 +163,7 @@ class TestMarketDataOracle:
 # ============================================================
 # Market Analyzer Tests
 # ============================================================
+
 
 class TestMarketAnalyzer:
     """Tests for MarketAnalyzer."""
@@ -219,11 +218,7 @@ class TestMarketAnalyzer:
         """Trend should be valid enum value."""
         analysis = analyzer.analyze_market("ETH")
 
-        assert analysis.trend in [
-            TrendDirection.UP,
-            TrendDirection.DOWN,
-            TrendDirection.STABLE
-        ]
+        assert analysis.trend in [TrendDirection.UP, TrendDirection.DOWN, TrendDirection.STABLE]
 
     def test_market_condition_values(self, analyzer):
         """Condition should be valid enum value."""
@@ -235,7 +230,7 @@ class TestMarketAnalyzer:
             MarketCondition.NEUTRAL,
             MarketCondition.VOLATILE,
             MarketCondition.TRENDING_UP,
-            MarketCondition.TRENDING_DOWN
+            MarketCondition.TRENDING_DOWN,
         ]
 
     def test_fair_value_estimation(self, analyzer):
@@ -252,6 +247,7 @@ class TestMarketAnalyzer:
 # Data Class Tests
 # ============================================================
 
+
 class TestPriceData:
     """Tests for PriceData dataclass."""
 
@@ -263,7 +259,7 @@ class TestPriceData:
             price=100.0,
             currency="USD",
             timestamp=datetime.utcnow().isoformat(),
-            source="test"
+            source="test",
         )
 
         assert price.asset == "TEST"
@@ -277,7 +273,7 @@ class TestPriceData:
             price=100.0,
             currency="USD",
             timestamp=datetime.utcnow().isoformat(),
-            source="test"
+            source="test",
         )
 
         assert price.bid is None
@@ -290,11 +286,7 @@ class TestHistoricalPrice:
 
     def test_create_historical_price(self):
         """Should create HistoricalPrice instance."""
-        hist = HistoricalPrice(
-            asset="BTC",
-            price=42000.0,
-            timestamp=datetime.utcnow().isoformat()
-        )
+        hist = HistoricalPrice(asset="BTC", price=42000.0, timestamp=datetime.utcnow().isoformat())
 
         assert hist.asset == "BTC"
         assert hist.price == 42000.0
@@ -306,10 +298,7 @@ class TestMarketAnalysis:
     def test_create_market_analysis(self):
         """Should create MarketAnalysis instance."""
         analysis = MarketAnalysis(
-            asset="ETH",
-            condition=MarketCondition.BULLISH,
-            trend=TrendDirection.UP,
-            volatility=0.3
+            asset="ETH", condition=MarketCondition.BULLISH, trend=TrendDirection.UP, volatility=0.3
         )
 
         assert analysis.asset == "ETH"
@@ -327,7 +316,7 @@ class TestPriceSuggestion:
             asset_or_service="Web Development",
             suggested_price=5000.0,
             currency="USD",
-            price_range=(4000.0, 6000.0)
+            price_range=(4000.0, 6000.0),
         )
 
         assert suggestion.suggested_price == 5000.0
@@ -337,6 +326,7 @@ class TestPriceSuggestion:
 # ============================================================
 # Enum Tests
 # ============================================================
+
 
 class TestEnums:
     """Tests for pricing enums."""
@@ -372,6 +362,7 @@ class TestEnums:
 # Integration Tests
 # ============================================================
 
+
 class TestMarketPricingIntegration:
     """Integration tests for market pricing components."""
 
@@ -382,10 +373,7 @@ class TestMarketPricingIntegration:
 
         # 2. Add custom asset for service pricing
         oracle.add_custom_asset(
-            asset="CONSULTING_HOUR",
-            price=150.0,
-            asset_class=AssetClass.SERVICE,
-            volatility=0.01
+            asset="CONSULTING_HOUR", price=150.0, asset_class=AssetClass.SERVICE, volatility=0.01
         )
 
         # 3. Get current prices

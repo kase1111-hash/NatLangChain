@@ -53,7 +53,7 @@ class SemanticOracle:
         contract_condition: str,
         contract_intent: str,
         event_description: str,
-        event_data: dict[str, Any] | None = None
+        event_data: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
         Verify if an external event triggers a contract condition.
@@ -121,16 +121,18 @@ Return JSON:
 }}"""
 
             message = self.client.messages.create(
-                model=self.model,
-                max_tokens=512,
-                messages=[{"role": "user", "content": prompt}]
+                model=self.model, max_tokens=512, messages=[{"role": "user", "content": prompt}]
             )
 
             # Safe access to API response
             if not message.content:
-                raise ValueError("Empty response from API: no content returned during event verification")
-            if not hasattr(message.content[0], 'text'):
-                raise ValueError("Invalid API response format: missing 'text' attribute in event verification")
+                raise ValueError(
+                    "Empty response from API: no content returned during event verification"
+                )
+            if not hasattr(message.content[0], "text"):
+                raise ValueError(
+                    "Invalid API response format: missing 'text' attribute in event verification"
+                )
 
             response_text = message.content[0].text
 
@@ -140,7 +142,9 @@ Return JSON:
             try:
                 result = json.loads(response_text)
             except json.JSONDecodeError as e:
-                raise ValueError(f"Failed to parse event verification JSON: {e.msg} at position {e.pos}")
+                raise ValueError(
+                    f"Failed to parse event verification JSON: {e.msg} at position {e.pos}"
+                )
 
             return {
                 "status": "success",
@@ -148,7 +152,7 @@ Return JSON:
                 "verification_timestamp": datetime.utcnow().isoformat(),
                 "contract_condition": contract_condition,
                 "event_description": event_description,
-                "result": result
+                "result": result,
             }
 
         except json.JSONDecodeError as e:
@@ -156,30 +160,21 @@ Return JSON:
                 "status": "error",
                 "error": f"JSON parsing error: {e!s}",
                 "oracle_type": "semantic",
-                "result": {
-                    "triggers_condition": None,
-                    "recommended_action": "ERROR"
-                }
+                "result": {"triggers_condition": None, "recommended_action": "ERROR"},
             }
         except ValueError as e:
             return {
                 "status": "error",
                 "error": f"Validation error: {e!s}",
                 "oracle_type": "semantic",
-                "result": {
-                    "triggers_condition": None,
-                    "recommended_action": "ERROR"
-                }
+                "result": {"triggers_condition": None, "recommended_action": "ERROR"},
             }
         except Exception as e:
             return {
                 "status": "error",
                 "error": f"Unexpected error: {e!s}",
                 "oracle_type": "semantic",
-                "result": {
-                    "triggers_condition": None,
-                    "recommended_action": "ERROR"
-                }
+                "result": {"triggers_condition": None, "recommended_action": "ERROR"},
             }
 
     def _extract_json_from_response(self, response_text: str) -> str:
@@ -214,10 +209,7 @@ Return JSON:
         return response_text.strip()
 
     def verify_contingency_clause(
-        self,
-        contract_prose: str,
-        contingency_type: str,
-        current_situation: str
+        self, contract_prose: str, contingency_type: str, current_situation: str
     ) -> dict[str, Any]:
         """
         Verify if a contingency clause has been triggered.
@@ -277,16 +269,18 @@ Return JSON:
 }}"""
 
             message = self.client.messages.create(
-                model=self.model,
-                max_tokens=768,
-                messages=[{"role": "user", "content": prompt}]
+                model=self.model, max_tokens=768, messages=[{"role": "user", "content": prompt}]
             )
 
             # Safe access to API response
             if not message.content:
-                raise ValueError("Empty response from API: no content returned during contingency verification")
-            if not hasattr(message.content[0], 'text'):
-                raise ValueError("Invalid API response format: missing 'text' attribute in contingency verification")
+                raise ValueError(
+                    "Empty response from API: no content returned during contingency verification"
+                )
+            if not hasattr(message.content[0], "text"):
+                raise ValueError(
+                    "Invalid API response format: missing 'text' attribute in contingency verification"
+                )
 
             response_text = message.content[0].text
 
@@ -296,40 +290,39 @@ Return JSON:
             try:
                 result = json.loads(response_text)
             except json.JSONDecodeError as e:
-                raise ValueError(f"Failed to parse contingency verification JSON: {e.msg} at position {e.pos}")
+                raise ValueError(
+                    f"Failed to parse contingency verification JSON: {e.msg} at position {e.pos}"
+                )
 
             return {
                 "status": "success",
                 "oracle_type": "contingency",
                 "contingency_type": contingency_type,
                 "verification_timestamp": datetime.utcnow().isoformat(),
-                "result": result
+                "result": result,
             }
 
         except json.JSONDecodeError as e:
             return {
                 "status": "error",
                 "error": f"JSON parsing error: {e!s}",
-                "oracle_type": "contingency"
+                "oracle_type": "contingency",
             }
         except ValueError as e:
             return {
                 "status": "error",
                 "error": f"Validation error: {e!s}",
-                "oracle_type": "contingency"
+                "oracle_type": "contingency",
             }
         except Exception as e:
             return {
                 "status": "error",
                 "error": f"Unexpected error: {e!s}",
-                "oracle_type": "contingency"
+                "oracle_type": "contingency",
             }
 
     def check_otc_settlement_condition(
-        self,
-        derivative_contract: str,
-        market_event: str,
-        market_data: dict[str, Any]
+        self, derivative_contract: str, market_event: str, market_data: dict[str, Any]
     ) -> dict[str, Any]:
         """
         Verify OTC derivative settlement conditions.
@@ -392,16 +385,18 @@ Return JSON:
 }}"""
 
             message = self.client.messages.create(
-                model=self.model,
-                max_tokens=768,
-                messages=[{"role": "user", "content": prompt}]
+                model=self.model, max_tokens=768, messages=[{"role": "user", "content": prompt}]
             )
 
             # Safe access to API response
             if not message.content:
-                raise ValueError("Empty response from API: no content returned during OTC settlement check")
-            if not hasattr(message.content[0], 'text'):
-                raise ValueError("Invalid API response format: missing 'text' attribute in OTC settlement check")
+                raise ValueError(
+                    "Empty response from API: no content returned during OTC settlement check"
+                )
+            if not hasattr(message.content[0], "text"):
+                raise ValueError(
+                    "Invalid API response format: missing 'text' attribute in OTC settlement check"
+                )
 
             response_text = message.content[0].text
 
@@ -411,7 +406,9 @@ Return JSON:
             try:
                 result = json.loads(response_text)
             except json.JSONDecodeError as e:
-                raise ValueError(f"Failed to parse OTC settlement JSON: {e.msg} at position {e.pos}")
+                raise ValueError(
+                    f"Failed to parse OTC settlement JSON: {e.msg} at position {e.pos}"
+                )
 
             return {
                 "status": "success",
@@ -419,36 +416,33 @@ Return JSON:
                 "verification_timestamp": datetime.utcnow().isoformat(),
                 "derivative_contract": derivative_contract,
                 "market_event": market_event,
-                "result": result
+                "result": result,
             }
 
         except json.JSONDecodeError as e:
             return {
                 "status": "error",
                 "error": f"JSON parsing error: {e!s}",
-                "oracle_type": "otc_settlement"
+                "oracle_type": "otc_settlement",
             }
         except ValueError as e:
             return {
                 "status": "error",
                 "error": f"Validation error: {e!s}",
-                "oracle_type": "otc_settlement"
+                "oracle_type": "otc_settlement",
             }
         except Exception as e:
             return {
                 "status": "error",
                 "error": f"Unexpected error: {e!s}",
-                "oracle_type": "otc_settlement"
+                "oracle_type": "otc_settlement",
             }
 
     # Maximum oracles to prevent DoS
     MAX_ORACLES = 10
 
     def multi_oracle_consensus(
-        self,
-        condition: str,
-        event: str,
-        num_oracles: int = 3
+        self, condition: str, event: str, num_oracles: int = 3
     ) -> dict[str, Any]:
         """
         Achieve consensus across multiple oracle evaluations.
@@ -471,17 +465,14 @@ Return JSON:
             result = self.verify_event_trigger(
                 contract_condition=condition,
                 contract_intent="Evaluate condition semantically",
-                event_description=event
+                event_description=event,
             )
 
             if result["status"] == "success":
                 evaluations.append(result["result"])
 
         if not evaluations:
-            return {
-                "consensus": "FAILED",
-                "reason": "All oracle evaluations failed"
-            }
+            return {"consensus": "FAILED", "reason": "All oracle evaluations failed"}
 
         # Count trigger decisions
         trigger_count = sum(1 for e in evaluations if e.get("triggers_condition"))
@@ -505,7 +496,11 @@ Return JSON:
             "no_trigger_votes": no_trigger_count,
             "average_confidence": round(avg_confidence, 3),
             "evaluations": evaluations,
-            "recommended_action": "EXECUTE" if consensus_decision else "HOLD" if not consensus_decision else "REVIEW"
+            "recommended_action": "EXECUTE"
+            if consensus_decision
+            else "HOLD"
+            if not consensus_decision
+            else "REVIEW",
         }
 
 
@@ -520,11 +515,7 @@ class SemanticCircuitBreaker:
     If an agent's actions drift from its 'Stated Intent'... triggers immediate block"
     """
 
-    def __init__(
-        self,
-        oracle: SemanticOracle,
-        drift_threshold: float = 0.7
-    ):
+    def __init__(self, oracle: SemanticOracle, drift_threshold: float = 0.7):
         """
         Initialize circuit breaker.
 
@@ -537,10 +528,7 @@ class SemanticCircuitBreaker:
         self.violations = []
 
     def check_agent_action(
-        self,
-        stated_intent: str,
-        proposed_action: str,
-        agent_id: str
+        self, stated_intent: str, proposed_action: str, agent_id: str
     ) -> dict[str, Any]:
         """
         Check if proposed agent action aligns with stated intent.
@@ -557,14 +545,14 @@ class SemanticCircuitBreaker:
         result = self.oracle.verify_event_trigger(
             contract_condition=stated_intent,
             contract_intent="Agent authorization scope",
-            event_description=f"Agent {agent_id} proposes: {proposed_action}"
+            event_description=f"Agent {agent_id} proposes: {proposed_action}",
         )
 
         if result["status"] != "success":
             return {
                 "allowed": False,
                 "reason": "Oracle evaluation failed",
-                "circuit_breaker_triggered": True
+                "circuit_breaker_triggered": True,
             }
 
         oracle_result = result["result"]
@@ -586,7 +574,7 @@ class SemanticCircuitBreaker:
                 "stated_intent": stated_intent,
                 "proposed_action": proposed_action,
                 "drift_score": drift_score,
-                "reasoning": oracle_result.get("reasoning")
+                "reasoning": oracle_result.get("reasoning"),
             }
             self.violations.append(violation)
 
@@ -597,5 +585,5 @@ class SemanticCircuitBreaker:
             "circuit_breaker_triggered": triggered,
             "reasoning": oracle_result.get("reasoning"),
             "recommended_action": "BLOCK" if triggered else "ALLOW",
-            "violation_logged": triggered
+            "violation_logged": triggered,
         }

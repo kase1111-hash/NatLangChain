@@ -22,55 +22,61 @@ class ForceMajeureClass(Enum):
 
     These are semantic labels, not legal conclusions.
     """
-    NATURAL_DISASTER = "natural_disaster"        # Earthquake, flood, fire
-    GOVERNMENT_ACTION = "government_action"      # Sanctions, seizure, shutdown
-    ARMED_CONFLICT = "armed_conflict"            # War, terrorism
+
+    NATURAL_DISASTER = "natural_disaster"  # Earthquake, flood, fire
+    GOVERNMENT_ACTION = "government_action"  # Sanctions, seizure, shutdown
+    ARMED_CONFLICT = "armed_conflict"  # War, terrorism
     INFRASTRUCTURE_FAILURE = "infrastructure_failure"  # Power, network collapse
-    MEDICAL_INCAPACITY = "medical_incapacity"    # Death, coma, incapacity
+    MEDICAL_INCAPACITY = "medical_incapacity"  # Death, coma, incapacity
     SYSTEMIC_PROTOCOL_FAILURE = "systemic_protocol_failure"  # Chain halt, validator collapse
 
 
 class EmergencyScope(Enum):
     """Scope of emergency declaration."""
-    CONTRACT = "contract"        # Affects specific contract(s)
+
+    CONTRACT = "contract"  # Affects specific contract(s)
     JURISDICTION = "jurisdiction"  # Affects entire jurisdiction
-    SYSTEM = "system"            # System-wide emergency
+    SYSTEM = "system"  # System-wide emergency
 
 
 class EmergencyStatus(Enum):
     """Status of an emergency declaration."""
-    DECLARED = "declared"        # Initial declaration
+
+    DECLARED = "declared"  # Initial declaration
     UNDER_REVIEW = "under_review"  # Being evaluated
-    VALIDATED = "validated"      # Confirmed valid
-    DISPUTED = "disputed"        # Under dispute
-    ACTIVE = "active"            # Emergency effects active
-    EXPIRED = "expired"          # Past max_duration
-    RESOLVED = "resolved"        # Emergency ended
-    REJECTED = "rejected"        # Declaration rejected
+    VALIDATED = "validated"  # Confirmed valid
+    DISPUTED = "disputed"  # Under dispute
+    ACTIVE = "active"  # Emergency effects active
+    EXPIRED = "expired"  # Past max_duration
+    RESOLVED = "resolved"  # Emergency ended
+    REJECTED = "rejected"  # Declaration rejected
 
 
 class ExecutionEffect(Enum):
     """
     Allowed execution effects per NCIP-013 Section 6.1.
     """
-    PAUSE_EXECUTION = "pause_execution"      # ✅ Allowed
-    DELAY_DEADLINES = "delay_deadlines"      # ✅ Allowed
+
+    PAUSE_EXECUTION = "pause_execution"  # ✅ Allowed
+    DELAY_DEADLINES = "delay_deadlines"  # ✅ Allowed
     FREEZE_SETTLEMENT = "freeze_settlement"  # ✅ Allowed
-    TRIGGER_FALLBACK = "trigger_fallback"    # ✅ Allowed
+    TRIGGER_FALLBACK = "trigger_fallback"  # ✅ Allowed
 
 
 class ProhibitedEffect(Enum):
     """
     Prohibited effects per NCIP-013 Section 6.1.
     """
+
     REDEFINE_OBLIGATIONS = "redefine_obligations"  # ❌ Never allowed
-    IMPOSE_NEW_DUTIES = "impose_new_duties"        # ❌ Never allowed
-    ALTER_INTENT = "alter_intent"                  # ❌ Never allowed
+    IMPOSE_NEW_DUTIES = "impose_new_duties"  # ❌ Never allowed
+    ALTER_INTENT = "alter_intent"  # ❌ Never allowed
     COLLAPSE_UNCERTAINTY = "collapse_uncertainty"  # ❌ Never allowed
 
 
 class OracleType(Enum):
     """Types of oracles that may provide emergency evidence."""
+
     DISASTER_FEED = "disaster_feed"
     GOVERNMENT_NOTICE = "government_notice"
     DEATH_REGISTRY = "death_registry"
@@ -85,6 +91,7 @@ class OracleEvidence:
     Oracle outputs are evidence, not authority.
     They do not auto-resolve disputes.
     """
+
     oracle_id: str
     oracle_type: OracleType
     evidence_data: str
@@ -105,10 +112,11 @@ class SemanticFallback:
     - Are semantically validated
     - Cannot be invented post-hoc
     """
+
     fallback_id: str
     contract_id: str
     trigger_condition: str  # Natural language condition
-    fallback_action: str    # What happens when triggered
+    fallback_action: str  # What happens when triggered
 
     # Validation
     declared_at: datetime = field(default_factory=datetime.utcnow)
@@ -141,6 +149,7 @@ class EmergencyDeclaration:
     - review_after
     - max_duration
     """
+
     emergency_id: str
     declared_by: str
     scope: EmergencyScope
@@ -228,6 +237,7 @@ class EmergencyDispute:
     - Burden of proof lies with declarer
     - Execution remains paused during dispute
     """
+
     dispute_id: str
     emergency_id: str
     disputed_by: str
@@ -295,7 +305,7 @@ class EmergencyManager:
         declared_reason: str,
         affected_refs: list[str],
         review_after_days: int = DEFAULT_REVIEW_DAYS,
-        max_duration_days: int = DEFAULT_MAX_DURATION_DAYS
+        max_duration_days: int = DEFAULT_MAX_DURATION_DAYS,
     ) -> tuple[EmergencyDeclaration | None, list[str]]:
         """
         Declare an emergency per NCIP-013 Section 3.
@@ -329,7 +339,7 @@ class EmergencyManager:
             declared_reason=declared_reason,
             affected_refs=affected_refs,
             review_after=timedelta(days=review_after_days),
-            max_duration=timedelta(days=max_duration_days)
+            max_duration=timedelta(days=max_duration_days),
         )
 
         # Verify declaration format
@@ -347,10 +357,7 @@ class EmergencyManager:
 
         return (emergency, [])
 
-    def validate_emergency(
-        self,
-        emergency_id: str
-    ) -> dict[str, Any]:
+    def validate_emergency(self, emergency_id: str) -> dict[str, Any]:
         """
         Validate an emergency declaration.
 
@@ -358,10 +365,7 @@ class EmergencyManager:
         """
         emergency = self.emergencies.get(emergency_id)
         if not emergency:
-            return {
-                "status": "error",
-                "message": f"Emergency {emergency_id} not found"
-            }
+            return {"status": "error", "message": f"Emergency {emergency_id} not found"}
 
         issues = []
 
@@ -390,18 +394,14 @@ class EmergencyManager:
             "status": emergency.status.value,
             "issues": issues,
             "requires_review": len(issues) > 0,
-            "message": "Declaration is signal, not truth - evaluation required"
+            "message": "Declaration is signal, not truth - evaluation required",
         }
 
     # -------------------------------------------------------------------------
     # Execution Effects
     # -------------------------------------------------------------------------
 
-    def apply_execution_effect(
-        self,
-        emergency_id: str,
-        effect: ExecutionEffect
-    ) -> dict[str, Any]:
+    def apply_execution_effect(self, emergency_id: str, effect: ExecutionEffect) -> dict[str, Any]:
         """
         Apply an execution effect per NCIP-013 Section 6.
 
@@ -409,15 +409,12 @@ class EmergencyManager:
         """
         emergency = self.emergencies.get(emergency_id)
         if not emergency:
-            return {
-                "status": "error",
-                "message": f"Emergency {emergency_id} not found"
-            }
+            return {"status": "error", "message": f"Emergency {emergency_id} not found"}
 
         if emergency.status not in [EmergencyStatus.VALIDATED, EmergencyStatus.ACTIVE]:
             return {
                 "status": "error",
-                "message": f"Cannot apply effects in status: {emergency.status.value}"
+                "message": f"Cannot apply effects in status: {emergency.status.value}",
             }
 
         emergency.applied_effects.append(effect)
@@ -427,13 +424,10 @@ class EmergencyManager:
             "status": "applied",
             "emergency_id": emergency_id,
             "effect": effect.value,
-            "applied_effects": [e.value for e in emergency.applied_effects]
+            "applied_effects": [e.value for e in emergency.applied_effects],
         }
 
-    def check_prohibited_effect(
-        self,
-        effect: str
-    ) -> dict[str, Any]:
+    def check_prohibited_effect(self, effect: str) -> dict[str, Any]:
         """
         Check if an effect is prohibited per NCIP-013 Section 6.1.
 
@@ -444,7 +438,7 @@ class EmergencyManager:
             return {
                 "effect": effect,
                 "prohibited": True,
-                "message": f"{effect} is NEVER allowed - emergencies may suspend execution, never meaning"
+                "message": f"{effect} is NEVER allowed - emergencies may suspend execution, never meaning",
             }
         except ValueError:
             pass
@@ -455,14 +449,14 @@ class EmergencyManager:
                 "effect": effect,
                 "prohibited": False,
                 "allowed": True,
-                "message": f"{effect} is allowed during emergencies"
+                "message": f"{effect} is allowed during emergencies",
             }
         except ValueError:
             return {
                 "effect": effect,
                 "prohibited": False,
                 "allowed": False,
-                "message": f"Unknown effect: {effect}"
+                "message": f"Unknown effect: {effect}",
             }
 
     # -------------------------------------------------------------------------
@@ -470,10 +464,7 @@ class EmergencyManager:
     # -------------------------------------------------------------------------
 
     def declare_fallback(
-        self,
-        contract_id: str,
-        trigger_condition: str,
-        fallback_action: str
+        self, contract_id: str, trigger_condition: str, fallback_action: str
     ) -> tuple[SemanticFallback | None, list[str]]:
         """
         Declare a semantic fallback per NCIP-013 Section 7.
@@ -500,7 +491,7 @@ class EmergencyManager:
             contract_id=contract_id,
             trigger_condition=trigger_condition,
             fallback_action=fallback_action,
-            is_original=True
+            is_original=True,
         )
 
         if contract_id not in self.fallbacks:
@@ -509,11 +500,7 @@ class EmergencyManager:
 
         return (fallback, [])
 
-    def validate_fallback(
-        self,
-        fallback_id: str,
-        contract_id: str
-    ) -> dict[str, Any]:
+    def validate_fallback(self, fallback_id: str, contract_id: str) -> dict[str, Any]:
         """
         Semantically validate a fallback.
         """
@@ -525,10 +512,7 @@ class EmergencyManager:
                 break
 
         if not fallback:
-            return {
-                "status": "error",
-                "message": f"Fallback {fallback_id} not found"
-            }
+            return {"status": "error", "message": f"Fallback {fallback_id} not found"}
 
         valid, msg = fallback.validate()
         if valid:
@@ -539,24 +523,18 @@ class EmergencyManager:
             "fallback_id": fallback_id,
             "valid": valid,
             "message": msg,
-            "semantically_validated": fallback.semantically_validated
+            "semantically_validated": fallback.semantically_validated,
         }
 
     def trigger_fallback(
-        self,
-        emergency_id: str,
-        fallback_id: str,
-        contract_id: str
+        self, emergency_id: str, fallback_id: str, contract_id: str
     ) -> dict[str, Any]:
         """
         Trigger a semantic fallback during an emergency.
         """
         emergency = self.emergencies.get(emergency_id)
         if not emergency:
-            return {
-                "status": "error",
-                "message": f"Emergency {emergency_id} not found"
-            }
+            return {"status": "error", "message": f"Emergency {emergency_id} not found"}
 
         contract_fallbacks = self.fallbacks.get(contract_id, [])
         fallback = None
@@ -568,19 +546,19 @@ class EmergencyManager:
         if not fallback:
             return {
                 "status": "error",
-                "message": f"Fallback {fallback_id} not found for contract {contract_id}"
+                "message": f"Fallback {fallback_id} not found for contract {contract_id}",
             }
 
         if not fallback.semantically_validated:
             return {
                 "status": "error",
-                "message": "Fallback must be semantically validated before triggering"
+                "message": "Fallback must be semantically validated before triggering",
             }
 
         if not fallback.is_original:
             return {
                 "status": "error",
-                "message": "Cannot trigger post-hoc fallback - must be declared at contract creation"
+                "message": "Cannot trigger post-hoc fallback - must be declared at contract creation",
             }
 
         # Apply the fallback effect
@@ -592,14 +570,11 @@ class EmergencyManager:
             "fallback_id": fallback_id,
             "contract_id": contract_id,
             "trigger_condition": fallback.trigger_condition,
-            "fallback_action": fallback.fallback_action
+            "fallback_action": fallback.fallback_action,
         }
 
     def reject_posthoc_fallback(
-        self,
-        contract_id: str,
-        trigger_condition: str,
-        fallback_action: str
+        self, contract_id: str, trigger_condition: str, fallback_action: str
     ) -> dict[str, Any]:
         """
         Reject an attempt to create a post-hoc fallback.
@@ -612,7 +587,7 @@ class EmergencyManager:
             "contract_id": contract_id,
             "attempted_trigger": trigger_condition,
             "attempted_action": fallback_action,
-            "rule": "Fallbacks must be declared at contract creation"
+            "rule": "Fallbacks must be declared at contract creation",
         }
 
     # -------------------------------------------------------------------------
@@ -625,7 +600,7 @@ class EmergencyManager:
         oracle_id: str,
         oracle_type: OracleType,
         evidence_data: str,
-        confidence_score: float
+        confidence_score: float,
     ) -> dict[str, Any]:
         """
         Add oracle evidence to an emergency declaration.
@@ -634,17 +609,14 @@ class EmergencyManager:
         """
         emergency = self.emergencies.get(emergency_id)
         if not emergency:
-            return {
-                "status": "error",
-                "message": f"Emergency {emergency_id} not found"
-            }
+            return {"status": "error", "message": f"Emergency {emergency_id} not found"}
 
         evidence = OracleEvidence(
             oracle_id=oracle_id,
             oracle_type=oracle_type,
             evidence_data=evidence_data,
             confidence_score=min(1.0, max(0.0, confidence_score)),
-            is_authoritative=False  # Always False per NCIP-013
+            is_authoritative=False,  # Always False per NCIP-013
         )
 
         emergency.oracle_evidence.append(evidence)
@@ -655,7 +627,7 @@ class EmergencyManager:
             "oracle_id": oracle_id,
             "oracle_type": oracle_type.value,
             "confidence_score": evidence.confidence_score,
-            "note": "Oracle output is evidence, not authority - does not auto-resolve"
+            "note": "Oracle output is evidence, not authority - does not auto-resolve",
         }
 
     # -------------------------------------------------------------------------
@@ -663,10 +635,7 @@ class EmergencyManager:
     # -------------------------------------------------------------------------
 
     def dispute_emergency(
-        self,
-        emergency_id: str,
-        disputed_by: str,
-        dispute_reason: str
+        self, emergency_id: str, disputed_by: str, dispute_reason: str
     ) -> tuple[EmergencyDispute | None, list[str]]:
         """
         Dispute an emergency declaration per NCIP-013 Section 8.
@@ -696,7 +665,7 @@ class EmergencyManager:
             emergency_id=emergency_id,
             disputed_by=disputed_by,
             dispute_reason=dispute_reason,
-            semantic_lock_id=f"LOCK-{emergency_id}-DISPUTE"
+            semantic_lock_id=f"LOCK-{emergency_id}-DISPUTE",
         )
 
         # Update emergency status
@@ -708,10 +677,7 @@ class EmergencyManager:
         return (dispute, [])
 
     def resolve_emergency_dispute(
-        self,
-        dispute_id: str,
-        upheld: bool,
-        resolution_notes: str
+        self, dispute_id: str, upheld: bool, resolution_notes: str
     ) -> dict[str, Any]:
         """
         Resolve an emergency dispute.
@@ -720,10 +686,7 @@ class EmergencyManager:
         """
         dispute = self.disputes.get(dispute_id)
         if not dispute:
-            return {
-                "status": "error",
-                "message": f"Dispute {dispute_id} not found"
-            }
+            return {"status": "error", "message": f"Dispute {dispute_id} not found"}
 
         dispute.resolved_at = datetime.utcnow()
         dispute.upheld = upheld
@@ -747,17 +710,18 @@ class EmergencyManager:
             "emergency_id": dispute.emergency_id,
             "upheld": upheld,
             "resolution_notes": resolution_notes,
-            "harassment_penalty": emergency.harassment_score_impact if emergency and not upheld else 0.0
+            "harassment_penalty": emergency.harassment_score_impact
+            if emergency and not upheld
+            else 0.0,
         }
 
     def _calculate_harassment_penalty(self, declarer_id: str) -> float:
         """Calculate harassment penalty with repeat multiplier."""
         history = self.declarer_history.get(declarer_id, [])
         frivolous_count = sum(
-            1 for eid in history
-            if eid in self.emergencies and self.emergencies[eid].frivolous
+            1 for eid in history if eid in self.emergencies and self.emergencies[eid].frivolous
         )
-        return self.FRIVOLOUS_HARASSMENT_PENALTY * (self.REPEAT_MULTIPLIER ** frivolous_count)
+        return self.FRIVOLOUS_HARASSMENT_PENALTY * (self.REPEAT_MULTIPLIER**frivolous_count)
 
     # -------------------------------------------------------------------------
     # Timeout & Expiry
@@ -776,10 +740,7 @@ class EmergencyManager:
         """
         emergency = self.emergencies.get(emergency_id)
         if not emergency:
-            return {
-                "status": "error",
-                "message": f"Emergency {emergency_id} not found"
-            }
+            return {"status": "error", "message": f"Emergency {emergency_id} not found"}
 
         datetime.utcnow()
         result = {
@@ -789,11 +750,13 @@ class EmergencyManager:
             "review_deadline": emergency.review_deadline.isoformat(),
             "expiry_deadline": emergency.expiry_deadline.isoformat(),
             "needs_review": emergency.needs_review,
-            "is_expired": emergency.is_expired
+            "is_expired": emergency.is_expired,
         }
 
         if emergency.is_expired:
-            result["action_required"] = "Emergency expired - must resume execution, terminate per fallback, or ratify amendment"
+            result["action_required"] = (
+                "Emergency expired - must resume execution, terminate per fallback, or ratify amendment"
+            )
             result["silent_continuation_forbidden"] = True
             emergency.status = EmergencyStatus.EXPIRED
 
@@ -803,10 +766,7 @@ class EmergencyManager:
         return result
 
     def process_expiry(
-        self,
-        emergency_id: str,
-        action: str,
-        ratification_id: str | None = None
+        self, emergency_id: str, action: str, ratification_id: str | None = None
     ) -> dict[str, Any]:
         """
         Process emergency expiry per NCIP-013 Section 9.1.
@@ -815,10 +775,7 @@ class EmergencyManager:
         """
         emergency = self.emergencies.get(emergency_id)
         if not emergency:
-            return {
-                "status": "error",
-                "message": f"Emergency {emergency_id} not found"
-            }
+            return {"status": "error", "message": f"Emergency {emergency_id} not found"}
 
         if action == "resume_execution":
             emergency.status = EmergencyStatus.RESOLVED
@@ -827,7 +784,7 @@ class EmergencyManager:
             return {
                 "status": "resolved",
                 "action": "resume_execution",
-                "emergency_id": emergency_id
+                "emergency_id": emergency_id,
             }
 
         elif action == "terminate_fallback":
@@ -837,15 +794,12 @@ class EmergencyManager:
             return {
                 "status": "resolved",
                 "action": "terminate_fallback",
-                "emergency_id": emergency_id
+                "emergency_id": emergency_id,
             }
 
         elif action == "ratify_amendment":
             if not ratification_id:
-                return {
-                    "status": "error",
-                    "message": "ratification_id required for amendment"
-                }
+                return {"status": "error", "message": "ratification_id required for amendment"}
             emergency.status = EmergencyStatus.RESOLVED
             emergency.resolved_at = datetime.utcnow()
             emergency.resolution_reason = f"Parties ratified amendment {ratification_id}"
@@ -853,13 +807,13 @@ class EmergencyManager:
                 "status": "resolved",
                 "action": "ratify_amendment",
                 "emergency_id": emergency_id,
-                "ratification_id": ratification_id
+                "ratification_id": ratification_id,
             }
 
         else:
             return {
                 "status": "error",
-                "message": f"Invalid action: {action}. Use resume_execution, terminate_fallback, or ratify_amendment"
+                "message": f"Invalid action: {action}. Use resume_execution, terminate_fallback, or ratify_amendment",
             }
 
     def check_escalation_needed(self, emergency_id: str) -> dict[str, Any]:
@@ -870,14 +824,11 @@ class EmergencyManager:
         """
         emergency = self.emergencies.get(emergency_id)
         if not emergency:
-            return {
-                "status": "error",
-                "message": f"Emergency {emergency_id} not found"
-            }
+            return {"status": "error", "message": f"Emergency {emergency_id} not found"}
 
         needs_escalation = (
-            emergency.days_active >= self.ESCALATION_THRESHOLD_DAYS and
-            emergency.status in [EmergencyStatus.ACTIVE, EmergencyStatus.UNDER_REVIEW]
+            emergency.days_active >= self.ESCALATION_THRESHOLD_DAYS
+            and emergency.status in [EmergencyStatus.ACTIVE, EmergencyStatus.UNDER_REVIEW]
         )
 
         return {
@@ -885,7 +836,7 @@ class EmergencyManager:
             "days_active": emergency.days_active,
             "threshold_days": self.ESCALATION_THRESHOLD_DAYS,
             "needs_escalation": needs_escalation,
-            "current_status": emergency.status.value
+            "current_status": emergency.status.value,
         }
 
     # -------------------------------------------------------------------------
@@ -906,25 +857,22 @@ class EmergencyManager:
                     "affected_refs",
                     "declared_reason",
                     "review_after",
-                    "max_duration"
+                    "max_duration",
                 ],
-                "oracle_support": {
-                    "allowed": True,
-                    "authoritative": False
-                },
+                "oracle_support": {"allowed": True, "authoritative": False},
                 "dispute_handling": {
                     "lock_semantics_immediately": True,
-                    "burden_of_proof": "declarer"
+                    "burden_of_proof": "declarer",
                 },
                 "abuse_controls": {
                     "frivolous_penalty": "harassment_score_increase",
-                    "repeat_multiplier": self.REPEAT_MULTIPLIER
+                    "repeat_multiplier": self.REPEAT_MULTIPLIER,
                 },
                 "timeouts": {
                     "default_review_days": self.DEFAULT_REVIEW_DAYS,
                     "default_max_duration_days": self.DEFAULT_MAX_DURATION_DAYS,
-                    "escalation_threshold_days": self.ESCALATION_THRESHOLD_DAYS
-                }
+                    "escalation_threshold_days": self.ESCALATION_THRESHOLD_DAYS,
+                },
             }
         }
 
@@ -932,10 +880,7 @@ class EmergencyManager:
     # Validator Behavior
     # -------------------------------------------------------------------------
 
-    def validator_check(
-        self,
-        emergency_id: str
-    ) -> dict[str, Any]:
+    def validator_check(self, emergency_id: str) -> dict[str, Any]:
         """
         Validator behavior check per NCIP-013 Section 11.
 
@@ -948,10 +893,7 @@ class EmergencyManager:
         """
         emergency = self.emergencies.get(emergency_id)
         if not emergency:
-            return {
-                "status": "error",
-                "message": f"Emergency {emergency_id} not found"
-            }
+            return {"status": "error", "message": f"Emergency {emergency_id} not found"}
 
         checks = {
             "has_explicit_scope": emergency.scope is not None,
@@ -959,7 +901,7 @@ class EmergencyManager:
             "has_review_period": emergency.review_after is not None,
             "has_affected_refs": len(emergency.affected_refs) > 0,
             "semantic_integrity_preserved": True,  # Emergencies never alter meaning
-            "needs_escalation": emergency.days_active >= self.ESCALATION_THRESHOLD_DAYS
+            "needs_escalation": emergency.days_active >= self.ESCALATION_THRESHOLD_DAYS,
         }
 
         issues = []
@@ -977,7 +919,7 @@ class EmergencyManager:
             "checks": checks,
             "issues": issues,
             "validator_action": "escalate" if checks["needs_escalation"] else "monitor",
-            "principle": "Emergencies may suspend execution — never meaning"
+            "principle": "Emergencies may suspend execution — never meaning",
         }
 
     # -------------------------------------------------------------------------
@@ -1012,5 +954,5 @@ class EmergencyManager:
             "total_disputes": len(self.disputes),
             "active_emergencies": len(self.get_active_emergencies()),
             "frivolous_declarations": sum(1 for e in self.emergencies.values() if e.frivolous),
-            "principle": "Emergencies may suspend execution — never meaning."
+            "principle": "Emergencies may suspend execution — never meaning.",
         }

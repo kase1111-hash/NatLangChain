@@ -27,30 +27,30 @@ Future blueprints (to be extracted from api.py):
 - p2p: Peer-to-peer network operations
 """
 
+from .boundary import boundary_bp
+from .chat import chat_bp
+from .contracts import contracts_bp
 from .core import core_bp
+from .derivatives import derivatives_bp
+from .help import help_bp
+from .marketplace import marketplace_bp
 from .mobile import mobile_bp
 from .monitoring import monitoring_bp
 from .search import search_bp
-from .boundary import boundary_bp
-from .marketplace import marketplace_bp
-from .help import help_bp
-from .chat import chat_bp
-from .contracts import contracts_bp
-from .derivatives import derivatives_bp
 
 # List of all blueprints for registration
 # Tuple format: (blueprint, url_prefix)
 ALL_BLUEPRINTS = [
-    (core_bp, ''),        # Core routes at root
-    (search_bp, ''),      # Search routes at root (e.g., /search/semantic)
-    (mobile_bp, ''),      # Mobile routes (blueprint has /mobile prefix)
-    (monitoring_bp, ''),  # Monitoring routes (/metrics, /health/*)
-    (boundary_bp, ''),    # Boundary protection routes (/boundary/*)
-    (marketplace_bp, ''), # Marketplace routes (/marketplace/*)
-    (help_bp, ''),        # Help routes (/api/help/*)
-    (chat_bp, ''),        # Chat routes (/chat/*)
-    (contracts_bp, ''),   # Contract routes (/contract/*)
-    (derivatives_bp, ''), # Derivative tracking routes (/derivatives/*)
+    (core_bp, ""),  # Core routes at root
+    (search_bp, ""),  # Search routes at root (e.g., /search/semantic)
+    (mobile_bp, ""),  # Mobile routes (blueprint has /mobile prefix)
+    (monitoring_bp, ""),  # Monitoring routes (/metrics, /health/*)
+    (boundary_bp, ""),  # Boundary protection routes (/boundary/*)
+    (marketplace_bp, ""),  # Marketplace routes (/marketplace/*)
+    (help_bp, ""),  # Help routes (/api/help/*)
+    (chat_bp, ""),  # Chat routes (/chat/*)
+    (contracts_bp, ""),  # Contract routes (/contract/*)
+    (derivatives_bp, ""),  # Derivative tracking routes (/derivatives/*)
 ]
 
 
@@ -62,6 +62,7 @@ def register_blueprints(app):
     # Set up request logging middleware
     try:
         from monitoring.middleware import setup_request_logging
+
         setup_request_logging(app)
     except ImportError:
         pass
@@ -69,6 +70,7 @@ def register_blueprints(app):
     # Initialize OpenAPI/Swagger documentation
     try:
         from swagger import init_swagger
+
         init_swagger(app)
     except ImportError as e:
         print(f"Note: Swagger UI not available ({e})")
@@ -89,6 +91,7 @@ def init_managers(api_key: str = None):
     # Initialize features that don't require API key
     try:
         from temporal_fixity import TemporalFixity
+
         managers.temporal_fixity = TemporalFixity()
         print("Temporal fixity initialized")
     except Exception as e:
@@ -96,6 +99,7 @@ def init_managers(api_key: str = None):
 
     try:
         from semantic_search import SemanticSearchEngine
+
         managers.search_engine = SemanticSearchEngine()
         print("Semantic search engine initialized")
     except Exception as e:
@@ -103,7 +107,8 @@ def init_managers(api_key: str = None):
 
     # Initialize boundary protection system
     try:
-        from boundary_protection import init_protection, ProtectionConfig
+        from boundary_protection import ProtectionConfig, init_protection
+
         config = ProtectionConfig.from_env()
         managers.boundary_protection = init_protection(config)
         print(f"Boundary protection initialized in {config.initial_mode.value} mode")
@@ -114,6 +119,7 @@ def init_managers(api_key: str = None):
     if api_key and api_key != "your_api_key_here":
         try:
             from validator import HybridValidator, ProofOfUnderstanding
+
             managers.llm_validator = ProofOfUnderstanding(api_key)
             managers.hybrid_validator = HybridValidator(managers.llm_validator)
             print("LLM validators initialized")
@@ -122,19 +128,22 @@ def init_managers(api_key: str = None):
 
         try:
             from semantic_diff import SemanticDriftDetector
+
             managers.drift_detector = SemanticDriftDetector(api_key)
         except Exception:
             pass
 
         try:
             from dialectic_consensus import DialecticConsensus
+
             managers.dialectic_validator = DialecticConsensus(api_key)
         except Exception:
             pass
 
         try:
-            from contract_parser import ContractParser
             from contract_matcher import ContractMatcher
+            from contract_parser import ContractParser
+
             managers.contract_parser = ContractParser(api_key)
             managers.contract_matcher = ContractMatcher(api_key)
         except Exception:
@@ -142,12 +151,14 @@ def init_managers(api_key: str = None):
 
         try:
             from dispute import DisputeManager
+
             managers.dispute_manager = DisputeManager(api_key)
         except Exception:
             pass
 
         try:
             from mobile_deployment import MobileDeploymentManager
+
             managers.mobile_deployment = MobileDeploymentManager()
         except Exception:
             pass
@@ -156,10 +167,10 @@ def init_managers(api_key: str = None):
 
     # Initialize marketplace (independent of API key)
     try:
-        from marketplace import create_marketplace_manager, NetworkType
+        from marketplace import NetworkType, create_marketplace_manager
+
         managers.marketplace_manager = create_marketplace_manager(
-            network=NetworkType.MAINNET,
-            register_rra_module=True
+            network=NetworkType.MAINNET, register_rra_module=True
         )
         print("Marketplace initialized with RRA-Module registered")
     except Exception as e:

@@ -15,7 +15,7 @@ Tests cover:
 import os
 import sys
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from emergency_overrides import (
     EmergencyManager,
@@ -39,7 +39,7 @@ class TestEmergencyDeclaration:
             scope=EmergencyScope.CONTRACT,
             force_majeure_class=ForceMajeureClass.NATURAL_DISASTER,
             declared_reason="Earthquake destroyed data center",
-            affected_refs=["CONTRACT-001"]
+            affected_refs=["CONTRACT-001"],
         )
 
         assert emergency is not None
@@ -59,7 +59,7 @@ class TestEmergencyDeclaration:
             scope=EmergencyScope.CONTRACT,
             force_majeure_class=ForceMajeureClass.NATURAL_DISASTER,
             declared_reason="Earthquake",
-            affected_refs=["CONTRACT-001"]
+            affected_refs=["CONTRACT-001"],
         )
         assert emergency is None
         assert "declared_by is required" in errors
@@ -70,7 +70,7 @@ class TestEmergencyDeclaration:
             scope=EmergencyScope.CONTRACT,
             force_majeure_class=ForceMajeureClass.NATURAL_DISASTER,
             declared_reason="Earthquake",
-            affected_refs=[]
+            affected_refs=[],
         )
         assert emergency is None
         assert "affected_refs is required (at least one reference)" in errors
@@ -94,7 +94,7 @@ class TestEmergencyDeclaration:
                 scope=EmergencyScope.CONTRACT,
                 force_majeure_class=fm_class,
                 declared_reason=f"Test {fm_class.value}",
-                affected_refs=["CONTRACT-001"]
+                affected_refs=["CONTRACT-001"],
             )
             assert emergency is not None
             assert emergency.force_majeure_class == fm_class
@@ -109,7 +109,7 @@ class TestEmergencyDeclaration:
                 scope=scope,
                 force_majeure_class=ForceMajeureClass.NATURAL_DISASTER,
                 declared_reason="Test",
-                affected_refs=["REF-001"]
+                affected_refs=["REF-001"],
             )
             assert emergency is not None
             assert emergency.scope == scope
@@ -126,7 +126,7 @@ class TestEmergencyValidation:
             scope=EmergencyScope.CONTRACT,
             force_majeure_class=ForceMajeureClass.NATURAL_DISASTER,
             declared_reason="Earthquake destroyed data center",
-            affected_refs=["CONTRACT-001"]
+            affected_refs=["CONTRACT-001"],
         )
 
         result = manager.validate_emergency(emergency.emergency_id)
@@ -148,7 +148,7 @@ class TestEmergencyValidation:
             scope=EmergencyScope.SYSTEM,
             force_majeure_class=ForceMajeureClass.SYSTEMIC_PROTOCOL_FAILURE,
             declared_reason="Chain halt",
-            affected_refs=["SYSTEM"]
+            affected_refs=["SYSTEM"],
         )
 
         result = manager.validate_emergency(emergency.emergency_id)
@@ -166,7 +166,7 @@ class TestExecutionEffects:
             scope=EmergencyScope.CONTRACT,
             force_majeure_class=ForceMajeureClass.NATURAL_DISASTER,
             declared_reason="Earthquake",
-            affected_refs=["CONTRACT-001"]
+            affected_refs=["CONTRACT-001"],
         )
 
         # Validate first to allow applying effects
@@ -204,11 +204,13 @@ class TestExecutionEffects:
             scope=EmergencyScope.CONTRACT,
             force_majeure_class=ForceMajeureClass.NATURAL_DISASTER,
             declared_reason="Earthquake",
-            affected_refs=["CONTRACT-001"]
+            affected_refs=["CONTRACT-001"],
         )
 
         # Try to apply effect without validation
-        result = manager.apply_execution_effect(emergency.emergency_id, ExecutionEffect.PAUSE_EXECUTION)
+        result = manager.apply_execution_effect(
+            emergency.emergency_id, ExecutionEffect.PAUSE_EXECUTION
+        )
         assert result["status"] == "error"
         assert "cannot apply effects" in result["message"].lower()
 
@@ -222,7 +224,7 @@ class TestSemanticFallbacks:
         fallback, errors = manager.declare_fallback(
             contract_id="CONTRACT-001",
             trigger_condition="If earthquake destroys primary infrastructure",
-            fallback_action="Transfer obligations to backup provider"
+            fallback_action="Transfer obligations to backup provider",
         )
 
         assert fallback is not None
@@ -235,9 +237,7 @@ class TestSemanticFallbacks:
         manager = EmergencyManager()
 
         fallback, errors = manager.declare_fallback(
-            contract_id="CONTRACT-001",
-            trigger_condition="",
-            fallback_action="Transfer obligations"
+            contract_id="CONTRACT-001", trigger_condition="", fallback_action="Transfer obligations"
         )
         assert fallback is None
         assert "trigger_condition is required" in errors
@@ -248,7 +248,7 @@ class TestSemanticFallbacks:
         fallback, _ = manager.declare_fallback(
             contract_id="CONTRACT-001",
             trigger_condition="Emergency condition",
-            fallback_action="Fallback action"
+            fallback_action="Fallback action",
         )
 
         result = manager.validate_fallback(fallback.fallback_id, "CONTRACT-001")
@@ -262,7 +262,7 @@ class TestSemanticFallbacks:
         result = manager.reject_posthoc_fallback(
             contract_id="CONTRACT-001",
             trigger_condition="Made up condition",
-            fallback_action="Made up action"
+            fallback_action="Made up action",
         )
 
         assert result["status"] == "rejected"
@@ -279,22 +279,18 @@ class TestSemanticFallbacks:
             scope=EmergencyScope.CONTRACT,
             force_majeure_class=ForceMajeureClass.NATURAL_DISASTER,
             declared_reason="Earthquake",
-            affected_refs=["CONTRACT-001"]
+            affected_refs=["CONTRACT-001"],
         )
         manager.validate_emergency(emergency.emergency_id)
 
         # Create unvalidated fallback
         fallback, _ = manager.declare_fallback(
-            contract_id="CONTRACT-001",
-            trigger_condition="Emergency",
-            fallback_action="Action"
+            contract_id="CONTRACT-001", trigger_condition="Emergency", fallback_action="Action"
         )
 
         # Try to trigger without validation
         result = manager.trigger_fallback(
-            emergency.emergency_id,
-            fallback.fallback_id,
-            "CONTRACT-001"
+            emergency.emergency_id, fallback.fallback_id, "CONTRACT-001"
         )
         assert result["status"] == "error"
         assert "validated" in result["message"].lower()
@@ -311,7 +307,7 @@ class TestOracleEvidence:
             scope=EmergencyScope.CONTRACT,
             force_majeure_class=ForceMajeureClass.NATURAL_DISASTER,
             declared_reason="Earthquake",
-            affected_refs=["CONTRACT-001"]
+            affected_refs=["CONTRACT-001"],
         )
 
         result = manager.add_oracle_evidence(
@@ -319,7 +315,7 @@ class TestOracleEvidence:
             oracle_id="USGS-FEED",
             oracle_type=OracleType.DISASTER_FEED,
             evidence_data="7.2 magnitude earthquake detected",
-            confidence_score=0.95
+            confidence_score=0.95,
         )
 
         assert result["status"] == "added"
@@ -334,7 +330,7 @@ class TestOracleEvidence:
             scope=EmergencyScope.CONTRACT,
             force_majeure_class=ForceMajeureClass.NATURAL_DISASTER,
             declared_reason="Earthquake",
-            affected_refs=["CONTRACT-001"]
+            affected_refs=["CONTRACT-001"],
         )
 
         manager.add_oracle_evidence(
@@ -342,7 +338,7 @@ class TestOracleEvidence:
             oracle_id="USGS-FEED",
             oracle_type=OracleType.DISASTER_FEED,
             evidence_data="Earthquake data",
-            confidence_score=1.0  # Even with max confidence
+            confidence_score=1.0,  # Even with max confidence
         )
 
         # Verify oracle is not authoritative
@@ -358,7 +354,7 @@ class TestOracleEvidence:
             scope=EmergencyScope.CONTRACT,
             force_majeure_class=ForceMajeureClass.NATURAL_DISASTER,
             declared_reason="Test",
-            affected_refs=["CONTRACT-001"]
+            affected_refs=["CONTRACT-001"],
         )
 
         for oracle_type in OracleType:
@@ -367,7 +363,7 @@ class TestOracleEvidence:
                 oracle_id=f"ORACLE-{oracle_type.value}",
                 oracle_type=oracle_type,
                 evidence_data="Test data",
-                confidence_score=0.8
+                confidence_score=0.8,
             )
             assert result["status"] == "added"
 
@@ -383,13 +379,13 @@ class TestEmergencyDisputes:
             scope=EmergencyScope.CONTRACT,
             force_majeure_class=ForceMajeureClass.NATURAL_DISASTER,
             declared_reason="Earthquake",
-            affected_refs=["CONTRACT-001"]
+            affected_refs=["CONTRACT-001"],
         )
 
         dispute, errors = manager.dispute_emergency(
             emergency_id=emergency.emergency_id,
             disputed_by="party_b",
-            dispute_reason="No earthquake occurred in the area"
+            dispute_reason="No earthquake occurred in the area",
         )
 
         assert dispute is not None
@@ -405,13 +401,13 @@ class TestEmergencyDisputes:
             scope=EmergencyScope.CONTRACT,
             force_majeure_class=ForceMajeureClass.NATURAL_DISASTER,
             declared_reason="Earthquake",
-            affected_refs=["CONTRACT-001"]
+            affected_refs=["CONTRACT-001"],
         )
 
         _dispute, _ = manager.dispute_emergency(
             emergency_id=emergency.emergency_id,
             disputed_by="party_b",
-            dispute_reason="Dispute reason"
+            dispute_reason="Dispute reason",
         )
 
         updated_emergency = manager.get_emergency(emergency.emergency_id)
@@ -426,19 +422,17 @@ class TestEmergencyDisputes:
             scope=EmergencyScope.CONTRACT,
             force_majeure_class=ForceMajeureClass.NATURAL_DISASTER,
             declared_reason="Earthquake",
-            affected_refs=["CONTRACT-001"]
+            affected_refs=["CONTRACT-001"],
         )
 
         dispute, _ = manager.dispute_emergency(
-            emergency_id=emergency.emergency_id,
-            disputed_by="party_b",
-            dispute_reason="Challenge"
+            emergency_id=emergency.emergency_id, disputed_by="party_b", dispute_reason="Challenge"
         )
 
         result = manager.resolve_emergency_dispute(
             dispute_id=dispute.dispute_id,
             upheld=True,
-            resolution_notes="Evidence confirms earthquake"
+            resolution_notes="Evidence confirms earthquake",
         )
 
         assert result["upheld"] is True
@@ -453,19 +447,19 @@ class TestEmergencyDisputes:
             scope=EmergencyScope.CONTRACT,
             force_majeure_class=ForceMajeureClass.NATURAL_DISASTER,
             declared_reason="Fake earthquake",
-            affected_refs=["CONTRACT-001"]
+            affected_refs=["CONTRACT-001"],
         )
 
         dispute, _ = manager.dispute_emergency(
             emergency_id=emergency.emergency_id,
             disputed_by="party_b",
-            dispute_reason="No earthquake occurred"
+            dispute_reason="No earthquake occurred",
         )
 
         result = manager.resolve_emergency_dispute(
             dispute_id=dispute.dispute_id,
             upheld=False,
-            resolution_notes="No evidence of earthquake"
+            resolution_notes="No evidence of earthquake",
         )
 
         assert result["upheld"] is False
@@ -488,7 +482,7 @@ class TestTimeoutAndExpiry:
             declared_reason="Earthquake",
             affected_refs=["CONTRACT-001"],
             review_after_days=30,
-            max_duration_days=180
+            max_duration_days=180,
         )
 
         assert emergency.review_deadline is not None
@@ -503,12 +497,15 @@ class TestTimeoutAndExpiry:
             scope=EmergencyScope.CONTRACT,
             force_majeure_class=ForceMajeureClass.NATURAL_DISASTER,
             declared_reason="Earthquake",
-            affected_refs=["CONTRACT-001"]
+            affected_refs=["CONTRACT-001"],
         )
 
         result = manager.check_expiry(emergency.emergency_id)
         assert result["is_expired"] is False
-        assert "silent_continuation_forbidden" not in result or result.get("silent_continuation_forbidden") is not True
+        assert (
+            "silent_continuation_forbidden" not in result
+            or result.get("silent_continuation_forbidden") is not True
+        )
 
     def test_process_expiry_resume_execution(self):
         """Test processing expiry by resuming execution."""
@@ -518,7 +515,7 @@ class TestTimeoutAndExpiry:
             scope=EmergencyScope.CONTRACT,
             force_majeure_class=ForceMajeureClass.NATURAL_DISASTER,
             declared_reason="Earthquake",
-            affected_refs=["CONTRACT-001"]
+            affected_refs=["CONTRACT-001"],
         )
 
         result = manager.process_expiry(emergency.emergency_id, "resume_execution")
@@ -533,7 +530,7 @@ class TestTimeoutAndExpiry:
             scope=EmergencyScope.CONTRACT,
             force_majeure_class=ForceMajeureClass.NATURAL_DISASTER,
             declared_reason="Earthquake",
-            affected_refs=["CONTRACT-001"]
+            affected_refs=["CONTRACT-001"],
         )
 
         result = manager.process_expiry(emergency.emergency_id, "terminate_fallback")
@@ -548,13 +545,11 @@ class TestTimeoutAndExpiry:
             scope=EmergencyScope.CONTRACT,
             force_majeure_class=ForceMajeureClass.NATURAL_DISASTER,
             declared_reason="Earthquake",
-            affected_refs=["CONTRACT-001"]
+            affected_refs=["CONTRACT-001"],
         )
 
         result = manager.process_expiry(
-            emergency.emergency_id,
-            "ratify_amendment",
-            ratification_id="RATIFY-001"
+            emergency.emergency_id, "ratify_amendment", ratification_id="RATIFY-001"
         )
         assert result["status"] == "resolved"
         assert result["action"] == "ratify_amendment"
@@ -572,7 +567,7 @@ class TestEscalation:
             scope=EmergencyScope.CONTRACT,
             force_majeure_class=ForceMajeureClass.NATURAL_DISASTER,
             declared_reason="Earthquake",
-            affected_refs=["CONTRACT-001"]
+            affected_refs=["CONTRACT-001"],
         )
 
         result = manager.check_escalation_needed(emergency.emergency_id)
@@ -594,7 +589,7 @@ class TestAbusePrevention:
             scope=EmergencyScope.CONTRACT,
             force_majeure_class=ForceMajeureClass.NATURAL_DISASTER,
             declared_reason="Earthquake 1",
-            affected_refs=["CONTRACT-001"]
+            affected_refs=["CONTRACT-001"],
         )
 
         # Second declaration
@@ -603,7 +598,7 @@ class TestAbusePrevention:
             scope=EmergencyScope.CONTRACT,
             force_majeure_class=ForceMajeureClass.NATURAL_DISASTER,
             declared_reason="Earthquake 2",
-            affected_refs=["CONTRACT-002"]
+            affected_refs=["CONTRACT-002"],
         )
 
         assert len(manager.declarer_history["party_a"]) == 2
@@ -618,7 +613,7 @@ class TestAbusePrevention:
             scope=EmergencyScope.CONTRACT,
             force_majeure_class=ForceMajeureClass.NATURAL_DISASTER,
             declared_reason="Fake 1",
-            affected_refs=["CONTRACT-001"]
+            affected_refs=["CONTRACT-001"],
         )
         d1, _ = manager.dispute_emergency(e1.emergency_id, "victim", "Fake")
         result1 = manager.resolve_emergency_dispute(d1.dispute_id, False, "Rejected")
@@ -630,7 +625,7 @@ class TestAbusePrevention:
             scope=EmergencyScope.CONTRACT,
             force_majeure_class=ForceMajeureClass.NATURAL_DISASTER,
             declared_reason="Fake 2",
-            affected_refs=["CONTRACT-002"]
+            affected_refs=["CONTRACT-002"],
         )
         d2, _ = manager.dispute_emergency(e2.emergency_id, "victim", "Fake")
         result2 = manager.resolve_emergency_dispute(d2.dispute_id, False, "Rejected")
@@ -650,7 +645,7 @@ class TestValidatorBehavior:
             scope=EmergencyScope.CONTRACT,
             force_majeure_class=ForceMajeureClass.NATURAL_DISASTER,
             declared_reason="Earthquake",
-            affected_refs=["CONTRACT-001"]
+            affected_refs=["CONTRACT-001"],
         )
 
         result = manager.validator_check(emergency.emergency_id)
@@ -667,7 +662,7 @@ class TestValidatorBehavior:
             scope=EmergencyScope.CONTRACT,
             force_majeure_class=ForceMajeureClass.NATURAL_DISASTER,
             declared_reason="Earthquake",
-            affected_refs=["CONTRACT-001"]
+            affected_refs=["CONTRACT-001"],
         )
 
         result = manager.validate_emergency(emergency.emergency_id)
@@ -704,7 +699,7 @@ class TestStatusReporting:
             scope=EmergencyScope.CONTRACT,
             force_majeure_class=ForceMajeureClass.NATURAL_DISASTER,
             declared_reason="Earthquake",
-            affected_refs=["CONTRACT-001"]
+            affected_refs=["CONTRACT-001"],
         )
         manager.validate_emergency(emergency.emergency_id)
         manager.apply_execution_effect(emergency.emergency_id, ExecutionEffect.PAUSE_EXECUTION)
@@ -720,7 +715,7 @@ class TestStatusReporting:
             scope=EmergencyScope.CONTRACT,
             force_majeure_class=ForceMajeureClass.NATURAL_DISASTER,
             declared_reason="Earthquake",
-            affected_refs=["CONTRACT-001"]
+            affected_refs=["CONTRACT-001"],
         )
 
         summary = manager.get_status_summary()
@@ -763,7 +758,7 @@ class TestFallbackIntegration:
             scope=EmergencyScope.CONTRACT,
             force_majeure_class=ForceMajeureClass.NATURAL_DISASTER,
             declared_reason="Earthquake",
-            affected_refs=["CONTRACT-001"]
+            affected_refs=["CONTRACT-001"],
         )
         manager.validate_emergency(emergency.emergency_id)
 
@@ -771,15 +766,13 @@ class TestFallbackIntegration:
         fallback, _ = manager.declare_fallback(
             contract_id="CONTRACT-001",
             trigger_condition="Earthquake destroys infrastructure",
-            fallback_action="Transfer to backup provider"
+            fallback_action="Transfer to backup provider",
         )
         manager.validate_fallback(fallback.fallback_id, "CONTRACT-001")
 
         # Trigger fallback
         result = manager.trigger_fallback(
-            emergency.emergency_id,
-            fallback.fallback_id,
-            "CONTRACT-001"
+            emergency.emergency_id, fallback.fallback_id, "CONTRACT-001"
         )
 
         assert result["status"] == "triggered"

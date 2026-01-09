@@ -22,16 +22,16 @@ import threading
 import time
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
 
 
 @dataclass
 class DreamState:
     """Current dreaming state."""
+
     message: str
     started_at: float
     completed: bool
-    completed_at: Optional[float] = None
+    completed_at: float | None = None
 
 
 class DreamingTracker:
@@ -44,8 +44,8 @@ class DreamingTracker:
 
     def __init__(self):
         self._lock = threading.Lock()
-        self._current: Optional[DreamState] = None
-        self._last_completed: Optional[DreamState] = None
+        self._current: DreamState | None = None
+        self._last_completed: DreamState | None = None
         self._idle_messages = [
             "Watching the chain grow...",
             "Listening for new entries...",
@@ -80,18 +80,11 @@ class DreamingTracker:
                 else:
                     # No current activity, just record completion
                     self._last_completed = DreamState(
-                        message=message,
-                        started_at=now,
-                        completed=True,
-                        completed_at=now
+                        message=message, started_at=now, completed=True, completed_at=now
                     )
             else:
                 # New activity starting
-                self._current = DreamState(
-                    message=message,
-                    started_at=now,
-                    completed=False
-                )
+                self._current = DreamState(message=message, started_at=now, completed=False)
 
     def get_status(self) -> dict:
         """
@@ -115,7 +108,7 @@ class DreamingTracker:
                     "message": self._current.message,
                     "state": "active",
                     "duration": round(duration, 1),
-                    "timestamp": datetime.utcnow().isoformat() + "Z"
+                    "timestamp": datetime.utcnow().isoformat() + "Z",
                 }
 
             if self._last_completed and (now - self._last_completed.completed_at) < 5:
@@ -124,7 +117,7 @@ class DreamingTracker:
                     "message": f"✓ {self._last_completed.message}",
                     "state": "completed",
                     "duration": 0,
-                    "timestamp": datetime.utcnow().isoformat() + "Z"
+                    "timestamp": datetime.utcnow().isoformat() + "Z",
                 }
 
             # Idle - return empty message (nothing to show)
@@ -132,7 +125,7 @@ class DreamingTracker:
                 "message": "",
                 "state": "idle",
                 "duration": 0,
-                "timestamp": datetime.utcnow().isoformat() + "Z"
+                "timestamp": datetime.utcnow().isoformat() + "Z",
             }
 
 

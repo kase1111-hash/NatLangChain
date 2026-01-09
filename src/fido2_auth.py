@@ -27,18 +27,21 @@ from typing import Any
 
 class CredentialType(Enum):
     """Types of FIDO2 credentials."""
-    PLATFORM = "platform"       # Built-in authenticator (TouchID, Windows Hello)
+
+    PLATFORM = "platform"  # Built-in authenticator (TouchID, Windows Hello)
     CROSS_PLATFORM = "cross-platform"  # Roaming authenticator (YubiKey)
 
 
 class AuthenticatorAttachment(Enum):
     """How the authenticator is attached."""
+
     PLATFORM = "platform"
     CROSS_PLATFORM = "cross-platform"
 
 
 class UserVerification(Enum):
     """User verification requirements."""
+
     REQUIRED = "required"
     PREFERRED = "preferred"
     DISCOURAGED = "discouraged"
@@ -46,6 +49,7 @@ class UserVerification(Enum):
 
 class SignatureType(Enum):
     """Types of signatures that can be made."""
+
     PROPOSAL_ACCEPT = "proposal_accept"
     PROPOSAL_SUBMIT = "proposal_submit"
     CONTRACT_SIGN = "contract_sign"
@@ -57,6 +61,7 @@ class SignatureType(Enum):
 @dataclass
 class FIDO2Credential:
     """Registered FIDO2 credential."""
+
     credential_id: str
     user_id: str
     public_key: str  # Base64 encoded
@@ -75,6 +80,7 @@ class FIDO2Credential:
 @dataclass
 class AuthChallenge:
     """Active authentication challenge."""
+
     challenge_id: str
     challenge: str  # Base64 encoded random bytes
     user_id: str | None  # None for discoverable credentials
@@ -89,6 +95,7 @@ class AuthChallenge:
 @dataclass
 class SignedMessage:
     """A message signed with FIDO2 credential."""
+
     signature_id: str
     credential_id: str
     user_id: str
@@ -106,6 +113,7 @@ class SignedMessage:
 @dataclass
 class AgentDelegation:
     """Agent delegation authorized by hardware key."""
+
     delegation_id: str
     principal_user_id: str  # User delegating authority
     agent_id: str  # Agent receiving delegation
@@ -137,9 +145,9 @@ class FIDO2AuthManager:
     DELEGATION_DEFAULT_HOURS = 24
 
     # COSE Algorithm IDs
-    COSE_ES256 = -7   # ECDSA with SHA-256
+    COSE_ES256 = -7  # ECDSA with SHA-256
     COSE_RS256 = -257  # RSASSA-PKCS1-v1_5 with SHA-256
-    COSE_EDDSA = -8   # EdDSA
+    COSE_EDDSA = -8  # EdDSA
 
     SUPPORTED_ALGORITHMS = [COSE_ES256, COSE_RS256, COSE_EDDSA]
 
@@ -173,7 +181,7 @@ class FIDO2AuthManager:
         user_display_name: str,
         authenticator_attachment: AuthenticatorAttachment | None = None,
         require_resident_key: bool = False,
-        user_verification: UserVerification = UserVerification.PREFERRED
+        user_verification: UserVerification = UserVerification.PREFERRED,
     ) -> dict[str, Any]:
         """
         Begin FIDO2 credential registration (WebAuthn registration ceremony).
@@ -195,12 +203,12 @@ class FIDO2AuthManager:
             return {
                 "error": "Maximum credentials reached",
                 "max": self.MAX_CREDENTIALS_PER_USER,
-                "current": len(existing)
+                "current": len(existing),
             }
 
         # Generate challenge
         challenge = secrets.token_bytes(32)
-        challenge_b64 = base64.urlsafe_b64encode(challenge).decode('utf-8').rstrip('=')
+        challenge_b64 = base64.urlsafe_b64encode(challenge).decode("utf-8").rstrip("=")
 
         challenge_id = self._generate_challenge_id(user_id, "registration")
 
@@ -214,10 +222,7 @@ class FIDO2AuthManager:
             message_hash=None,
             created_at=datetime.utcnow().isoformat(),
             expires_at=expires_at.isoformat(),
-            metadata={
-                "user_name": user_name,
-                "user_display_name": user_display_name
-            }
+            metadata={"user_name": user_name, "user_display_name": user_display_name},
         )
 
         self.challenges[challenge_id] = auth_challenge
@@ -227,16 +232,12 @@ class FIDO2AuthManager:
         for cred_id in existing:
             if cred_id in self.credentials:
                 cred = self.credentials[cred_id]
-                exclude_credentials.append({
-                    "type": "public-key",
-                    "id": cred_id,
-                    "transports": cred.transports
-                })
+                exclude_credentials.append(
+                    {"type": "public-key", "id": cred_id, "transports": cred.transports}
+                )
 
         # Build authenticator selection
-        authenticator_selection = {
-            "userVerification": user_verification.value
-        }
+        authenticator_selection = {"userVerification": user_verification.value}
         if authenticator_attachment:
             authenticator_selection["authenticatorAttachment"] = authenticator_attachment.value
         if require_resident_key:
@@ -245,35 +246,28 @@ class FIDO2AuthManager:
 
         # Build public key credential parameters
         pub_key_cred_params = [
-            {"type": "public-key", "alg": alg}
-            for alg in self.SUPPORTED_ALGORITHMS
+            {"type": "public-key", "alg": alg} for alg in self.SUPPORTED_ALGORITHMS
         ]
 
         options = {
             "challenge_id": challenge_id,
             "publicKey": {
-                "rp": {
-                    "id": self.rp_id,
-                    "name": self.rp_name
-                },
+                "rp": {"id": self.rp_id, "name": self.rp_name},
                 "user": {
-                    "id": base64.urlsafe_b64encode(user_id.encode()).decode('utf-8').rstrip('='),
+                    "id": base64.urlsafe_b64encode(user_id.encode()).decode("utf-8").rstrip("="),
                     "name": user_name,
-                    "displayName": user_display_name
+                    "displayName": user_display_name,
                 },
                 "challenge": challenge_b64,
                 "pubKeyCredParams": pub_key_cred_params,
                 "timeout": self.CHALLENGE_TIMEOUT_SECONDS * 1000,
                 "excludeCredentials": exclude_credentials,
                 "authenticatorSelection": authenticator_selection,
-                "attestation": "none"  # We don't need attestation for NatLangChain
-            }
+                "attestation": "none",  # We don't need attestation for NatLangChain
+            },
         }
 
-        self._emit_event("RegistrationStarted", {
-            "challenge_id": challenge_id,
-            "user_id": user_id
-        })
+        self._emit_event("RegistrationStarted", {"challenge_id": challenge_id, "user_id": user_id})
 
         return options
 
@@ -286,7 +280,7 @@ class FIDO2AuthManager:
         authenticator_data: str,
         client_data_json: str,
         transports: list[str] | None = None,
-        device_name: str | None = None
+        device_name: str | None = None,
     ) -> tuple[bool, dict[str, Any]]:
         """
         Complete FIDO2 credential registration.
@@ -321,7 +315,7 @@ class FIDO2AuthManager:
             return False, {
                 "error": "Unsupported algorithm",
                 "algorithm": public_key_algorithm,
-                "supported": self.SUPPORTED_ALGORITHMS
+                "supported": self.SUPPORTED_ALGORITHMS,
             }
 
         # Verify credential ID is unique
@@ -342,7 +336,7 @@ class FIDO2AuthManager:
             created_at=datetime.utcnow().isoformat(),
             authenticator_attachment="cross-platform",
             transports=transports or ["usb"],
-            device_name=device_name
+            device_name=device_name,
         )
 
         # Store credential
@@ -352,12 +346,15 @@ class FIDO2AuthManager:
             self.user_credentials[user_id] = []
         self.user_credentials[user_id].append(credential_id)
 
-        self._emit_event("CredentialRegistered", {
-            "credential_id": credential_id,
-            "user_id": user_id,
-            "algorithm": public_key_algorithm,
-            "device_name": device_name
-        })
+        self._emit_event(
+            "CredentialRegistered",
+            {
+                "credential_id": credential_id,
+                "user_id": user_id,
+                "algorithm": public_key_algorithm,
+                "device_name": device_name,
+            },
+        )
 
         return True, {
             "status": "registered",
@@ -365,7 +362,7 @@ class FIDO2AuthManager:
             "user_id": user_id,
             "algorithm": public_key_algorithm,
             "device_name": device_name,
-            "message": "FIDO2 credential registered successfully"
+            "message": "FIDO2 credential registered successfully",
         }
 
     # ==================== PHASE 13B: AUTHENTICATION & SIGNING ====================
@@ -376,7 +373,7 @@ class FIDO2AuthManager:
         signature_type: SignatureType = SignatureType.LOGIN,
         message_to_sign: str | None = None,
         user_verification: UserVerification = UserVerification.PREFERRED,
-        metadata: dict[str, Any] | None = None
+        metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
         Begin FIDO2 authentication (WebAuthn authentication ceremony).
@@ -393,7 +390,7 @@ class FIDO2AuthManager:
         """
         # Generate challenge
         challenge = secrets.token_bytes(32)
-        challenge_b64 = base64.urlsafe_b64encode(challenge).decode('utf-8').rstrip('=')
+        challenge_b64 = base64.urlsafe_b64encode(challenge).decode("utf-8").rstrip("=")
 
         challenge_id = self._generate_challenge_id(user_id or "anonymous", signature_type.value)
 
@@ -412,7 +409,7 @@ class FIDO2AuthManager:
             message_hash=message_hash,
             created_at=datetime.utcnow().isoformat(),
             expires_at=expires_at.isoformat(),
-            metadata=metadata or {}
+            metadata=metadata or {},
         )
 
         self.challenges[challenge_id] = auth_challenge
@@ -423,11 +420,9 @@ class FIDO2AuthManager:
             for cred_id in self.user_credentials[user_id]:
                 if cred_id in self.credentials:
                     cred = self.credentials[cred_id]
-                    allow_credentials.append({
-                        "type": "public-key",
-                        "id": cred_id,
-                        "transports": cred.transports
-                    })
+                    allow_credentials.append(
+                        {"type": "public-key", "id": cred_id, "transports": cred.transports}
+                    )
 
         options = {
             "challenge_id": challenge_id,
@@ -435,8 +430,8 @@ class FIDO2AuthManager:
                 "rpId": self.rp_id,
                 "challenge": challenge_b64,
                 "timeout": self.CHALLENGE_TIMEOUT_SECONDS * 1000,
-                "userVerification": user_verification.value
-            }
+                "userVerification": user_verification.value,
+            },
         }
 
         if allow_credentials:
@@ -446,11 +441,14 @@ class FIDO2AuthManager:
             options["message_to_sign"] = message_to_sign
             options["message_hash"] = message_hash
 
-        self._emit_event("AuthenticationStarted", {
-            "challenge_id": challenge_id,
-            "user_id": user_id,
-            "signature_type": signature_type.value
-        })
+        self._emit_event(
+            "AuthenticationStarted",
+            {
+                "challenge_id": challenge_id,
+                "user_id": user_id,
+                "signature_type": signature_type.value,
+            },
+        )
 
         return options
 
@@ -461,7 +459,7 @@ class FIDO2AuthManager:
         authenticator_data: str,
         client_data_json: str,
         signature: str,
-        user_handle: str | None = None
+        user_handle: str | None = None,
     ) -> tuple[bool, dict[str, Any]]:
         """
         Verify FIDO2 authentication response.
@@ -522,7 +520,7 @@ class FIDO2AuthManager:
 
         # Compute client data hash
         try:
-            client_data_bytes = base64.urlsafe_b64decode(client_data_json + '==')
+            client_data_bytes = base64.urlsafe_b64decode(client_data_json + "==")
             client_data_hash = hashlib.sha256(client_data_bytes).hexdigest()
         except Exception:
             client_data_hash = hashlib.sha256(client_data_json.encode()).hexdigest()
@@ -539,18 +537,21 @@ class FIDO2AuthManager:
             sign_count=new_sign_count,
             created_at=datetime.utcnow().isoformat(),
             verified=True,
-            metadata=challenge.metadata
+            metadata=challenge.metadata,
         )
 
         self.signatures[signature_id] = signed_message
 
-        self._emit_event("AuthenticationVerified", {
-            "signature_id": signature_id,
-            "credential_id": credential_id,
-            "user_id": credential.user_id,
-            "signature_type": challenge.signature_type,
-            "sign_count": new_sign_count
-        })
+        self._emit_event(
+            "AuthenticationVerified",
+            {
+                "signature_id": signature_id,
+                "credential_id": credential_id,
+                "user_id": credential.user_id,
+                "signature_type": challenge.signature_type,
+                "sign_count": new_sign_count,
+            },
+        )
 
         return True, {
             "status": "verified",
@@ -560,7 +561,7 @@ class FIDO2AuthManager:
             "signature_type": challenge.signature_type,
             "message_hash": challenge.message_hash,
             "sign_count": new_sign_count,
-            "verified": True
+            "verified": True,
         }
 
     def sign_proposal(
@@ -568,7 +569,7 @@ class FIDO2AuthManager:
         user_id: str,
         dispute_id: str,
         proposal_action: str,  # "accept" or "submit"
-        proposal_hash: str
+        proposal_hash: str,
     ) -> dict[str, Any]:
         """
         Begin signing a proposal with FIDO2 credential.
@@ -584,7 +585,11 @@ class FIDO2AuthManager:
         """
         message = f"{dispute_id}:{proposal_action}:{proposal_hash}"
 
-        sig_type = SignatureType.PROPOSAL_ACCEPT if proposal_action == "accept" else SignatureType.PROPOSAL_SUBMIT
+        sig_type = (
+            SignatureType.PROPOSAL_ACCEPT
+            if proposal_action == "accept"
+            else SignatureType.PROPOSAL_SUBMIT
+        )
 
         return self.begin_authentication(
             user_id=user_id,
@@ -594,16 +599,11 @@ class FIDO2AuthManager:
             metadata={
                 "dispute_id": dispute_id,
                 "proposal_action": proposal_action,
-                "proposal_hash": proposal_hash
-            }
+                "proposal_hash": proposal_hash,
+            },
         )
 
-    def sign_contract(
-        self,
-        user_id: str,
-        contract_hash: str,
-        counterparty: str
-    ) -> dict[str, Any]:
+    def sign_contract(self, user_id: str, contract_hash: str, counterparty: str) -> dict[str, Any]:
         """
         Begin signing a contract with FIDO2 credential.
 
@@ -622,10 +622,7 @@ class FIDO2AuthManager:
             signature_type=SignatureType.CONTRACT_SIGN,
             message_to_sign=message,
             user_verification=UserVerification.REQUIRED,
-            metadata={
-                "contract_hash": contract_hash,
-                "counterparty": counterparty
-            }
+            metadata={"contract_hash": contract_hash, "counterparty": counterparty},
         )
 
     # ==================== PHASE 13C: AGENT DELEGATION ====================
@@ -635,7 +632,7 @@ class FIDO2AuthManager:
         principal_user_id: str,
         agent_id: str,
         permissions: list[str],
-        duration_hours: int | None = None
+        duration_hours: int | None = None,
     ) -> dict[str, Any]:
         """
         Begin delegating authority to an agent with hardware authorization.
@@ -663,8 +660,8 @@ class FIDO2AuthManager:
                 "agent_id": agent_id,
                 "permissions": permissions,
                 "expires_at": expires_at.isoformat(),
-                "duration_hours": duration
-            }
+                "duration_hours": duration,
+            },
         )
 
     def complete_agent_delegation(
@@ -673,7 +670,7 @@ class FIDO2AuthManager:
         credential_id: str,
         authenticator_data: str,
         client_data_json: str,
-        signature: str
+        signature: str,
     ) -> tuple[bool, dict[str, Any]]:
         """
         Complete agent delegation with verified signature.
@@ -687,7 +684,7 @@ class FIDO2AuthManager:
             credential_id=credential_id,
             authenticator_data=authenticator_data,
             client_data_json=client_data_json,
-            signature=signature
+            signature=signature,
         )
 
         if not success:
@@ -698,10 +695,7 @@ class FIDO2AuthManager:
         metadata = challenge.metadata
 
         # Create delegation record
-        delegation_id = self._generate_delegation_id(
-            auth_result["user_id"],
-            metadata["agent_id"]
-        )
+        delegation_id = self._generate_delegation_id(auth_result["user_id"], metadata["agent_id"])
 
         delegation = AgentDelegation(
             delegation_id=delegation_id,
@@ -711,18 +705,21 @@ class FIDO2AuthManager:
             permissions=metadata["permissions"],
             signature=signature,
             created_at=datetime.utcnow().isoformat(),
-            expires_at=metadata["expires_at"]
+            expires_at=metadata["expires_at"],
         )
 
         self.delegations[delegation_id] = delegation
 
-        self._emit_event("AgentDelegationCreated", {
-            "delegation_id": delegation_id,
-            "principal": auth_result["user_id"],
-            "agent_id": metadata["agent_id"],
-            "permissions": metadata["permissions"],
-            "expires_at": metadata["expires_at"]
-        })
+        self._emit_event(
+            "AgentDelegationCreated",
+            {
+                "delegation_id": delegation_id,
+                "principal": auth_result["user_id"],
+                "agent_id": metadata["agent_id"],
+                "permissions": metadata["permissions"],
+                "expires_at": metadata["expires_at"],
+            },
+        )
 
         return True, {
             "status": "delegated",
@@ -731,14 +728,11 @@ class FIDO2AuthManager:
             "agent_id": metadata["agent_id"],
             "permissions": metadata["permissions"],
             "expires_at": metadata["expires_at"],
-            "signature_id": auth_result["signature_id"]
+            "signature_id": auth_result["signature_id"],
         }
 
     def verify_agent_permission(
-        self,
-        agent_id: str,
-        permission: str,
-        principal_user_id: str | None = None
+        self, agent_id: str, permission: str, principal_user_id: str | None = None
     ) -> tuple[bool, str | None]:
         """
         Verify an agent has a specific permission.
@@ -772,9 +766,7 @@ class FIDO2AuthManager:
         return False, None
 
     def revoke_delegation(
-        self,
-        delegation_id: str,
-        revoking_user: str
+        self, delegation_id: str, revoking_user: str
     ) -> tuple[bool, dict[str, Any]]:
         """
         Revoke an agent delegation.
@@ -800,17 +792,20 @@ class FIDO2AuthManager:
         delegation.revoked = True
         delegation.revoked_at = datetime.utcnow().isoformat()
 
-        self._emit_event("AgentDelegationRevoked", {
-            "delegation_id": delegation_id,
-            "agent_id": delegation.agent_id,
-            "revoked_by": revoking_user
-        })
+        self._emit_event(
+            "AgentDelegationRevoked",
+            {
+                "delegation_id": delegation_id,
+                "agent_id": delegation.agent_id,
+                "revoked_by": revoking_user,
+            },
+        )
 
         return True, {
             "status": "revoked",
             "delegation_id": delegation_id,
             "agent_id": delegation.agent_id,
-            "revoked_at": delegation.revoked_at
+            "revoked_at": delegation.revoked_at,
         }
 
     def get_agent_delegations(
@@ -818,7 +813,7 @@ class FIDO2AuthManager:
         agent_id: str | None = None,
         principal_user_id: str | None = None,
         include_expired: bool = False,
-        include_revoked: bool = False
+        include_revoked: bool = False,
     ) -> list[dict[str, Any]]:
         """
         Get agent delegations with optional filtering.
@@ -849,17 +844,19 @@ class FIDO2AuthManager:
             if not include_expired and is_expired:
                 continue
 
-            results.append({
-                "delegation_id": delegation.delegation_id,
-                "principal_user_id": delegation.principal_user_id,
-                "agent_id": delegation.agent_id,
-                "permissions": delegation.permissions,
-                "created_at": delegation.created_at,
-                "expires_at": delegation.expires_at,
-                "revoked": delegation.revoked,
-                "expired": is_expired,
-                "active": not delegation.revoked and not is_expired
-            })
+            results.append(
+                {
+                    "delegation_id": delegation.delegation_id,
+                    "principal_user_id": delegation.principal_user_id,
+                    "agent_id": delegation.agent_id,
+                    "permissions": delegation.permissions,
+                    "created_at": delegation.created_at,
+                    "expires_at": delegation.expires_at,
+                    "revoked": delegation.revoked,
+                    "expired": is_expired,
+                    "active": not delegation.revoked and not is_expired,
+                }
+            )
 
         return results
 
@@ -873,23 +870,21 @@ class FIDO2AuthManager:
         for cred_id in credential_ids:
             if cred_id in self.credentials:
                 cred = self.credentials[cred_id]
-                results.append({
-                    "credential_id": cred.credential_id,
-                    "algorithm": cred.public_key_algorithm,
-                    "created_at": cred.created_at,
-                    "last_used_at": cred.last_used_at,
-                    "sign_count": cred.sign_count,
-                    "transports": cred.transports,
-                    "device_name": cred.device_name
-                })
+                results.append(
+                    {
+                        "credential_id": cred.credential_id,
+                        "algorithm": cred.public_key_algorithm,
+                        "created_at": cred.created_at,
+                        "last_used_at": cred.last_used_at,
+                        "sign_count": cred.sign_count,
+                        "transports": cred.transports,
+                        "device_name": cred.device_name,
+                    }
+                )
 
         return results
 
-    def remove_credential(
-        self,
-        credential_id: str,
-        user_id: str
-    ) -> tuple[bool, dict[str, Any]]:
+    def remove_credential(self, credential_id: str, user_id: str) -> tuple[bool, dict[str, Any]]:
         """
         Remove a credential.
 
@@ -913,19 +908,12 @@ class FIDO2AuthManager:
 
         if user_id in self.user_credentials:
             self.user_credentials[user_id] = [
-                c for c in self.user_credentials[user_id]
-                if c != credential_id
+                c for c in self.user_credentials[user_id] if c != credential_id
             ]
 
-        self._emit_event("CredentialRemoved", {
-            "credential_id": credential_id,
-            "user_id": user_id
-        })
+        self._emit_event("CredentialRemoved", {"credential_id": credential_id, "user_id": user_id})
 
-        return True, {
-            "status": "removed",
-            "credential_id": credential_id
-        }
+        return True, {"status": "removed", "credential_id": credential_id}
 
     def get_signature(self, signature_id: str) -> dict[str, Any] | None:
         """Get a signature record by ID."""
@@ -942,14 +930,14 @@ class FIDO2AuthManager:
             "sign_count": sig.sign_count,
             "created_at": sig.created_at,
             "verified": sig.verified,
-            "metadata": sig.metadata
+            "metadata": sig.metadata,
         }
 
     def verify_signature_record(
         self,
         signature_id: str,
         expected_message_hash: str | None = None,
-        expected_user_id: str | None = None
+        expected_user_id: str | None = None,
     ) -> tuple[bool, dict[str, Any]]:
         """
         Verify a signature record exists and matches expectations.
@@ -974,14 +962,14 @@ class FIDO2AuthManager:
             return False, {
                 "error": "Message hash mismatch",
                 "expected": expected_message_hash,
-                "actual": sig.message_hash
+                "actual": sig.message_hash,
             }
 
         if expected_user_id and sig.user_id != expected_user_id:
             return False, {
                 "error": "User ID mismatch",
                 "expected": expected_user_id,
-                "actual": sig.user_id
+                "actual": sig.user_id,
             }
 
         return True, {
@@ -989,7 +977,7 @@ class FIDO2AuthManager:
             "signature_id": signature_id,
             "user_id": sig.user_id,
             "signature_type": sig.signature_type,
-            "created_at": sig.created_at
+            "created_at": sig.created_at,
         }
 
     # ==================== STATISTICS & AUDIT ====================
@@ -999,44 +987,41 @@ class FIDO2AuthManager:
         now = datetime.utcnow()
 
         active_delegations = sum(
-            1 for d in self.delegations.values()
+            1
+            for d in self.delegations.values()
             if not d.revoked and datetime.fromisoformat(d.expires_at) > now
         )
 
         return {
             "credentials": {
                 "total": len(self.credentials),
-                "users_with_credentials": len(self.user_credentials)
+                "users_with_credentials": len(self.user_credentials),
             },
             "signatures": {
                 "total": len(self.signatures),
-                "verified": sum(1 for s in self.signatures.values() if s.verified)
+                "verified": sum(1 for s in self.signatures.values() if s.verified),
             },
             "delegations": {
                 "total": len(self.delegations),
                 "active": active_delegations,
-                "revoked": sum(1 for d in self.delegations.values() if d.revoked)
+                "revoked": sum(1 for d in self.delegations.values() if d.revoked),
             },
             "challenges": {
                 "total_created": len(self.challenges),
-                "used": sum(1 for c in self.challenges.values() if c.used)
+                "used": sum(1 for c in self.challenges.values() if c.used),
             },
             "configuration": {
                 "rp_id": self.rp_id,
                 "rp_name": self.rp_name,
                 "challenge_timeout_seconds": self.CHALLENGE_TIMEOUT_SECONDS,
                 "max_credentials_per_user": self.MAX_CREDENTIALS_PER_USER,
-                "supported_algorithms": self.SUPPORTED_ALGORITHMS
-            }
+                "supported_algorithms": self.SUPPORTED_ALGORITHMS,
+            },
         }
 
     def get_audit_trail(self, limit: int = 100) -> list[dict[str, Any]]:
         """Get recent audit trail events."""
-        return sorted(
-            self.events[-limit:],
-            key=lambda x: x["timestamp"],
-            reverse=True
-        )
+        return sorted(self.events[-limit:], key=lambda x: x["timestamp"], reverse=True)
 
     # ==================== UTILITY METHODS ====================
 
@@ -1046,7 +1031,7 @@ class FIDO2AuthManager:
             "user_id": user_id,
             "action": action,
             "timestamp": datetime.utcnow().isoformat(),
-            "random": secrets.token_hex(8)
+            "random": secrets.token_hex(8),
         }
         hash_input = json.dumps(data, sort_keys=True)
         return f"CHAL-{hashlib.sha256(hash_input.encode()).hexdigest()[:16].upper()}"
@@ -1057,7 +1042,7 @@ class FIDO2AuthManager:
             "credential_id": credential_id,
             "signature_type": signature_type,
             "timestamp": datetime.utcnow().isoformat(),
-            "random": secrets.token_hex(8)
+            "random": secrets.token_hex(8),
         }
         hash_input = json.dumps(data, sort_keys=True)
         return f"SIG-{hashlib.sha256(hash_input.encode()).hexdigest()[:16].upper()}"
@@ -1068,16 +1053,12 @@ class FIDO2AuthManager:
             "principal": principal,
             "agent": agent,
             "timestamp": datetime.utcnow().isoformat(),
-            "random": secrets.token_hex(8)
+            "random": secrets.token_hex(8),
         }
         hash_input = json.dumps(data, sort_keys=True)
         return f"DELEG-{hashlib.sha256(hash_input.encode()).hexdigest()[:12].upper()}"
 
     def _emit_event(self, event_type: str, data: dict[str, Any]) -> None:
         """Emit an event for audit trail."""
-        event = {
-            "event_type": event_type,
-            "timestamp": datetime.utcnow().isoformat(),
-            "data": data
-        }
+        event = {"event_type": event_type, "timestamp": datetime.utcnow().isoformat(), "data": data}
         self.events.append(event)

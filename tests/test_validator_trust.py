@@ -20,7 +20,7 @@ from datetime import datetime, timedelta
 import pytest
 
 # Add src to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from validator_trust import (
     # Constants
@@ -51,6 +51,7 @@ from validator_trust import (
 # Fixtures
 # =============================================================================
 
+
 @pytest.fixture
 def trust_manager():
     """Create a fresh trust manager for each test."""
@@ -67,10 +68,7 @@ def registered_validators(trust_manager):
         validator_id="vld-001",
         validator_type=ValidatorType.LLM,
         model_version="claude-3-opus",
-        declared_capabilities=[
-            TrustScope.SEMANTIC_PARSING,
-            TrustScope.PROOF_OF_UNDERSTANDING
-        ]
+        declared_capabilities=[TrustScope.SEMANTIC_PARSING, TrustScope.PROOF_OF_UNDERSTANDING],
     )
     validators.append("vld-001")
 
@@ -79,10 +77,7 @@ def registered_validators(trust_manager):
         validator_id="vld-002",
         validator_type=ValidatorType.HYBRID,
         model_version="hybrid-v2",
-        declared_capabilities=[
-            TrustScope.DRIFT_DETECTION,
-            TrustScope.DISPUTE_ANALYSIS
-        ]
+        declared_capabilities=[TrustScope.DRIFT_DETECTION, TrustScope.DISPUTE_ANALYSIS],
     )
     validators.append("vld-002")
 
@@ -90,7 +85,7 @@ def registered_validators(trust_manager):
     trust_manager.register_validator(
         validator_id="vld-003",
         validator_type=ValidatorType.SYMBOLIC,
-        declared_capabilities=[TrustScope.SEMANTIC_PARSING]
+        declared_capabilities=[TrustScope.SEMANTIC_PARSING],
     )
     validators.append("vld-003")
 
@@ -99,10 +94,7 @@ def registered_validators(trust_manager):
         validator_id="vld-004",
         validator_type=ValidatorType.HUMAN,
         operator_id="operator-001",
-        declared_capabilities=[
-            TrustScope.DISPUTE_ANALYSIS,
-            TrustScope.LEGAL_TRANSLATION_REVIEW
-        ]
+        declared_capabilities=[TrustScope.DISPUTE_ANALYSIS, TrustScope.LEGAL_TRANSLATION_REVIEW],
     )
     validators.append("vld-004")
 
@@ -113,6 +105,7 @@ def registered_validators(trust_manager):
 # Validator Registration Tests
 # =============================================================================
 
+
 class TestValidatorRegistration:
     """Tests for validator registration and identity management."""
 
@@ -121,7 +114,7 @@ class TestValidatorRegistration:
         profile = trust_manager.register_validator(
             validator_id="vld-llm",
             validator_type=ValidatorType.LLM,
-            model_version="claude-3-5-sonnet"
+            model_version="claude-3-5-sonnet",
         )
 
         assert profile.validator_id == "vld-llm"
@@ -135,9 +128,7 @@ class TestValidatorRegistration:
     def test_register_human_validator(self, trust_manager):
         """Test registering a human validator."""
         trust_manager.register_validator(
-            validator_id="vld-human",
-            validator_type=ValidatorType.HUMAN,
-            operator_id="john_doe"
+            validator_id="vld-human", validator_type=ValidatorType.HUMAN, operator_id="john_doe"
         )
 
         identity = trust_manager.get_identity("vld-human")
@@ -146,15 +137,12 @@ class TestValidatorRegistration:
 
     def test_register_with_capabilities(self, trust_manager):
         """Test registering with declared capabilities."""
-        capabilities = [
-            TrustScope.SEMANTIC_PARSING,
-            TrustScope.DRIFT_DETECTION
-        ]
+        capabilities = [TrustScope.SEMANTIC_PARSING, TrustScope.DRIFT_DETECTION]
 
         profile = trust_manager.register_validator(
             validator_id="vld-cap",
             validator_type=ValidatorType.HYBRID,
-            declared_capabilities=capabilities
+            declared_capabilities=capabilities,
         )
 
         # Should have scoped scores initialized
@@ -164,15 +152,11 @@ class TestValidatorRegistration:
 
     def test_duplicate_registration_fails(self, trust_manager):
         """Test that duplicate registration raises error."""
-        trust_manager.register_validator(
-            validator_id="vld-dup",
-            validator_type=ValidatorType.LLM
-        )
+        trust_manager.register_validator(validator_id="vld-dup", validator_type=ValidatorType.LLM)
 
         with pytest.raises(ValueError, match="already registered"):
             trust_manager.register_validator(
-                validator_id="vld-dup",
-                validator_type=ValidatorType.LLM
+                validator_id="vld-dup", validator_type=ValidatorType.LLM
             )
 
     def test_get_nonexistent_profile(self, trust_manager):
@@ -186,7 +170,7 @@ class TestValidatorRegistration:
             validator_id="vld-ser",
             validator_type=ValidatorType.HYBRID,
             model_version="v1.0",
-            declared_capabilities=[TrustScope.SEMANTIC_PARSING]
+            declared_capabilities=[TrustScope.SEMANTIC_PARSING],
         )
 
         identity = trust_manager.get_identity("vld-ser")
@@ -202,21 +186,19 @@ class TestValidatorRegistration:
 # Trust Score Update Tests
 # =============================================================================
 
+
 class TestTrustScoreUpdates:
     """Tests for trust score recording and updates."""
 
     def test_record_positive_signal(self, trust_manager):
         """Test recording a positive trust signal."""
-        trust_manager.register_validator(
-            validator_id="vld-pos",
-            validator_type=ValidatorType.LLM
-        )
+        trust_manager.register_validator(validator_id="vld-pos", validator_type=ValidatorType.LLM)
 
         event = trust_manager.record_positive_signal(
             validator_id="vld-pos",
             signal=PositiveSignal.CONSENSUS_MATCH,
             scope=TrustScope.SEMANTIC_PARSING,
-            magnitude=0.1
+            magnitude=0.1,
         )
 
         assert event is not None
@@ -230,16 +212,13 @@ class TestTrustScoreUpdates:
 
     def test_record_negative_signal(self, trust_manager):
         """Test recording a negative trust signal."""
-        trust_manager.register_validator(
-            validator_id="vld-neg",
-            validator_type=ValidatorType.LLM
-        )
+        trust_manager.register_validator(validator_id="vld-neg", validator_type=ValidatorType.LLM)
 
         event = trust_manager.record_negative_signal(
             validator_id="vld-neg",
             signal=NegativeSignal.FALSE_POSITIVE_DRIFT,
             scope=TrustScope.DRIFT_DETECTION,
-            magnitude=0.1
+            magnitude=0.1,
         )
 
         assert event is not None
@@ -251,8 +230,7 @@ class TestTrustScoreUpdates:
     def test_harassment_accelerated_decay(self, trust_manager):
         """Test that harassment signals have accelerated decay."""
         trust_manager.register_validator(
-            validator_id="vld-harass",
-            validator_type=ValidatorType.LLM
+            validator_id="vld-harass", validator_type=ValidatorType.LLM
         )
 
         # Standard negative signal
@@ -260,7 +238,7 @@ class TestTrustScoreUpdates:
             validator_id="vld-harass",
             signal=NegativeSignal.FALSE_POSITIVE_DRIFT,
             scope=TrustScope.DRIFT_DETECTION,
-            magnitude=0.05
+            magnitude=0.05,
         )
 
         profile1 = trust_manager.get_profile("vld-harass")
@@ -271,7 +249,7 @@ class TestTrustScoreUpdates:
             validator_id="vld-harass",
             signal=NegativeSignal.HARASSMENT_PATTERN,
             scope=TrustScope.DRIFT_DETECTION,
-            magnitude=0.05  # Will be doubled to 0.10
+            magnitude=0.05,  # Will be doubled to 0.10
         )
 
         profile2 = trust_manager.get_profile("vld-harass")
@@ -286,7 +264,7 @@ class TestTrustScoreUpdates:
         trust_manager.register_validator(
             validator_id="vld-max",
             validator_type=ValidatorType.LLM,
-            declared_capabilities=[TrustScope.SEMANTIC_PARSING]
+            declared_capabilities=[TrustScope.SEMANTIC_PARSING],
         )
 
         # Start at 0.5, add 0.6 should cap at 1.0
@@ -295,7 +273,7 @@ class TestTrustScoreUpdates:
                 validator_id="vld-max",
                 signal=PositiveSignal.CONSENSUS_MATCH,
                 scope=TrustScope.SEMANTIC_PARSING,
-                magnitude=0.1
+                magnitude=0.1,
             )
 
         profile = trust_manager.get_profile("vld-max")
@@ -306,7 +284,7 @@ class TestTrustScoreUpdates:
         trust_manager.register_validator(
             validator_id="vld-min",
             validator_type=ValidatorType.LLM,
-            declared_capabilities=[TrustScope.SEMANTIC_PARSING]
+            declared_capabilities=[TrustScope.SEMANTIC_PARSING],
         )
 
         # Start at 0.5, subtract 0.6 should floor at 0.0
@@ -315,7 +293,7 @@ class TestTrustScoreUpdates:
                 validator_id="vld-min",
                 signal=NegativeSignal.FALSE_POSITIVE_DRIFT,
                 scope=TrustScope.SEMANTIC_PARSING,
-                magnitude=0.1
+                magnitude=0.1,
             )
 
         profile = trust_manager.get_profile("vld-min")
@@ -324,8 +302,7 @@ class TestTrustScoreUpdates:
     def test_frozen_validator_rejects_signals(self, trust_manager):
         """Test that frozen validators reject trust updates."""
         trust_manager.register_validator(
-            validator_id="vld-frozen",
-            validator_type=ValidatorType.LLM
+            validator_id="vld-frozen", validator_type=ValidatorType.LLM
         )
 
         # Freeze the validator
@@ -335,7 +312,7 @@ class TestTrustScoreUpdates:
         event = trust_manager.record_positive_signal(
             validator_id="vld-frozen",
             signal=PositiveSignal.CONSENSUS_MATCH,
-            scope=TrustScope.SEMANTIC_PARSING
+            scope=TrustScope.SEMANTIC_PARSING,
         )
 
         assert event is None
@@ -343,8 +320,7 @@ class TestTrustScoreUpdates:
     def test_overall_score_recalculation(self, trust_manager):
         """Test that overall score is recalculated correctly."""
         trust_manager.register_validator(
-            validator_id="vld-overall",
-            validator_type=ValidatorType.LLM
+            validator_id="vld-overall", validator_type=ValidatorType.LLM
         )
 
         # Add signals to different scopes
@@ -352,14 +328,14 @@ class TestTrustScoreUpdates:
             validator_id="vld-overall",
             signal=PositiveSignal.CONSENSUS_MATCH,
             scope=TrustScope.SEMANTIC_PARSING,
-            magnitude=0.3
+            magnitude=0.3,
         )
 
         trust_manager.record_negative_signal(
             validator_id="vld-overall",
             signal=NegativeSignal.FALSE_POSITIVE_DRIFT,
             scope=TrustScope.DRIFT_DETECTION,
-            magnitude=0.2
+            magnitude=0.2,
         )
 
         profile = trust_manager.get_profile("vld-overall")
@@ -369,10 +345,7 @@ class TestTrustScoreUpdates:
 
     def test_confidence_interval_shrinks(self, trust_manager):
         """Test that confidence interval shrinks with more samples."""
-        trust_manager.register_validator(
-            validator_id="vld-conf",
-            validator_type=ValidatorType.LLM
-        )
+        trust_manager.register_validator(validator_id="vld-conf", validator_type=ValidatorType.LLM)
 
         initial_ci = trust_manager.get_profile("vld-conf").confidence_interval
 
@@ -382,7 +355,7 @@ class TestTrustScoreUpdates:
                 validator_id="vld-conf",
                 signal=PositiveSignal.CONSISTENCY,
                 scope=TrustScope.SEMANTIC_PARSING,
-                magnitude=0.001
+                magnitude=0.001,
             )
 
         final_ci = trust_manager.get_profile("vld-conf").confidence_interval
@@ -394,14 +367,14 @@ class TestTrustScoreUpdates:
 # Temporal Decay Tests
 # =============================================================================
 
+
 class TestTemporalDecay:
     """Tests for trust decay over time."""
 
     def test_no_decay_within_threshold(self, trust_manager):
         """Test that no decay occurs within inactivity threshold."""
         trust_manager.register_validator(
-            validator_id="vld-recent",
-            validator_type=ValidatorType.LLM
+            validator_id="vld-recent", validator_type=ValidatorType.LLM
         )
 
         # Set activity to 20 days ago (within threshold)
@@ -415,10 +388,7 @@ class TestTemporalDecay:
 
     def test_decay_after_threshold(self, trust_manager):
         """Test that decay occurs after inactivity threshold."""
-        trust_manager.register_validator(
-            validator_id="vld-old",
-            validator_type=ValidatorType.LLM
-        )
+        trust_manager.register_validator(validator_id="vld-old", validator_type=ValidatorType.LLM)
 
         # Set activity to 60 days ago (beyond threshold)
         profile = trust_manager.get_profile("vld-old")
@@ -433,8 +403,7 @@ class TestTemporalDecay:
     def test_decay_formula(self, trust_manager):
         """Test that decay follows exponential formula."""
         trust_manager.register_validator(
-            validator_id="vld-formula",
-            validator_type=ValidatorType.LLM
+            validator_id="vld-formula", validator_type=ValidatorType.LLM
         )
 
         initial_score = 0.8
@@ -455,8 +424,7 @@ class TestTemporalDecay:
     def test_frozen_validator_no_decay(self, trust_manager):
         """Test that frozen validators don't decay."""
         trust_manager.register_validator(
-            validator_id="vld-freeze-decay",
-            validator_type=ValidatorType.LLM
+            validator_id="vld-freeze-decay", validator_type=ValidatorType.LLM
         )
 
         profile = trust_manager.get_profile("vld-freeze-decay")
@@ -487,24 +455,21 @@ class TestTemporalDecay:
 # Recovery Tests
 # =============================================================================
 
+
 class TestTrustRecovery:
     """Tests for trust recovery mechanisms."""
 
     def test_initiate_low_stakes_recovery(self, trust_manager):
         """Test initiating low-stakes validation recovery."""
         trust_manager.register_validator(
-            validator_id="vld-recover",
-            validator_type=ValidatorType.LLM
+            validator_id="vld-recover", validator_type=ValidatorType.LLM
         )
 
         # Lower the score
         profile = trust_manager.get_profile("vld-recover")
         profile.overall_score = 0.3
 
-        result = trust_manager.initiate_recovery(
-            "vld-recover",
-            "low_stakes_validation"
-        )
+        result = trust_manager.initiate_recovery("vld-recover", "low_stakes_validation")
 
         assert result["status"] == "initiated"
         assert result["recovery_type"] == "low_stakes_validation"
@@ -513,14 +478,10 @@ class TestTrustRecovery:
     def test_initiate_benchmark_recovery(self, trust_manager):
         """Test initiating benchmark challenge recovery."""
         trust_manager.register_validator(
-            validator_id="vld-benchmark",
-            validator_type=ValidatorType.LLM
+            validator_id="vld-benchmark", validator_type=ValidatorType.LLM
         )
 
-        result = trust_manager.initiate_recovery(
-            "vld-benchmark",
-            "benchmark_challenge"
-        )
+        result = trust_manager.initiate_recovery("vld-benchmark", "benchmark_challenge")
 
         assert result["status"] == "initiated"
         assert "required_challenges" in result["requirements"]
@@ -528,8 +489,7 @@ class TestTrustRecovery:
     def test_recovery_fails_when_frozen(self, trust_manager):
         """Test that recovery cannot start when frozen."""
         trust_manager.register_validator(
-            validator_id="vld-frozen-recover",
-            validator_type=ValidatorType.LLM
+            validator_id="vld-frozen-recover", validator_type=ValidatorType.LLM
         )
 
         trust_manager.freeze_trust("vld-frozen-recover", "dispute-001")
@@ -551,6 +511,7 @@ class TestTrustRecovery:
 # Weighting Function Tests
 # =============================================================================
 
+
 class TestWeightingFunction:
     """Tests for effective weight calculation."""
 
@@ -560,11 +521,10 @@ class TestWeightingFunction:
             (ValidatorType.LLM, 1.0),
             (ValidatorType.HYBRID, 1.1),
             (ValidatorType.SYMBOLIC, 0.9),
-            (ValidatorType.HUMAN, 1.2)
+            (ValidatorType.HUMAN, 1.2),
         ]:
             trust_manager.register_validator(
-                validator_id=f"vld-{vtype.value}",
-                validator_type=vtype
+                validator_id=f"vld-{vtype.value}", validator_type=vtype
             )
 
             identity = trust_manager.get_identity(f"vld-{vtype.value}")
@@ -575,7 +535,7 @@ class TestWeightingFunction:
         trust_manager.register_validator(
             validator_id="vld-weight",
             validator_type=ValidatorType.HYBRID,  # base_weight = 1.1
-            declared_capabilities=[TrustScope.SEMANTIC_PARSING]
+            declared_capabilities=[TrustScope.SEMANTIC_PARSING],
         )
 
         # Set known trust score - use values that stay under MAX_EFFECTIVE_WEIGHT (0.35)
@@ -587,9 +547,7 @@ class TestWeightingFunction:
         expected = 1.1 * 0.3 * 0.9  # = 0.297
 
         actual = trust_manager.calculate_effective_weight(
-            "vld-weight",
-            TrustScope.SEMANTIC_PARSING,
-            scope_modifier
+            "vld-weight", TrustScope.SEMANTIC_PARSING, scope_modifier
         )
 
         assert abs(actual - expected) < 0.001
@@ -599,7 +557,7 @@ class TestWeightingFunction:
         trust_manager.register_validator(
             validator_id="vld-cap",
             validator_type=ValidatorType.HUMAN,  # base_weight = 1.2
-            declared_capabilities=[TrustScope.DISPUTE_ANALYSIS]
+            declared_capabilities=[TrustScope.DISPUTE_ANALYSIS],
         )
 
         # Set high trust score
@@ -608,9 +566,7 @@ class TestWeightingFunction:
 
         # Without cap: 1.2 * 1.0 * 1.0 = 1.2
         actual = trust_manager.calculate_effective_weight(
-            "vld-cap",
-            TrustScope.DISPUTE_ANALYSIS,
-            1.0
+            "vld-cap", TrustScope.DISPUTE_ANALYSIS, 1.0
         )
 
         assert actual == MAX_EFFECTIVE_WEIGHT
@@ -618,15 +574,14 @@ class TestWeightingFunction:
     def test_weighted_signal_creation(self, trust_manager):
         """Test creating a weighted signal."""
         trust_manager.register_validator(
-            validator_id="vld-signal",
-            validator_type=ValidatorType.LLM
+            validator_id="vld-signal", validator_type=ValidatorType.LLM
         )
 
         signal = trust_manager.get_weighted_signal(
             "vld-signal",
             signal_value={"decision": "VALID"},
             scope=TrustScope.SEMANTIC_PARSING,
-            scope_modifier=1.0
+            scope_modifier=1.0,
         )
 
         assert signal is not None
@@ -638,8 +593,7 @@ class TestWeightingFunction:
     def test_unknown_validator_zero_weight(self, trust_manager):
         """Test that unknown validator gets zero weight."""
         weight = trust_manager.calculate_effective_weight(
-            "nonexistent",
-            TrustScope.SEMANTIC_PARSING
+            "nonexistent", TrustScope.SEMANTIC_PARSING
         )
 
         assert weight == 0.0
@@ -649,14 +603,14 @@ class TestWeightingFunction:
 # Dispute Handling Tests
 # =============================================================================
 
+
 class TestDisputeHandling:
     """Tests for trust freeze/unfreeze during disputes."""
 
     def test_freeze_trust(self, trust_manager):
         """Test freezing a validator's trust."""
         trust_manager.register_validator(
-            validator_id="vld-freeze",
-            validator_type=ValidatorType.LLM
+            validator_id="vld-freeze", validator_type=ValidatorType.LLM
         )
 
         success = trust_manager.freeze_trust("vld-freeze", "dispute-123")
@@ -669,8 +623,7 @@ class TestDisputeHandling:
     def test_unfreeze_trust(self, trust_manager):
         """Test unfreezing a validator's trust."""
         trust_manager.register_validator(
-            validator_id="vld-unfreeze",
-            validator_type=ValidatorType.LLM
+            validator_id="vld-unfreeze", validator_type=ValidatorType.LLM
         )
 
         trust_manager.freeze_trust("vld-unfreeze", "dispute-123")
@@ -686,17 +639,16 @@ class TestDisputeHandling:
         trust_manager.register_validator(
             validator_id="vld-outcome-pos",
             validator_type=ValidatorType.LLM,
-            declared_capabilities=[TrustScope.DISPUTE_ANALYSIS]
+            declared_capabilities=[TrustScope.DISPUTE_ANALYSIS],
         )
 
         initial_score = trust_manager.get_profile("vld-outcome-pos").overall_score
 
         trust_manager.freeze_trust("vld-outcome-pos", "dispute-123")
-        trust_manager.unfreeze_trust("vld-outcome-pos", {
-            "outcome_type": "positive",
-            "scope": TrustScope.DISPUTE_ANALYSIS,
-            "magnitude": 0.1
-        })
+        trust_manager.unfreeze_trust(
+            "vld-outcome-pos",
+            {"outcome_type": "positive", "scope": TrustScope.DISPUTE_ANALYSIS, "magnitude": 0.1},
+        )
 
         final_score = trust_manager.get_profile("vld-outcome-pos").overall_score
         assert final_score > initial_score
@@ -706,17 +658,16 @@ class TestDisputeHandling:
         trust_manager.register_validator(
             validator_id="vld-outcome-neg",
             validator_type=ValidatorType.LLM,
-            declared_capabilities=[TrustScope.DISPUTE_ANALYSIS]
+            declared_capabilities=[TrustScope.DISPUTE_ANALYSIS],
         )
 
         initial_score = trust_manager.get_profile("vld-outcome-neg").overall_score
 
         trust_manager.freeze_trust("vld-outcome-neg", "dispute-123")
-        trust_manager.unfreeze_trust("vld-outcome-neg", {
-            "outcome_type": "negative",
-            "scope": TrustScope.DISPUTE_ANALYSIS,
-            "magnitude": 0.1
-        })
+        trust_manager.unfreeze_trust(
+            "vld-outcome-neg",
+            {"outcome_type": "negative", "scope": TrustScope.DISPUTE_ANALYSIS, "magnitude": 0.1},
+        )
 
         final_score = trust_manager.get_profile("vld-outcome-neg").overall_score
         assert final_score < initial_score
@@ -734,6 +685,7 @@ class TestDisputeHandling:
 # Anti-Centralization Safeguards Tests
 # =============================================================================
 
+
 class TestAntiCentralization:
     """Tests for anti-centralization safeguards."""
 
@@ -747,14 +699,8 @@ class TestAntiCentralization:
 
     def test_diversity_threshold_not_met(self, trust_manager):
         """Test diversity threshold check when not met."""
-        trust_manager.register_validator(
-            validator_id="vld-only1",
-            validator_type=ValidatorType.LLM
-        )
-        trust_manager.register_validator(
-            validator_id="vld-only2",
-            validator_type=ValidatorType.LLM
-        )
+        trust_manager.register_validator(validator_id="vld-only1", validator_type=ValidatorType.LLM)
+        trust_manager.register_validator(validator_id="vld-only2", validator_type=ValidatorType.LLM)
 
         result = trust_manager.check_diversity_threshold(["vld-only1", "vld-only2"])
 
@@ -764,14 +710,8 @@ class TestAntiCentralization:
 
     def test_identify_minority_signals(self, trust_manager):
         """Test identifying minority signals."""
-        trust_manager.register_validator(
-            validator_id="vld-high",
-            validator_type=ValidatorType.LLM
-        )
-        trust_manager.register_validator(
-            validator_id="vld-low",
-            validator_type=ValidatorType.LLM
-        )
+        trust_manager.register_validator(validator_id="vld-high", validator_type=ValidatorType.LLM)
+        trust_manager.register_validator(validator_id="vld-low", validator_type=ValidatorType.LLM)
 
         # Set different trust scores
         trust_manager.get_profile("vld-high").overall_score = 0.8
@@ -784,7 +724,7 @@ class TestAntiCentralization:
                 raw_weight=1.0,
                 effective_weight=0.8,
                 trust_score=0.8,
-                scope_modifier=1.0
+                scope_modifier=1.0,
             ),
             WeightedSignal(
                 validator_id="vld-low",
@@ -792,8 +732,8 @@ class TestAntiCentralization:
                 raw_weight=1.0,
                 effective_weight=0.1,
                 trust_score=0.1,
-                scope_modifier=1.0
-            )
+                scope_modifier=1.0,
+            ),
         ]
 
         minority = trust_manager.identify_minority_signals(signals)
@@ -807,40 +747,27 @@ class TestAntiCentralization:
         signals = []
         for vid in registered_validators:
             signal = trust_manager.get_weighted_signal(
-                vid,
-                signal_value="VALID",
-                scope=TrustScope.SEMANTIC_PARSING
+                vid, signal_value="VALID", scope=TrustScope.SEMANTIC_PARSING
             )
             if signal:
                 signals.append(signal)
 
-        result = trust_manager.validate_consensus_input(
-            signals,
-            TrustScope.SEMANTIC_PARSING
-        )
+        result = trust_manager.validate_consensus_input(signals, TrustScope.SEMANTIC_PARSING)
 
         assert result["valid"]
         assert len(result["issues"]) == 0
 
     def test_validate_consensus_input_insufficient_diversity(self, trust_manager):
         """Test consensus input validation with insufficient diversity."""
-        trust_manager.register_validator(
-            validator_id="vld-solo",
-            validator_type=ValidatorType.LLM
-        )
+        trust_manager.register_validator(validator_id="vld-solo", validator_type=ValidatorType.LLM)
 
         signals = [
             trust_manager.get_weighted_signal(
-                "vld-solo",
-                signal_value="VALID",
-                scope=TrustScope.SEMANTIC_PARSING
+                "vld-solo", signal_value="VALID", scope=TrustScope.SEMANTIC_PARSING
             )
         ]
 
-        result = trust_manager.validate_consensus_input(
-            signals,
-            TrustScope.SEMANTIC_PARSING
-        )
+        result = trust_manager.validate_consensus_input(signals, TrustScope.SEMANTIC_PARSING)
 
         assert not result["valid"]
         assert any("diversity" in issue.lower() for issue in result["issues"])
@@ -850,6 +777,7 @@ class TestAntiCentralization:
 # Consensus Integration Tests
 # =============================================================================
 
+
 class TestConsensusIntegration:
     """Tests for weighted consensus calculation."""
 
@@ -858,9 +786,7 @@ class TestConsensusIntegration:
         signals = []
         for vid in registered_validators:
             signal = trust_manager.get_weighted_signal(
-                vid,
-                signal_value="VALID",
-                scope=TrustScope.SEMANTIC_PARSING
+                vid, signal_value="VALID", scope=TrustScope.SEMANTIC_PARSING
             )
             if signal:
                 signals.append(signal)
@@ -887,6 +813,7 @@ class TestConsensusIntegration:
 # Module Function Tests
 # =============================================================================
 
+
 class TestModuleFunctions:
     """Tests for module-level convenience functions."""
 
@@ -902,10 +829,7 @@ class TestModuleFunctions:
     def test_reset_trust_manager(self):
         """Test resetting the trust manager."""
         manager1 = get_trust_manager()
-        manager1.register_validator(
-            validator_id="vld-reset",
-            validator_type=ValidatorType.LLM
-        )
+        manager1.register_validator(validator_id="vld-reset", validator_type=ValidatorType.LLM)
 
         reset_trust_manager()
         manager2 = get_trust_manager()
@@ -927,6 +851,7 @@ class TestModuleFunctions:
 # Trust Summary and Listing Tests
 # =============================================================================
 
+
 class TestTrustSummary:
     """Tests for trust summary and validator listing."""
 
@@ -936,7 +861,7 @@ class TestTrustSummary:
             validator_id="vld-summary",
             validator_type=ValidatorType.HYBRID,
             model_version="v2.0",
-            declared_capabilities=[TrustScope.SEMANTIC_PARSING]
+            declared_capabilities=[TrustScope.SEMANTIC_PARSING],
         )
 
         summary = trust_manager.get_trust_summary("vld-summary")
@@ -971,9 +896,7 @@ class TestTrustSummary:
 
     def test_list_validators_by_type(self, trust_manager, registered_validators):
         """Test listing validators by type."""
-        validators = trust_manager.list_validators(
-            validator_type=ValidatorType.HUMAN
-        )
+        validators = trust_manager.list_validators(validator_type=ValidatorType.HUMAN)
 
         assert len(validators) == 1
         assert validators[0]["validator_type"] == "human"
@@ -983,6 +906,7 @@ class TestTrustSummary:
 # Serialization Tests
 # =============================================================================
 
+
 class TestSerialization:
     """Tests for data class serialization."""
 
@@ -991,7 +915,7 @@ class TestSerialization:
         trust_manager.register_validator(
             validator_id="vld-ser",
             validator_type=ValidatorType.LLM,
-            declared_capabilities=[TrustScope.SEMANTIC_PARSING]
+            declared_capabilities=[TrustScope.SEMANTIC_PARSING],
         )
 
         profile = trust_manager.get_profile("vld-ser")
@@ -1006,15 +930,14 @@ class TestSerialization:
     def test_trust_event_to_dict(self, trust_manager):
         """Test trust event serialization."""
         trust_manager.register_validator(
-            validator_id="vld-event-ser",
-            validator_type=ValidatorType.LLM
+            validator_id="vld-event-ser", validator_type=ValidatorType.LLM
         )
 
         event = trust_manager.record_positive_signal(
             validator_id="vld-event-ser",
             signal=PositiveSignal.CONSENSUS_MATCH,
             scope=TrustScope.SEMANTIC_PARSING,
-            metadata={"context": "test"}
+            metadata={"context": "test"},
         )
 
         data = event.to_dict()
@@ -1026,11 +949,7 @@ class TestSerialization:
 
     def test_scoped_score_to_dict(self):
         """Test scoped score serialization."""
-        score = ScopedScore(
-            scope=TrustScope.DRIFT_DETECTION,
-            score=0.75,
-            sample_size=42
-        )
+        score = ScopedScore(scope=TrustScope.DRIFT_DETECTION, score=0.75, sample_size=42)
 
         data = score.to_dict()
 
@@ -1043,6 +962,7 @@ class TestSerialization:
 # Edge Cases
 # =============================================================================
 
+
 class TestEdgeCases:
     """Tests for edge cases and error handling."""
 
@@ -1051,7 +971,7 @@ class TestEdgeCases:
         event = trust_manager.record_positive_signal(
             validator_id="nonexistent",
             signal=PositiveSignal.CONSENSUS_MATCH,
-            scope=TrustScope.SEMANTIC_PARSING
+            scope=TrustScope.SEMANTIC_PARSING,
         )
 
         assert event is None
@@ -1071,8 +991,7 @@ class TestEdgeCases:
     def test_scoped_score_fallback_to_overall(self, trust_manager):
         """Test that scoped score falls back to overall if not set."""
         trust_manager.register_validator(
-            validator_id="vld-fallback",
-            validator_type=ValidatorType.LLM
+            validator_id="vld-fallback", validator_type=ValidatorType.LLM
         )
 
         profile = trust_manager.get_profile("vld-fallback")
@@ -1086,23 +1005,19 @@ class TestEdgeCases:
     def test_all_positive_signals_covered(self, trust_manager):
         """Test that all positive signal types work."""
         trust_manager.register_validator(
-            validator_id="vld-all-pos",
-            validator_type=ValidatorType.LLM
+            validator_id="vld-all-pos", validator_type=ValidatorType.LLM
         )
 
         for signal in PositiveSignal:
             event = trust_manager.record_positive_signal(
-                validator_id="vld-all-pos",
-                signal=signal,
-                scope=TrustScope.SEMANTIC_PARSING
+                validator_id="vld-all-pos", signal=signal, scope=TrustScope.SEMANTIC_PARSING
             )
             assert event is not None
 
     def test_all_negative_signals_covered(self, trust_manager):
         """Test that all negative signal types work."""
         trust_manager.register_validator(
-            validator_id="vld-all-neg",
-            validator_type=ValidatorType.LLM
+            validator_id="vld-all-neg", validator_type=ValidatorType.LLM
         )
 
         # Start with high score to allow all decreases
@@ -1113,7 +1028,7 @@ class TestEdgeCases:
                 validator_id="vld-all-neg",
                 signal=signal,
                 scope=TrustScope.SEMANTIC_PARSING,
-                magnitude=0.05
+                magnitude=0.05,
             )
             assert event is not None
 

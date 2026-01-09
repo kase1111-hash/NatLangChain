@@ -41,28 +41,32 @@ import os
 import random
 import threading
 import time
-from dataclasses import dataclass, field
+from collections.abc import Callable
+from dataclasses import dataclass
 from enum import Enum
 from functools import wraps
-from typing import Any, Callable, Type
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 class RetryableError(Exception):
     """Base class for errors that should trigger a retry."""
+
     pass
 
 
 class NonRetryableError(Exception):
     """Base class for errors that should NOT trigger a retry."""
+
     pass
 
 
 class CircuitState(Enum):
     """Circuit breaker states."""
-    CLOSED = "closed"      # Normal operation, requests allowed
-    OPEN = "open"          # Failures exceeded threshold, requests blocked
+
+    CLOSED = "closed"  # Normal operation, requests allowed
+    OPEN = "open"  # Failures exceeded threshold, requests blocked
     HALF_OPEN = "half_open"  # Testing if service recovered
 
 
@@ -144,12 +148,7 @@ class CircuitBreaker:
     when a service is experiencing problems.
     """
 
-    def __init__(
-        self,
-        name: str,
-        failure_threshold: int = 5,
-        recovery_timeout: float = 30.0
-    ):
+    def __init__(self, name: str, failure_threshold: int = 5, recovery_timeout: float = 30.0):
         self.name = name
         self.failure_threshold = failure_threshold
         self.recovery_timeout = recovery_timeout
@@ -202,8 +201,7 @@ class CircuitBreaker:
                 if self._failure_count >= self.failure_threshold:
                     self._state = CircuitState.OPEN
                     logger.warning(
-                        f"Circuit {self.name}: CLOSED -> OPEN "
-                        f"(failures: {self._failure_count})"
+                        f"Circuit {self.name}: CLOSED -> OPEN (failures: {self._failure_count})"
                     )
 
     def reset(self):
@@ -228,11 +226,7 @@ def get_circuit_breaker(name: str, **kwargs) -> CircuitBreaker:
 
 
 def calculate_delay(
-    attempt: int,
-    base_delay: float,
-    exponential_base: float,
-    max_delay: float,
-    jitter: float
+    attempt: int, base_delay: float, exponential_base: float, max_delay: float, jitter: float
 ) -> float:
     """
     Calculate delay with exponential backoff and jitter.
@@ -248,7 +242,7 @@ def calculate_delay(
         Delay in seconds
     """
     # Exponential backoff: base_delay * (exponential_base ** attempt)
-    delay = base_delay * (exponential_base ** attempt)
+    delay = base_delay * (exponential_base**attempt)
 
     # Cap at max_delay
     delay = min(delay, max_delay)
@@ -262,8 +256,7 @@ def calculate_delay(
 
 
 def is_retryable_exception(
-    exception: Exception,
-    retryable_types: tuple[Type[Exception], ...]
+    exception: Exception, retryable_types: tuple[type[Exception], ...]
 ) -> bool:
     """Check if an exception should trigger a retry."""
     # Explicit non-retryable
@@ -309,6 +302,7 @@ def retry_with_backoff(
     Returns:
         Decorated function with retry logic
     """
+
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -321,9 +315,7 @@ def retry_with_backoff(
             for attempt in range(max_retries + 1):
                 # Check circuit breaker
                 if circuit and not circuit.is_allowed():
-                    raise ConnectionError(
-                        f"Circuit breaker {circuit_breaker_name} is open"
-                    )
+                    raise ConnectionError(f"Circuit breaker {circuit_breaker_name} is open")
 
                 try:
                     result = func(*args, **kwargs)
@@ -376,6 +368,7 @@ def retry_with_backoff(
                 raise last_exception
 
         return wrapper
+
     return decorator
 
 
@@ -412,9 +405,7 @@ def retry_call(
     for attempt in range(config.max_retries + 1):
         # Check circuit breaker
         if circuit and not circuit.is_allowed():
-            raise ConnectionError(
-                f"Circuit breaker {circuit_breaker_name} is open"
-            )
+            raise ConnectionError(f"Circuit breaker {circuit_breaker_name} is open")
 
         try:
             result = func(*args, **kwargs)
@@ -446,18 +437,13 @@ def retry_call(
                 stats.record_attempt(success=False, error=error_str)
                 if config.log_retries:
                     logger.log(
-                        config.log_level,
-                        f"Max retries ({config.max_retries}) exceeded: {e}"
+                        config.log_level, f"Max retries ({config.max_retries}) exceeded: {e}"
                     )
                 raise
 
             # Calculate delay
             delay = calculate_delay(
-                attempt,
-                config.base_delay,
-                config.exponential_base,
-                config.max_delay,
-                config.jitter
+                attempt, config.base_delay, config.exponential_base, config.max_delay, config.jitter
             )
 
             stats.record_attempt(success=False, delay=delay, error=error_str)
@@ -466,7 +452,7 @@ def retry_call(
             if config.log_retries:
                 logger.log(
                     config.log_level,
-                    f"Retry {attempt + 1}/{config.max_retries} after {delay:.2f}s: {e}"
+                    f"Retry {attempt + 1}/{config.max_retries} after {delay:.2f}s: {e}",
                 )
 
             # Wait
@@ -485,11 +471,7 @@ class RetryContext:
     multiple operations or share a circuit breaker.
     """
 
-    def __init__(
-        self,
-        config: RetryConfig | None = None,
-        circuit_breaker_name: str | None = None
-    ):
+    def __init__(self, config: RetryConfig | None = None, circuit_breaker_name: str | None = None):
         self.config = config or RetryConfig()
         self.circuit_breaker_name = circuit_breaker_name
         self.stats = RetryStats()
@@ -516,6 +498,7 @@ class RetryContext:
 
 
 # Convenience decorators for common use cases
+
 
 def retry_network(func: Callable) -> Callable:
     """Decorator for network operations with sensible defaults."""

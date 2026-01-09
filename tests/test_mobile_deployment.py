@@ -8,7 +8,7 @@ import sys
 import traceback
 from datetime import datetime
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from mobile_deployment import (
     ConnectionState,
@@ -53,7 +53,7 @@ def simulation_1_device_registration():
             device_id = manager.register_device(
                 device_type=device_type,
                 device_name=f"Test {device_type.name} Device",
-                capabilities={"camera": True, "biometric": device_type != DeviceType.WEB}
+                capabilities={"camera": True, "biometric": device_type != DeviceType.WEB},
             )
             devices[device_type] = device_id
             result.log(f"Registered {device_type.name}: {device_id[:8]}...")
@@ -65,11 +65,15 @@ def simulation_1_device_registration():
         for device_type, device_id in devices.items():
             features = manager.get_device_features(device_id)
             assert features is not None, f"Features should exist for {device_type.name}"
-            result.log(f"Features for {device_type.name}: edge_ai={features.get('edge_ai_enabled')}")
+            result.log(
+                f"Features for {device_type.name}: edge_ai={features.get('edge_ai_enabled')}"
+            )
 
         # Check statistics
         stats = manager.get_statistics()
-        assert stats["devices"]["total"] == 5, f"Expected 5 devices, got {stats['devices']['total']}"
+        assert stats["devices"]["total"] == 5, (
+            f"Expected 5 devices, got {stats['devices']['total']}"
+        )
         result.log(f"Total devices registered: {stats['devices']['total']}")
 
         result.success()
@@ -91,7 +95,7 @@ def simulation_2_edge_ai_inference():
         device_id = manager.register_device(
             device_type=DeviceType.IOS,
             device_name="iPhone 15 Pro",
-            capabilities={"neural_engine": True, "memory_gb": 8}
+            capabilities={"neural_engine": True, "memory_gb": 8},
         )
         result.log(f"Registered iOS device: {device_id[:8]}...")
 
@@ -99,7 +103,7 @@ def simulation_2_edge_ai_inference():
         models = [
             ("contract_parser_v1", "contract_parser"),
             ("intent_classifier_v1", "intent_classifier"),
-            ("sentiment_analyzer_v1", "sentiment")
+            ("sentiment_analyzer_v1", "sentiment"),
         ]
 
         for model_id, model_type in models:
@@ -107,7 +111,7 @@ def simulation_2_edge_ai_inference():
                 model_id=model_id,
                 model_type=model_type,
                 model_path=f"/models/{model_id}.onnx",
-                device_id=device_id
+                device_id=device_id,
             )
             assert success, f"Failed to load model {model_id}"
             result.log(f"Loaded model: {model_id}")
@@ -116,17 +120,17 @@ def simulation_2_edge_ai_inference():
         test_inputs = [
             ("contract_parser_v1", "I offer $5000 for web development services"),
             ("intent_classifier_v1", "Looking to hire a contractor"),
-            ("sentiment_analyzer_v1", "This is an excellent proposal")
+            ("sentiment_analyzer_v1", "This is an excellent proposal"),
         ]
 
         for model_id, input_text in test_inputs:
             inference_result = manager.run_inference(
-                model_id=model_id,
-                input_data={"text": input_text},
-                device_id=device_id
+                model_id=model_id, input_data={"text": input_text}, device_id=device_id
             )
             assert inference_result["success"], f"Inference failed for {model_id}"
-            result.log(f"Inference {model_id}: confidence={inference_result['result']['confidence']:.2f}")
+            result.log(
+                f"Inference {model_id}: confidence={inference_result['result']['confidence']:.2f}"
+            )
 
         # Check model statistics
         edge_stats = manager.edge_ai.get_statistics()
@@ -153,7 +157,7 @@ def simulation_3_wallet_connection():
         device_id = manager.register_device(
             device_type=DeviceType.ANDROID,
             device_name="Pixel 8",
-            capabilities={"secure_enclave": True}
+            capabilities={"secure_enclave": True},
         )
         result.log(f"Registered Android device: {device_id[:8]}...")
 
@@ -162,14 +166,12 @@ def simulation_3_wallet_connection():
         wallet_configs = [
             (WalletType.WALLETCONNECT, "0x1234567890abcdef1234567890abcdef12345678"),
             (WalletType.METAMASK, "0xabcdef1234567890abcdef1234567890abcdef12"),
-            (WalletType.NATIVE, "0x9876543210fedcba9876543210fedcba98765432")
+            (WalletType.NATIVE, "0x9876543210fedcba9876543210fedcba98765432"),
         ]
 
         for wallet_type, address in wallet_configs:
             conn_id = manager.connect_wallet(
-                wallet_type=wallet_type,
-                device_id=device_id,
-                wallet_address=address
+                wallet_type=wallet_type, device_id=device_id, wallet_address=address
             )
             assert conn_id, f"Failed to connect {wallet_type.name}"
             wallet_connections[wallet_type] = conn_id
@@ -178,9 +180,7 @@ def simulation_3_wallet_connection():
         # Sign messages with each wallet
         for wallet_type, conn_id in wallet_connections.items():
             sign_result = manager.sign_message(
-                connection_id=conn_id,
-                message="I agree to the contract terms",
-                sign_type="personal"
+                connection_id=conn_id, message="I agree to the contract terms", sign_type="personal"
             )
             assert sign_result["success"], f"Signing failed for {wallet_type.name}"
             result.log(f"Signed with {wallet_type.name}: {sign_result['signature'][:16]}...")
@@ -212,9 +212,7 @@ def simulation_4_offline_state_management():
 
         # Register device
         device_id = manager.register_device(
-            device_type=DeviceType.IOS,
-            device_name="iPad Pro",
-            capabilities={"storage_gb": 256}
+            device_type=DeviceType.IOS, device_name="iPad Pro", capabilities={"storage_gb": 256}
         )
         result.log(f"Registered device: {device_id[:8]}...")
 
@@ -223,15 +221,13 @@ def simulation_4_offline_state_management():
             ("contracts", {"active_contracts": ["c1", "c2"], "draft_contracts": ["d1"]}),
             ("entries", {"pending_entries": 5, "synced_entries": 100}),
             ("settings", {"theme": "dark", "notifications": True, "language": "en"}),
-            ("cache", {"last_block": 12345, "cached_at": datetime.now().isoformat()})
+            ("cache", {"last_block": 12345, "cached_at": datetime.now().isoformat()}),
         ]
 
         state_ids = {}
         for state_type, state_data in state_types:
             state_id = manager.save_offline_state(
-                device_id=device_id,
-                state_type=state_type,
-                state_data=state_data
+                device_id=device_id, state_type=state_type, state_data=state_data
             )
             state_ids[state_type] = state_id
             result.log(f"Saved {state_type} state: {state_id[:8]}...")
@@ -265,9 +261,7 @@ def simulation_5_offline_sync_queue():
 
         # Register device
         device_id = manager.register_device(
-            device_type=DeviceType.ANDROID,
-            device_name="Samsung S24",
-            capabilities={}
+            device_type=DeviceType.ANDROID, device_name="Samsung S24", capabilities={}
         )
         result.log(f"Registered device: {device_id[:8]}...")
 
@@ -277,7 +271,7 @@ def simulation_5_offline_sync_queue():
             ("update", "entry", {"entry_id": "e1", "content": "Updated content"}),
             ("create", "proposal", {"match_id": "m1", "terms": {"price": 1000}}),
             ("delete", "draft", {"draft_id": "d1"}),
-            ("update", "settings", {"key": "notification", "value": True})
+            ("update", "settings", {"key": "notification", "value": True}),
         ]
 
         op_ids = []
@@ -286,7 +280,7 @@ def simulation_5_offline_sync_queue():
                 device_id=device_id,
                 operation_type=op_type,
                 resource_type=resource_type,
-                resource_data=data
+                resource_data=data,
             )
             op_ids.append(op_id)
             result.log(f"Queued {op_type} {resource_type}: {op_id[:8]}...")
@@ -323,9 +317,7 @@ def simulation_6_conflict_resolution():
 
         # Register device
         device_id = manager.register_device(
-            device_type=DeviceType.WEB,
-            device_name="Chrome Browser",
-            capabilities={}
+            device_type=DeviceType.WEB, device_name="Chrome Browser", capabilities={}
         )
         result.log(f"Registered device: {device_id[:8]}...")
 
@@ -343,9 +335,11 @@ def simulation_6_conflict_resolution():
                 local_data={"value": f"local_{i}", "version": 1},
                 remote_data={"value": f"remote_{i}", "version": 2},
                 conflict_type="version_mismatch",
-                detected_at=datetime.now()
+                detected_at=datetime.now(),
             )
-            manager.offline_manager.conflicts[device_id] = manager.offline_manager.conflicts.get(device_id, [])
+            manager.offline_manager.conflicts[device_id] = manager.offline_manager.conflicts.get(
+                device_id, []
+            )
             manager.offline_manager.conflicts[device_id].append(conflict)
             conflicts.append(conflict)
             result.log(f"Created conflict: {conflict.conflict_id[:8]}...")
@@ -358,11 +352,11 @@ def simulation_6_conflict_resolution():
         # Resolve conflicts with different strategies
         resolutions = ["local", "remote", "merge"]
         for i, conflict in enumerate(conflicts):
-            merged_data = {"value": f"merged_{i}", "version": 3} if resolutions[i] == "merge" else None
+            merged_data = (
+                {"value": f"merged_{i}", "version": 3} if resolutions[i] == "merge" else None
+            )
             success = manager.resolve_conflict(
-                conflict_id=conflict.conflict_id,
-                resolution=resolutions[i],
-                merged_data=merged_data
+                conflict_id=conflict.conflict_id, resolution=resolutions[i], merged_data=merged_data
             )
             assert success, f"Failed to resolve conflict with {resolutions[i]}"
             result.log(f"Resolved conflict with {resolutions[i]} strategy")
@@ -393,14 +387,12 @@ def simulation_7_multi_device_sync():
             (DeviceType.IOS, "iPhone"),
             (DeviceType.ANDROID, "Android Tablet"),
             (DeviceType.WEB, "Desktop Browser"),
-            (DeviceType.DESKTOP, "MacBook")
+            (DeviceType.DESKTOP, "MacBook"),
         ]
 
         for device_type, name in device_configs:
             device_id = manager.register_device(
-                device_type=device_type,
-                device_name=name,
-                capabilities={}
+                device_type=device_type, device_name=name, capabilities={}
             )
             devices[name] = device_id
             result.log(f"Registered {name}: {device_id[:8]}...")
@@ -411,7 +403,10 @@ def simulation_7_multi_device_sync():
                 device_id=device_id,
                 operation_type="create",
                 resource_type="note",
-                resource_data={"content": f"Note from {name}", "timestamp": datetime.now().isoformat()}
+                resource_data={
+                    "content": f"Note from {name}",
+                    "timestamp": datetime.now().isoformat(),
+                },
             )
             result.log(f"Queued operation on {name}")
 
@@ -449,7 +444,7 @@ def simulation_8_hardware_wallet():
         device_id = manager.register_device(
             device_type=DeviceType.DESKTOP,
             device_name="Linux Desktop",
-            capabilities={"usb": True, "bluetooth": True}
+            capabilities={"usb": True, "bluetooth": True},
         )
         result.log(f"Registered device: {device_id[:8]}...")
 
@@ -457,7 +452,7 @@ def simulation_8_hardware_wallet():
         hw_conn_id = manager.connect_wallet(
             wallet_type=WalletType.HARDWARE,
             device_id=device_id,
-            wallet_address="0xhardware1234567890abcdef1234567890abcdef"
+            wallet_address="0xhardware1234567890abcdef1234567890abcdef",
         )
         assert hw_conn_id, "Failed to connect hardware wallet"
         result.log(f"Connected hardware wallet: {hw_conn_id[:8]}...")
@@ -472,9 +467,7 @@ def simulation_8_hardware_wallet():
         sign_types = ["personal", "typed_data", "transaction"]
         for sign_type in sign_types:
             sign_result = manager.sign_message(
-                connection_id=hw_conn_id,
-                message=f"Test {sign_type} message",
-                sign_type=sign_type
+                connection_id=hw_conn_id, message=f"Test {sign_type} message", sign_type=sign_type
             )
             assert sign_result["success"], f"Failed to sign {sign_type}"
             result.log(f"Signed {sign_type}: {sign_result['signature'][:16]}...")
@@ -502,7 +495,7 @@ def simulation_9_resource_management():
         device_id = manager.register_device(
             device_type=DeviceType.ANDROID,
             device_name="Budget Phone",
-            capabilities={"memory_gb": 2, "cpu_cores": 4}
+            capabilities={"memory_gb": 2, "cpu_cores": 4},
         )
         result.log(f"Registered device: {device_id[:8]}...")
 
@@ -517,16 +510,14 @@ def simulation_9_resource_management():
             model_id="test_model",
             model_type="classifier",
             model_path="/models/test.onnx",
-            device_id=device_id
+            device_id=device_id,
         )
         result.log("Loaded test model")
 
         # Run 10 inferences
         for i in range(10):
             manager.run_inference(
-                model_id="test_model",
-                input_data={"iteration": i},
-                device_id=device_id
+                model_id="test_model", input_data={"iteration": i}, device_id=device_id
             )
         result.log("Completed 10 inferences")
 
@@ -534,7 +525,9 @@ def simulation_9_resource_management():
         stats = manager.edge_ai.get_statistics()
         assert stats["total_inferences"] == 10
         assert stats["models_loaded"] == 1
-        result.log(f"Stats: {stats['total_inferences']} inferences, {stats['models_loaded']} models")
+        result.log(
+            f"Stats: {stats['total_inferences']} inferences, {stats['models_loaded']} models"
+        )
 
         # Check model inference count
         model = manager.edge_ai.loaded_models["test_model"]
@@ -561,7 +554,7 @@ def simulation_10_full_workflow():
         device_id = manager.register_device(
             device_type=DeviceType.IOS,
             device_name="iPhone 15 Pro Max",
-            capabilities={"neural_engine": True, "face_id": True, "memory_gb": 8}
+            capabilities={"neural_engine": True, "face_id": True, "memory_gb": 8},
         )
         result.log(f"1. Registered device: {device_id[:8]}...")
 
@@ -572,7 +565,7 @@ def simulation_10_full_workflow():
                 model_id=model,
                 model_type=model,
                 model_path=f"/models/{model}.onnx",
-                device_id=device_id
+                device_id=device_id,
             )
         result.log(f"2. Loaded {len(models)} AI models")
 
@@ -580,7 +573,7 @@ def simulation_10_full_workflow():
         wallet_id = manager.connect_wallet(
             wallet_type=WalletType.WALLETCONNECT,
             device_id=device_id,
-            wallet_address="0xuser1234567890abcdef1234567890abcdef1234"
+            wallet_address="0xuser1234567890abcdef1234567890abcdef1234",
         )
         result.log(f"3. Connected wallet: {wallet_id[:8]}...")
 
@@ -588,16 +581,14 @@ def simulation_10_full_workflow():
         manager.save_offline_state(
             device_id=device_id,
             state_type="session",
-            state_data={"wallet_connected": True, "models_loaded": models}
+            state_data={"wallet_connected": True, "models_loaded": models},
         )
         result.log("4. Saved offline state")
 
         # Step 5: Run inference on contract text
         contract_text = "I offer $10,000 for building a mobile app within 3 months"
         inference_result = manager.run_inference(
-            model_id="contract_parser",
-            input_data={"text": contract_text},
-            device_id=device_id
+            model_id="contract_parser", input_data={"text": contract_text}, device_id=device_id
         )
         result.log(f"5. Parsed contract: confidence={inference_result['result']['confidence']:.2f}")
 
@@ -609,8 +600,8 @@ def simulation_10_full_workflow():
             resource_data={
                 "content": contract_text,
                 "parsed": inference_result["result"],
-                "wallet": wallet_id
-            }
+                "wallet": wallet_id,
+            },
         )
         result.log("6. Queued contract creation")
 
@@ -618,7 +609,7 @@ def simulation_10_full_workflow():
         sign_result = manager.sign_message(
             connection_id=wallet_id,
             message=f"I sign this contract: {contract_text[:50]}...",
-            sign_type="typed_data"
+            sign_type="typed_data",
         )
         result.log(f"7. Signed contract: {sign_result['signature'][:16]}...")
 
@@ -629,8 +620,8 @@ def simulation_10_full_workflow():
             resource_type="contract",
             resource_data={
                 "signature": sign_result["signature"],
-                "signed_at": datetime.now().isoformat()
-            }
+                "signed_at": datetime.now().isoformat(),
+            },
         )
         result.log("8. Queued signature update")
 
@@ -675,7 +666,7 @@ def run_all_simulations():
         simulation_7_multi_device_sync,
         simulation_8_hardware_wallet,
         simulation_9_resource_management,
-        simulation_10_full_workflow
+        simulation_10_full_workflow,
     ]
 
     results = []

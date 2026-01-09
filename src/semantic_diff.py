@@ -22,6 +22,7 @@ try:
         classify_drift_score,
         get_mandatory_response,
     )
+
     NCIP_002_AVAILABLE = True
 except ImportError:
     NCIP_002_AVAILABLE = False
@@ -47,7 +48,7 @@ class SemanticDriftDetector:
         self,
         api_key: str | None = None,
         validator_id: str = "default",
-        enable_ncip_002: bool = True
+        enable_ncip_002: bool = True,
     ):
         """
         Initialize the semantic drift detector.
@@ -74,16 +75,10 @@ class SemanticDriftDetector:
     def classifier(self) -> Optional["SemanticDriftClassifier"]:
         """Get the NCIP-002 drift classifier (lazy initialization)."""
         if self._classifier is None and self.enable_ncip_002:
-            self._classifier = SemanticDriftClassifier(
-                validator_id=self.validator_id
-            )
+            self._classifier = SemanticDriftClassifier(validator_id=self.validator_id)
         return self._classifier
 
-    def check_alignment(
-        self,
-        on_chain_intent: str,
-        execution_log: str
-    ) -> dict[str, Any]:
+    def check_alignment(self, on_chain_intent: str, execution_log: str) -> dict[str, Any]:
         """
         Uses LLM to detect inconsistencies between intent and action.
 
@@ -118,9 +113,7 @@ Return JSON only:
 }}"""
 
             message = self.client.messages.create(
-                model=self.model,
-                max_tokens=500,
-                messages=[{"role": "user", "content": prompt}]
+                model=self.model, max_tokens=500, messages=[{"role": "user", "content": prompt}]
             )
 
             # Extract and parse JSON response
@@ -142,7 +135,7 @@ Return JSON only:
                 "status": "success",
                 "drift_analysis": result,
                 "threshold": self.threshold,
-                "alert": result.get("score", 0) > self.threshold
+                "alert": result.get("score", 0) > self.threshold,
             }
 
             # Add NCIP-002 classification if enabled
@@ -162,15 +155,12 @@ Return JSON only:
                     "score": None,
                     "is_violating": None,
                     "reason": f"Analysis failed: {e!s}",
-                    "recommended_action": "ERROR"
-                }
+                    "recommended_action": "ERROR",
+                },
             }
 
     def check_entry_execution_alignment(
-        self,
-        entry_content: str,
-        entry_intent: str,
-        execution_log: str
+        self, entry_content: str, entry_intent: str, execution_log: str
     ) -> dict[str, Any]:
         """
         Check alignment between a blockchain entry and its execution.
@@ -208,7 +198,7 @@ Return JSON only:
         on_chain_intent: str,
         execution_log: str,
         affected_terms: list[str] | None = None,
-        entry_id: str | None = None
+        entry_id: str | None = None,
     ) -> dict[str, Any]:
         """
         NCIP-002 compliant drift check with mandatory responses.
@@ -247,7 +237,7 @@ Return JSON only:
             score=score,
             affected_terms=affected_terms,
             source=f"Intent: {on_chain_intent[:100]}... vs Execution: {execution_log[:100]}...",
-            entry_id=entry_id
+            entry_id=entry_id,
         )
 
         # Combine responses
@@ -260,15 +250,12 @@ Return JSON only:
             "legacy_analysis": base_result["drift_analysis"],
             "ncip_002": ncip_response,
             "validator_actions": ncip_response["actions"],
-            "requires_human": ncip_response["requires_human"]
+            "requires_human": ncip_response["requires_human"],
         }
 
         return result
 
-    def aggregate_component_drift(
-        self,
-        component_scores: dict[str, float]
-    ) -> dict[str, Any]:
+    def aggregate_component_drift(self, component_scores: dict[str, float]) -> dict[str, Any]:
         """
         Aggregate drift scores from multiple components per NCIP-002.
 
@@ -289,7 +276,7 @@ Return JSON only:
             return {
                 "max_score": component_scores[max_component],
                 "governing_component": max_component,
-                "component_scores": component_scores
+                "component_scores": component_scores,
             }
 
         aggregated = self.classifier.aggregate_drift(component_scores)
@@ -305,11 +292,13 @@ Return JSON only:
                 "proceed": self.classifier.should_proceed(aggregated.classification),
                 "warn": self.classifier.should_warn(aggregated.classification),
                 "pause": self.classifier.should_pause(aggregated.classification),
-                "require_ratification": self.classifier.should_require_ratification(aggregated.classification),
+                "require_ratification": self.classifier.should_require_ratification(
+                    aggregated.classification
+                ),
                 "reject": self.classifier.should_reject(aggregated.classification),
-                "escalate_dispute": self.classifier.should_escalate(aggregated.classification)
+                "escalate_dispute": self.classifier.should_escalate(aggregated.classification),
             },
-            "requires_human": aggregated.classification.requires_human
+            "requires_human": aggregated.classification.requires_human,
         }
 
     def get_drift_level(self, score: float) -> str:
@@ -356,7 +345,7 @@ Return JSON only:
                 "affected_terms": entry.affected_terms,
                 "source_of_divergence": entry.source_of_divergence,
                 "validator_id": entry.validator_id,
-                "entry_id": entry.entry_id
+                "entry_id": entry.entry_id,
             }
             for entry in self.classifier.get_drift_log()
         ]

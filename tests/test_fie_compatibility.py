@@ -7,7 +7,7 @@ Per integration spec: FINITE-INTENT-EXECUTOR-INTEGRATION.md
 import os
 import sys
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 import unittest
 from datetime import datetime
@@ -26,17 +26,17 @@ class TestFIEDelayedIntentRecording(unittest.TestCase):
             enable_deduplication=False,
             enable_rate_limiting=False,
             enable_timestamp_validation=False,
-            enable_metadata_sanitization=False
+            enable_metadata_sanitization=False,
         )
 
     def test_posthumous_intent_recording(self):
         """Test recording a posthumous IP transfer intent."""
         entry = NaturalLanguageEntry(
             content="Posthumous IP Transfer: Upon my passing, I direct that all intellectual "
-                    "property rights to my repositories at github.com/alice/* be transferred "
-                    "to the Open Source Foundation. This includes all code, documentation, "
-                    "and associated assets. The Foundation shall maintain these as open "
-                    "source under MIT license.",
+            "property rights to my repositories at github.com/alice/* be transferred "
+            "to the Open Source Foundation. This includes all code, documentation, "
+            "and associated assets. The Foundation shall maintain these as open "
+            "source under MIT license.",
             author="alice",
             intent="Posthumous IP transfer",
             metadata={
@@ -47,45 +47,45 @@ class TestFIEDelayedIntentRecording(unittest.TestCase):
                     "verification_method": "death_certificate_oracle",
                     "verification_sources": [
                         "social_security_death_index",
-                        "legal_executor_declaration"
+                        "legal_executor_declaration",
                     ],
-                    "minimum_confirmations": 2
+                    "minimum_confirmations": 2,
                 },
                 "executor": {
                     "primary": "finite_intent_executor_mainnet",
                     "backup": "finite_intent_executor_backup",
-                    "legal_executor": "law_firm_xyz"
+                    "legal_executor": "law_firm_xyz",
                 },
                 "beneficiary": {
                     "name": "Open Source Foundation",
                     "identifier": "osf_org",
-                    "wallet": "0xOSF123..."
+                    "wallet": "0xOSF123...",
                 },
                 "actions": [
                     {
                         "action_type": "ip_transfer",
                         "subject": "github.com/alice/*",
                         "to": "osf_org",
-                        "license": "MIT"
+                        "license": "MIT",
                     },
                     {
                         "action_type": "notification",
-                        "notify": ["family@example.com", "osf_legal@example.com"]
-                    }
+                        "notify": ["family@example.com", "osf_legal@example.com"],
+                    },
                 ],
                 "revocation": {
                     "revocable": True,
                     "revocation_method": "author_signature",
-                    "last_updated": datetime.utcnow().isoformat()
+                    "last_updated": datetime.utcnow().isoformat(),
                 },
                 "witnesses": [
                     {
                         "witness": "bob",
                         "timestamp": datetime.utcnow().isoformat(),
-                        "signature": "0xWITNESS_SIG..."
+                        "signature": "0xWITNESS_SIG...",
                     }
-                ]
-            }
+                ],
+            },
         )
         entry.validation_status = "valid"
 
@@ -107,8 +107,8 @@ class TestFIEDelayedIntentRecording(unittest.TestCase):
         """Test recording a time-delayed publication intent."""
         entry = NaturalLanguageEntry(
             content="Time-Delayed Release: On January 1, 2030, release my research paper "
-                    "'Advances in Quantum Computing' to the public domain. Until then, "
-                    "maintain confidentiality.",
+            "'Advances in Quantum Computing' to the public domain. Until then, "
+            "maintain confidentiality.",
             author="alice",
             intent="Delayed publication",
             metadata={
@@ -117,24 +117,19 @@ class TestFIEDelayedIntentRecording(unittest.TestCase):
                 "trigger": {
                     "type": "datetime",
                     "trigger_at": "2030-01-01T00:00:00Z",
-                    "timezone": "UTC"
+                    "timezone": "UTC",
                 },
-                "executor": {
-                    "primary": "finite_intent_executor_mainnet"
-                },
+                "executor": {"primary": "finite_intent_executor_mainnet"},
                 "actions": [
                     {
                         "action_type": "publish",
                         "subject": "vault://alice/research/quantum_paper.pdf",
                         "destination": "public_archive",
-                        "license": "CC0"
+                        "license": "CC0",
                     }
                 ],
-                "revocation": {
-                    "revocable": True,
-                    "revocation_deadline": "2029-12-31T23:59:59Z"
-                }
-            }
+                "revocation": {"revocable": True, "revocation_deadline": "2029-12-31T23:59:59Z"},
+            },
         )
         entry.validation_status = "valid"
 
@@ -149,8 +144,8 @@ class TestFIEDelayedIntentRecording(unittest.TestCase):
         """Test recording a conditional intent."""
         entry = NaturalLanguageEntry(
             content="Conditional Intent: If my company is acquired by any entity, immediately "
-                    "release all my personal projects under open source license and donate "
-                    "50% of my equity proceeds to the Electronic Frontier Foundation.",
+            "release all my personal projects under open source license and donate "
+            "50% of my equity proceeds to the Electronic Frontier Foundation.",
             author="alice",
             intent="Conditional asset disposition",
             metadata={
@@ -160,24 +155,21 @@ class TestFIEDelayedIntentRecording(unittest.TestCase):
                     "type": "event",
                     "event_description": "Company acquisition",
                     "verification_method": "sec_filing_oracle",
-                    "conditions": [
-                        "company_id=ACME_CORP",
-                        "transaction_type=acquisition"
-                    ]
+                    "conditions": ["company_id=ACME_CORP", "transaction_type=acquisition"],
                 },
                 "actions": [
                     {
                         "action_type": "license_release",
                         "subject": "personal_projects/*",
-                        "license": "Apache-2.0"
+                        "license": "Apache-2.0",
                     },
                     {
                         "action_type": "donation",
                         "recipient": "Electronic Frontier Foundation",
-                        "amount_formula": "0.5 * equity_proceeds"
-                    }
-                ]
-            }
+                        "amount_formula": "0.5 * equity_proceeds",
+                    },
+                ],
+            },
         )
         entry.validation_status = "valid"
 
@@ -199,7 +191,7 @@ class TestFIEExecutionRecording(unittest.TestCase):
             enable_deduplication=False,
             enable_rate_limiting=False,
             enable_timestamp_validation=False,
-            enable_metadata_sanitization=False
+            enable_metadata_sanitization=False,
         )
 
         # Add a delayed intent first
@@ -210,8 +202,8 @@ class TestFIEExecutionRecording(unittest.TestCase):
             metadata={
                 "is_delayed_intent": True,
                 "delayed_intent_type": "posthumous",
-                "delayed_intent_id": "DI-001"
-            }
+                "delayed_intent_id": "DI-001",
+            },
         )
         intent_entry.validation_status = "valid"
         self.blockchain.add_entry(intent_entry)
@@ -221,11 +213,11 @@ class TestFIEExecutionRecording(unittest.TestCase):
         """Test recording execution proof from FIE."""
         execution_entry = NaturalLanguageEntry(
             content="Execution Record for Delayed Intent DI-001: On June 20, 2035, following "
-                    "verified death of Alice Johnson, the following actions were executed: "
-                    "(1) IP rights for github.com/alice/* transferred to Open Source Foundation "
-                    "under MIT license. (2) Notifications sent to designated parties. This "
-                    "execution was performed by finite_intent_executor_mainnet in accordance "
-                    "with the original intent recorded on block 1.",
+            "verified death of Alice Johnson, the following actions were executed: "
+            "(1) IP rights for github.com/alice/* transferred to Open Source Foundation "
+            "under MIT license. (2) Notifications sent to designated parties. This "
+            "execution was performed by finite_intent_executor_mainnet in accordance "
+            "with the original intent recorded on block 1.",
             author="finite_intent_executor_mainnet",
             intent="Record execution",
             metadata={
@@ -237,27 +229,24 @@ class TestFIEExecutionRecording(unittest.TestCase):
                     "type": "death",
                     "verification_id": "VERIFY-001",
                     "confirmations": 2,
-                    "sources": [
-                        "social_security_death_index",
-                        "legal_executor_declaration"
-                    ]
+                    "sources": ["social_security_death_index", "legal_executor_declaration"],
                 },
                 "actions_completed": [
                     {
                         "action": "ip_transfer",
                         "status": "success",
                         "timestamp": "2035-06-20T10:00:00Z",
-                        "transaction_hash": "0xABC123..."
+                        "transaction_hash": "0xABC123...",
                     },
                     {
                         "action": "notification",
                         "status": "success",
                         "timestamp": "2035-06-20T10:00:05Z",
-                        "recipients_notified": 2
-                    }
+                        "recipients_notified": 2,
+                    },
                 ],
-                "legal_certificate_available": True
-            }
+                "legal_certificate_available": True,
+            },
         )
         execution_entry.validation_status = "valid"
 
@@ -282,7 +271,7 @@ class TestFIERevocation(unittest.TestCase):
             enable_deduplication=False,
             enable_rate_limiting=False,
             enable_timestamp_validation=False,
-            enable_metadata_sanitization=False
+            enable_metadata_sanitization=False,
         )
 
         # Add original intent
@@ -293,8 +282,8 @@ class TestFIERevocation(unittest.TestCase):
             metadata={
                 "is_delayed_intent": True,
                 "delayed_intent_id": "DI-001",
-                "revocation": {"revocable": True}
-            }
+                "revocation": {"revocable": True},
+            },
         )
         intent_entry.validation_status = "valid"
         self.blockchain.add_entry(intent_entry)
@@ -304,8 +293,8 @@ class TestFIERevocation(unittest.TestCase):
         """Test revoking a delayed intent."""
         revocation_entry = NaturalLanguageEntry(
             content="Revocation of Delayed Intent DI-001: I hereby revoke the posthumous "
-                    "IP transfer intent recorded on block 1. This revocation supersedes "
-                    "all previous instructions.",
+            "IP transfer intent recorded on block 1. This revocation supersedes "
+            "all previous instructions.",
             author="alice",
             intent="Revoke delayed intent",
             metadata={
@@ -314,8 +303,8 @@ class TestFIERevocation(unittest.TestCase):
                 "delayed_intent_id": "DI-001",
                 "revocation_reason": "Changed beneficiary to different organization",
                 "revocation_timestamp": datetime.utcnow().isoformat(),
-                "signature": "0xALICE_SIGNATURE..."
-            }
+                "signature": "0xALICE_SIGNATURE...",
+            },
         )
         revocation_entry.validation_status = "valid"
 
@@ -338,7 +327,7 @@ class TestFIEQueryCapabilities(unittest.TestCase):
             enable_deduplication=False,
             enable_rate_limiting=False,
             enable_timestamp_validation=False,
-            enable_metadata_sanitization=False
+            enable_metadata_sanitization=False,
         )
 
         # Add various delayed intents
@@ -356,8 +345,8 @@ class TestFIEQueryCapabilities(unittest.TestCase):
                 metadata={
                     "is_delayed_intent": True,
                     "delayed_intent_type": intent["type"],
-                    "delayed_intent_id": intent["id"]
-                }
+                    "delayed_intent_id": intent["id"],
+                },
             )
             entry.validation_status = "valid"
             self.blockchain.add_entry(entry)
@@ -368,8 +357,7 @@ class TestFIEQueryCapabilities(unittest.TestCase):
         """Test querying delayed intents by author."""
         entries = self.blockchain.get_entries_by_author("alice")
         delayed_intents = [
-            e for e in entries
-            if e["entry"].get("metadata", {}).get("is_delayed_intent")
+            e for e in entries if e["entry"].get("metadata", {}).get("is_delayed_intent")
         ]
         self.assertEqual(len(delayed_intents), 2)
 
@@ -390,7 +378,7 @@ class TestFIEMetadataIntegrity(unittest.TestCase):
             enable_deduplication=False,
             enable_rate_limiting=False,
             enable_timestamp_validation=False,
-            enable_metadata_sanitization=False
+            enable_metadata_sanitization=False,
         )
 
     def test_complex_metadata_preservation(self):
@@ -404,22 +392,19 @@ class TestFIEMetadataIntegrity(unittest.TestCase):
                 "verification_method": "death_certificate_oracle",
                 "verification_sources": [
                     {"name": "SSDI", "reliability": 0.99},
-                    {"name": "Legal Executor", "reliability": 0.95}
+                    {"name": "Legal Executor", "reliability": 0.95},
                 ],
                 "minimum_confirmations": 2,
                 "consensus_rules": {
                     "minimum_sources": 2,
                     "minimum_reliability_sum": 1.8,
-                    "challenge_period": "30_days"
-                }
+                    "challenge_period": "30_days",
+                },
             },
             "executor": {
                 "primary": "finite_intent_executor_mainnet",
                 "backup": "finite_intent_executor_backup",
-                "config": {
-                    "retry_attempts": 3,
-                    "timeout_hours": 24
-                }
+                "config": {"retry_attempts": 3, "timeout_hours": 24},
             },
             "actions": [
                 {
@@ -427,7 +412,7 @@ class TestFIEMetadataIntegrity(unittest.TestCase):
                     "subject": "github.com/alice/*",
                     "to": "osf_org",
                     "conditions": ["verify_ownership", "check_liens"],
-                    "fallback": "retain_until_resolved"
+                    "fallback": "retain_until_resolved",
                 },
                 {
                     "action_type": "financial_transfer",
@@ -436,26 +421,26 @@ class TestFIEMetadataIntegrity(unittest.TestCase):
                     "recipient": {
                         "name": "Charity Foundation",
                         "account_type": "wire",
-                        "verification_required": True
-                    }
-                }
+                        "verification_required": True,
+                    },
+                },
             ],
             "witnesses": [
                 {"witness": "bob", "role": "primary"},
-                {"witness": "carol", "role": "secondary"}
+                {"witness": "carol", "role": "secondary"},
             ],
             "legal": {
                 "jurisdiction": "California, USA",
                 "notarized": True,
-                "attorney_record": "LAW-12345"
-            }
+                "attorney_record": "LAW-12345",
+            },
         }
 
         entry = NaturalLanguageEntry(
             content="Complex posthumous intent with multiple actions",
             author="alice",
             intent="Complex posthumous transfer",
-            metadata=complex_metadata
+            metadata=complex_metadata,
         )
         entry.validation_status = "valid"
 
@@ -480,10 +465,7 @@ class TestFIEMetadataIntegrity(unittest.TestCase):
                 content=f"Delayed intent {i}",
                 author="alice",
                 intent="Test intent",
-                metadata={
-                    "is_delayed_intent": True,
-                    "delayed_intent_id": f"DI-TEST-{i}"
-                }
+                metadata={"is_delayed_intent": True, "delayed_intent_id": f"DI-TEST-{i}"},
             )
             entry.validation_status = "valid"
             self.blockchain.add_entry(entry)
@@ -505,15 +487,15 @@ class TestFIESunsetAndPublicDomain(unittest.TestCase):
             enable_deduplication=False,
             enable_rate_limiting=False,
             enable_timestamp_validation=False,
-            enable_metadata_sanitization=False
+            enable_metadata_sanitization=False,
         )
 
     def test_sunset_metadata(self):
         """Test recording sunset/public domain transition metadata."""
         sunset_entry = NaturalLanguageEntry(
             content="20-Year Sunset Notification: Intent DI-001 has reached its mandatory "
-                    "20-year sunset period. Per FIE protocol, all associated IP has "
-                    "transitioned to public domain as of 2045-12-19.",
+            "20-year sunset period. Per FIE protocol, all associated IP has "
+            "transitioned to public domain as of 2045-12-19.",
             author="finite_intent_executor_mainnet",
             intent="Record sunset transition",
             metadata={
@@ -525,10 +507,10 @@ class TestFIESunsetAndPublicDomain(unittest.TestCase):
                 "transition_type": "public_domain",
                 "assets_transitioned": [
                     {"type": "ip_rights", "subject": "github.com/alice/*"},
-                    {"type": "documentation", "subject": "research_papers/*"}
+                    {"type": "documentation", "subject": "research_papers/*"},
                 ],
-                "archive_location": "public_archive://fie/DI-001"
-            }
+                "archive_location": "public_archive://fie/DI-001",
+            },
         )
         sunset_entry.validation_status = "valid"
 
@@ -552,7 +534,7 @@ class TestFIECompatibilitySummary(unittest.TestCase):
             enable_deduplication=False,
             enable_rate_limiting=False,
             enable_timestamp_validation=False,
-            enable_metadata_sanitization=False
+            enable_metadata_sanitization=False,
         )
 
         # Step 1: Record delayed intent
@@ -564,8 +546,8 @@ class TestFIECompatibilitySummary(unittest.TestCase):
                 "is_delayed_intent": True,
                 "delayed_intent_type": "posthumous",
                 "delayed_intent_id": "DI-WORKFLOW-001",
-                "trigger": {"type": "death", "minimum_confirmations": 2}
-            }
+                "trigger": {"type": "death", "minimum_confirmations": 2},
+            },
         )
         intent.validation_status = "valid"
         blockchain.add_entry(intent)
@@ -582,8 +564,8 @@ class TestFIECompatibilitySummary(unittest.TestCase):
                 "delayed_intent_id": "DI-WORKFLOW-001",
                 "verification_id": "VERIFY-WORKFLOW-001",
                 "trigger_verified": True,
-                "confirmations": 2
-            }
+                "confirmations": 2,
+            },
         )
         verification.validation_status = "valid"
         blockchain.add_entry(verification)
@@ -599,8 +581,8 @@ class TestFIECompatibilitySummary(unittest.TestCase):
                 "delayed_intent_id": "DI-WORKFLOW-001",
                 "execution_id": "EXEC-WORKFLOW-001",
                 "verification_ref": "VERIFY-WORKFLOW-001",
-                "actions_completed": [{"action": "ip_transfer", "status": "success"}]
-            }
+                "actions_completed": [{"action": "ip_transfer", "status": "success"}],
+            },
         )
         execution.validation_status = "valid"
         blockchain.add_entry(execution)
@@ -621,6 +603,6 @@ class TestFIECompatibilitySummary(unittest.TestCase):
         print("   - Chain integrity verified")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Run with verbose output
     unittest.main(verbosity=2)

@@ -78,8 +78,9 @@ class TestCognitiveBudget:
 
         # Add 3 units with higher complexity
         for i in range(3):
-            unit = SemanticUnit(id=f"unit_{i}", description=f"Complex concept {i}",
-                              complexity_weight=2.0)
+            unit = SemanticUnit(
+                id=f"unit_{i}", description=f"Complex concept {i}", complexity_weight=2.0
+            )
             manager.add_semantic_unit(budget, unit)
 
         assert budget.is_exceeded  # 3 * 2.0 = 6 > 5
@@ -227,9 +228,7 @@ class TestCoolingPeriods:
 
         # Waive with high validator confidence
         success, _msg = manager.waive_cooling_period(
-            cooling,
-            reason="Emergency: time-critical transaction",
-            validator_confidence=0.90
+            cooling, reason="Emergency: time-critical transaction", validator_confidence=0.90
         )
 
         assert success
@@ -242,9 +241,7 @@ class TestCoolingPeriods:
         cooling = manager.start_cooling_period("user1", ActionType.AGREEMENT)
 
         success, msg = manager.waive_cooling_period(
-            cooling,
-            reason="Just want to hurry",
-            validator_confidence=0.70
+            cooling, reason="Just want to hurry", validator_confidence=0.70
         )
 
         assert not success
@@ -278,11 +275,11 @@ class TestInformationHierarchy:
 
         # Present in correct order
         success, _ = manager.present_information_level(
-            presentation, InformationLevel.INTENT_SUMMARY)
+            presentation, InformationLevel.INTENT_SUMMARY
+        )
         assert success
 
-        success, _ = manager.present_information_level(
-            presentation, InformationLevel.CONSEQUENCES)
+        success, _ = manager.present_information_level(presentation, InformationLevel.CONSEQUENCES)
         assert success
 
     def test_present_out_of_order(self):
@@ -292,7 +289,8 @@ class TestInformationHierarchy:
 
         # Try to skip to consequences without intent summary
         success, msg = manager.present_information_level(
-            presentation, InformationLevel.CONSEQUENCES)
+            presentation, InformationLevel.CONSEQUENCES
+        )
 
         assert not success
         assert "out of order" in msg.lower()
@@ -365,9 +363,7 @@ class TestPoUConfirmation:
 
         manager.view_pou_paraphrase(pou)
         success, _msg = manager.confirm_pou(
-            pou,
-            user_correction="Minor clarification",
-            correction_drift=0.15
+            pou, user_correction="Minor clarification", correction_drift=0.15
         )
 
         assert success
@@ -380,9 +376,7 @@ class TestPoUConfirmation:
 
         manager.view_pou_paraphrase(pou)
         success, msg = manager.confirm_pou(
-            pou,
-            user_correction="Major disagreement",
-            correction_drift=0.30
+            pou, user_correction="Major disagreement", correction_drift=0.30
         )
 
         assert not success
@@ -401,7 +395,7 @@ class TestUIValidation:
         success, violations = manager.validate_ui_element(
             validation,
             element_type="button",
-            properties={"is_accept_button": True, "is_default": True}
+            properties={"is_accept_button": True, "is_default": True},
         )
 
         assert not success
@@ -414,9 +408,7 @@ class TestUIValidation:
         validation = manager.create_ui_validation()
 
         success, _violations = manager.validate_ui_element(
-            validation,
-            element_type="countdown",
-            properties={"is_emergency": False}
+            validation, element_type="countdown", properties={"is_emergency": False}
         )
 
         assert not success
@@ -428,9 +420,7 @@ class TestUIValidation:
         validation = manager.create_ui_validation()
 
         success, violations = manager.validate_ui_element(
-            validation,
-            element_type="countdown",
-            properties={"is_emergency": True}
+            validation, element_type="countdown", properties={"is_emergency": True}
         )
 
         assert success
@@ -444,7 +434,7 @@ class TestUIValidation:
         success, _ = manager.validate_ui_element(
             validation,
             element_type="decision_bundle",
-            properties={"decision_count": 3, "decisions_related": False}
+            properties={"decision_count": 3, "decisions_related": False},
         )
 
         assert not success
@@ -454,11 +444,13 @@ class TestUIValidation:
         """Test dark pattern detection."""
         manager = CognitiveLoadManager()
 
-        patterns = manager.detect_dark_patterns({
-            "confirm_shame": True,
-            "hidden_costs": True,
-            "misdirection": True,
-        })
+        patterns = manager.detect_dark_patterns(
+            {
+                "confirm_shame": True,
+                "hidden_costs": True,
+                "misdirection": True,
+            }
+        )
 
         assert len(patterns) == 3
         assert any("shaming" in p.lower() for p in patterns)
@@ -471,7 +463,7 @@ class TestUIValidation:
         success, _ = manager.validate_ui_element(
             validation,
             element_type="ratification_complete",
-            properties={"lock_status_visible": False}
+            properties={"lock_status_visible": False},
         )
 
         assert not success
@@ -486,9 +478,7 @@ class TestRatificationFlow:
         manager = CognitiveLoadManager()
 
         state = manager.create_ratification(
-            ratification_id="rat_001",
-            user_id="user1",
-            context=RatificationContext.SIMPLE
+            ratification_id="rat_001", user_id="user1", context=RatificationContext.SIMPLE
         )
 
         assert state.ratification_id == "rat_001"
@@ -502,9 +492,7 @@ class TestRatificationFlow:
         manager = CognitiveLoadManager()
 
         state = manager.create_ratification(
-            ratification_id="rat_002",
-            user_id="user1",
-            context=RatificationContext.SIMPLE
+            ratification_id="rat_002", user_id="user1", context=RatificationContext.SIMPLE
         )
 
         can_ratify, blockers = state.can_ratify
@@ -517,9 +505,7 @@ class TestRatificationFlow:
         manager = CognitiveLoadManager()
 
         state = manager.create_ratification(
-            ratification_id="rat_003",
-            user_id="user1",
-            context=RatificationContext.SIMPLE
+            ratification_id="rat_003", user_id="user1", context=RatificationContext.SIMPLE
         )
 
         can_ratify, blockers = state.can_ratify
@@ -532,9 +518,7 @@ class TestRatificationFlow:
         manager = CognitiveLoadManager()
 
         state = manager.create_ratification(
-            ratification_id="rat_004",
-            user_id="user1",
-            context=RatificationContext.SIMPLE
+            ratification_id="rat_004", user_id="user1", context=RatificationContext.SIMPLE
         )
 
         # Complete information hierarchy
@@ -547,8 +531,7 @@ class TestRatificationFlow:
         state.pou_confirmation.user_confirmed = True
 
         # Attempt ratification
-        success, blockers = manager.attempt_ratification(
-            "rat_004", ActionType.RATIFICATION)
+        success, blockers = manager.attempt_ratification("rat_004", ActionType.RATIFICATION)
 
         assert success
         assert len(blockers) == 0
@@ -560,9 +543,7 @@ class TestRatificationFlow:
         manager = CognitiveLoadManager()
 
         state = manager.create_ratification(
-            ratification_id="rat_005",
-            user_id="user1",
-            context=RatificationContext.SIMPLE
+            ratification_id="rat_005", user_id="user1", context=RatificationContext.SIMPLE
         )
 
         # Complete requirements
@@ -575,8 +556,7 @@ class TestRatificationFlow:
         manager.attempt_ratification("rat_005", ActionType.RATIFICATION)
 
         # Check cooling period started
-        blocked, cooling = manager.check_cooling_period(
-            "user1", ActionType.RATIFICATION)
+        blocked, cooling = manager.check_cooling_period("user1", ActionType.RATIFICATION)
 
         assert blocked
         assert cooling is not None
@@ -589,12 +569,15 @@ class TestValidatorIntegration:
         """Test validator semantic unit measurement."""
         manager = CognitiveLoadManager()
 
-        content = ("This agreement grants a license. "
-                   "If payment is not received, the license terminates. "
-                   "Except in cases of emergency.")
+        content = (
+            "This agreement grants a license. "
+            "If payment is not received, the license terminates. "
+            "Except in cases of emergency."
+        )
 
         count, units = manager.validator_measure_semantic_units(
-            content, RatificationContext.LICENSING)
+            content, RatificationContext.LICENSING
+        )
 
         assert count == 3
         # Conditional units should have higher weight
@@ -623,9 +606,7 @@ class TestValidatorIntegration:
         manager = CognitiveLoadManager()
 
         state = manager.create_ratification(
-            ratification_id="rat_006",
-            user_id="user1",
-            context=RatificationContext.SIMPLE
+            ratification_id="rat_006", user_id="user1", context=RatificationContext.SIMPLE
         )
 
         # Add some issues
@@ -680,7 +661,7 @@ class TestEdgeCases:
         cooling = CoolingPeriod(
             action_type=ActionType.AGREEMENT,
             started_at=datetime.utcnow() - timedelta(hours=24),
-            duration=timedelta(hours=12)
+            duration=timedelta(hours=12),
         )
 
         manager.active_cooling_periods["user1"] = [cooling]
@@ -692,14 +673,9 @@ class TestEdgeCases:
 
     def test_budget_utilization_percentage(self):
         """Test budget utilization calculation."""
-        budget = CognitiveBudget(
-            context=RatificationContext.SIMPLE,
-            max_units=10
-        )
+        budget = CognitiveBudget(context=RatificationContext.SIMPLE, max_units=10)
 
         for i in range(5):
-            budget.current_units.append(
-                SemanticUnit(id=f"u_{i}", description=f"Unit {i}")
-            )
+            budget.current_units.append(SemanticUnit(id=f"u_{i}", description=f"Unit {i}"))
 
         assert budget.utilization == 0.5

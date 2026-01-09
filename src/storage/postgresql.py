@@ -206,14 +206,16 @@ class PostgreSQLStorage(StorageBackend):
                 chain = []
                 for row in blocks_rows:
                     block_index, timestamp, prev_hash, hash_val, nonce, entries_json = row
-                    chain.append({
-                        "index": block_index,
-                        "timestamp": timestamp,
-                        "previous_hash": prev_hash,
-                        "hash": hash_val,
-                        "nonce": nonce,
-                        "entries": entries_json if entries_json else [],
-                    })
+                    chain.append(
+                        {
+                            "index": block_index,
+                            "timestamp": timestamp,
+                            "previous_hash": prev_hash,
+                            "hash": hash_val,
+                            "nonce": nonce,
+                            "entries": entries_json if entries_json else [],
+                        }
+                    )
 
                 # Get pending entries
                 cur.execute("""
@@ -226,15 +228,17 @@ class PostgreSQLStorage(StorageBackend):
                 pending_entries = []
                 for row in pending_rows:
                     content, author, intent, ts, fp, status, meta = row
-                    pending_entries.append({
-                        "content": content,
-                        "author": author,
-                        "intent": intent,
-                        "timestamp": ts,
-                        "fingerprint": fp,
-                        "validation_status": status,
-                        "metadata": meta if meta else {},
-                    })
+                    pending_entries.append(
+                        {
+                            "content": content,
+                            "author": author,
+                            "intent": intent,
+                            "timestamp": ts,
+                            "fingerprint": fp,
+                            "validation_status": status,
+                            "metadata": meta if meta else {},
+                        }
+                    )
 
                 return {
                     "chain": chain,
@@ -268,33 +272,58 @@ class PostgreSQLStorage(StorageBackend):
                 chain = chain_data.get("chain", [])
                 for block in chain:
                     entries_json = json.dumps(block.get("entries", []))
-                    cur.execute("""
+                    cur.execute(
+                        """
                         INSERT INTO blocks
                             (block_index, timestamp, previous_hash, hash, nonce, entries_json)
                         VALUES (%s, %s, %s, %s, %s, %s)
                         RETURNING id
-                    """, (
-                        block.get("index", 0),
-                        block.get("timestamp", 0),
-                        block.get("previous_hash", ""),
-                        block.get("hash", ""),
-                        block.get("nonce", 0),
-                        entries_json,
-                    ))
+                    """,
+                        (
+                            block.get("index", 0),
+                            block.get("timestamp", 0),
+                            block.get("previous_hash", ""),
+                            block.get("hash", ""),
+                            block.get("nonce", 0),
+                            entries_json,
+                        ),
+                    )
                     block_id = cur.fetchone()[0]
 
                     # Insert entries (denormalized for queries)
                     for i, entry in enumerate(block.get("entries", [])):
-                        cur.execute("""
+                        cur.execute(
+                            """
                             INSERT INTO entries
                                 (block_id, block_index, entry_index, content, author,
                                  intent, timestamp, fingerprint, validation_status,
                                  metadata_json)
                             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                        """, (
-                            block_id,
-                            block.get("index", 0),
-                            i,
+                        """,
+                            (
+                                block_id,
+                                block.get("index", 0),
+                                i,
+                                entry.get("content", ""),
+                                entry.get("author", ""),
+                                entry.get("intent", ""),
+                                entry.get("timestamp", 0),
+                                entry.get("fingerprint"),
+                                entry.get("validation_status"),
+                                json.dumps(entry.get("metadata", {})),
+                            ),
+                        )
+
+                # Insert pending entries
+                for entry in chain_data.get("pending_entries", []):
+                    cur.execute(
+                        """
+                        INSERT INTO pending_entries
+                            (content, author, intent, timestamp, fingerprint,
+                             validation_status, metadata_json)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    """,
+                        (
                             entry.get("content", ""),
                             entry.get("author", ""),
                             entry.get("intent", ""),
@@ -302,36 +331,23 @@ class PostgreSQLStorage(StorageBackend):
                             entry.get("fingerprint"),
                             entry.get("validation_status"),
                             json.dumps(entry.get("metadata", {})),
-                        ))
-
-                # Insert pending entries
-                for entry in chain_data.get("pending_entries", []):
-                    cur.execute("""
-                        INSERT INTO pending_entries
-                            (content, author, intent, timestamp, fingerprint,
-                             validation_status, metadata_json)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s)
-                    """, (
-                        entry.get("content", ""),
-                        entry.get("author", ""),
-                        entry.get("intent", ""),
-                        entry.get("timestamp", 0),
-                        entry.get("fingerprint"),
-                        entry.get("validation_status"),
-                        json.dumps(entry.get("metadata", {})),
-                    ))
+                        ),
+                    )
 
                 # Update metadata
-                cur.execute("""
+                cur.execute(
+                    """
                     UPDATE chain_metadata SET
                         difficulty = %s,
                         pending_entries_count = %s,
                         updated_at = CURRENT_TIMESTAMP
                     WHERE id = 1
-                """, (
-                    chain_data.get("difficulty", 2),
-                    len(chain_data.get("pending_entries", [])),
-                ))
+                """,
+                    (
+                        chain_data.get("difficulty", 2),
+                        len(chain_data.get("pending_entries", [])),
+                    ),
+                )
 
             conn.commit()
 
@@ -352,7 +368,8 @@ class PostgreSQLStorage(StorageBackend):
         try:
             with conn.cursor() as cur:
                 entries_json = json.dumps(block_data.get("entries", []))
-                cur.execute("""
+                cur.execute(
+                    """
                     INSERT INTO blocks
                         (block_index, timestamp, previous_hash, hash, nonce, entries_json)
                     VALUES (%s, %s, %s, %s, %s, %s)
@@ -363,41 +380,45 @@ class PostgreSQLStorage(StorageBackend):
                         nonce = EXCLUDED.nonce,
                         entries_json = EXCLUDED.entries_json
                     RETURNING id
-                """, (
-                    block_data.get("index", 0),
-                    block_data.get("timestamp", 0),
-                    block_data.get("previous_hash", ""),
-                    block_data.get("hash", ""),
-                    block_data.get("nonce", 0),
-                    entries_json,
-                ))
+                """,
+                    (
+                        block_data.get("index", 0),
+                        block_data.get("timestamp", 0),
+                        block_data.get("previous_hash", ""),
+                        block_data.get("hash", ""),
+                        block_data.get("nonce", 0),
+                        entries_json,
+                    ),
+                )
                 block_id = cur.fetchone()[0]
 
                 # Update entries
                 cur.execute(
-                    "DELETE FROM entries WHERE block_index = %s",
-                    (block_data.get("index", 0),)
+                    "DELETE FROM entries WHERE block_index = %s", (block_data.get("index", 0),)
                 )
 
                 for i, entry in enumerate(block_data.get("entries", [])):
-                    cur.execute("""
+                    cur.execute(
+                        """
                         INSERT INTO entries
                             (block_id, block_index, entry_index, content, author,
                              intent, timestamp, fingerprint, validation_status,
                              metadata_json)
                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                    """, (
-                        block_id,
-                        block_data.get("index", 0),
-                        i,
-                        entry.get("content", ""),
-                        entry.get("author", ""),
-                        entry.get("intent", ""),
-                        entry.get("timestamp", 0),
-                        entry.get("fingerprint"),
-                        entry.get("validation_status"),
-                        json.dumps(entry.get("metadata", {})),
-                    ))
+                    """,
+                        (
+                            block_id,
+                            block_data.get("index", 0),
+                            i,
+                            entry.get("content", ""),
+                            entry.get("author", ""),
+                            entry.get("intent", ""),
+                            entry.get("timestamp", 0),
+                            entry.get("fingerprint"),
+                            entry.get("validation_status"),
+                            json.dumps(entry.get("metadata", {})),
+                        ),
+                    )
 
             conn.commit()
 
@@ -421,12 +442,14 @@ class PostgreSQLStorage(StorageBackend):
     def get_info(self) -> dict[str, Any]:
         """Get storage backend information."""
         info = super().get_info()
-        info.update({
-            "host": self._host,
-            "port": self._port,
-            "database": self._database,
-            "pool_size": self.pool_size,
-        })
+        info.update(
+            {
+                "host": self._host,
+                "port": self._port,
+                "database": self._database,
+                "pool_size": self.pool_size,
+            }
+        )
 
         if self.is_available():
             conn = self._get_conn()
@@ -448,10 +471,13 @@ class PostgreSQLStorage(StorageBackend):
         conn = self._get_conn()
         try:
             with conn.cursor() as cur:
-                cur.execute("""
+                cur.execute(
+                    """
                     SELECT block_index, timestamp, previous_hash, hash, nonce, entries_json
                     FROM blocks WHERE block_index = %s
-                """, (index,))
+                """,
+                    (index,),
+                )
                 row = cur.fetchone()
                 if not row:
                     return None
@@ -488,36 +514,39 @@ class PostgreSQLStorage(StorageBackend):
         finally:
             self._put_conn(conn)
 
-    def search_entries_by_author(
-        self, author: str, limit: int = 100
-    ) -> list[dict[str, Any]]:
+    def search_entries_by_author(self, author: str, limit: int = 100) -> list[dict[str, Any]]:
         """Search entries by author using database index."""
         conn = self._get_conn()
         try:
             with conn.cursor() as cur:
-                cur.execute("""
+                cur.execute(
+                    """
                     SELECT content, author, intent, timestamp, fingerprint,
                            validation_status, metadata_json, block_index, entry_index
                     FROM entries
                     WHERE author = %s
                     ORDER BY timestamp DESC
                     LIMIT %s
-                """, (author, limit))
+                """,
+                    (author, limit),
+                )
 
                 results = []
                 for row in cur.fetchall():
                     content, auth, intent, ts, fp, status, meta, bi, ei = row
-                    results.append({
-                        "content": content,
-                        "author": auth,
-                        "intent": intent,
-                        "timestamp": ts,
-                        "fingerprint": fp,
-                        "validation_status": status,
-                        "metadata": meta if meta else {},
-                        "block_index": bi,
-                        "entry_index": ei,
-                    })
+                    results.append(
+                        {
+                            "content": content,
+                            "author": auth,
+                            "intent": intent,
+                            "timestamp": ts,
+                            "fingerprint": fp,
+                            "validation_status": status,
+                            "metadata": meta if meta else {},
+                            "block_index": bi,
+                            "entry_index": ei,
+                        }
+                    )
                 return results
         finally:
             self._put_conn(conn)

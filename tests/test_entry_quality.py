@@ -19,7 +19,6 @@ from src.entry_quality import (
     is_entry_acceptable,
 )
 
-
 # =============================================================================
 # Size Limit Tests
 # =============================================================================
@@ -103,10 +102,13 @@ class TestRepetitionDetection:
         )
         result = check_entry_quality(content)
         # Should still be acceptable but may have warnings
-        assert any(
-            i.issue in (QualityIssue.EXCESSIVE_REPETITION, QualityIssue.REDUNDANT_CONTENT)
-            for i in result.issues
-        ) or result.metrics.get("bigram_repetition", 0) > 0.2
+        assert (
+            any(
+                i.issue in (QualityIssue.EXCESSIVE_REPETITION, QualityIssue.REDUNDANT_CONTENT)
+                for i in result.issues
+            )
+            or result.metrics.get("bigram_repetition", 0) > 0.2
+        )
 
     def test_extreme_repetition_rejection(self):
         """Test that extremely repetitive content is rejected."""

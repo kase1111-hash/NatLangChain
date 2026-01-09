@@ -14,14 +14,12 @@ Key features:
 """
 
 import hashlib
-import json
 import re
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import Any
-from urllib.parse import urlparse
 
 import requests
 import yaml
@@ -34,6 +32,7 @@ STORY_PROTOCOL_CHAIN_ID = 1514
 
 class LicenseType(Enum):
     """Supported license types for marketplace modules."""
+
     PERPETUAL = "perpetual"
     SUBSCRIPTION = "subscription"
     USAGE_BASED = "usage_based"
@@ -42,6 +41,7 @@ class LicenseType(Enum):
 
 class LicenseTier(Enum):
     """License tier levels."""
+
     STANDARD = "standard"
     PREMIUM = "premium"
     ENTERPRISE = "enterprise"
@@ -49,6 +49,7 @@ class LicenseTier(Enum):
 
 class NetworkType(Enum):
     """Story Protocol network types."""
+
     TESTNET = "testnet"
     MAINNET = "mainnet"
 
@@ -56,8 +57,9 @@ class NetworkType(Enum):
 @dataclass
 class RevenueSplit:
     """Revenue distribution configuration."""
+
     developer: float  # Percentage to developer (0-100)
-    platform: float   # Percentage to platform (0-100)
+    platform: float  # Percentage to platform (0-100)
     community: float  # Percentage to community fund (0-100)
 
     def __post_init__(self):
@@ -67,32 +69,26 @@ class RevenueSplit:
 
     def to_dict(self) -> dict[str, float]:
         """Serialize revenue split percentages to a dictionary."""
-        return {
-            "developer": self.developer,
-            "platform": self.platform,
-            "community": self.community
-        }
+        return {"developer": self.developer, "platform": self.platform, "community": self.community}
 
 
 @dataclass
 class TierConfig:
     """Configuration for a license tier."""
+
     name: str
     multiplier: float  # Price multiplier (1.0 = base price)
     features: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize tier configuration to a dictionary."""
-        return {
-            "name": self.name,
-            "multiplier": self.multiplier,
-            "features": self.features
-        }
+        return {"name": self.name, "multiplier": self.multiplier, "features": self.features}
 
 
 @dataclass
 class PILTerms:
     """Programmable IP License (PIL) terms for Story Protocol."""
+
     commercial_use: bool = True
     derivatives_allowed: bool = True
     attribution_required: bool = True
@@ -106,13 +102,14 @@ class PILTerms:
             "derivatives_allowed": self.derivatives_allowed,
             "attribution_required": self.attribution_required,
             "derivative_royalty_percent": self.derivative_royalty_percent,
-            "payment_token": self.payment_token
+            "payment_token": self.payment_token,
         }
 
 
 @dataclass
 class MarketConfig:
     """Marketplace configuration parsed from .market.yaml."""
+
     # Module identification
     module_name: str
     version: str
@@ -143,7 +140,7 @@ class MarketConfig:
 
     # Metadata
     auto_convert_license: str = ""  # e.g., "Apache 2.0"
-    auto_convert_date: str = ""     # ISO date string
+    auto_convert_date: str = ""  # ISO date string
 
     def __post_init__(self):
         if self.pil_terms is None:
@@ -177,13 +174,14 @@ class MarketConfig:
             "platform_wallet": self.platform_wallet,
             "community_wallet": self.community_wallet,
             "auto_convert_license": self.auto_convert_license,
-            "auto_convert_date": self.auto_convert_date
+            "auto_convert_date": self.auto_convert_date,
         }
 
 
 @dataclass
 class LicensePurchase:
     """Record of a license purchase."""
+
     purchase_id: str
     module_name: str
     ip_asset_id: str
@@ -220,7 +218,7 @@ class LicensePurchase:
             "license_nft_id": self.license_nft_id,
             "transaction_hash": self.transaction_hash,
             "timestamp": self.timestamp,
-            "status": self.status
+            "status": self.status,
         }
 
 
@@ -256,10 +254,7 @@ class GitHubConfigFetcher:
         return f"https://raw.githubusercontent.com/{owner}/{repo}/{branch}/.market.yaml"
 
     def fetch_config(
-        self,
-        github_url: str,
-        branch: str = "main",
-        use_cache: bool = True
+        self, github_url: str, branch: str = "main", use_cache: bool = True
     ) -> MarketConfig:
         """
         Fetch and parse .market.yaml from a GitHub repository.
@@ -330,7 +325,7 @@ class GitHubConfigFetcher:
         revenue_split = RevenueSplit(
             developer=float(revenue_data.get("developer", 91)),
             platform=float(revenue_data.get("platform", 8)),
-            community=float(revenue_data.get("community", 1))
+            community=float(revenue_data.get("community", 1)),
         )
 
         # Parse tiers
@@ -342,7 +337,7 @@ class GitHubConfigFetcher:
                 tiers[tier_enum] = TierConfig(
                     name=tier_name,
                     multiplier=float(tier_config.get("multiplier", 1.0)),
-                    features=tier_config.get("features", [])
+                    features=tier_config.get("features", []),
                 )
             except ValueError:
                 continue  # Skip unknown tiers
@@ -354,7 +349,7 @@ class GitHubConfigFetcher:
             derivatives_allowed=pil_data.get("derivatives_allowed", True),
             attribution_required=pil_data.get("attribution_required", True),
             derivative_royalty_percent=float(pil_data.get("derivative_royalty", 0)),
-            payment_token=pil_data.get("payment_token", "ETH")
+            payment_token=pil_data.get("payment_token", "ETH"),
         )
 
         return MarketConfig(
@@ -375,7 +370,7 @@ class GitHubConfigFetcher:
             platform_wallet=wallets.get("platform", ""),
             community_wallet=wallets.get("community", ""),
             auto_convert_license=license_info.get("auto_convert", ""),
-            auto_convert_date=license_info.get("auto_convert_date", "")
+            auto_convert_date=license_info.get("auto_convert_date", ""),
         )
 
     def clear_cache(self):
@@ -391,11 +386,7 @@ class StoryProtocolClient:
     Uses the story-protocol-python-sdk for blockchain operations.
     """
 
-    def __init__(
-        self,
-        network: NetworkType = NetworkType.MAINNET,
-        private_key: str = None
-    ):
+    def __init__(self, network: NetworkType = NetworkType.MAINNET, private_key: str = None):
         self.network = network
         self.private_key = private_key
         self.rpc_url = (
@@ -411,10 +402,9 @@ class StoryProtocolClient:
         """Initialize the Story Protocol SDK client."""
         try:
             from story_protocol_python_sdk import StoryClient
+
             self._client = StoryClient(
-                rpc_url=self.rpc_url,
-                chain_id=self.chain_id,
-                private_key=self.private_key
+                rpc_url=self.rpc_url, chain_id=self.chain_id, private_key=self.private_key
             )
         except ImportError:
             # SDK not available - will use mock mode
@@ -442,7 +432,7 @@ class StoryProtocolClient:
                 "id": ip_asset_id,
                 "owner": "0x28AF4381Fe546CAe46f2B390360FF9D4F8B1C418",
                 "status": "registered",
-                "metadata": {}
+                "metadata": {},
             }
 
         try:
@@ -451,10 +441,7 @@ class StoryProtocolClient:
             return {"error": str(e)}
 
     def mint_license_nft(
-        self,
-        ip_asset_id: str,
-        buyer_wallet: str,
-        license_terms: dict[str, Any]
+        self, ip_asset_id: str, buyer_wallet: str, license_terms: dict[str, Any]
     ) -> dict[str, Any]:
         """
         Mint a license NFT for the buyer.
@@ -477,27 +464,21 @@ class StoryProtocolClient:
                 "nft_id": f"0x{mock_nft_id}",
                 "transaction_hash": f"0x{'0' * 64}",
                 "network": self.network.value,
-                "mock": True
+                "mock": True,
             }
 
         try:
             result = self._client.mint_license(
-                ip_asset_id=ip_asset_id,
-                recipient=buyer_wallet,
-                license_terms=license_terms
+                ip_asset_id=ip_asset_id, recipient=buyer_wallet, license_terms=license_terms
             )
             return {
                 "success": True,
                 "nft_id": result.get("nft_id"),
                 "transaction_hash": result.get("tx_hash"),
-                "network": self.network.value
+                "network": self.network.value,
             }
         except Exception as e:
-            return {
-                "success": False,
-                "error": str(e),
-                "network": self.network.value
-            }
+            return {"success": False, "error": str(e), "network": self.network.value}
 
     def verify_license(self, nft_id: str, wallet: str) -> bool:
         """
@@ -530,11 +511,7 @@ class PaymentProcessor:
     def __init__(self, story_client: StoryProtocolClient = None):
         self.story_client = story_client or StoryProtocolClient()
 
-    def calculate_splits(
-        self,
-        amount_eth: float,
-        revenue_split: RevenueSplit
-    ) -> dict[str, float]:
+    def calculate_splits(self, amount_eth: float, revenue_split: RevenueSplit) -> dict[str, float]:
         """
         Calculate payment splits for each recipient.
 
@@ -548,14 +525,11 @@ class PaymentProcessor:
         return {
             "developer": amount_eth * (revenue_split.developer / 100),
             "platform": amount_eth * (revenue_split.platform / 100),
-            "community": amount_eth * (revenue_split.community / 100)
+            "community": amount_eth * (revenue_split.community / 100),
         }
 
     def process_payment(
-        self,
-        buyer_wallet: str,
-        amount_eth: float,
-        config: MarketConfig
+        self, buyer_wallet: str, amount_eth: float, config: MarketConfig
     ) -> dict[str, Any]:
         """
         Process a payment with revenue distribution.
@@ -583,18 +557,12 @@ class PaymentProcessor:
             "splits": {
                 "developer": {
                     "wallet": config.developer_wallet or config.owner_wallet,
-                    "amount": splits["developer"]
+                    "amount": splits["developer"],
                 },
-                "platform": {
-                    "wallet": config.platform_wallet,
-                    "amount": splits["platform"]
-                },
-                "community": {
-                    "wallet": config.community_wallet,
-                    "amount": splits["community"]
-                }
+                "platform": {"wallet": config.platform_wallet, "amount": splits["platform"]},
+                "community": {"wallet": config.community_wallet, "amount": splits["community"]},
             },
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         }
 
 
@@ -609,11 +577,7 @@ class MarketplaceManager:
     - Minting license NFTs
     """
 
-    def __init__(
-        self,
-        network: NetworkType = NetworkType.MAINNET,
-        private_key: str = None
-    ):
+    def __init__(self, network: NetworkType = NetworkType.MAINNET, private_key: str = None):
         self.network = network
         self.config_fetcher = GitHubConfigFetcher()
         self.story_client = StoryProtocolClient(network, private_key)
@@ -625,11 +589,7 @@ class MarketplaceManager:
         # Purchase history: {purchase_id: LicensePurchase}
         self._purchases: dict[str, LicensePurchase] = {}
 
-    def register_module(
-        self,
-        github_url: str,
-        branch: str = "main"
-    ) -> dict[str, Any]:
+    def register_module(self, github_url: str, branch: str = "main") -> dict[str, Any]:
         """
         Register a module from its GitHub repository.
 
@@ -645,22 +605,16 @@ class MarketplaceManager:
         try:
             config = self.config_fetcher.fetch_config(github_url, branch)
         except ValueError as e:
-            return {
-                "success": False,
-                "error": str(e),
-                "github_url": github_url
-            }
+            return {"success": False, "error": str(e), "github_url": github_url}
         except requests.RequestException as e:
             return {
                 "success": False,
                 "error": f"Failed to fetch configuration: {e}",
-                "github_url": github_url
+                "github_url": github_url,
             }
 
         # Generate module ID from IP asset ID or URL hash
-        module_id = config.ip_asset_id or hashlib.sha256(
-            github_url.encode()
-        ).hexdigest()[:16]
+        module_id = config.ip_asset_id or hashlib.sha256(github_url.encode()).hexdigest()[:16]
 
         self._module_registry[module_id] = config
 
@@ -671,14 +625,10 @@ class MarketplaceManager:
             "ip_asset_id": config.ip_asset_id,
             "base_price_eth": config.base_price_eth,
             "github_url": github_url,
-            "config": config.to_dict()
+            "config": config.to_dict(),
         }
 
-    def register_module_direct(
-        self,
-        module_id: str,
-        config: MarketConfig
-    ) -> dict[str, Any]:
+    def register_module_direct(self, module_id: str, config: MarketConfig) -> dict[str, Any]:
         """
         Register a module directly with a pre-built config.
 
@@ -695,7 +645,7 @@ class MarketplaceManager:
             "module_id": module_id,
             "module_name": config.module_name,
             "ip_asset_id": config.ip_asset_id,
-            "base_price_eth": config.base_price_eth
+            "base_price_eth": config.base_price_eth,
         }
 
     def get_module(self, module_id: str) -> MarketConfig | None:
@@ -712,15 +662,12 @@ class MarketplaceManager:
                 "base_price_eth": config.base_price_eth,
                 "ip_asset_id": config.ip_asset_id,
                 "github_url": config.github_url,
-                "tiers": list(config.tiers.keys())
+                "tiers": list(config.tiers.keys()),
             }
             for mid, config in self._module_registry.items()
         ]
 
-    def get_module_pricing(
-        self,
-        module_id: str
-    ) -> dict[str, Any] | None:
+    def get_module_pricing(self, module_id: str) -> dict[str, Any] | None:
         """
         Get detailed pricing information for a module.
 
@@ -734,10 +681,7 @@ class MarketplaceManager:
         if not config:
             return None
 
-        tier_prices = {
-            tier.value: config.get_tier_price(tier)
-            for tier in LicenseTier
-        }
+        tier_prices = {tier.value: config.get_tier_price(tier) for tier in LicenseTier}
 
         return {
             "module_id": module_id,
@@ -747,19 +691,13 @@ class MarketplaceManager:
             "floor_price_eth": config.floor_price_eth,
             "ceiling_price_eth": config.ceiling_price_eth,
             "tier_prices": tier_prices,
-            "tiers": {
-                tier.value: config.tiers[tier].to_dict()
-                for tier in config.tiers
-            },
+            "tiers": {tier.value: config.tiers[tier].to_dict() for tier in config.tiers},
             "pil_terms": config.pil_terms.to_dict(),
-            "revenue_split": config.revenue_split.to_dict()
+            "revenue_split": config.revenue_split.to_dict(),
         }
 
     def purchase_license(
-        self,
-        module_id: str,
-        buyer_wallet: str,
-        tier: LicenseTier = LicenseTier.STANDARD
+        self, module_id: str, buyer_wallet: str, tier: LicenseTier = LicenseTier.STANDARD
     ) -> dict[str, Any]:
         """
         Purchase a license for a module.
@@ -781,48 +719,36 @@ class MarketplaceManager:
         # Validate module exists
         config = self._module_registry.get(module_id)
         if not config:
-            return {
-                "success": False,
-                "error": f"Module not found: {module_id}"
-            }
+            return {"success": False, "error": f"Module not found: {module_id}"}
 
         # Validate IP asset ID exists
         if not config.ip_asset_id:
-            return {
-                "success": False,
-                "error": "Module has no Story Protocol IP Asset ID"
-            }
+            return {"success": False, "error": "Module has no Story Protocol IP Asset ID"}
 
         # Calculate price for tier
         price_eth = config.get_tier_price(tier)
 
         # Process payment
         payment_result = self.payment_processor.process_payment(
-            buyer_wallet=buyer_wallet,
-            amount_eth=price_eth,
-            config=config
+            buyer_wallet=buyer_wallet, amount_eth=price_eth, config=config
         )
 
         if not payment_result.get("success"):
             return {
                 "success": False,
                 "error": "Payment processing failed",
-                "details": payment_result
+                "details": payment_result,
             }
 
         # Mint license NFT
         mint_result = self.story_client.mint_license_nft(
             ip_asset_id=config.ip_asset_id,
             buyer_wallet=buyer_wallet,
-            license_terms=config.pil_terms.to_dict()
+            license_terms=config.pil_terms.to_dict(),
         )
 
         if not mint_result.get("success"):
-            return {
-                "success": False,
-                "error": "License NFT minting failed",
-                "details": mint_result
-            }
+            return {"success": False, "error": "License NFT minting failed", "details": mint_result}
 
         # Record purchase
         purchase = LicensePurchase(
@@ -835,7 +761,7 @@ class MarketplaceManager:
             price_eth=price_eth,
             license_nft_id=mint_result.get("nft_id", ""),
             transaction_hash=mint_result.get("transaction_hash", ""),
-            status="completed"
+            status="completed",
         )
 
         self._purchases[purchase.purchase_id] = purchase
@@ -845,7 +771,7 @@ class MarketplaceManager:
             "purchase": purchase.to_dict(),
             "payment": payment_result,
             "license_nft": mint_result,
-            "message": f"Successfully purchased {tier.value} license for {config.module_name}"
+            "message": f"Successfully purchased {tier.value} license for {config.module_name}",
         }
 
     def get_purchase(self, purchase_id: str) -> LicensePurchase | None:
@@ -854,16 +780,9 @@ class MarketplaceManager:
 
     def get_purchases_by_wallet(self, wallet: str) -> list[LicensePurchase]:
         """Get all purchases for a wallet."""
-        return [
-            p for p in self._purchases.values()
-            if p.buyer_wallet.lower() == wallet.lower()
-        ]
+        return [p for p in self._purchases.values() if p.buyer_wallet.lower() == wallet.lower()]
 
-    def verify_license(
-        self,
-        module_id: str,
-        wallet: str
-    ) -> dict[str, Any]:
+    def verify_license(self, module_id: str, wallet: str) -> dict[str, Any]:
         """
         Verify that a wallet has a valid license for a module.
 
@@ -876,18 +795,17 @@ class MarketplaceManager:
         """
         # Check our purchase records first
         purchases = [
-            p for p in self._purchases.values()
-            if p.buyer_wallet.lower() == wallet.lower() and
-               (self._module_registry.get(module_id) and
-                p.ip_asset_id == self._module_registry[module_id].ip_asset_id)
+            p
+            for p in self._purchases.values()
+            if p.buyer_wallet.lower() == wallet.lower()
+            and (
+                self._module_registry.get(module_id)
+                and p.ip_asset_id == self._module_registry[module_id].ip_asset_id
+            )
         ]
 
         if not purchases:
-            return {
-                "has_license": False,
-                "module_id": module_id,
-                "wallet": wallet
-            }
+            return {"has_license": False, "module_id": module_id, "wallet": wallet}
 
         latest_purchase = max(purchases, key=lambda p: p.timestamp)
 
@@ -895,8 +813,7 @@ class MarketplaceManager:
         on_chain_valid = True
         if latest_purchase.license_nft_id:
             on_chain_valid = self.story_client.verify_license(
-                latest_purchase.license_nft_id,
-                wallet
+                latest_purchase.license_nft_id, wallet
             )
 
         return {
@@ -906,25 +823,19 @@ class MarketplaceManager:
             "wallet": wallet,
             "tier": latest_purchase.tier.value,
             "license_nft_id": latest_purchase.license_nft_id,
-            "purchase_date": latest_purchase.timestamp
+            "purchase_date": latest_purchase.timestamp,
         }
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize marketplace state."""
         return {
             "network": self.network.value,
-            "modules": {
-                mid: config.to_dict()
-                for mid, config in self._module_registry.items()
-            },
-            "purchases": {
-                pid: purchase.to_dict()
-                for pid, purchase in self._purchases.items()
-            }
+            "modules": {mid: config.to_dict() for mid, config in self._module_registry.items()},
+            "purchases": {pid: purchase.to_dict() for pid, purchase in self._purchases.items()},
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> 'MarketplaceManager':
+    def from_dict(cls, data: dict[str, Any]) -> "MarketplaceManager":
         """Deserialize marketplace state."""
         network = NetworkType(data.get("network", "mainnet"))
         manager = cls(network=network)
@@ -939,7 +850,7 @@ class MarketplaceManager:
                 license_type=LicenseType(config_data.get("license_type", "perpetual")),
                 base_price_eth=float(config_data.get("base_price_eth", 0)),
                 ip_asset_id=config_data.get("ip_asset_id", ""),
-                owner_wallet=config_data.get("owner_wallet", "")
+                owner_wallet=config_data.get("owner_wallet", ""),
             )
             manager._module_registry[mid] = config
 
@@ -951,8 +862,8 @@ RRA_MODULE_CONFIG = MarketConfig(
     module_name="RRA-Module",
     version="1.0.0",
     description="Resurrects dormant repos as autonomous contract-posting agents. "
-                "Converts dormant repositories to autonomous contract posters, "
-                "generating daily/weekly output summaries and posting OFFER contracts on NatLangChain.",
+    "Converts dormant repositories to autonomous contract posters, "
+    "generating daily/weekly output summaries and posting OFFER contracts on NatLangChain.",
     github_url="https://github.com/kase1111-hash/RRA-Module",
     license_type=LicenseType.PERPETUAL,
     base_price_eth=0.05,
@@ -963,18 +874,18 @@ RRA_MODULE_CONFIG = MarketConfig(
         LicenseTier.STANDARD: TierConfig(
             name="Standard",
             multiplier=1.0,
-            features=["Source code access", "12-month updates", "Community support"]
+            features=["Source code access", "12-month updates", "Community support"],
         ),
         LicenseTier.PREMIUM: TierConfig(
             name="Premium",
             multiplier=2.5,
-            features=["Priority support", "Custom features", "Fork rights"]
+            features=["Priority support", "Custom features", "Fork rights"],
         ),
         LicenseTier.ENTERPRISE: TierConfig(
             name="Enterprise",
             multiplier=5.0,
-            features=["White-label", "Competing use allowed", "Unlimited seats"]
-        )
+            features=["White-label", "Competing use allowed", "Unlimited seats"],
+        ),
     },
     ip_asset_id="0x513fD14485FC3485F691d12be55C0D03a6b0Ed43",
     owner_wallet="0x28AF4381Fe546CAe46f2B390360FF9D4F8B1C418",
@@ -983,19 +894,18 @@ RRA_MODULE_CONFIG = MarketConfig(
         derivatives_allowed=True,
         attribution_required=True,
         derivative_royalty_percent=9.0,
-        payment_token="ETH"
+        payment_token="ETH",
     ),
     developer_wallet="0x28AF4381Fe546CAe46f2B390360FF9D4F8B1C418",
     platform_wallet="0x28AF4381Fe546CAe46f2B390360FF9D4F8B1C418",
     community_wallet="0x28AF4381Fe546CAe46f2B390360FF9D4F8B1C418",
     auto_convert_license="Apache 2.0",
-    auto_convert_date="2027-12-19"
+    auto_convert_date="2027-12-19",
 )
 
 
 def create_marketplace_manager(
-    network: NetworkType = NetworkType.MAINNET,
-    register_rra_module: bool = True
+    network: NetworkType = NetworkType.MAINNET, register_rra_module: bool = True
 ) -> MarketplaceManager:
     """
     Factory function to create a marketplace manager with default configuration.
@@ -1011,8 +921,7 @@ def create_marketplace_manager(
 
     if register_rra_module:
         manager.register_module_direct(
-            module_id=RRA_MODULE_CONFIG.ip_asset_id,
-            config=RRA_MODULE_CONFIG
+            module_id=RRA_MODULE_CONFIG.ip_asset_id, config=RRA_MODULE_CONFIG
         )
 
     return manager

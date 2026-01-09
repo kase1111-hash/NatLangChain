@@ -18,19 +18,21 @@ Based on the Boundary Daemon specification:
 https://github.com/kase1111-hash/boundary-daemon-
 """
 
-import hashlib
-import json
 import logging
-import os
 import secrets
 import threading
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Callable
+from typing import Any
 
 try:
+    from boundary_exceptions import (
+        ModeTransitionError,
+        OverrideError,
+        TripwireError,
+    )
     from boundary_siem import (
         NatLangChainSIEMEvents,
         SIEMClient,
@@ -43,11 +45,6 @@ try:
         SecurityEnforcementManager,
         USBEnforcement,
     )
-    from boundary_exceptions import (
-        ModeTransitionError,
-        OverrideError,
-        TripwireError,
-    )
 except ImportError:
     from .boundary_siem import (
         NatLangChainSIEMEvents,
@@ -55,16 +52,7 @@ except ImportError:
         get_siem_client,
     )
     from .security_enforcement import (
-        EnforcementResult,
-        NetworkEnforcement,
-        ProcessSandbox,
         SecurityEnforcementManager,
-        USBEnforcement,
-    )
-    from .boundary_exceptions import (
-        ModeTransitionError,
-        OverrideError,
-        TripwireError,
     )
 
 logger = logging.getLogger(__name__)
@@ -77,26 +65,29 @@ class BoundaryMode(Enum):
     Each mode represents a different trust level with corresponding
     restrictions on network, tools, and memory access.
     """
-    OPEN = "open"           # Casual use: Full network, all tools
+
+    OPEN = "open"  # Casual use: Full network, all tools
     RESTRICTED = "restricted"  # Research: Online, most tools
-    TRUSTED = "trusted"     # Serious work: VPN only, no USB
-    AIRGAP = "airgap"       # High-value IP: Offline only
-    COLDROOM = "coldroom"   # Crown jewels: Offline, display only
-    LOCKDOWN = "lockdown"   # Emergency: Everything blocked
+    TRUSTED = "trusted"  # Serious work: VPN only, no USB
+    AIRGAP = "airgap"  # High-value IP: Offline only
+    COLDROOM = "coldroom"  # Crown jewels: Offline, display only
+    LOCKDOWN = "lockdown"  # Emergency: Everything blocked
 
 
 class MemoryClass(Enum):
     """Memory classification levels (0-5)."""
-    PUBLIC = 0          # Can be shared anywhere
-    INTERNAL = 1        # Internal use only
-    SENSITIVE = 2       # Requires authentication
-    CONFIDENTIAL = 3    # Limited access
-    SECRET = 4          # Need-to-know basis
-    COMPARTMENTED = 5   # Highest classification
+
+    PUBLIC = 0  # Can be shared anywhere
+    INTERNAL = 1  # Internal use only
+    SENSITIVE = 2  # Requires authentication
+    CONFIDENTIAL = 3  # Limited access
+    SECRET = 4  # Need-to-know basis
+    COMPARTMENTED = 5  # Highest classification
 
 
 class TripwireType(Enum):
     """Types of tripwires that can trigger mode transitions."""
+
     NETWORK_ACTIVITY_IN_AIRGAP = "network_activity_in_airgap"
     USB_INSERTION_IN_COLDROOM = "usb_insertion_in_coldroom"
     UNAUTHORIZED_MEMORY_RECALL = "unauthorized_memory_recall"
@@ -111,6 +102,7 @@ class TripwireType(Enum):
 @dataclass
 class ModeConfig:
     """Configuration for a boundary mode."""
+
     mode: BoundaryMode
     network_allowed: bool
     vpn_only: bool
@@ -134,7 +126,7 @@ DEFAULT_MODE_CONFIGS: dict[BoundaryMode, ModeConfig] = {
         allowed_memory_classes=[MemoryClass.PUBLIC, MemoryClass.INTERNAL],
         allowed_tools=["*"],  # All tools
         blocked_tools=[],
-        description="Casual use - full network access, all tools available"
+        description="Casual use - full network access, all tools available",
     ),
     BoundaryMode.RESTRICTED: ModeConfig(
         mode=BoundaryMode.RESTRICTED,
@@ -143,48 +135,55 @@ DEFAULT_MODE_CONFIGS: dict[BoundaryMode, ModeConfig] = {
         allowed_memory_classes=[MemoryClass.PUBLIC, MemoryClass.INTERNAL, MemoryClass.SENSITIVE],
         allowed_tools=["*"],
         blocked_tools=["shell_execute", "file_delete", "system_modify"],
-        description="Research mode - online, most tools available"
+        description="Research mode - online, most tools available",
     ),
     BoundaryMode.TRUSTED: ModeConfig(
         mode=BoundaryMode.TRUSTED,
         network_allowed=True,
         vpn_only=True,
         allowed_memory_classes=[
-            MemoryClass.PUBLIC, MemoryClass.INTERNAL,
-            MemoryClass.SENSITIVE, MemoryClass.CONFIDENTIAL
+            MemoryClass.PUBLIC,
+            MemoryClass.INTERNAL,
+            MemoryClass.SENSITIVE,
+            MemoryClass.CONFIDENTIAL,
         ],
         allowed_tools=["*"],
         blocked_tools=["usb_access", "external_storage"],
         block_usb=True,
-        description="Serious work - VPN only, no USB access"
+        description="Serious work - VPN only, no USB access",
     ),
     BoundaryMode.AIRGAP: ModeConfig(
         mode=BoundaryMode.AIRGAP,
         network_allowed=False,
         vpn_only=False,
         allowed_memory_classes=[
-            MemoryClass.PUBLIC, MemoryClass.INTERNAL,
-            MemoryClass.SENSITIVE, MemoryClass.CONFIDENTIAL,
-            MemoryClass.SECRET
+            MemoryClass.PUBLIC,
+            MemoryClass.INTERNAL,
+            MemoryClass.SENSITIVE,
+            MemoryClass.CONFIDENTIAL,
+            MemoryClass.SECRET,
         ],
         allowed_tools=["local_*"],  # Only local tools
         blocked_tools=["network_*", "http_*", "api_*"],
-        description="High-value IP - completely offline"
+        description="High-value IP - completely offline",
     ),
     BoundaryMode.COLDROOM: ModeConfig(
         mode=BoundaryMode.COLDROOM,
         network_allowed=False,
         vpn_only=False,
         allowed_memory_classes=[
-            MemoryClass.PUBLIC, MemoryClass.INTERNAL,
-            MemoryClass.SENSITIVE, MemoryClass.CONFIDENTIAL,
-            MemoryClass.SECRET, MemoryClass.COMPARTMENTED
+            MemoryClass.PUBLIC,
+            MemoryClass.INTERNAL,
+            MemoryClass.SENSITIVE,
+            MemoryClass.CONFIDENTIAL,
+            MemoryClass.SECRET,
+            MemoryClass.COMPARTMENTED,
         ],
         allowed_tools=["display", "read"],  # Display only
         blocked_tools=["*"],  # Block everything else
         block_usb=True,
         display_only=True,
-        description="Crown jewels - offline, display only"
+        description="Crown jewels - offline, display only",
     ),
     BoundaryMode.LOCKDOWN: ModeConfig(
         mode=BoundaryMode.LOCKDOWN,
@@ -196,7 +195,7 @@ DEFAULT_MODE_CONFIGS: dict[BoundaryMode, ModeConfig] = {
         block_usb=True,
         display_only=True,
         block_all_io=True,
-        description="Emergency lockdown - everything blocked"
+        description="Emergency lockdown - everything blocked",
     ),
 }
 
@@ -204,6 +203,7 @@ DEFAULT_MODE_CONFIGS: dict[BoundaryMode, ModeConfig] = {
 @dataclass
 class TripwireConfig:
     """Configuration for a tripwire."""
+
     tripwire_type: TripwireType
     enabled: bool
     target_mode: BoundaryMode  # Mode to transition to when triggered
@@ -215,6 +215,7 @@ class TripwireConfig:
 @dataclass
 class HumanOverrideRequest:
     """Request for human override ceremony."""
+
     request_id: str
     requested_by: str
     from_mode: BoundaryMode
@@ -231,6 +232,7 @@ class HumanOverrideRequest:
 @dataclass
 class ModeTransition:
     """Record of a mode transition."""
+
     transition_id: str
     from_mode: BoundaryMode
     to_mode: BoundaryMode
@@ -265,7 +267,7 @@ class BoundaryModeManager:
         enforcement: SecurityEnforcementManager | None = None,
         siem_client: SIEMClient | None = None,
         enable_tripwires: bool = True,
-        cooldown_period: int = 300  # 5 minutes default cooldown
+        cooldown_period: int = 300,  # 5 minutes default cooldown
     ):
         """
         Initialize the mode manager.
@@ -291,7 +293,7 @@ class BoundaryModeManager:
         self._tripwires: dict[TripwireType, TripwireConfig] = self._init_tripwires()
 
         # Tripwire state
-        self._tripwire_counters: dict[TripwireType, int] = {t: 0 for t in TripwireType}
+        self._tripwire_counters: dict[TripwireType, int] = dict.fromkeys(TripwireType, 0)
         self._tripwire_last_triggered: dict[TripwireType, float] = {}
 
         # Transition history
@@ -315,56 +317,56 @@ class BoundaryModeManager:
                 tripwire_type=TripwireType.NETWORK_ACTIVITY_IN_AIRGAP,
                 enabled=True,
                 target_mode=BoundaryMode.LOCKDOWN,
-                threshold=1  # Immediate trigger
+                threshold=1,  # Immediate trigger
             ),
             TripwireType.USB_INSERTION_IN_COLDROOM: TripwireConfig(
                 tripwire_type=TripwireType.USB_INSERTION_IN_COLDROOM,
                 enabled=True,
                 target_mode=BoundaryMode.LOCKDOWN,
-                threshold=1
+                threshold=1,
             ),
             TripwireType.UNAUTHORIZED_MEMORY_RECALL: TripwireConfig(
                 tripwire_type=TripwireType.UNAUTHORIZED_MEMORY_RECALL,
                 enabled=True,
                 target_mode=BoundaryMode.LOCKDOWN,
-                threshold=1
+                threshold=1,
             ),
             TripwireType.DAEMON_TAMPERING: TripwireConfig(
                 tripwire_type=TripwireType.DAEMON_TAMPERING,
                 enabled=True,
                 target_mode=BoundaryMode.LOCKDOWN,
-                threshold=1
+                threshold=1,
             ),
             TripwireType.CLOCK_DRIFT: TripwireConfig(
                 tripwire_type=TripwireType.CLOCK_DRIFT,
                 enabled=True,
                 target_mode=BoundaryMode.RESTRICTED,  # Less severe response
                 threshold=3,  # Allow some drift events
-                cooldown_seconds=300
+                cooldown_seconds=300,
             ),
             TripwireType.FAILED_AUTH_THRESHOLD: TripwireConfig(
                 tripwire_type=TripwireType.FAILED_AUTH_THRESHOLD,
                 enabled=True,
                 target_mode=BoundaryMode.RESTRICTED,
-                threshold=5  # 5 failed attempts
+                threshold=5,  # 5 failed attempts
             ),
             TripwireType.PROMPT_INJECTION_DETECTED: TripwireConfig(
                 tripwire_type=TripwireType.PROMPT_INJECTION_DETECTED,
                 enabled=True,
                 target_mode=BoundaryMode.RESTRICTED,
-                threshold=3
+                threshold=3,
             ),
             TripwireType.DATA_EXFILTRATION_ATTEMPT: TripwireConfig(
                 tripwire_type=TripwireType.DATA_EXFILTRATION_ATTEMPT,
                 enabled=True,
                 target_mode=BoundaryMode.LOCKDOWN,
-                threshold=1  # Immediate lockdown
+                threshold=1,  # Immediate lockdown
             ),
             TripwireType.INTEGRITY_CHECK_FAILED: TripwireConfig(
                 tripwire_type=TripwireType.INTEGRITY_CHECK_FAILED,
                 enabled=True,
                 target_mode=BoundaryMode.LOCKDOWN,
-                threshold=1
+                threshold=1,
             ),
         }
 
@@ -388,7 +390,7 @@ class BoundaryModeManager:
         new_mode: BoundaryMode,
         reason: str,
         triggered_by: str | None = None,
-        force: bool = False
+        force: bool = False,
     ) -> ModeTransition:
         """
         Transition to a new boundary mode.
@@ -411,12 +413,12 @@ class BoundaryModeManager:
                 if (now - self._last_transition_time) < self._cooldown_period:
                     remaining = self._cooldown_period - (now - self._last_transition_time)
                     logger.info(
-                        f"Mode transition blocked: cooldown active",
+                        "Mode transition blocked: cooldown active",
                         extra={
                             "from_mode": old_mode.value,
                             "to_mode": new_mode.value,
-                            "remaining_seconds": remaining
-                        }
+                            "remaining_seconds": remaining,
+                        },
                     )
                     return ModeTransition(
                         transition_id=self._generate_transition_id(),
@@ -427,18 +429,18 @@ class BoundaryModeManager:
                         triggered_by=triggered_by,
                         success=False,
                         actions_taken=[],
-                        error=f"Cooldown active. {remaining:.0f}s remaining."
+                        error=f"Cooldown active. {remaining:.0f}s remaining.",
                     )
 
             # Check if transition requires override ceremony
             if self._requires_override(old_mode, new_mode) and not force:
                 logger.warning(
-                    f"Mode transition blocked: requires override",
+                    "Mode transition blocked: requires override",
                     extra={
                         "from_mode": old_mode.value,
                         "to_mode": new_mode.value,
-                        "reason": reason
-                    }
+                        "reason": reason,
+                    },
                 )
                 return ModeTransition(
                     transition_id=self._generate_transition_id(),
@@ -449,7 +451,7 @@ class BoundaryModeManager:
                     triggered_by=triggered_by,
                     success=False,
                     actions_taken=[],
-                    error="Transition requires human override ceremony"
+                    error="Transition requires human override ceremony",
                 )
 
             # Apply enforcement for new mode
@@ -468,7 +470,7 @@ class BoundaryModeManager:
                 trigger=reason,
                 triggered_by=triggered_by,
                 success=True,
-                actions_taken=actions
+                actions_taken=actions,
             )
 
             self._transition_history.append(transition)
@@ -484,8 +486,8 @@ class BoundaryModeManager:
                     "to_mode": new_mode.value,
                     "reason": reason,
                     "triggered_by": triggered_by,
-                    "actions_taken": actions
-                }
+                    "actions_taken": actions,
+                },
             )
 
             # Send SIEM event
@@ -495,13 +497,13 @@ class BoundaryModeManager:
                         old_mode=old_mode.value,
                         new_mode=new_mode.value,
                         reason=reason,
-                        triggered_by=triggered_by
+                        triggered_by=triggered_by,
                     )
                     self._siem.send_event(event)
                 except Exception as e:
                     logger.error(
                         f"Failed to send SIEM event for mode change: {e}",
-                        extra={"transition_id": transition.transition_id}
+                        extra={"transition_id": transition.transition_id},
                     )
 
             return transition
@@ -560,10 +562,7 @@ class BoundaryModeManager:
             actions.append(f"enforcement_error: {e}")
             # FAIL-SAFE: If enforcement fails, escalate to lockdown
             if mode != BoundaryMode.LOCKDOWN:
-                self._trigger_tripwire(
-                    TripwireType.DAEMON_TAMPERING,
-                    f"Enforcement failed: {e}"
-                )
+                self._trigger_tripwire(TripwireType.DAEMON_TAMPERING, f"Enforcement failed: {e}")
 
         return actions
 
@@ -601,8 +600,8 @@ class BoundaryModeManager:
                 f"Tripwire cooldown active: {tripwire_type.value}",
                 extra={
                     "tripwire_type": tripwire_type.value,
-                    "remaining_seconds": config.cooldown_seconds - (now - last_triggered)
-                }
+                    "remaining_seconds": config.cooldown_seconds - (now - last_triggered),
+                },
             )
             return False
 
@@ -617,8 +616,8 @@ class BoundaryModeManager:
                     "tripwire_type": tripwire_type.value,
                     "current_count": self._tripwire_counters[tripwire_type],
                     "threshold": config.threshold,
-                    "details": details
-                }
+                    "details": details,
+                },
             )
             return False
 
@@ -633,8 +632,8 @@ class BoundaryModeManager:
                 "tripwire_type": tripwire_type.value,
                 "target_mode": config.target_mode.value,
                 "details": details,
-                "threshold": config.threshold
-            }
+                "threshold": config.threshold,
+            },
         )
 
         # Send SIEM event
@@ -643,13 +642,13 @@ class BoundaryModeManager:
                 event = NatLangChainSIEMEvents.tripwire_triggered(
                     tripwire_type=tripwire_type.value,
                     trigger_details=details,
-                    automatic_response=f"Transitioning to {config.target_mode.value}"
+                    automatic_response=f"Transitioning to {config.target_mode.value}",
                 )
                 self._siem.send_event(event)
             except Exception as e:
                 logger.error(
                     f"Failed to send SIEM event for tripwire: {e}",
-                    extra={"tripwire_type": tripwire_type.value}
+                    extra={"tripwire_type": tripwire_type.value},
                 )
 
         # Transition to target mode
@@ -657,7 +656,7 @@ class BoundaryModeManager:
             config.target_mode,
             reason=f"Tripwire triggered: {tripwire_type.value}",
             triggered_by="tripwire_system",
-            force=True  # Tripwires bypass cooldown
+            force=True,  # Tripwires bypass cooldown
         )
 
         return True
@@ -676,8 +675,7 @@ class BoundaryModeManager:
 
         if drift > self._expected_clock_drift_max:
             self._trigger_tripwire(
-                TripwireType.CLOCK_DRIFT,
-                f"Clock drift of {drift:.2f}s detected"
+                TripwireType.CLOCK_DRIFT, f"Clock drift of {drift:.2f}s detected"
             )
             return False
 
@@ -688,11 +686,7 @@ class BoundaryModeManager:
     # =========================================================================
 
     def request_override(
-        self,
-        requested_by: str,
-        to_mode: BoundaryMode,
-        reason: str,
-        validity_minutes: int = 5
+        self, requested_by: str, to_mode: BoundaryMode, reason: str, validity_minutes: int = 5
     ) -> HumanOverrideRequest:
         """
         Request a human override ceremony.
@@ -722,7 +716,7 @@ class BoundaryModeManager:
             reason=reason,
             timestamp=now.isoformat() + "Z",
             expires_at=expires.isoformat() + "Z",
-            confirmation_code=confirmation_code
+            confirmation_code=confirmation_code,
         )
 
         self._pending_overrides[request_id] = request
@@ -735,17 +729,14 @@ class BoundaryModeManager:
                 "from_mode": request.from_mode.value,
                 "to_mode": to_mode.value,
                 "reason": reason,
-                "expires_at": request.expires_at
-            }
+                "expires_at": request.expires_at,
+            },
         )
 
         return request
 
     def confirm_override(
-        self,
-        request_id: str,
-        confirmation_code: str,
-        confirmed_by: str
+        self, request_id: str, confirmation_code: str, confirmed_by: str
     ) -> ModeTransition:
         """
         Confirm a human override ceremony.
@@ -762,11 +753,8 @@ class BoundaryModeManager:
 
         if not request:
             logger.warning(
-                f"Override confirmation failed: request not found",
-                extra={
-                    "request_id": request_id,
-                    "confirmed_by": confirmed_by
-                }
+                "Override confirmation failed: request not found",
+                extra={"request_id": request_id, "confirmed_by": confirmed_by},
             )
             return ModeTransition(
                 transition_id=self._generate_transition_id(),
@@ -777,7 +765,7 @@ class BoundaryModeManager:
                 triggered_by=confirmed_by,
                 success=False,
                 actions_taken=[],
-                error="Override request not found"
+                error="Override request not found",
             )
 
         # Check expiration
@@ -785,12 +773,12 @@ class BoundaryModeManager:
         if datetime.utcnow().replace(tzinfo=expires.tzinfo) > expires:
             del self._pending_overrides[request_id]
             logger.warning(
-                f"Override confirmation failed: request expired",
+                "Override confirmation failed: request expired",
                 extra={
                     "request_id": request_id,
                     "confirmed_by": confirmed_by,
-                    "expired_at": request.expires_at
-                }
+                    "expired_at": request.expires_at,
+                },
             )
             return ModeTransition(
                 transition_id=self._generate_transition_id(),
@@ -801,17 +789,14 @@ class BoundaryModeManager:
                 triggered_by=confirmed_by,
                 success=False,
                 actions_taken=[],
-                error="Override request expired"
+                error="Override request expired",
             )
 
         # Verify confirmation code (timing-safe comparison)
         if not secrets.compare_digest(confirmation_code, request.confirmation_code):
             logger.warning(
-                f"Override confirmation failed: invalid code",
-                extra={
-                    "request_id": request_id,
-                    "confirmed_by": confirmed_by
-                }
+                "Override confirmation failed: invalid code",
+                extra={"request_id": request_id, "confirmed_by": confirmed_by},
             )
             return ModeTransition(
                 transition_id=self._generate_transition_id(),
@@ -822,7 +807,7 @@ class BoundaryModeManager:
                 triggered_by=confirmed_by,
                 success=False,
                 actions_taken=[],
-                error="Invalid confirmation code"
+                error="Invalid confirmation code",
             )
 
         # Mark as confirmed
@@ -838,8 +823,8 @@ class BoundaryModeManager:
                 "confirmed_by": confirmed_by,
                 "from_mode": request.from_mode.value,
                 "to_mode": request.to_mode.value,
-                "reason": request.reason
-            }
+                "reason": request.reason,
+            },
         )
 
         # Execute the transition
@@ -847,7 +832,7 @@ class BoundaryModeManager:
             request.to_mode,
             reason=f"Human override: {request.reason}",
             triggered_by=confirmed_by,
-            force=True
+            force=True,
         )
 
         # Cleanup
@@ -917,12 +902,14 @@ class BoundaryModeManager:
                 "vpn_only": self.current_config.vpn_only,
                 "block_usb": self.current_config.block_usb,
                 "display_only": self.current_config.display_only,
-                "description": self.current_config.description
+                "description": self.current_config.description,
             },
             "tripwires_enabled": self._enable_tripwires,
             "pending_overrides": len(self._pending_overrides),
             "recent_transitions": len(self._transition_history),
-            "cooldown_remaining": max(0, self._cooldown_period - (time.time() - self._last_transition_time))
+            "cooldown_remaining": max(
+                0, self._cooldown_period - (time.time() - self._last_transition_time)
+            ),
         }
 
     def get_transition_history(self, limit: int = 50) -> list[dict[str, Any]]:
@@ -936,7 +923,7 @@ class BoundaryModeManager:
                 "trigger": t.trigger,
                 "triggered_by": t.triggered_by,
                 "success": t.success,
-                "error": t.error
+                "error": t.error,
             }
             for t in self._transition_history[-limit:]
         ]

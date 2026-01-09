@@ -20,6 +20,7 @@ from typing import Any
 @dataclass
 class HistogramBucket:
     """A histogram bucket for tracking value distributions."""
+
     le: float  # Less than or equal to
     count: int = 0
 
@@ -31,6 +32,7 @@ class Histogram:
 
     Uses configurable buckets for latency tracking.
     """
+
     name: str
     buckets: list[HistogramBucket] = field(default_factory=list)
     sum: float = 0.0
@@ -41,7 +43,7 @@ class Histogram:
             # Default latency buckets in milliseconds
             default_bounds = [5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000]
             self.buckets = [HistogramBucket(le=b) for b in default_bounds]
-            self.buckets.append(HistogramBucket(le=float('inf')))
+            self.buckets.append(HistogramBucket(le=float("inf")))
 
     def observe(self, value: float) -> None:
         """Record an observation."""
@@ -77,22 +79,13 @@ class MetricsCollector:
 
     # Counter operations
 
-    def increment(
-        self,
-        name: str,
-        value: int = 1,
-        labels: dict[str, str] | None = None
-    ) -> None:
+    def increment(self, name: str, value: int = 1, labels: dict[str, str] | None = None) -> None:
         """Increment a counter."""
         with self._lock:
             key = self._labels_key(labels)
             self._counters[name][key] += value
 
-    def get_counter(
-        self,
-        name: str,
-        labels: dict[str, str] | None = None
-    ) -> int:
+    def get_counter(self, name: str, labels: dict[str, str] | None = None) -> int:
         """Get current counter value."""
         with self._lock:
             key = self._labels_key(labels)
@@ -100,22 +93,14 @@ class MetricsCollector:
 
     # Gauge operations
 
-    def set_gauge(
-        self,
-        name: str,
-        value: float,
-        labels: dict[str, str] | None = None
-    ) -> None:
+    def set_gauge(self, name: str, value: float, labels: dict[str, str] | None = None) -> None:
         """Set a gauge value."""
         with self._lock:
             key = self._labels_key(labels)
             self._gauges[name][key] = value
 
     def increment_gauge(
-        self,
-        name: str,
-        value: float = 1.0,
-        labels: dict[str, str] | None = None
+        self, name: str, value: float = 1.0, labels: dict[str, str] | None = None
     ) -> None:
         """Increment a gauge value."""
         with self._lock:
@@ -123,21 +108,14 @@ class MetricsCollector:
             self._gauges[name][key] += value
 
     def decrement_gauge(
-        self,
-        name: str,
-        value: float = 1.0,
-        labels: dict[str, str] | None = None
+        self, name: str, value: float = 1.0, labels: dict[str, str] | None = None
     ) -> None:
         """Decrement a gauge value."""
         with self._lock:
             key = self._labels_key(labels)
             self._gauges[name][key] -= value
 
-    def get_gauge(
-        self,
-        name: str,
-        labels: dict[str, str] | None = None
-    ) -> float:
+    def get_gauge(self, name: str, labels: dict[str, str] | None = None) -> float:
         """Get current gauge value."""
         with self._lock:
             key = self._labels_key(labels)
@@ -145,12 +123,7 @@ class MetricsCollector:
 
     # Histogram operations
 
-    def timing(
-        self,
-        name: str,
-        value_ms: float,
-        labels: dict[str, str] | None = None
-    ) -> None:
+    def timing(self, name: str, value_ms: float, labels: dict[str, str] | None = None) -> None:
         """Record a timing observation in milliseconds."""
         with self._lock:
             key = self._labels_key(labels)
@@ -203,9 +176,7 @@ class MetricsCollector:
                         "count": hist.count,
                         "sum": hist.sum,
                         "avg": hist.sum / hist.count if hist.count > 0 else 0,
-                        "buckets": {
-                            str(b.le): b.count for b in hist.buckets
-                        }
+                        "buckets": {str(b.le): b.count for b in hist.buckets},
                     }
 
             return result
@@ -253,15 +224,13 @@ class MetricsCollector:
                     label_suffix = "}" if key else ""
 
                     for bucket in hist.buckets:
-                        le_val = "+Inf" if bucket.le == float('inf') else bucket.le
+                        le_val = "+Inf" if bucket.le == float("inf") else bucket.le
                         if key:
                             lines.append(
                                 f'{metric_name}_bucket{{{key},le="{le_val}"}} {bucket.count}'
                             )
                         else:
-                            lines.append(
-                                f'{metric_name}_bucket{{le="{le_val}"}} {bucket.count}'
-                            )
+                            lines.append(f'{metric_name}_bucket{{le="{le_val}"}} {bucket.count}')
 
                     if key:
                         lines.append(f"{metric_name}_sum{{{key}}} {hist.sum:.2f}")

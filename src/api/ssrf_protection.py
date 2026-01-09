@@ -23,39 +23,39 @@ from urllib.parse import urlparse
 
 # SECURITY: Block internal/private networks and sensitive hosts
 BLOCKED_IP_RANGES = [
-    ipaddress.ip_network("10.0.0.0/8"),        # Private Class A
-    ipaddress.ip_network("172.16.0.0/12"),     # Private Class B
-    ipaddress.ip_network("192.168.0.0/16"),    # Private Class C
-    ipaddress.ip_network("127.0.0.0/8"),       # Localhost
-    ipaddress.ip_network("169.254.0.0/16"),    # Link-local (AWS metadata)
-    ipaddress.ip_network("100.64.0.0/10"),     # Carrier-grade NAT
-    ipaddress.ip_network("192.0.0.0/24"),      # IETF Protocol Assignments
-    ipaddress.ip_network("192.0.2.0/24"),      # Documentation (TEST-NET-1)
-    ipaddress.ip_network("198.51.100.0/24"),   # Documentation (TEST-NET-2)
-    ipaddress.ip_network("203.0.113.0/24"),    # Documentation (TEST-NET-3)
-    ipaddress.ip_network("0.0.0.0/8"),         # "This" network
-    ipaddress.ip_network("224.0.0.0/4"),       # Multicast
-    ipaddress.ip_network("240.0.0.0/4"),       # Reserved
+    ipaddress.ip_network("10.0.0.0/8"),  # Private Class A
+    ipaddress.ip_network("172.16.0.0/12"),  # Private Class B
+    ipaddress.ip_network("192.168.0.0/16"),  # Private Class C
+    ipaddress.ip_network("127.0.0.0/8"),  # Localhost
+    ipaddress.ip_network("169.254.0.0/16"),  # Link-local (AWS metadata)
+    ipaddress.ip_network("100.64.0.0/10"),  # Carrier-grade NAT
+    ipaddress.ip_network("192.0.0.0/24"),  # IETF Protocol Assignments
+    ipaddress.ip_network("192.0.2.0/24"),  # Documentation (TEST-NET-1)
+    ipaddress.ip_network("198.51.100.0/24"),  # Documentation (TEST-NET-2)
+    ipaddress.ip_network("203.0.113.0/24"),  # Documentation (TEST-NET-3)
+    ipaddress.ip_network("0.0.0.0/8"),  # "This" network
+    ipaddress.ip_network("224.0.0.0/4"),  # Multicast
+    ipaddress.ip_network("240.0.0.0/4"),  # Reserved
     ipaddress.ip_network("255.255.255.255/32"),  # Broadcast
     # IPv6 private ranges
-    ipaddress.ip_network("::1/128"),           # Localhost
-    ipaddress.ip_network("fc00::/7"),          # Unique local address
-    ipaddress.ip_network("fe80::/10"),         # Link-local
-    ipaddress.ip_network("ff00::/8"),          # Multicast
+    ipaddress.ip_network("::1/128"),  # Localhost
+    ipaddress.ip_network("fc00::/7"),  # Unique local address
+    ipaddress.ip_network("fe80::/10"),  # Link-local
+    ipaddress.ip_network("ff00::/8"),  # Multicast
 ]
 
 # SECURITY: Block known cloud metadata service hosts
 BLOCKED_HOSTS = {
     "localhost",
     "localhost.localdomain",
-    "metadata.google.internal",       # GCP
-    "metadata.google.com",            # GCP
-    "metadata.gcp",                   # GCP
-    "instance-data.ec2.internal",     # AWS
-    "metadata.azure.com",             # Azure
-    "management.azure.com",           # Azure
-    "kubernetes.default",             # Kubernetes
-    "kubernetes.default.svc",         # Kubernetes
+    "metadata.google.internal",  # GCP
+    "metadata.google.com",  # GCP
+    "metadata.gcp",  # GCP
+    "instance-data.ec2.internal",  # AWS
+    "metadata.azure.com",  # Azure
+    "management.azure.com",  # Azure
+    "kubernetes.default",  # Kubernetes
+    "kubernetes.default.svc",  # Kubernetes
     "kubernetes.default.svc.cluster.local",  # Kubernetes
 }
 
@@ -63,6 +63,7 @@ BLOCKED_HOSTS = {
 # ============================================================
 # IP Validation Utilities
 # ============================================================
+
 
 def is_valid_ip(ip_str: str) -> bool:
     """
@@ -104,6 +105,7 @@ def is_private_ip(ip_str: str) -> bool:
 # ============================================================
 # SSRF Validation Functions
 # ============================================================
+
 
 def validate_url_for_ssrf(url: str) -> tuple[bool, str | None]:
     """
@@ -152,7 +154,9 @@ def validate_url_for_ssrf(url: str) -> tuple[bool, str | None]:
     # Resolve hostname to IP and check against blocked ranges
     try:
         # Get all IPs for the hostname
-        addr_info = socket.getaddrinfo(hostname, parsed.port or (443 if parsed.scheme == "https" else 80))
+        addr_info = socket.getaddrinfo(
+            hostname, parsed.port or (443 if parsed.scheme == "https" else 80)
+        )
         for family, _, _, _, sockaddr in addr_info:
             ip_str = sockaddr[0]
             try:
@@ -160,7 +164,10 @@ def validate_url_for_ssrf(url: str) -> tuple[bool, str | None]:
                 # Check against blocked ranges
                 for blocked_range in BLOCKED_IP_RANGES:
                     if ip in blocked_range:
-                        return False, "Access to internal IP addresses is blocked for security reasons"
+                        return (
+                            False,
+                            "Access to internal IP addresses is blocked for security reasons",
+                        )
             except ValueError:
                 continue  # Skip invalid IPs
     except socket.gaierror as e:
@@ -197,15 +204,12 @@ def is_safe_peer_endpoint(endpoint: str) -> tuple[bool, str | None]:
 # Set via environment variable as comma-separated list
 # If not set, X-Forwarded-For is NOT trusted (secure default)
 TRUSTED_PROXIES = set(
-    ip.strip() for ip in os.getenv("NATLANGCHAIN_TRUSTED_PROXIES", "").split(",")
-    if ip.strip()
+    ip.strip() for ip in os.getenv("NATLANGCHAIN_TRUSTED_PROXIES", "").split(",") if ip.strip()
 )
 
 
 def get_client_ip_from_headers(
-    remote_addr: str,
-    xff_header: str | None,
-    trusted_proxies: set[str] | None = None
+    remote_addr: str, xff_header: str | None, trusted_proxies: set[str] | None = None
 ) -> str:
     """
     Get client IP address from request headers, considering proxies.
@@ -227,13 +231,13 @@ def get_client_ip_from_headers(
         trusted_proxies = TRUSTED_PROXIES
 
     if not remote_addr:
-        return 'unknown'
+        return "unknown"
 
     # Only trust X-Forwarded-For if the request came from a trusted proxy
     if trusted_proxies and remote_addr in trusted_proxies:
         if xff_header:
             # Parse all IPs in the chain
-            parts = [p.strip() for p in xff_header.split(',')]
+            parts = [p.strip() for p in xff_header.split(",")]
 
             # Use rightmost IP that is NOT a trusted proxy
             for ip in reversed(parts):

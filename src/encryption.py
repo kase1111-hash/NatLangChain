@@ -62,11 +62,13 @@ ENCRYPTED_PREFIX = "ENC:1:"  # Version 1 encrypted data
 
 class EncryptionError(Exception):
     """Raised when encryption/decryption fails."""
+
     pass
 
 
 class KeyDerivationError(Exception):
     """Raised when key derivation fails."""
+
     pass
 
 
@@ -89,9 +91,9 @@ def _derive_key(password: str, salt: bytes) -> bytes:
         length=KEY_SIZE,
         salt=salt,
         iterations=PBKDF2_ITERATIONS,
-        backend=default_backend()
+        backend=default_backend(),
     )
-    return kdf.derive(password.encode('utf-8'))
+    return kdf.derive(password.encode("utf-8"))
 
 
 def _get_encryption_key() -> str | None:
@@ -125,11 +127,10 @@ def generate_encryption_key() -> str:
         Base64-encoded 256-bit random key
     """
     key_bytes = secrets.token_bytes(KEY_SIZE)
-    return base64.b64encode(key_bytes).decode('utf-8')
+    return base64.b64encode(key_bytes).decode("utf-8")
 
 
-def encrypt_data(data: str | bytes | dict[str, Any],
-                 key: str | None = None) -> str:
+def encrypt_data(data: str | bytes | dict[str, Any], key: str | None = None) -> str:
     """
     Encrypt data using AES-256-GCM.
 
@@ -153,9 +154,9 @@ def encrypt_data(data: str | bytes | dict[str, Any],
     try:
         # Convert data to bytes
         if isinstance(data, dict):
-            data_bytes = json.dumps(data, sort_keys=True).encode('utf-8')
+            data_bytes = json.dumps(data, sort_keys=True).encode("utf-8")
         elif isinstance(data, str):
-            data_bytes = data.encode('utf-8')
+            data_bytes = data.encode("utf-8")
         else:
             data_bytes = data
 
@@ -172,7 +173,7 @@ def encrypt_data(data: str | bytes | dict[str, Any],
 
         # Combine salt + iv + ciphertext and encode
         encrypted_blob = salt + iv + ciphertext
-        encoded = base64.b64encode(encrypted_blob).decode('utf-8')
+        encoded = base64.b64encode(encrypted_blob).decode("utf-8")
 
         return ENCRYPTED_PREFIX + encoded
 
@@ -180,9 +181,9 @@ def encrypt_data(data: str | bytes | dict[str, Any],
         raise EncryptionError(f"Encryption failed: {e!s}") from e
 
 
-def decrypt_data(encrypted_data: str,
-                 key: str | None = None,
-                 return_type: str = "auto") -> str | bytes | dict[str, Any]:
+def decrypt_data(
+    encrypted_data: str, key: str | None = None, return_type: str = "auto"
+) -> str | bytes | dict[str, Any]:
     """
     Decrypt AES-256-GCM encrypted data.
 
@@ -208,7 +209,7 @@ def decrypt_data(encrypted_data: str,
         if not encrypted_data.startswith(ENCRYPTED_PREFIX):
             raise EncryptionError("Invalid encrypted data format: missing prefix")
 
-        encoded_data = encrypted_data[len(ENCRYPTED_PREFIX):]
+        encoded_data = encrypted_data[len(ENCRYPTED_PREFIX) :]
 
         # Decode from base64
         encrypted_blob = base64.b64decode(encoded_data)
@@ -218,8 +219,8 @@ def decrypt_data(encrypted_data: str,
             raise EncryptionError("Invalid encrypted data: too short")
 
         salt = encrypted_blob[:SALT_SIZE]
-        iv = encrypted_blob[SALT_SIZE:SALT_SIZE + IV_SIZE]
-        ciphertext = encrypted_blob[SALT_SIZE + IV_SIZE:]
+        iv = encrypted_blob[SALT_SIZE : SALT_SIZE + IV_SIZE]
+        ciphertext = encrypted_blob[SALT_SIZE + IV_SIZE :]
 
         # Derive key from password
         derived_key = _derive_key(encryption_key, salt)
@@ -232,7 +233,7 @@ def decrypt_data(encrypted_data: str,
         if return_type == "bytes":
             return plaintext
 
-        plaintext_str = plaintext.decode('utf-8')
+        plaintext_str = plaintext.decode("utf-8")
 
         if return_type == "str":
             return plaintext_str
@@ -267,9 +268,9 @@ def is_encrypted(data: str) -> bool:
     return isinstance(data, str) and data.startswith(ENCRYPTED_PREFIX)
 
 
-def encrypt_sensitive_fields(metadata: dict[str, Any],
-                            key: str | None = None,
-                            additional_fields: set | None = None) -> dict[str, Any]:
+def encrypt_sensitive_fields(
+    metadata: dict[str, Any], key: str | None = None, additional_fields: set | None = None
+) -> dict[str, Any]:
     """
     Encrypt sensitive fields within metadata dictionary.
 
@@ -295,23 +296,27 @@ def encrypt_sensitive_fields(metadata: dict[str, Any],
     for field, value in metadata.items():
         field_lower = field.lower()
         # Normalize separators (hyphens to underscores) for consistent matching
-        field_normalized = field_lower.replace('-', '_')
+        field_normalized = field_lower.replace("-", "_")
         # Check if field name matches any sensitive pattern
         # Use word-boundary matching to avoid false positives like "secretary" matching "secret"
         # A sensitive field matches if it appears as a complete word (delimited by _ or at start/end)
-        field_parts = set(field_normalized.split('_'))
+        field_parts = set(field_normalized.split("_"))
         should_encrypt = (
-            field_normalized in fields_to_encrypt or
-            any(sensitive in field_parts for sensitive in fields_to_encrypt) or
-            any(field_normalized.startswith(sensitive + '_') or
-                field_normalized.endswith('_' + sensitive) or
-                ('_' + sensitive + '_') in field_normalized
-                for sensitive in fields_to_encrypt)
+            field_normalized in fields_to_encrypt
+            or any(sensitive in field_parts for sensitive in fields_to_encrypt)
+            or any(
+                field_normalized.startswith(sensitive + "_")
+                or field_normalized.endswith("_" + sensitive)
+                or ("_" + sensitive + "_") in field_normalized
+                for sensitive in fields_to_encrypt
+            )
         )
 
         if should_encrypt and value is not None:
             # Support strings, dicts, lists, and numeric types
-            if isinstance(value, (str, dict, list, int, float, bool)) and not is_encrypted(str(value)):
+            if isinstance(value, (str, dict, list, int, float, bool)) and not is_encrypted(
+                str(value)
+            ):
                 try:
                     if isinstance(value, str):
                         result[field] = encrypt_data(value, key)
@@ -330,8 +335,7 @@ def encrypt_sensitive_fields(metadata: dict[str, Any],
     return result
 
 
-def decrypt_sensitive_fields(metadata: dict[str, Any],
-                            key: str | None = None) -> dict[str, Any]:
+def decrypt_sensitive_fields(metadata: dict[str, Any], key: str | None = None) -> dict[str, Any]:
     """
     Decrypt sensitive fields within metadata dictionary.
 
@@ -371,8 +375,7 @@ def decrypt_sensitive_fields(metadata: dict[str, Any],
     return result
 
 
-def encrypt_chain_data(chain_data: dict[str, Any],
-                       key: str | None = None) -> str:
+def encrypt_chain_data(chain_data: dict[str, Any], key: str | None = None) -> str:
     """
     Encrypt entire blockchain data for storage.
 
@@ -386,8 +389,7 @@ def encrypt_chain_data(chain_data: dict[str, Any],
     return encrypt_data(chain_data, key)
 
 
-def decrypt_chain_data(encrypted_data: str,
-                       key: str | None = None) -> dict[str, Any]:
+def decrypt_chain_data(encrypted_data: str, key: str | None = None) -> dict[str, Any]:
     """
     Decrypt entire blockchain data from storage.
 
@@ -453,20 +455,20 @@ def verify_hashed_value(value: str, hashed: str) -> bool:
 
 # Export public API
 __all__ = [
-    'ENCRYPTION_ENABLED_ENV',
-    'ENCRYPTION_KEY_ENV',
-    'SENSITIVE_METADATA_FIELDS',
-    'EncryptionError',
-    'KeyDerivationError',
-    'decrypt_chain_data',
-    'decrypt_data',
-    'decrypt_sensitive_fields',
-    'encrypt_chain_data',
-    'encrypt_data',
-    'encrypt_sensitive_fields',
-    'generate_encryption_key',
-    'hash_sensitive_value',
-    'is_encrypted',
-    'is_encryption_enabled',
-    'verify_hashed_value',
+    "ENCRYPTION_ENABLED_ENV",
+    "ENCRYPTION_KEY_ENV",
+    "SENSITIVE_METADATA_FIELDS",
+    "EncryptionError",
+    "KeyDerivationError",
+    "decrypt_chain_data",
+    "decrypt_data",
+    "decrypt_sensitive_fields",
+    "encrypt_chain_data",
+    "encrypt_data",
+    "encrypt_sensitive_fields",
+    "generate_encryption_key",
+    "hash_sensitive_value",
+    "is_encrypted",
+    "is_encryption_enabled",
+    "verify_hashed_value",
 ]

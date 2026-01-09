@@ -29,6 +29,7 @@ try:
     import requests
     from requests.adapters import HTTPAdapter
     from urllib3.util.retry import Retry
+
     HAS_REQUESTS = True
 except ImportError:
     HAS_REQUESTS = False
@@ -67,8 +68,10 @@ TIMESTAMP_WINDOW = 300  # 5 minutes
 # Enums
 # =============================================================================
 
+
 class IntentStatus(Enum):
     """Status of an intent on the chain."""
+
     PENDING = "pending"
     MATCHED = "matched"
     SETTLED = "settled"
@@ -82,6 +85,7 @@ class SubmissionType(Enum):
     Note: This is different from SubmissionType in sunset_clauses.py which
     defines document types with different sunset/archival policies.
     """
+
     SETTLEMENT = "settlement"
     ACCEPT = "accept"
     PAYOUT = "payout"
@@ -91,6 +95,7 @@ class SubmissionType(Enum):
 
 class SettlementStatus(Enum):
     """Status of a settlement."""
+
     PROPOSED = "proposed"
     PARTY_A_ACCEPTED = "party_a_accepted"
     PARTY_B_ACCEPTED = "party_b_accepted"
@@ -104,9 +109,11 @@ class SettlementStatus(Enum):
 # Data Classes
 # =============================================================================
 
+
 @dataclass
 class ChainIntent:
     """An intent fetched from the chain."""
+
     hash: str
     author: str
     prose: str
@@ -134,11 +141,11 @@ class ChainIntent:
             "branch": self.branch,
             "nonce": self.nonce,
             "signature": self.signature,
-            "metadata": self.metadata
+            "metadata": self.metadata,
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> 'ChainIntent':
+    def from_dict(cls, data: dict[str, Any]) -> "ChainIntent":
         """Create from dictionary."""
         return cls(
             hash=data.get("hash", ""),
@@ -152,13 +159,14 @@ class ChainIntent:
             branch=data.get("branch", ""),
             nonce=data.get("nonce"),
             signature=data.get("signature"),
-            metadata=data.get("metadata", {})
+            metadata=data.get("metadata", {}),
         )
 
 
 @dataclass
 class ChainSettlement:
     """A settlement on the chain."""
+
     id: str
     intent_hash_a: str
     intent_hash_b: str
@@ -186,11 +194,11 @@ class ChainSettlement:
             "partyBAccepted": self.party_b_accepted,
             "challenges": self.challenges,
             "createdAt": self.created_at,
-            "finalizedAt": self.finalized_at
+            "finalizedAt": self.finalized_at,
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> 'ChainSettlement':
+    def from_dict(cls, data: dict[str, Any]) -> "ChainSettlement":
         """Create from dictionary."""
         status_str = data.get("status", "proposed")
         try:
@@ -210,13 +218,14 @@ class ChainSettlement:
             party_b_accepted=data.get("partyBAccepted", False),
             challenges=data.get("challenges", []),
             created_at=data.get("createdAt"),
-            finalized_at=data.get("finalizedAt")
+            finalized_at=data.get("finalizedAt"),
         )
 
 
 @dataclass
 class ChainReputation:
     """Mediator reputation from the chain."""
+
     mediator_id: str
     successful_closures: int = 0
     failed_challenges: int = 0
@@ -234,11 +243,11 @@ class ChainReputation:
             "upheldChallengesAgainst": self.upheld_challenges_against,
             "forfeitedFees": self.forfeited_fees,
             "weight": self.weight,
-            "lastUpdated": self.last_updated
+            "lastUpdated": self.last_updated,
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> 'ChainReputation':
+    def from_dict(cls, data: dict[str, Any]) -> "ChainReputation":
         """Create from dictionary."""
         return cls(
             mediator_id=data.get("mediatorId", data.get("mediator_id", "")),
@@ -247,13 +256,14 @@ class ChainReputation:
             upheld_challenges_against=int(data.get("upheldChallengesAgainst", 0)),
             forfeited_fees=int(data.get("forfeitedFees", 0)),
             weight=float(data.get("weight", 1.0)),
-            last_updated=data.get("lastUpdated")
+            last_updated=data.get("lastUpdated"),
         )
 
 
 @dataclass
 class ChainDelegation:
     """A delegation to a mediator."""
+
     delegator_id: str
     mediator_id: str
     amount: float
@@ -267,24 +277,25 @@ class ChainDelegation:
             "mediatorId": self.mediator_id,
             "amount": self.amount,
             "timestamp": self.timestamp,
-            "status": self.status
+            "status": self.status,
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> 'ChainDelegation':
+    def from_dict(cls, data: dict[str, Any]) -> "ChainDelegation":
         """Create from dictionary."""
         return cls(
             delegator_id=data.get("delegatorId", data.get("delegator_id", "")),
             mediator_id=data.get("mediatorId", data.get("mediator_id", "")),
             amount=float(data.get("amount", 0)),
             timestamp=int(data.get("timestamp", 0)),
-            status=data.get("status", "active")
+            status=data.get("status", "active"),
         )
 
 
 @dataclass
 class ChainHealth:
     """Chain health status."""
+
     status: str
     chain_id: str
     consensus_mode: str
@@ -296,6 +307,7 @@ class ChainHealth:
 # =============================================================================
 # HMAC Authentication
 # =============================================================================
+
 
 class HMACAuthenticator:
     """
@@ -314,17 +326,12 @@ class HMACAuthenticator:
         Args:
             secret_key: Shared secret for HMAC signing
         """
-        self.secret_key = secret_key.encode('utf-8')
+        self.secret_key = secret_key.encode("utf-8")
         self._used_nonces: dict[str, int] = {}  # nonce -> timestamp
         self._nonce_cleanup_interval = 3600  # Clean up nonces older than 1 hour
 
     def _compute_signature(
-        self,
-        method: str,
-        path: str,
-        timestamp: int,
-        nonce: str,
-        body: str | None = None
+        self, method: str, path: str, timestamp: int, nonce: str, body: str | None = None
     ) -> str:
         """
         Compute HMAC signature for a request.
@@ -340,18 +347,10 @@ class HMACAuthenticator:
             HMAC signature string
         """
         sign_string = f"{method.upper()}\n{path}\n{timestamp}\n{nonce}\n{body or ''}"
-        return hmac.new(
-            self.secret_key,
-            sign_string.encode('utf-8'),
-            hashlib.sha256
-        ).hexdigest()
+        return hmac.new(self.secret_key, sign_string.encode("utf-8"), hashlib.sha256).hexdigest()
 
     def sign_request(
-        self,
-        method: str,
-        path: str,
-        body: str | None = None,
-        timestamp: int | None = None
+        self, method: str, path: str, body: str | None = None, timestamp: int | None = None
     ) -> dict[str, str]:
         """
         Sign a request and return authentication headers.
@@ -371,20 +370,10 @@ class HMACAuthenticator:
         nonce = secrets.token_hex(16)
         signature = self._compute_signature(method, path, timestamp, nonce, body)
 
-        return {
-            HMAC_HEADER: signature,
-            TIMESTAMP_HEADER: str(timestamp),
-            NONCE_HEADER: nonce
-        }
+        return {HMAC_HEADER: signature, TIMESTAMP_HEADER: str(timestamp), NONCE_HEADER: nonce}
 
     def verify_request(
-        self,
-        method: str,
-        path: str,
-        body: str | None,
-        signature: str,
-        timestamp: str,
-        nonce: str
+        self, method: str, path: str, body: str | None, signature: str, timestamp: str, nonce: str
     ) -> tuple[bool, str]:
         """
         Verify a request's authentication.
@@ -430,15 +419,13 @@ class HMACAuthenticator:
         current_time = int(time.time())
         cutoff = current_time - self._nonce_cleanup_interval
 
-        self._used_nonces = {
-            nonce: ts for nonce, ts in self._used_nonces.items()
-            if ts > cutoff
-        }
+        self._used_nonces = {nonce: ts for nonce, ts in self._used_nonces.items() if ts > cutoff}
 
 
 # =============================================================================
 # Chain Interface
 # =============================================================================
+
 
 class ChainInterface:
     """
@@ -457,7 +444,7 @@ class ChainInterface:
         secret_key: str | None = None,
         verify_ssl: bool = True,
         timeout: int = DEFAULT_TIMEOUT,
-        mediator_id: str | None = None
+        mediator_id: str | None = None,
     ):
         """
         Initialize chain interface.
@@ -469,7 +456,7 @@ class ChainInterface:
             timeout: Request timeout in seconds
             mediator_id: This mediator's identifier
         """
-        self.endpoint = endpoint.rstrip('/')
+        self.endpoint = endpoint.rstrip("/")
         self.api_base = f"{self.endpoint}/api/{API_VERSION}"
         self.verify_ssl = verify_ssl
         self.timeout = timeout
@@ -500,7 +487,7 @@ class ChainInterface:
             total=MAX_RETRIES,
             backoff_factor=RETRY_BACKOFF_FACTOR,
             status_forcelist=[429, 500, 502, 503, 504],
-            allowed_methods=["HEAD", "GET", "POST", "PUT", "DELETE", "OPTIONS"]
+            allowed_methods=["HEAD", "GET", "POST", "PUT", "DELETE", "OPTIONS"],
         )
 
         adapter = HTTPAdapter(max_retries=retry_strategy)
@@ -508,18 +495,20 @@ class ChainInterface:
         self.session.mount("https://", adapter)
 
         # Set default headers
-        self.session.headers.update({
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-            "User-Agent": f"NatLangChain-Python/{API_VERSION}"
-        })
+        self.session.headers.update(
+            {
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "User-Agent": f"NatLangChain-Python/{API_VERSION}",
+            }
+        )
 
     def _make_request(
         self,
         method: str,
         path: str,
         body: dict[str, Any] | None = None,
-        params: dict[str, Any] | None = None
+        params: dict[str, Any] | None = None,
     ) -> tuple[bool, Any]:
         """
         Make an authenticated HTTP request.
@@ -542,9 +531,7 @@ class ChainInterface:
         # Build headers
         headers = {}
         if self.authenticator:
-            auth_headers = self.authenticator.sign_request(
-                method, path, body_str
-            )
+            auth_headers = self.authenticator.sign_request(method, path, body_str)
             headers.update(auth_headers)
 
         # Log request
@@ -553,7 +540,7 @@ class ChainInterface:
             "method": method,
             "path": path,
             "params": params,
-            "body_hash": hashlib.sha256(body_str.encode()).hexdigest() if body_str else None
+            "body_hash": hashlib.sha256(body_str.encode()).hexdigest() if body_str else None,
         }
 
         try:
@@ -564,7 +551,7 @@ class ChainInterface:
                 params=params,
                 headers=headers,
                 timeout=(CONNECT_TIMEOUT, self.timeout),
-                verify=self.verify_ssl
+                verify=self.verify_ssl,
             )
 
             # Log response
@@ -582,7 +569,7 @@ class ChainInterface:
                 error_data = {
                     "error": f"HTTP {response.status_code}",
                     "status_code": response.status_code,
-                    "message": response.text
+                    "message": response.text,
                 }
                 with contextlib.suppress(Exception):
                     error_data.update(response.json())
@@ -610,10 +597,7 @@ class ChainInterface:
     # =========================================================================
 
     def get_intents(
-        self,
-        status: IntentStatus | None = None,
-        since: int | None = None,
-        limit: int | None = None
+        self, status: IntentStatus | None = None, since: int | None = None, limit: int | None = None
     ) -> tuple[bool, list[ChainIntent]]:
         """
         Fetch intents from the chain.
@@ -658,7 +642,7 @@ class ChainInterface:
         author: str,
         content: dict[str, Any],
         metadata: dict[str, Any],
-        signature: str | None = None
+        signature: str | None = None,
     ) -> tuple[bool, dict[str, Any]]:
         """
         Submit an entry to the chain.
@@ -678,25 +662,20 @@ class ChainInterface:
             "author": author,
             "content": content,
             "metadata": metadata,
-            "signature": signature
+            "signature": signature,
         }
 
         success, result = self._make_request("POST", "/entries", body=body)
 
         if success:
-            self._emit("entry_submitted", {
-                "type": entry_type.value,
-                "entry_id": result.get("entryId")
-            })
+            self._emit(
+                "entry_submitted", {"type": entry_type.value, "entry_id": result.get("entryId")}
+            )
 
         return success, result
 
     def propose_settlement(
-        self,
-        intent_hash_a: str,
-        intent_hash_b: str,
-        terms: dict[str, Any],
-        fee: float
+        self, intent_hash_a: str, intent_hash_b: str, terms: dict[str, Any], fee: float
     ) -> tuple[bool, dict[str, Any]]:
         """
         Propose a settlement between two intents.
@@ -718,21 +697,18 @@ class ChainInterface:
             "intentHashB": intent_hash_b,
             "mediatorId": self.mediator_id,
             "terms": terms,
-            "fee": fee
+            "fee": fee,
         }
 
         return self.submit_entry(
             entry_type=SubmissionType.SETTLEMENT,
             author=self.mediator_id,
             content={"settlement": metadata},
-            metadata=metadata
+            metadata=metadata,
         )
 
     def accept_settlement(
-        self,
-        settlement_id: str,
-        party: str,
-        party_identifier: str
+        self, settlement_id: str, party: str, party_identifier: str
     ) -> tuple[bool, dict[str, Any]]:
         """
         Submit acceptance of a settlement.
@@ -745,23 +721,16 @@ class ChainInterface:
         Returns:
             Tuple of (success, result)
         """
-        metadata = {
-            "settlementId": settlement_id,
-            "party": party,
-            "partyId": party_identifier
-        }
+        metadata = {"settlementId": settlement_id, "party": party, "partyId": party_identifier}
 
         return self.submit_entry(
             entry_type=SubmissionType.ACCEPT,
             author=party_identifier,
             content={"acceptance": metadata},
-            metadata=metadata
+            metadata=metadata,
         )
 
-    def claim_payout(
-        self,
-        settlement_id: str
-    ) -> tuple[bool, dict[str, Any]]:
+    def claim_payout(self, settlement_id: str) -> tuple[bool, dict[str, Any]]:
         """
         Claim payout for a finalized settlement.
 
@@ -774,24 +743,21 @@ class ChainInterface:
         metadata = {
             "settlementId": settlement_id,
             "mediatorId": self.mediator_id,
-            "claimedAt": datetime.utcnow().isoformat()
+            "claimedAt": datetime.utcnow().isoformat(),
         }
 
         return self.submit_entry(
             entry_type=SubmissionType.PAYOUT,
             author=self.mediator_id,
             content={"payout": metadata},
-            metadata=metadata
+            metadata=metadata,
         )
 
     # =========================================================================
     # Settlement Operations
     # =========================================================================
 
-    def get_settlement_status(
-        self,
-        settlement_id: str
-    ) -> tuple[bool, ChainSettlement | None]:
+    def get_settlement_status(self, settlement_id: str) -> tuple[bool, ChainSettlement | None]:
         """
         Get the status of a settlement.
 
@@ -801,9 +767,7 @@ class ChainInterface:
         Returns:
             Tuple of (success, settlement or error)
         """
-        success, result = self._make_request(
-            "GET", f"/settlements/{settlement_id}/status"
-        )
+        success, result = self._make_request("GET", f"/settlements/{settlement_id}/status")
 
         if success:
             settlement = ChainSettlement.from_dict(result)
@@ -811,10 +775,7 @@ class ChainInterface:
 
         return False, result
 
-    def is_settlement_accepted(
-        self,
-        settlement_id: str
-    ) -> tuple[bool, bool]:
+    def is_settlement_accepted(self, settlement_id: str) -> tuple[bool, bool]:
         """
         Check if both parties have accepted a settlement.
 
@@ -836,10 +797,7 @@ class ChainInterface:
     # Reputation Operations
     # =========================================================================
 
-    def get_reputation(
-        self,
-        mediator_id: str | None = None
-    ) -> tuple[bool, ChainReputation | None]:
+    def get_reputation(self, mediator_id: str | None = None) -> tuple[bool, ChainReputation | None]:
         """
         Get reputation for a mediator.
 
@@ -851,9 +809,7 @@ class ChainInterface:
         """
         mid = mediator_id or self.mediator_id
 
-        success, result = self._make_request(
-            "GET", f"/reputation/{mid}"
-        )
+        success, result = self._make_request("GET", f"/reputation/{mid}")
 
         if success:
             reputation = ChainReputation.from_dict(result)
@@ -862,9 +818,7 @@ class ChainInterface:
         return False, result
 
     def update_reputation(
-        self,
-        mediator_id: str,
-        reputation: ChainReputation
+        self, mediator_id: str, reputation: ChainReputation
     ) -> tuple[bool, dict[str, Any]]:
         """
         Update reputation for a mediator.
@@ -876,10 +830,7 @@ class ChainInterface:
         Returns:
             Tuple of (success, result)
         """
-        body = {
-            "mediatorId": mediator_id,
-            "reputation": reputation.to_dict()
-        }
+        body = {"mediatorId": mediator_id, "reputation": reputation.to_dict()}
 
         return self._make_request("POST", "/reputation", body=body)
 
@@ -887,10 +838,7 @@ class ChainInterface:
     # Delegation Operations
     # =========================================================================
 
-    def get_delegations(
-        self,
-        mediator_id: str | None = None
-    ) -> tuple[bool, list[ChainDelegation]]:
+    def get_delegations(self, mediator_id: str | None = None) -> tuple[bool, list[ChainDelegation]]:
         """
         Get delegations for a mediator.
 
@@ -902,9 +850,7 @@ class ChainInterface:
         """
         mid = mediator_id or self.mediator_id
 
-        success, result = self._make_request(
-            "GET", f"/delegations/{mid}"
-        )
+        success, result = self._make_request("GET", f"/delegations/{mid}")
 
         if success:
             delegations_data = result.get("delegations", [])
@@ -917,10 +863,7 @@ class ChainInterface:
     # Staking Operations
     # =========================================================================
 
-    def bond_stake(
-        self,
-        amount: float
-    ) -> tuple[bool, dict[str, Any]]:
+    def bond_stake(self, amount: float) -> tuple[bool, dict[str, Any]]:
         """
         Bond stake for this mediator.
 
@@ -930,10 +873,7 @@ class ChainInterface:
         Returns:
             Tuple of (success, result)
         """
-        body = {
-            "mediatorId": self.mediator_id,
-            "amount": amount
-        }
+        body = {"mediatorId": self.mediator_id, "amount": amount}
 
         success, result = self._make_request("POST", "/stake/bond", body=body)
 
@@ -949,9 +889,7 @@ class ChainInterface:
         Returns:
             Tuple of (success, result)
         """
-        body = {
-            "mediatorId": self.mediator_id
-        }
+        body = {"mediatorId": self.mediator_id}
 
         success, result = self._make_request("POST", "/stake/unbond", body=body)
 
@@ -979,11 +917,7 @@ class ChainInterface:
         return False, result
 
     def submit_governance_proposal(
-        self,
-        title: str,
-        description: str,
-        proposal_type: str,
-        parameters: dict[str, Any]
+        self, title: str, description: str, proposal_type: str, parameters: dict[str, Any]
     ) -> tuple[bool, dict[str, Any]]:
         """
         Submit a governance proposal.
@@ -1002,7 +936,7 @@ class ChainInterface:
             "description": description,
             "type": proposal_type,
             "parameters": parameters,
-            "proposer": self.mediator_id
+            "proposer": self.mediator_id,
         }
 
         return self._make_request("POST", "/governance/proposals", body=body)
@@ -1024,9 +958,7 @@ class ChainInterface:
         try:
             if HAS_REQUESTS:
                 response = self.session.get(
-                    url,
-                    timeout=(CONNECT_TIMEOUT, self.timeout),
-                    verify=self.verify_ssl
+                    url, timeout=(CONNECT_TIMEOUT, self.timeout), verify=self.verify_ssl
                 )
 
                 if response.ok:
@@ -1037,7 +969,7 @@ class ChainInterface:
                         consensus_mode=data.get("consensusMode", ""),
                         intent_count=data.get("intents", 0),
                         settlement_count=data.get("settlements", 0),
-                        uptime=data.get("uptime", 0)
+                        uptime=data.get("uptime", 0),
                     )
                     return True, health
                 else:
@@ -1072,9 +1004,7 @@ class ChainInterface:
             callback: Callback to remove
         """
         if event in self._callbacks:
-            self._callbacks[event] = [
-                cb for cb in self._callbacks[event] if cb != callback
-            ]
+            self._callbacks[event] = [cb for cb in self._callbacks[event] if cb != callback]
 
     def _emit(self, event: str, data: dict[str, Any]):
         """Emit an event to registered callbacks."""
@@ -1102,6 +1032,7 @@ class ChainInterface:
 # Mock Chain Interface for Testing
 # =============================================================================
 
+
 class MockChainInterface(ChainInterface):
     """
     Mock chain interface for testing without a real mediator-node.
@@ -1110,9 +1041,7 @@ class MockChainInterface(ChainInterface):
     """
 
     def __init__(
-        self,
-        mediator_id: str | None = None,
-        initial_intents: list[ChainIntent] | None = None
+        self, mediator_id: str | None = None, initial_intents: list[ChainIntent] | None = None
     ):
         """
         Initialize mock interface.
@@ -1121,11 +1050,7 @@ class MockChainInterface(ChainInterface):
             mediator_id: Mediator identifier
             initial_intents: Optional initial intents
         """
-        super().__init__(
-            endpoint="http://mock:8545",
-            mediator_id=mediator_id,
-            verify_ssl=False
-        )
+        super().__init__(endpoint="http://mock:8545", mediator_id=mediator_id, verify_ssl=False)
 
         # Mock data stores
         self._intents: dict[str, ChainIntent] = {}
@@ -1145,17 +1070,19 @@ class MockChainInterface(ChainInterface):
         method: str,
         path: str,
         body: dict[str, Any] | None = None,
-        params: dict[str, Any] | None = None
+        params: dict[str, Any] | None = None,
     ) -> tuple[bool, Any]:
         """Override to use mock data instead of HTTP."""
         # Log the request
-        self.audit_log.append({
-            "timestamp": datetime.utcnow().isoformat(),
-            "method": method,
-            "path": path,
-            "params": params,
-            "mock": True
-        })
+        self.audit_log.append(
+            {
+                "timestamp": datetime.utcnow().isoformat(),
+                "method": method,
+                "path": path,
+                "params": params,
+                "mock": True,
+            }
+        )
 
         # Route to mock handlers
         if path == "/intents" and method == "GET":
@@ -1209,10 +1136,7 @@ class MockChainInterface(ChainInterface):
         entry_id = f"entry_{secrets.token_hex(8)}"
 
         # Store entry
-        self._entries.append({
-            "id": entry_id,
-            **body
-        })
+        self._entries.append({"id": entry_id, **body})
 
         # Handle settlement type
         if body.get("type") == "settlement":
@@ -1225,7 +1149,7 @@ class MockChainInterface(ChainInterface):
                 terms=metadata.get("terms", {}),
                 fee=metadata.get("fee", 0),
                 status=SettlementStatus.PROPOSED,
-                created_at=datetime.utcnow().isoformat()
+                created_at=datetime.utcnow().isoformat(),
             )
             self._settlements[settlement.id] = settlement
 
@@ -1261,9 +1185,7 @@ class MockChainInterface(ChainInterface):
 
         # Return default reputation
         default_rep = ChainReputation(
-            mediator_id=mediator_id,
-            weight=1.0,
-            last_updated=int(time.time())
+            mediator_id=mediator_id, weight=1.0, last_updated=int(time.time())
         )
         return True, default_rep.to_dict()
 
@@ -1301,10 +1223,7 @@ class MockChainInterface(ChainInterface):
         self._intents[intent.hash] = intent
 
     def set_test_settlement_accepted(
-        self,
-        settlement_id: str,
-        party_a: bool = False,
-        party_b: bool = False
+        self, settlement_id: str, party_a: bool = False, party_b: bool = False
     ):
         """Set settlement acceptance for testing."""
         if settlement_id in self._settlements:
@@ -1346,7 +1265,7 @@ def get_chain_interface() -> ChainInterface:
 def configure_chain_interface(
     endpoint: str = DEFAULT_CHAIN_ENDPOINT,
     secret_key: str | None = None,
-    mediator_id: str | None = None
+    mediator_id: str | None = None,
 ) -> ChainInterface:
     """
     Configure and return the default chain interface.
@@ -1361,9 +1280,7 @@ def configure_chain_interface(
     """
     global _default_interface
     _default_interface = ChainInterface(
-        endpoint=endpoint,
-        secret_key=secret_key,
-        mediator_id=mediator_id
+        endpoint=endpoint, secret_key=secret_key, mediator_id=mediator_id
     )
     return _default_interface
 

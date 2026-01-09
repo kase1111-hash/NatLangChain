@@ -16,14 +16,14 @@ import unittest
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
-sys.path.insert(0, 'src')
+sys.path.insert(0, "src")
 
 
 class TestBoundarySIEM(unittest.TestCase):
     """Tests for the Boundary SIEM client."""
 
     def setUp(self):
-        from boundary_siem import SIEMClient, SIEMEvent, SIEMSeverity, SIEMEventCategory
+        from boundary_siem import SIEMClient, SIEMEvent, SIEMEventCategory, SIEMSeverity
 
         self.SIEMClient = SIEMClient
         self.SIEMEvent = SIEMEvent
@@ -39,7 +39,7 @@ class TestBoundarySIEM(unittest.TestCase):
             severity=self.SIEMSeverity.INFORMATIONAL,
             message="Test entry created",
             actor={"user": "test_user"},
-            target={"entry_id": "entry-123"}
+            target={"entry_id": "entry-123"},
         )
 
         json_data = event.to_json()
@@ -59,7 +59,7 @@ class TestBoundarySIEM(unittest.TestCase):
             severity=self.SIEMSeverity.HIGH,
             message="Boundary violation detected",
             actor={"ip": "192.168.1.100"},
-            target={"destination": "malicious.com"}
+            target={"destination": "malicious.com"},
         )
 
         cef = event.to_cef()
@@ -78,7 +78,7 @@ class TestBoundarySIEM(unittest.TestCase):
             action="start",
             outcome="success",
             severity=self.SIEMSeverity.INFORMATIONAL,
-            message="System started"
+            message="System started",
         )
 
         result = client.send_event(event)
@@ -94,7 +94,7 @@ class TestBoundarySIEM(unittest.TestCase):
             action="start",
             outcome="success",
             severity=self.SIEMSeverity.INFORMATIONAL,
-            message="Test"
+            message="Test",
         )
 
         # Fill the queue
@@ -135,11 +135,11 @@ class TestBoundaryModes(unittest.TestCase):
         mock_enforcement.usb.allow_usb_storage.return_value = MagicMock(success=True)
 
         # Patch SecurityEnforcementManager to return our mock
-        with patch('boundary_modes.SecurityEnforcementManager', return_value=mock_enforcement):
+        with patch("boundary_modes.SecurityEnforcementManager", return_value=mock_enforcement):
             self.manager = BoundaryModeManager(
                 initial_mode=BoundaryMode.RESTRICTED,
                 enable_tripwires=True,
-                cooldown_period=0  # No cooldown for tests
+                cooldown_period=0,  # No cooldown for tests
             )
             # Store the mock for later use
             self.manager._enforcement = mock_enforcement
@@ -150,11 +150,7 @@ class TestBoundaryModes(unittest.TestCase):
 
     def test_mode_transition(self):
         """Test mode transition."""
-        transition = self.manager.set_mode(
-            self.BoundaryMode.AIRGAP,
-            reason="Testing",
-            force=True
-        )
+        transition = self.manager.set_mode(self.BoundaryMode.AIRGAP, reason="Testing", force=True)
 
         self.assertTrue(transition.success)
         self.assertEqual(transition.to_mode, self.BoundaryMode.AIRGAP)
@@ -167,9 +163,7 @@ class TestBoundaryModes(unittest.TestCase):
 
         # Try to relax to OPEN without forcing
         transition = self.manager.set_mode(
-            self.BoundaryMode.OPEN,
-            reason="Try to relax",
-            force=False
+            self.BoundaryMode.OPEN, reason="Try to relax", force=False
         )
 
         self.assertFalse(transition.success)
@@ -182,7 +176,7 @@ class TestBoundaryModes(unittest.TestCase):
             requested_by="test_user",
             to_mode=self.BoundaryMode.OPEN,
             reason="Testing",
-            validity_minutes=5
+            validity_minutes=5,
         )
 
         self.assertIsNotNone(request.confirmation_code)
@@ -192,7 +186,7 @@ class TestBoundaryModes(unittest.TestCase):
         transition = self.manager.confirm_override(
             request_id=request.request_id,
             confirmation_code=request.confirmation_code,
-            confirmed_by="admin"
+            confirmed_by="admin",
         )
 
         self.assertTrue(transition.success)
@@ -200,15 +194,11 @@ class TestBoundaryModes(unittest.TestCase):
     def test_human_override_wrong_code(self):
         """Test override fails with wrong code."""
         request = self.manager.request_override(
-            requested_by="test_user",
-            to_mode=self.BoundaryMode.OPEN,
-            reason="Testing"
+            requested_by="test_user", to_mode=self.BoundaryMode.OPEN, reason="Testing"
         )
 
         transition = self.manager.confirm_override(
-            request_id=request.request_id,
-            confirmation_code="wrong_code",
-            confirmed_by="admin"
+            request_id=request.request_id, confirmation_code="wrong_code", confirmed_by="admin"
         )
 
         self.assertFalse(transition.success)
@@ -237,8 +227,7 @@ class TestBoundaryModes(unittest.TestCase):
         """Test tripwire triggering."""
         # Trigger data exfiltration tripwire
         triggered = self.manager.trigger_tripwire(
-            self.TripwireType.DATA_EXFILTRATION_ATTEMPT,
-            "Test exfiltration attempt"
+            self.TripwireType.DATA_EXFILTRATION_ATTEMPT, "Test exfiltration attempt"
         )
 
         self.assertTrue(triggered)
@@ -251,13 +240,13 @@ class TestAgentSecurity(unittest.TestCase):
 
     def setUp(self):
         from agent_security import (
+            AgentAttestationManager,
             PromptInjectionDetector,
             RAGPoisoningDetector,
             ResponseGuardrails,
-            ToolOutputSanitizer,
-            AgentAttestationManager,
-            ThreatCategory,
             RiskLevel,
+            ThreatCategory,
+            ToolOutputSanitizer,
         )
 
         self.PromptInjectionDetector = PromptInjectionDetector
@@ -382,9 +371,7 @@ class TestAgentSecurity(unittest.TestCase):
         manager = self.AgentAttestationManager()
 
         attestation = manager.issue_attestation(
-            agent_id="agent-001",
-            capabilities=["read", "write", "execute"],
-            validity_hours=24
+            agent_id="agent-001", capabilities=["read", "write", "execute"], validity_hours=24
         )
 
         self.assertEqual(attestation.agent_id, "agent-001")
@@ -407,10 +394,7 @@ class TestAgentSecurity(unittest.TestCase):
         """Test that tampered attestations are rejected."""
         manager = self.AgentAttestationManager()
 
-        attestation = manager.issue_attestation(
-            agent_id="agent-001",
-            capabilities=["read"]
-        )
+        attestation = manager.issue_attestation(agent_id="agent-001", capabilities=["read"])
 
         # Tamper with capabilities
         attestation.capabilities = ["read", "admin"]
@@ -426,8 +410,8 @@ class TestBoundaryDaemon(unittest.TestCase):
     def setUp(self):
         from boundary_daemon import (
             BoundaryDaemon,
-            EnforcementMode,
             DataClassification,
+            EnforcementMode,
             ViolationType,
         )
 
@@ -441,27 +425,22 @@ class TestBoundaryDaemon(unittest.TestCase):
         daemon = self.BoundaryDaemon()
 
         # Test API key detection
-        result = daemon.authorize_request({
-            "source": "agent",
-            "destination": "external",
-            "payload": {"data": "api_key=secret123"}
-        })
+        result = daemon.authorize_request(
+            {"source": "agent", "destination": "external", "payload": {"data": "api_key=secret123"}}
+        )
 
         self.assertFalse(result["authorized"])
         self.assertEqual(
-            result["violation"]["type"],
-            self.ViolationType.BLOCKED_PATTERN_DETECTED.value
+            result["violation"]["type"], self.ViolationType.BLOCKED_PATTERN_DETECTED.value
         )
 
     def test_credit_card_detection(self):
         """Test detection of credit card numbers."""
         daemon = self.BoundaryDaemon()
 
-        result = daemon.authorize_request({
-            "source": "agent",
-            "destination": "external",
-            "payload": {"card": "4111111111111111"}
-        })
+        result = daemon.authorize_request(
+            {"source": "agent", "destination": "external", "payload": {"card": "4111111111111111"}}
+        )
 
         self.assertFalse(result["authorized"])
 
@@ -470,12 +449,14 @@ class TestBoundaryDaemon(unittest.TestCase):
         daemon = self.BoundaryDaemon()
 
         # RESTRICTED data should never go external
-        result = daemon.authorize_request({
-            "source": "internal",
-            "destination": "external",
-            "payload": {"data": "normal data"},
-            "data_classification": "restricted"
-        })
+        result = daemon.authorize_request(
+            {
+                "source": "internal",
+                "destination": "external",
+                "payload": {"data": "normal data"},
+                "data_classification": "restricted",
+            }
+        )
 
         self.assertFalse(result["authorized"])
 
@@ -483,12 +464,14 @@ class TestBoundaryDaemon(unittest.TestCase):
         """Test that safe requests are authorized."""
         daemon = self.BoundaryDaemon()
 
-        result = daemon.authorize_request({
-            "source": "agent",
-            "destination": "natlangchain",
-            "payload": {"data": "Just some normal public data"},
-            "data_classification": "public"
-        })
+        result = daemon.authorize_request(
+            {
+                "source": "agent",
+                "destination": "natlangchain",
+                "payload": {"data": "Just some normal public data"},
+                "data_classification": "public",
+            }
+        )
 
         self.assertTrue(result["authorized"])
 
@@ -513,22 +496,22 @@ class TestUnifiedProtection(unittest.TestCase):
     """Tests for the unified boundary protection layer."""
 
     def setUp(self):
+        from boundary_modes import BoundaryMode
         from boundary_protection import (
             BoundaryProtection,
             ProtectionConfig,
             ProtectionResult,
         )
-        from boundary_modes import BoundaryMode
 
         self.BoundaryProtection = BoundaryProtection
         self.ProtectionConfig = ProtectionConfig
         self.ProtectionResult = ProtectionResult
         self.BoundaryMode = BoundaryMode
 
-    @patch('boundary_protection.SecurityEnforcementManager')
-    @patch('boundary_protection.init_mode_manager')
-    @patch('boundary_protection.init_siem_client')
-    @patch('boundary_protection.init_agent_security')
+    @patch("boundary_protection.SecurityEnforcementManager")
+    @patch("boundary_protection.init_mode_manager")
+    @patch("boundary_protection.init_siem_client")
+    @patch("boundary_protection.init_agent_security")
     def test_protection_initialization(self, mock_agent, mock_siem, mock_mode, mock_enforce):
         """Test protection system initialization."""
         mock_mode.return_value = MagicMock()
@@ -537,8 +520,7 @@ class TestUnifiedProtection(unittest.TestCase):
         mock_enforce.return_value = MagicMock()
 
         config = self.ProtectionConfig(
-            initial_mode=self.BoundaryMode.RESTRICTED,
-            enable_tripwires=True
+            initial_mode=self.BoundaryMode.RESTRICTED, enable_tripwires=True
         )
 
         protection = self.BoundaryProtection(config)
@@ -546,16 +528,17 @@ class TestUnifiedProtection(unittest.TestCase):
         self.assertIsNotNone(protection.daemon)
         self.assertIsNotNone(protection.agent_security)
 
-    @patch('boundary_protection.SecurityEnforcementManager')
-    @patch('boundary_protection.init_mode_manager')
-    @patch('boundary_protection.init_agent_security')
+    @patch("boundary_protection.SecurityEnforcementManager")
+    @patch("boundary_protection.init_mode_manager")
+    @patch("boundary_protection.init_agent_security")
     def test_input_checking(self, mock_agent, mock_mode, mock_enforce):
         """Test input security checking."""
         mock_mode.return_value = MagicMock()
         mock_enforce.return_value = MagicMock()
 
         # Create agent security mock with proper response
-        from agent_security import ThreatDetection, ThreatCategory, RiskLevel
+        from agent_security import RiskLevel, ThreatCategory, ThreatDetection
+
         mock_agent_instance = MagicMock()
         mock_agent_instance.check_input.return_value = ThreatDetection(
             detected=True,
@@ -563,13 +546,11 @@ class TestUnifiedProtection(unittest.TestCase):
             risk_level=RiskLevel.CRITICAL,
             patterns_matched=["jailbreak:test"],
             details="Test detection",
-            recommendation="Block input"
+            recommendation="Block input",
         )
         mock_agent.return_value = mock_agent_instance
 
-        config = self.ProtectionConfig(
-            enable_injection_detection=True
-        )
+        config = self.ProtectionConfig(enable_injection_detection=True)
         protection = self.BoundaryProtection(config)
         protection._running = True
 
@@ -585,37 +566,39 @@ class TestAPIEndpoints(unittest.TestCase):
         """Set up Flask test client."""
         try:
             from flask import Flask
+
             from api.boundary import boundary_bp
 
             self.app = Flask(__name__)
-            self.app.config['TESTING'] = True
+            self.app.config["TESTING"] = True
             self.app.register_blueprint(boundary_bp)
 
             # Mock the require_api_key decorator to always pass
             import api.utils
+
             api.utils.require_api_key = lambda f: f
 
             self.client = self.app.test_client()
         except ImportError:
             self.skipTest("Flask not available")
 
-    @patch('api.boundary._get_protection')
+    @patch("api.boundary._get_protection")
     def test_status_endpoint(self, mock_get):
         """Test the /boundary/status endpoint."""
         mock_protection = MagicMock()
         mock_protection.get_status.return_value = {
             "running": True,
-            "mode": {"current": "restricted"}
+            "mode": {"current": "restricted"},
         }
         mock_get.return_value = mock_protection
 
-        response = self.client.get('/boundary/status')
+        response = self.client.get("/boundary/status")
 
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.data)
         self.assertTrue(data["initialized"])
 
-    @patch('api.boundary._get_protection')
+    @patch("api.boundary._get_protection")
     def test_mode_endpoint(self, mock_get):
         """Test the /boundary/mode endpoint."""
         from boundary_modes import BoundaryMode
@@ -624,17 +607,17 @@ class TestAPIEndpoints(unittest.TestCase):
         mock_protection.current_mode = BoundaryMode.RESTRICTED
         mock_protection.modes.get_status.return_value = {
             "config": {"network_allowed": True},
-            "cooldown_remaining": 0
+            "cooldown_remaining": 0,
         }
         mock_get.return_value = mock_protection
 
-        response = self.client.get('/boundary/mode')
+        response = self.client.get("/boundary/mode")
 
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.data)
         self.assertEqual(data["current_mode"], "restricted")
 
-    @patch('api.boundary._get_protection')
+    @patch("api.boundary._get_protection")
     def test_check_input_endpoint(self, mock_get):
         """Test the /boundary/check/input endpoint."""
         from agent_security import RiskLevel
@@ -644,16 +627,16 @@ class TestAPIEndpoints(unittest.TestCase):
             "allowed": True,
             "action": "input_check",
             "risk_level": "none",
-            "details": {}
+            "details": {},
         }
         mock_protection = MagicMock()
         mock_protection.check_input.return_value = mock_result
         mock_get.return_value = mock_protection
 
         response = self.client.post(
-            '/boundary/check/input',
+            "/boundary/check/input",
             data=json.dumps({"text": "Hello world"}),
-            content_type='application/json'
+            content_type="application/json",
         )
 
         self.assertEqual(response.status_code, 200)
@@ -662,13 +645,13 @@ class TestAPIEndpoints(unittest.TestCase):
 
     def test_status_not_initialized(self):
         """Test status endpoint when protection is not initialized."""
-        with patch('api.boundary._get_protection', return_value=None):
-            response = self.client.get('/boundary/status')
+        with patch("api.boundary._get_protection", return_value=None):
+            response = self.client.get("/boundary/status")
 
             self.assertEqual(response.status_code, 503)
             data = json.loads(response.data)
             self.assertFalse(data["initialized"])
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

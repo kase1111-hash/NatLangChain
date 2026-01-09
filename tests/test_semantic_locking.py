@@ -44,7 +44,7 @@ class TestSemanticLockActivation:
             claimed_divergence="Semantic drift detected in clause 3",
             initiator_id="party-a",
             registry_version="1.0",
-            prose_content="Test contract content"
+            prose_content="Test contract content",
         )
 
         assert lock.is_active is True
@@ -61,7 +61,7 @@ class TestSemanticLockActivation:
             claimed_divergence="Semantic break detected",
             initiator_id="party-b",
             registry_version="1.0",
-            prose_content="Test contract content"
+            prose_content="Test contract content",
         )
 
         assert lock.is_active is True
@@ -79,7 +79,7 @@ class TestSemanticLockActivation:
             registry_version="1.0",
             prose_content="Original contract content",
             anchor_language="en",
-            verified_pou_hashes=["hash1", "hash2"]
+            verified_pou_hashes=["hash1", "hash2"],
         )
 
         assert lock.locked_state.registry_version == "1.0"
@@ -95,7 +95,7 @@ class TestSemanticLockActivation:
             claimed_divergence="First dispute",
             initiator_id="party-a",
             registry_version="1.0",
-            prose_content="Content"
+            prose_content="Content",
         )
 
         try:
@@ -105,7 +105,7 @@ class TestSemanticLockActivation:
                 claimed_divergence="Second dispute",
                 initiator_id="party-b",
                 registry_version="1.0",
-                prose_content="Content"
+                prose_content="Content",
             )
             assert False, "Should have raised ValueError"
         except ValueError as e:
@@ -120,7 +120,7 @@ class TestSemanticLockActivation:
             claimed_divergence="Breach detected",
             initiator_id="party-a",
             registry_version="1.0",
-            prose_content="Content"
+            prose_content="Content",
         )
 
         assert lock.lock_time == entry.timestamp
@@ -146,7 +146,7 @@ class TestCoolingPeriods:
             claimed_divergence="Test",
             initiator_id="party-a",
             registry_version="1.0",
-            prose_content="Content"
+            prose_content="Content",
         )
 
         status = manager.get_cooling_status(lock.lock_id)
@@ -166,7 +166,7 @@ class TestCoolingPeriods:
             claimed_divergence="Test",
             initiator_id="party-a",
             registry_version="1.0",
-            prose_content="Content"
+            prose_content="Content",
         )
 
         assert manager.is_cooling_active(lock.lock_id) is True
@@ -184,7 +184,7 @@ class TestActionEnforcement:
             claimed_divergence="Test",
             initiator_id="party-a",
             registry_version="1.0",
-            prose_content="Content"
+            prose_content="Content",
         )
 
         allowed, _reason = manager.can_perform_action(lock.lock_id, LockAction.CLARIFICATION)
@@ -199,7 +199,7 @@ class TestActionEnforcement:
             claimed_divergence="Test",
             initiator_id="party-a",
             registry_version="1.0",
-            prose_content="Content"
+            prose_content="Content",
         )
 
         allowed, _reason = manager.can_perform_action(lock.lock_id, LockAction.SETTLEMENT_PROPOSAL)
@@ -214,7 +214,7 @@ class TestActionEnforcement:
             claimed_divergence="Test",
             initiator_id="party-a",
             registry_version="1.0",
-            prose_content="Content"
+            prose_content="Content",
         )
 
         allowed, reason = manager.can_perform_action(lock.lock_id, LockAction.ESCALATION)
@@ -230,7 +230,7 @@ class TestActionEnforcement:
             claimed_divergence="Test",
             initiator_id="party-a",
             registry_version="1.0",
-            prose_content="Content"
+            prose_content="Content",
         )
 
         allowed, _reason = manager.can_perform_action(lock.lock_id, LockAction.ENFORCEMENT)
@@ -245,7 +245,7 @@ class TestActionEnforcement:
             claimed_divergence="Test",
             initiator_id="party-a",
             registry_version="1.0",
-            prose_content="Content"
+            prose_content="Content",
         )
 
         allowed, reason = manager.can_perform_action(lock.lock_id, LockAction.CONTRACT_AMENDMENT)
@@ -261,7 +261,7 @@ class TestActionEnforcement:
             claimed_divergence="Test",
             initiator_id="party-a",
             registry_version="1.0",
-            prose_content="Content"
+            prose_content="Content",
         )
 
         allowed, _reason = manager.can_perform_action(lock.lock_id, LockAction.REGISTRY_UPGRADE)
@@ -276,7 +276,7 @@ class TestActionEnforcement:
             claimed_divergence="Test",
             initiator_id="party-a",
             registry_version="1.0",
-            prose_content="Content"
+            prose_content="Content",
         )
 
         allowed, _reason = manager.can_perform_action(lock.lock_id, LockAction.POU_REGENERATION)
@@ -291,11 +291,15 @@ class TestActionEnforcement:
             claimed_divergence="Test",
             initiator_id="party-a",
             registry_version="1.0",
-            prose_content="Content"
+            prose_content="Content",
         )
 
-        manager.attempt_action(lock.lock_id, LockAction.CLARIFICATION, "actor-1", "Test clarification")
-        manager.attempt_action(lock.lock_id, LockAction.ESCALATION, "actor-2", "Attempted escalation")
+        manager.attempt_action(
+            lock.lock_id, LockAction.CLARIFICATION, "actor-1", "Test clarification"
+        )
+        manager.attempt_action(
+            lock.lock_id, LockAction.ESCALATION, "actor-2", "Attempted escalation"
+        )
 
         log = manager.get_action_log(lock.lock_id)
         # 2 attempts + 1 initial activation
@@ -313,7 +317,7 @@ class TestEscalationPath:
             EscalationStage.MEDIATOR_REVIEW,
             EscalationStage.ADJUDICATION,
             EscalationStage.BINDING_RESOLUTION,
-            EscalationStage.RESOLVED
+            EscalationStage.RESOLVED,
         ]
         # Just verify enums exist in expected order
         for stage in stages:
@@ -328,7 +332,7 @@ class TestEscalationPath:
             claimed_divergence="Test",
             initiator_id="party-a",
             registry_version="1.0",
-            prose_content="Content"
+            prose_content="Content",
         )
 
         success, message, _ = manager.advance_stage(lock.lock_id, "actor-1")
@@ -344,7 +348,7 @@ class TestEscalationPath:
             claimed_divergence="Test",
             initiator_id="party-a",
             registry_version="1.0",
-            prose_content="Content"
+            prose_content="Content",
         )
 
         # Manually expire cooling for test
@@ -370,7 +374,7 @@ class TestResolutionOutcomes:
             claimed_divergence="Test",
             initiator_id="party-a",
             registry_version="1.0",
-            prose_content="Content"
+            prose_content="Content",
         )
 
         # Manually expire cooling for test
@@ -379,10 +383,7 @@ class TestResolutionOutcomes:
         ).isoformat() + "Z"
 
         success, _message = manager.resolve_dispute(
-            lock.lock_id,
-            ResolutionOutcome.DISMISSED,
-            "mediator-1",
-            "Dispute was unfounded"
+            lock.lock_id, ResolutionOutcome.DISMISSED, "mediator-1", "Dispute was unfounded"
         )
 
         assert success is True
@@ -399,14 +400,11 @@ class TestResolutionOutcomes:
             claimed_divergence="Test",
             initiator_id="party-a",
             registry_version="1.0",
-            prose_content="Content"
+            prose_content="Content",
         )
 
         success, message = manager.resolve_dispute(
-            lock.lock_id,
-            ResolutionOutcome.DISMISSED,
-            "mediator-1",
-            "Trying to resolve early"
+            lock.lock_id, ResolutionOutcome.DISMISSED, "mediator-1", "Trying to resolve early"
         )
 
         assert success is False
@@ -419,7 +417,7 @@ class TestResolutionOutcomes:
             ResolutionOutcome.CLARIFIED,
             ResolutionOutcome.AMENDED,
             ResolutionOutcome.TERMINATED,
-            ResolutionOutcome.COMPENSATED
+            ResolutionOutcome.COMPENSATED,
         ]
         for outcome in outcomes:
             assert isinstance(outcome, ResolutionOutcome)
@@ -438,13 +436,11 @@ class TestLockVerification:
             claimed_divergence="Test",
             initiator_id="party-a",
             registry_version="1.0",
-            prose_content=prose
+            prose_content=prose,
         )
 
         matches, discrepancies = manager.verify_against_lock(
-            lock.lock_id,
-            registry_version="1.0",
-            prose_content=prose
+            lock.lock_id, registry_version="1.0", prose_content=prose
         )
 
         assert matches is True
@@ -459,13 +455,13 @@ class TestLockVerification:
             claimed_divergence="Test",
             initiator_id="party-a",
             registry_version="1.0",
-            prose_content="Content"
+            prose_content="Content",
         )
 
         matches, discrepancies = manager.verify_against_lock(
             lock.lock_id,
             registry_version="2.0",  # Changed
-            prose_content="Content"
+            prose_content="Content",
         )
 
         assert matches is False
@@ -480,13 +476,13 @@ class TestLockVerification:
             claimed_divergence="Test",
             initiator_id="party-a",
             registry_version="1.0",
-            prose_content="Original content"
+            prose_content="Original content",
         )
 
         matches, discrepancies = manager.verify_against_lock(
             lock.lock_id,
             registry_version="1.0",
-            prose_content="Modified content"  # Changed
+            prose_content="Modified content",  # Changed
         )
 
         assert matches is False
@@ -505,7 +501,7 @@ class TestValidatorResponse:
             claimed_divergence="Test",
             initiator_id="party-a",
             registry_version="1.0",
-            prose_content="Content"
+            prose_content="Content",
         )
 
         response = manager.get_validator_response(lock.lock_id, LockAction.CLARIFICATION)
@@ -526,7 +522,7 @@ class TestValidatorResponse:
             claimed_divergence="Test",
             initiator_id="party-a",
             registry_version="1.0",
-            prose_content="Content"
+            prose_content="Content",
         )
 
         response = manager.get_validator_response(lock.lock_id, LockAction.ESCALATION)
@@ -575,7 +571,7 @@ class TestDisputeTriggers:
             DisputeTrigger.POU_CONTRADICTION,
             DisputeTrigger.CONFLICTING_RATIFICATIONS,
             DisputeTrigger.MULTILINGUAL_MISALIGNMENT,
-            DisputeTrigger.MATERIAL_BREACH
+            DisputeTrigger.MATERIAL_BREACH,
         ]
         for trigger in triggers:
             assert isinstance(trigger, DisputeTrigger)
@@ -589,7 +585,7 @@ class TestDisputeTriggers:
             claimed_divergence="Test",
             initiator_id="party-a",
             registry_version="1.0",
-            prose_content="Content"
+            prose_content="Content",
         )
 
         assert lock.dispute_level == DisputeLevel.D4
@@ -598,15 +594,18 @@ class TestDisputeTriggers:
         """Non-D4 triggers should set D3 dispute level"""
         manager = SemanticLockManager()
 
-        for trigger in [DisputeTrigger.DRIFT_D3, DisputeTrigger.POU_FAILURE,
-                        DisputeTrigger.MATERIAL_BREACH]:
+        for trigger in [
+            DisputeTrigger.DRIFT_D3,
+            DisputeTrigger.POU_FAILURE,
+            DisputeTrigger.MATERIAL_BREACH,
+        ]:
             lock, _ = manager.initiate_dispute(
                 contract_id=f"contract-{trigger.value}",
                 trigger=trigger,
                 claimed_divergence="Test",
                 initiator_id="party-a",
                 registry_version="1.0",
-                prose_content="Content"
+                prose_content="Content",
             )
             assert lock.dispute_level == DisputeLevel.D3
 
@@ -623,7 +622,7 @@ class TestLockSummary:
             claimed_divergence="Test",
             initiator_id="party-a",
             registry_version="1.0",
-            prose_content="Content"
+            prose_content="Content",
         )
 
         summary = manager.get_lock_summary(lock.lock_id)
@@ -646,7 +645,7 @@ class TestLockSummary:
             claimed_divergence="Test divergence",
             initiator_id="party-x",
             registry_version="2.0",
-            prose_content="Contract text"
+            prose_content="Contract text",
         )
 
         summary = manager.get_lock_summary(lock.lock_id)
@@ -668,7 +667,7 @@ def run_tests():
         TestValidatorResponse,
         TestConvenienceFunctions,
         TestDisputeTriggers,
-        TestLockSummary
+        TestLockSummary,
     ]
 
     total_tests = 0
@@ -693,7 +692,7 @@ def run_tests():
                 failed_tests.append((f"{test_class.__name__}.{method_name}", str(e)))
                 print(f"  ✗ {test_class.__name__}.{method_name}: {type(e).__name__}: {e}")
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Tests: {passed_tests}/{total_tests} passed")
 
     if failed_tests:

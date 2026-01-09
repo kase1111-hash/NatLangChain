@@ -13,7 +13,7 @@ import sys
 import time
 from typing import Any
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from blockchain import Block, MockValidator, NatLangChain, NaturalLanguageEntry
 
@@ -37,7 +37,7 @@ class BadActorSimulator:
         max_future_drift: int = 60,
         use_metadata_sanitization: bool = False,
         metadata_sanitize_mode: str = "strip",
-        use_asset_tracking: bool = False
+        use_asset_tracking: bool = False,
     ):
         """
         Initialize simulator.
@@ -95,15 +95,21 @@ class BadActorSimulator:
             enable_metadata_sanitization=self.use_metadata_sanitization,
             metadata_sanitize_mode=self.metadata_sanitize_mode,
             enable_asset_tracking=self.use_asset_tracking,
-            enable_quality_checks=False  # Disable quality checks for security testing
+            enable_quality_checks=False,  # Disable quality checks for security testing
         )
 
     def reset_chain(self):
         """Reset the blockchain for a fresh test."""
         self._init_chain()
 
-    def log_attack(self, attack_name: str, success: bool, details: str,
-                   severity: str = "HIGH", recommendation: str = ""):
+    def log_attack(
+        self,
+        attack_name: str,
+        success: bool,
+        details: str,
+        severity: str = "HIGH",
+        recommendation: str = "",
+    ):
         """Log the result of an attack attempt."""
         result = {
             "attack_name": attack_name,
@@ -111,7 +117,7 @@ class BadActorSimulator:
             "details": details,
             "severity": severity,
             "recommendation": recommendation,
-            "timestamp": time.time()
+            "timestamp": time.time(),
         }
         self.attack_results.append(result)
         if success:
@@ -125,14 +131,15 @@ class BadActorSimulator:
 # ATTACK TYPE 1: AMBIGUITY EXPLOITATION
 # =============================================================================
 
+
 def test_ambiguity_exploitation(use_validation: bool = False):
     """
     Test: Bad actor submits deliberately vague entries that could be
     interpreted multiple ways, allowing them to claim different meanings later.
     """
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("ATTACK 1: AMBIGUITY EXPLOITATION")
-    print("="*60)
+    print("=" * 60)
 
     sim = BadActorSimulator(use_validation=use_validation)
 
@@ -142,40 +149,38 @@ def test_ambiguity_exploitation(use_validation: bool = False):
             "content": "I'll pay you soon for the services rendered.",
             "author": "bad_actor_1",
             "intent": "Promise of payment",
-            "exploit": "'Soon' is undefined - could claim it means any time"
+            "exploit": "'Soon' is undefined - could claim it means any time",
         },
         {
             "content": "The delivery will be completed in a reasonable timeframe.",
             "author": "bad_actor_2",
             "intent": "Delivery commitment",
-            "exploit": "'Reasonable' is subjective - can be disputed indefinitely"
+            "exploit": "'Reasonable' is subjective - can be disputed indefinitely",
         },
         {
             "content": "We agree to share the profits appropriately.",
             "author": "bad_actor_3",
             "intent": "Profit sharing agreement",
-            "exploit": "'Appropriately' could mean 1% or 99%"
+            "exploit": "'Appropriately' could mean 1% or 99%",
         },
         {
             "content": "The work will meet acceptable standards.",
             "author": "bad_actor_4",
             "intent": "Quality commitment",
-            "exploit": "'Acceptable' is never defined"
+            "exploit": "'Acceptable' is never defined",
         },
         {
             "content": "Payment is contingent on satisfactory completion.",
             "author": "bad_actor_5",
             "intent": "Conditional payment",
-            "exploit": "'Satisfactory' can always be disputed"
-        }
+            "exploit": "'Satisfactory' can always be disputed",
+        },
     ]
 
     results = []
     for entry_data in ambiguous_entries:
         entry = NaturalLanguageEntry(
-            content=entry_data["content"],
-            author=entry_data["author"],
-            intent=entry_data["intent"]
+            content=entry_data["content"], author=entry_data["author"], intent=entry_data["intent"]
         )
 
         result = sim.chain.add_entry(entry)
@@ -188,24 +193,36 @@ def test_ambiguity_exploitation(use_validation: bool = False):
             success=attack_success,
             details=f"Entry '{entry_data['content'][:50]}...' - Exploit: {entry_data['exploit']}",
             severity="MEDIUM",
-            recommendation="Require PoU validation before accepting entry to pending queue"
+            recommendation="Require PoU validation before accepting entry to pending queue",
         )
 
-        results.append({
-            "entry": entry_data["content"][:50],
-            "accepted": attack_success,
-            "exploit": entry_data["exploit"],
-            "rejection_reason": result.get("validation_decision", None) if not attack_success else None
-        })
+        results.append(
+            {
+                "entry": entry_data["content"][:50],
+                "accepted": attack_success,
+                "exploit": entry_data["exploit"],
+                "rejection_reason": result.get("validation_decision", None)
+                if not attack_success
+                else None,
+            }
+        )
 
-        status_msg = "[EXPLOITABLE]" if attack_success else f"[BLOCKED: {result.get('validation_decision', 'rejected')}]"
+        status_msg = (
+            "[EXPLOITABLE]"
+            if attack_success
+            else f"[BLOCKED: {result.get('validation_decision', 'rejected')}]"
+        )
         print(f"  {status_msg} {entry_data['content'][:50]}...")
 
     # Mine the block to see if ambiguous entries make it to chain
     mined = sim.chain.mine_pending_entries(difficulty=1)
     if mined:
-        print(f"\n  WARNING: {len(mined.entries)} ambiguous entries mined into block #{mined.index}")
-        print("  FINDING: System allows ambiguous entries without semantic validation at mining time")
+        print(
+            f"\n  WARNING: {len(mined.entries)} ambiguous entries mined into block #{mined.index}"
+        )
+        print(
+            "  FINDING: System allows ambiguous entries without semantic validation at mining time"
+        )
     elif sim.use_validation:
         print("\n  PROTECTED: No ambiguous entries made it to the pending queue")
         print("  FINDING: PoU validation blocked ambiguous entries")
@@ -217,14 +234,15 @@ def test_ambiguity_exploitation(use_validation: bool = False):
 # ATTACK TYPE 2: INTENT MISMATCH ATTACK
 # =============================================================================
 
+
 def test_intent_mismatch(use_validation: bool = False):
     """
     Test: Bad actor claims one intent but content says something else entirely.
     This could be used for social engineering or plausible deniability.
     """
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("ATTACK 2: INTENT MISMATCH ATTACK")
-    print("="*60)
+    print("=" * 60)
 
     sim = BadActorSimulator(use_validation=use_validation)
 
@@ -234,34 +252,32 @@ def test_intent_mismatch(use_validation: bool = False):
             "content": "I hereby transfer all my assets to John Smith effective immediately.",
             "author": "malicious_user",
             "intent": "Birthday greeting",  # Intent is completely different
-            "exploit": "Could claim intent was just a joke/greeting if challenged"
+            "exploit": "Could claim intent was just a joke/greeting if challenged",
         },
         {
             "content": "The company agrees to pay $1,000,000 in damages to the plaintiff.",
             "author": "corporate_fraud",
             "intent": "Meeting notes",  # Downplaying serious commitment
-            "exploit": "Could deny the commitment by pointing to benign intent"
+            "exploit": "Could deny the commitment by pointing to benign intent",
         },
         {
             "content": "User X is hereby banned from the platform for life.",
             "author": "rogue_admin",
             "intent": "User profile update",  # Hiding moderation action
-            "exploit": "Action hidden under innocuous intent"
+            "exploit": "Action hidden under innocuous intent",
         },
         {
             "content": "All previous agreements are null and void.",
             "author": "contract_breaker",
             "intent": "Quarterly summary",
-            "exploit": "Major action buried under routine intent"
-        }
+            "exploit": "Major action buried under routine intent",
+        },
     ]
 
     results = []
     for entry_data in mismatch_entries:
         entry = NaturalLanguageEntry(
-            content=entry_data["content"],
-            author=entry_data["author"],
-            intent=entry_data["intent"]
+            content=entry_data["content"], author=entry_data["author"], intent=entry_data["intent"]
         )
 
         result = sim.chain.add_entry(entry)
@@ -272,22 +288,34 @@ def test_intent_mismatch(use_validation: bool = False):
             success=attack_success,
             details=f"Content: '{entry_data['content'][:40]}...' | Fake Intent: '{entry_data['intent']}'",
             severity="HIGH",
-            recommendation="Require mandatory PoU intent-content alignment check before entry acceptance"
+            recommendation="Require mandatory PoU intent-content alignment check before entry acceptance",
         )
 
-        results.append({
-            "content": entry_data["content"][:40],
-            "fake_intent": entry_data["intent"],
-            "accepted": attack_success
-        })
+        results.append(
+            {
+                "content": entry_data["content"][:40],
+                "fake_intent": entry_data["intent"],
+                "accepted": attack_success,
+            }
+        )
 
-        status_msg = "[EXPLOITABLE]" if attack_success else f"[BLOCKED: {result.get('validation_decision', 'rejected')}]"
-        print(f"  {status_msg} Intent: '{entry_data['intent']}' | Content: '{entry_data['content'][:35]}...'")
+        status_msg = (
+            "[EXPLOITABLE]"
+            if attack_success
+            else f"[BLOCKED: {result.get('validation_decision', 'rejected')}]"
+        )
+        print(
+            f"  {status_msg} Intent: '{entry_data['intent']}' | Content: '{entry_data['content'][:35]}...'"
+        )
 
     mined = sim.chain.mine_pending_entries(difficulty=1)
     if mined:
-        print(f"\n  WARNING: {len(mined.entries)} mismatched entries mined into block #{mined.index}")
-        print("  FINDING: System does not validate intent-content alignment at add_entry or mine time")
+        print(
+            f"\n  WARNING: {len(mined.entries)} mismatched entries mined into block #{mined.index}"
+        )
+        print(
+            "  FINDING: System does not validate intent-content alignment at add_entry or mine time"
+        )
     elif sim.use_validation:
         print("\n  PROTECTED: No mismatched entries made it to the pending queue")
         print("  FINDING: PoU validation blocked intent-content mismatch attacks")
@@ -299,14 +327,15 @@ def test_intent_mismatch(use_validation: bool = False):
 # ATTACK TYPE 3: CHAIN TAMPERING ATTACK
 # =============================================================================
 
+
 def test_chain_tampering(use_validation: bool = False):
     """
     Test: Bad actor attempts to tamper with block contents after mining.
     Tests cryptographic integrity of the chain.
     """
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("ATTACK 3: CHAIN TAMPERING ATTACK")
-    print("="*60)
+    print("=" * 60)
 
     # Chain tampering tests use unprotected chain since we need entries to mine first
     sim = BadActorSimulator(use_validation=False)
@@ -315,7 +344,7 @@ def test_chain_tampering(use_validation: bool = False):
     legitimate_entry = NaturalLanguageEntry(
         content="Alice pays Bob $1,000 for consulting services.",
         author="alice",
-        intent="Payment record"
+        intent="Payment record",
     )
     sim.chain.add_entry(legitimate_entry)
     sim.chain.mine_pending_entries(difficulty=1)
@@ -337,7 +366,9 @@ def test_chain_tampering(use_validation: bool = False):
         success=not tamper_detected,
         details="Attempted to change $1,000 to $100,000 after mining",
         severity="CRITICAL",
-        recommendation="N/A - Hash validation working correctly" if tamper_detected else "Implement hash validation"
+        recommendation="N/A - Hash validation working correctly"
+        if tamper_detected
+        else "Implement hash validation",
     )
 
     print(f"    Tampering detected by hash validation: {tamper_detected}")
@@ -369,7 +400,9 @@ def test_chain_tampering(use_validation: bool = False):
         success=chain_still_valid,
         details="Attempted to tamper and recalculate hash",
         severity="CRITICAL",
-        recommendation="N/A - Chain linkage prevents attack" if not chain_still_valid else "Implement previous_hash validation"
+        recommendation="N/A - Chain linkage prevents attack"
+        if not chain_still_valid
+        else "Implement previous_hash validation",
     )
 
     print(f"    Chain linkage broken: {not chain_still_valid}")
@@ -380,23 +413,19 @@ def test_chain_tampering(use_validation: bool = False):
     sim.reset_chain()
 
     legitimate_entry = NaturalLanguageEntry(
-        content="Legitimate transaction.",
-        author="real_user",
-        intent="Real transaction"
+        content="Legitimate transaction.", author="real_user", intent="Real transaction"
     )
     sim.chain.add_entry(legitimate_entry)
     sim.chain.mine_pending_entries(difficulty=1)
 
     # Create a fake block with different previous_hash
     fake_entry = NaturalLanguageEntry(
-        content="FAKE: I now own everything.",
-        author="attacker",
-        intent="Fraudulent claim"
+        content="FAKE: I now own everything.", author="attacker", intent="Fraudulent claim"
     )
     fake_block = Block(
         index=2,
         entries=[fake_entry],
-        previous_hash="0000fake_hash_here"  # Wrong previous hash
+        previous_hash="0000fake_hash_here",  # Wrong previous hash
     )
     sim.chain.chain.append(fake_block)
 
@@ -407,7 +436,9 @@ def test_chain_tampering(use_validation: bool = False):
         success=not fake_detected,
         details="Attempted to insert fake block with wrong previous_hash",
         severity="CRITICAL",
-        recommendation="N/A - Chain validation working" if fake_detected else "Implement previous_hash validation"
+        recommendation="N/A - Chain validation working"
+        if fake_detected
+        else "Implement previous_hash validation",
     )
 
     print(f"    Fake block detected: {fake_detected}")
@@ -420,14 +451,15 @@ def test_chain_tampering(use_validation: bool = False):
 # ATTACK TYPE 4: DOUBLE-SPENDING ANALOG
 # =============================================================================
 
+
 def test_double_spending_analog(use_validation: bool = False, use_asset_tracking: bool = False):
     """
     Test: Bad actor attempts to submit contradictory entries.
     In NatLangChain this is like claiming to transfer same asset twice.
     """
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("ATTACK 4: DOUBLE-SPENDING ANALOG")
-    print("="*60)
+    print("=" * 60)
 
     sim = BadActorSimulator(use_validation=use_validation, use_asset_tracking=use_asset_tracking)
 
@@ -436,14 +468,14 @@ def test_double_spending_analog(use_validation: bool = False, use_asset_tracking
         content="I, Alice, hereby transfer ownership of my vintage car (VIN: 12345) to Bob.",
         author="alice",
         intent="Asset transfer to Bob",
-        metadata={"asset_id": "car_vin_12345", "recipient": "bob"}
+        metadata={"asset_id": "car_vin_12345", "recipient": "bob"},
     )
 
     entry2 = NaturalLanguageEntry(
         content="I, Alice, hereby transfer ownership of my vintage car (VIN: 12345) to Charlie.",
         author="alice",
         intent="Asset transfer to Charlie",
-        metadata={"asset_id": "car_vin_12345", "recipient": "charlie"}
+        metadata={"asset_id": "car_vin_12345", "recipient": "charlie"},
     )
 
     result1 = sim.chain.add_entry(entry1)
@@ -464,9 +496,13 @@ def test_double_spending_analog(use_validation: bool = False, use_asset_tracking
         sim.log_attack(
             attack_name="Double-Spending Analog",
             success=both_accepted,
-            details="Second transfer blocked by asset tracking" if second_blocked_as_double_transfer else "Both transfers accepted (protection failed)",
+            details="Second transfer blocked by asset tracking"
+            if second_blocked_as_double_transfer
+            else "Both transfers accepted (protection failed)",
             severity="CRITICAL",
-            recommendation="N/A - Asset tracking is working" if second_blocked_as_double_transfer else "Check asset tracking implementation"
+            recommendation="N/A - Asset tracking is working"
+            if second_blocked_as_double_transfer
+            else "Check asset tracking implementation",
         )
     else:
         sim.log_attack(
@@ -474,7 +510,7 @@ def test_double_spending_analog(use_validation: bool = False, use_asset_tracking
             success=both_accepted,
             details="Both contradictory asset transfers were accepted to pending queue",
             severity="CRITICAL",
-            recommendation="Enable asset tracking to prevent double-spending attacks"
+            recommendation="Enable asset tracking to prevent double-spending attacks",
         )
 
     mined = sim.chain.mine_pending_entries(difficulty=1)
@@ -487,73 +523,74 @@ def test_double_spending_analog(use_validation: bool = False, use_asset_tracking
             print("  FINDING: System has no asset double-transfer prevention")
             print("  NOTE: The system relies on off-chain dispute resolution for this case")
 
-    return sim, [{
-        "first_accepted": first_accepted,
-        "second_accepted": second_accepted,
-        "both_accepted": both_accepted,
-        "blocked_by_asset_tracking": second_blocked_as_double_transfer
-    }]
+    return sim, [
+        {
+            "first_accepted": first_accepted,
+            "second_accepted": second_accepted,
+            "both_accepted": both_accepted,
+            "blocked_by_asset_tracking": second_blocked_as_double_transfer,
+        }
+    ]
 
 
 # =============================================================================
 # ATTACK TYPE 5: ADVERSARIAL PHRASING
 # =============================================================================
 
+
 def test_adversarial_phrasing(use_validation: bool = False):
     """
     Test: Bad actor uses adversarial phrasing with hidden clauses,
     legal loopholes, or deceptive language.
     """
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("ATTACK 5: ADVERSARIAL PHRASING")
-    print("="*60)
+    print("=" * 60)
 
     sim = BadActorSimulator(use_validation=use_validation)
 
     adversarial_entries = [
         {
             "content": "Party A agrees to provide services to Party B. In the event of any dispute, "
-                      "Party A shall be the sole arbiter. Party B waives all rights to legal recourse. "
-                      "This clause is buried in paragraph 47 subsection C.",
+            "Party A shall be the sole arbiter. Party B waives all rights to legal recourse. "
+            "This clause is buried in paragraph 47 subsection C.",
             "author": "predatory_contractor",
             "intent": "Service agreement",
-            "exploit": "Hidden one-sided arbitration and rights waiver"
+            "exploit": "Hidden one-sided arbitration and rights waiver",
         },
         {
             "content": "The payment of $100 is due upon completion. (Note: 'completion' is defined "
-                      "as the heat death of the universe in Appendix Z, not attached hereto.)",
+            "as the heat death of the universe in Appendix Z, not attached hereto.)",
             "author": "payment_evader",
             "intent": "Payment terms",
-            "exploit": "Impossible condition hidden in unreferenced appendix"
+            "exploit": "Impossible condition hidden in unreferenced appendix",
         },
         {
             "content": "This agreement supersedes all previous agreements including but not limited to "
-                      "any protections, warranties, or guarantees previously agreed upon.",
+            "any protections, warranties, or guarantees previously agreed upon.",
             "author": "warranty_eliminator",
             "intent": "Contract update",
-            "exploit": "Retroactively removes protections via supersede clause"
+            "exploit": "Retroactively removes protections via supersede clause",
         },
         {
             "content": "User agrees that by using the service they grant Company an irrevocable, "
-                      "perpetual, royalty-free license to all user content for any purpose whatsoever.",
+            "perpetual, royalty-free license to all user content for any purpose whatsoever.",
             "author": "data_harvester",
             "intent": "Terms of service update",
-            "exploit": "Overly broad content license buried in ToS"
+            "exploit": "Overly broad content license buried in ToS",
         },
         {
             "content": "The price is $50 per unit (minimum order: 1,000,000 units, non-refundable).",
             "author": "hidden_minimum",
             "intent": "Price quote",
-            "exploit": "Massive hidden minimum commitment"
-        }
+            "exploit": "Massive hidden minimum commitment",
+        },
     ]
 
     results = []
     for entry_data in adversarial_entries:
         entry = NaturalLanguageEntry(
-            content=entry_data["content"],
-            author=entry_data["author"],
-            intent=entry_data["intent"]
+            content=entry_data["content"], author=entry_data["author"], intent=entry_data["intent"]
         )
 
         result = sim.chain.add_entry(entry)
@@ -564,21 +601,29 @@ def test_adversarial_phrasing(use_validation: bool = False):
             success=attack_success,
             details=f"Exploit: {entry_data['exploit']}",
             severity="HIGH",
-            recommendation="Require PoU dialectic consensus to detect adversarial patterns"
+            recommendation="Require PoU dialectic consensus to detect adversarial patterns",
         )
 
-        results.append({
-            "content_preview": entry_data["content"][:50],
-            "exploit": entry_data["exploit"],
-            "accepted": attack_success
-        })
+        results.append(
+            {
+                "content_preview": entry_data["content"][:50],
+                "exploit": entry_data["exploit"],
+                "accepted": attack_success,
+            }
+        )
 
-        status_msg = "[EXPLOITABLE]" if attack_success else f"[BLOCKED: {result.get('validation_decision', 'rejected')}]"
+        status_msg = (
+            "[EXPLOITABLE]"
+            if attack_success
+            else f"[BLOCKED: {result.get('validation_decision', 'rejected')}]"
+        )
         print(f"  {status_msg} {entry_data['exploit']}")
 
     mined = sim.chain.mine_pending_entries(difficulty=1)
     if mined:
-        print(f"\n  WARNING: {len(mined.entries)} adversarial entries mined into block #{mined.index}")
+        print(
+            f"\n  WARNING: {len(mined.entries)} adversarial entries mined into block #{mined.index}"
+        )
     elif sim.use_validation:
         print("\n  PROTECTED: No adversarial entries made it to the pending queue")
         print("  FINDING: PoU validation blocked adversarial phrasing attacks")
@@ -590,13 +635,14 @@ def test_adversarial_phrasing(use_validation: bool = False):
 # ATTACK TYPE 6: REPLAY ATTACK
 # =============================================================================
 
+
 def test_replay_attack(use_validation: bool = False, use_deduplication: bool = False):
     """
     Test: Bad actor attempts to replay old valid entries to duplicate actions.
     """
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("ATTACK 6: REPLAY ATTACK")
-    print("="*60)
+    print("=" * 60)
 
     # Test with deduplication when in protected mode
     sim = BadActorSimulator(use_validation=False, use_deduplication=use_deduplication)
@@ -606,7 +652,7 @@ def test_replay_attack(use_validation: bool = False, use_deduplication: bool = F
         content="Company X pays Employee Y a bonus of $10,000 for Q4 performance.",
         author="finance_dept",
         intent="Bonus payment",
-        metadata={"payment_id": "bonus_2024_q4_001"}
+        metadata={"payment_id": "bonus_2024_q4_001"},
     )
 
     sim.chain.add_entry(original_entry)
@@ -628,9 +674,13 @@ def test_replay_attack(use_validation: bool = False, use_deduplication: bool = F
     sim.log_attack(
         attack_name="Replay Attack",
         success=replay_accepted,
-        details="Same entry accepted twice - could duplicate payments/actions" if replay_accepted else "Replay blocked by deduplication",
+        details="Same entry accepted twice - could duplicate payments/actions"
+        if replay_accepted
+        else "Replay blocked by deduplication",
         severity="CRITICAL",
-        recommendation="Implement entry deduplication based on content hash + author + timestamp window" if replay_accepted else "N/A - Deduplication working"
+        recommendation="Implement entry deduplication based on content hash + author + timestamp window"
+        if replay_accepted
+        else "N/A - Deduplication working",
     )
 
     mined = sim.chain.mine_pending_entries(difficulty=1)
@@ -648,14 +698,15 @@ def test_replay_attack(use_validation: bool = False, use_deduplication: bool = F
 # ATTACK TYPE 7: SYBIL ATTACK (ENTRY FLOODING)
 # =============================================================================
 
+
 def test_sybil_flooding(use_validation: bool = False, use_rate_limiting: bool = False):
     """
     Test: Bad actor creates many entries to flood the pending queue
     or dilute legitimate entries.
     """
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("ATTACK 7: SYBIL FLOODING ATTACK")
-    print("="*60)
+    print("=" * 60)
 
     # For rate limiting test, use tight limits to demonstrate protection
     # 5 entries per author in 60s, 20 total entries
@@ -664,14 +715,14 @@ def test_sybil_flooding(use_validation: bool = False, use_rate_limiting: bool = 
         use_rate_limiting=use_rate_limiting,
         rate_limit_window=60,
         max_entries_per_author=5,
-        max_global_entries=20
+        max_global_entries=20,
     )
 
     # Submit one legitimate entry
     legitimate = NaturalLanguageEntry(
         content="Important: New safety protocol requires all workers to wear helmets.",
         author="safety_officer",
-        intent="Safety announcement"
+        intent="Safety announcement",
     )
     result = sim.chain.add_entry(legitimate)
     result["status"] == "pending"
@@ -685,7 +736,7 @@ def test_sybil_flooding(use_validation: bool = False, use_rate_limiting: bool = 
         spam_entry = NaturalLanguageEntry(
             content=f"Spam entry #{i} from sybil attack. This is meaningless content to flood the queue.",
             author=f"sybil_node_{i % 10}",  # 10 fake identities
-            intent="Spam"
+            intent="Spam",
         )
         result = sim.chain.add_entry(spam_entry)
         if result["status"] == "pending":
@@ -712,7 +763,9 @@ def test_sybil_flooding(use_validation: bool = False, use_rate_limiting: bool = 
             success=attack_success,
             details=f"Rate limiting blocked {rate_limited}/{sybil_count} spam entries ({blocked_pct:.1f}%)",
             severity="HIGH",
-            recommendation="N/A - Rate limiting is working" if rate_limited > 0 else "Rate limits may be too permissive"
+            recommendation="N/A - Rate limiting is working"
+            if rate_limited > 0
+            else "Rate limits may be too permissive",
         )
     else:
         sim.log_attack(
@@ -720,49 +773,55 @@ def test_sybil_flooding(use_validation: bool = False, use_rate_limiting: bool = 
             success=attack_success,
             details=f"Accepted {spam_accepted} spam entries, diluting legitimate content",
             severity="HIGH",
-            recommendation="Implement rate limiting, stake requirements, or reputation-weighted acceptance"
+            recommendation="Implement rate limiting, stake requirements, or reputation-weighted acceptance",
         )
 
     # Mine and check the result
     mined = sim.chain.mine_pending_entries(difficulty=1)
     if mined:
         if use_rate_limiting and rate_limited > 0:
-            print(f"\n  PROTECTED: Only {len(mined.entries)} entries mined (rate limiting blocked {rate_limited})")
+            print(
+                f"\n  PROTECTED: Only {len(mined.entries)} entries mined (rate limiting blocked {rate_limited})"
+            )
             print("  FINDING: Rate limiting successfully prevented flooding attack")
         else:
-            print(f"\n  WARNING: All {len(mined.entries)} entries (including spam) mined into block #{mined.index}")
+            print(
+                f"\n  WARNING: All {len(mined.entries)} entries (including spam) mined into block #{mined.index}"
+            )
             print("  FINDING: No rate limiting or anti-spam mechanism at entry level")
 
-    return sim, [{
-        "spam_attempted": sybil_count,
-        "spam_accepted": spam_accepted,
-        "rate_limited": rate_limited,
-        "attack_success": attack_success
-    }]
+    return sim, [
+        {
+            "spam_attempted": sybil_count,
+            "spam_accepted": spam_accepted,
+            "rate_limited": rate_limited,
+            "attack_success": attack_success,
+        }
+    ]
 
 
 # =============================================================================
 # ATTACK TYPE 8: TIMESTAMP MANIPULATION
 # =============================================================================
 
-def test_timestamp_manipulation(use_validation: bool = False, use_timestamp_validation: bool = False):
+
+def test_timestamp_manipulation(
+    use_validation: bool = False, use_timestamp_validation: bool = False
+):
     """
     Test: Bad actor manipulates timestamps to alter perceived ordering.
     """
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("ATTACK 8: TIMESTAMP MANIPULATION")
-    print("="*60)
+    print("=" * 60)
 
     sim = BadActorSimulator(
-        use_validation=use_validation,
-        use_timestamp_validation=use_timestamp_validation
+        use_validation=use_validation, use_timestamp_validation=use_timestamp_validation
     )
 
     # Create entry then manipulate timestamp
     entry = NaturalLanguageEntry(
-        content="This contract was agreed upon.",
-        author="timestamp_attacker",
-        intent="Contract"
+        content="This contract was agreed upon.", author="timestamp_attacker", intent="Contract"
     )
 
     original_timestamp = entry.timestamp
@@ -786,9 +845,13 @@ def test_timestamp_manipulation(use_validation: bool = False, use_timestamp_vali
         sim.log_attack(
             attack_name="Timestamp Manipulation",
             success=attack_success,
-            details="Backdated timestamp blocked by validation" if rejected_for_timestamp else "Timestamp validation may be too permissive",
+            details="Backdated timestamp blocked by validation"
+            if rejected_for_timestamp
+            else "Timestamp validation may be too permissive",
             severity="MEDIUM",
-            recommendation="N/A - Timestamp validation is working" if rejected_for_timestamp else "Check timestamp drift thresholds"
+            recommendation="N/A - Timestamp validation is working"
+            if rejected_for_timestamp
+            else "Check timestamp drift thresholds",
         )
     else:
         sim.log_attack(
@@ -796,7 +859,7 @@ def test_timestamp_manipulation(use_validation: bool = False, use_timestamp_vali
             success=attack_success,
             details="Entry with backdated timestamp accepted without validation",
             severity="MEDIUM",
-            recommendation="Implement server-side timestamp validation or threshold check"
+            recommendation="Implement server-side timestamp validation or threshold check",
         )
 
     mined = sim.chain.mine_pending_entries(difficulty=1)
@@ -811,28 +874,31 @@ def test_timestamp_manipulation(use_validation: bool = False, use_timestamp_vali
         print("\n  PROTECTED: Backdated entry blocked by timestamp validation")
         print("  FINDING: Timestamp validation prevents backdating attacks")
 
-    return sim, [{
-        "attack_success": attack_success,
-        "blocked_by_timestamp_validation": rejected_for_timestamp
-    }]
+    return sim, [
+        {
+            "attack_success": attack_success,
+            "blocked_by_timestamp_validation": rejected_for_timestamp,
+        }
+    ]
 
 
 # =============================================================================
 # ATTACK TYPE 9: METADATA INJECTION
 # =============================================================================
 
+
 def test_metadata_injection(use_validation: bool = False, use_metadata_sanitization: bool = False):
     """
     Test: Bad actor injects malicious or misleading metadata.
     """
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("ATTACK 9: METADATA INJECTION")
-    print("="*60)
+    print("=" * 60)
 
     sim = BadActorSimulator(
         use_validation=use_validation,
         use_metadata_sanitization=use_metadata_sanitization,
-        metadata_sanitize_mode="strip"  # Use strip mode for simulation
+        metadata_sanitize_mode="strip",  # Use strip mode for simulation
     )
 
     # Entry with malicious metadata
@@ -846,8 +912,8 @@ def test_metadata_injection(use_validation: bool = False, use_metadata_sanitizat
                 "verified_by": "official_validator",
                 "trust_score": 100,
                 "__override__": True,
-                "legitimate_field": "this is ok"  # Non-forbidden field
-            }
+                "legitimate_field": "this is ok",  # Non-forbidden field
+            },
         },
         {
             "content": "Payment of $100 to vendor.",
@@ -857,9 +923,9 @@ def test_metadata_injection(use_validation: bool = False, use_metadata_sanitizat
                 "amount": 1000000,  # Metadata contradicts content (not forbidden, just deceptive)
                 "urgent": True,
                 "skip_validation": True,  # Forbidden field
-                "notes": "legitimate notes"  # Non-forbidden field
-            }
-        }
+                "notes": "legitimate notes",  # Non-forbidden field
+            },
+        },
     ]
 
     results = []
@@ -872,15 +938,23 @@ def test_metadata_injection(use_validation: bool = False, use_metadata_sanitizat
             content=entry_data["content"],
             author=entry_data["author"],
             intent=entry_data["intent"],
-            metadata=copy.deepcopy(entry_data["metadata"])
+            metadata=copy.deepcopy(entry_data["metadata"]),
         )
 
         result = sim.chain.add_entry(entry)
 
         # Count forbidden fields in original
         forbidden_in_original = sum(
-            1 for k in original_metadata
-            if k in ["validation_status", "verified_by", "trust_score", "__override__", "skip_validation"]
+            1
+            for k in original_metadata
+            if k
+            in [
+                "validation_status",
+                "verified_by",
+                "trust_score",
+                "__override__",
+                "skip_validation",
+            ]
         )
         total_forbidden += forbidden_in_original
 
@@ -891,8 +965,17 @@ def test_metadata_injection(use_validation: bool = False, use_metadata_sanitizat
 
             # Count how many forbidden fields were stripped
             stripped_count = sum(
-                1 for k in original_metadata
-                if k not in stored_entry.metadata and k in ["validation_status", "verified_by", "trust_score", "__override__", "skip_validation"]
+                1
+                for k in original_metadata
+                if k not in stored_entry.metadata
+                and k
+                in [
+                    "validation_status",
+                    "verified_by",
+                    "trust_score",
+                    "__override__",
+                    "skip_validation",
+                ]
             )
             forbidden_stripped += stripped_count
 
@@ -907,9 +990,13 @@ def test_metadata_injection(use_validation: bool = False, use_metadata_sanitizat
             sim.log_attack(
                 attack_name="Metadata Injection",
                 success=attack_success,
-                details=f"Forbidden fields stripped: {not malicious_preserved}" if not malicious_preserved else "Sanitization may be incomplete",
+                details=f"Forbidden fields stripped: {not malicious_preserved}"
+                if not malicious_preserved
+                else "Sanitization may be incomplete",
                 severity="MEDIUM",
-                recommendation="N/A - Metadata sanitization is working" if not malicious_preserved else "Check sanitization rules"
+                recommendation="N/A - Metadata sanitization is working"
+                if not malicious_preserved
+                else "Check sanitization rules",
             )
         else:
             sim.log_attack(
@@ -917,14 +1004,16 @@ def test_metadata_injection(use_validation: bool = False, use_metadata_sanitizat
                 success=attack_success,
                 details=f"Malicious metadata preserved: {original_metadata}",
                 severity="MEDIUM",
-                recommendation="Sanitize metadata and maintain allowed-field whitelist"
+                recommendation="Sanitize metadata and maintain allowed-field whitelist",
             )
 
-        results.append({
-            "metadata_injected": original_metadata,
-            "preserved": malicious_preserved,
-            "stripped": not malicious_preserved
-        })
+        results.append(
+            {
+                "metadata_injected": original_metadata,
+                "preserved": malicious_preserved,
+                "stripped": not malicious_preserved,
+            }
+        )
 
         print(f"  Malicious metadata accepted: {attack_success}")
         if use_metadata_sanitization and not malicious_preserved:
@@ -933,7 +1022,9 @@ def test_metadata_injection(use_validation: bool = False, use_metadata_sanitizat
             print(f"    Injected: {json.dumps(original_metadata, indent=4)[:100]}...")
 
     if use_metadata_sanitization:
-        print(f"\n  PROTECTED: {forbidden_stripped}/{total_forbidden} forbidden metadata fields stripped")
+        print(
+            f"\n  PROTECTED: {forbidden_stripped}/{total_forbidden} forbidden metadata fields stripped"
+        )
         print("  FINDING: Metadata sanitization removes dangerous fields")
 
     return sim, results
@@ -943,13 +1034,14 @@ def test_metadata_injection(use_validation: bool = False, use_metadata_sanitizat
 # SIMULATION RUNNER
 # =============================================================================
 
+
 def run_single_simulation(
     use_validation: bool = False,
     use_deduplication: bool = False,
     use_rate_limiting: bool = False,
     use_timestamp_validation: bool = False,
     use_metadata_sanitization: bool = False,
-    use_asset_tracking: bool = False
+    use_asset_tracking: bool = False,
 ):
     """Run all bad actor simulations for a single mode (protected or unprotected)."""
     all_results = {}
@@ -963,12 +1055,24 @@ def run_single_simulation(
         ("Ambiguity Exploitation", test_ambiguity_exploitation, {}),
         ("Intent Mismatch", test_intent_mismatch, {}),
         ("Chain Tampering", test_chain_tampering, {}),
-        ("Double-Spending Analog", test_double_spending_analog, {"use_asset_tracking": use_asset_tracking}),
+        (
+            "Double-Spending Analog",
+            test_double_spending_analog,
+            {"use_asset_tracking": use_asset_tracking},
+        ),
         ("Adversarial Phrasing", test_adversarial_phrasing, {}),
         ("Replay Attack", test_replay_attack, {"use_deduplication": use_deduplication}),
         ("Sybil Flooding", test_sybil_flooding, {"use_rate_limiting": use_rate_limiting}),
-        ("Timestamp Manipulation", test_timestamp_manipulation, {"use_timestamp_validation": use_timestamp_validation}),
-        ("Metadata Injection", test_metadata_injection, {"use_metadata_sanitization": use_metadata_sanitization}),
+        (
+            "Timestamp Manipulation",
+            test_timestamp_manipulation,
+            {"use_timestamp_validation": use_timestamp_validation},
+        ),
+        (
+            "Metadata Injection",
+            test_metadata_injection,
+            {"use_metadata_sanitization": use_metadata_sanitization},
+        ),
     ]
 
     for name, test_func, extra_params in simulations:
@@ -981,13 +1085,14 @@ def run_single_simulation(
                 "results": results,
                 "successful_attacks": sim.successful_attacks,
                 "blocked_attacks": sim.blocked_attacks,
-                "attack_log": sim.attack_results
+                "attack_log": sim.attack_results,
             }
             total_exploitable += sim.successful_attacks
             total_blocked += sim.blocked_attacks
         except Exception as e:
             print(f"  ERROR in {name}: {e}")
             import traceback
+
             traceback.print_exc()
             all_results[name] = {"error": str(e)}
 
@@ -996,19 +1101,19 @@ def run_single_simulation(
 
 def run_bad_actor_simulation():
     """Run all bad actor simulations and generate report."""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("NATLANGCHAIN BAD ACTOR SIMULATION")
     print("Testing Blockchain Resilience Against Adversarial Behavior")
-    print("="*70)
+    print("=" * 70)
 
     # ==========================================================================
     # PHASE 1: UNPROTECTED MODE (Shows vulnerabilities)
     # ==========================================================================
-    print("\n" + "#"*70)
+    print("\n" + "#" * 70)
     print("# PHASE 1: UNPROTECTED MODE")
     print("# (All protections disabled)")
     print("# This demonstrates vulnerabilities when protections are disabled")
-    print("#"*70)
+    print("#" * 70)
 
     unprotected_results, unprotected_exploitable, unprotected_blocked = run_single_simulation(
         use_validation=False,
@@ -1016,17 +1121,17 @@ def run_bad_actor_simulation():
         use_rate_limiting=False,
         use_timestamp_validation=False,
         use_metadata_sanitization=False,
-        use_asset_tracking=False
+        use_asset_tracking=False,
     )
 
     # ==========================================================================
     # PHASE 2: PROTECTED MODE (Shows fix in action)
     # ==========================================================================
-    print("\n" + "#"*70)
+    print("\n" + "#" * 70)
     print("# PHASE 2: PROTECTED MODE")
     print("# (All protections enabled)")
     print("# This demonstrates how all protections work together to block attacks")
-    print("#"*70)
+    print("#" * 70)
 
     protected_results, protected_exploitable, protected_blocked = run_single_simulation(
         use_validation=True,
@@ -1034,27 +1139,29 @@ def run_bad_actor_simulation():
         use_rate_limiting=True,
         use_timestamp_validation=True,
         use_metadata_sanitization=True,
-        use_asset_tracking=True
+        use_asset_tracking=True,
     )
 
     # Generate Summary Report
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("SIMULATION SUMMARY REPORT")
-    print("="*70)
+    print("=" * 70)
 
-    print("\n" + "-"*70)
+    print("\n" + "-" * 70)
     print("UNPROTECTED MODE RESULTS (require_validation=False):")
-    print("-"*70)
+    print("-" * 70)
     print(f"  Total attack attempts: {unprotected_exploitable + unprotected_blocked}")
     print(f"  EXPLOITABLE (System Gamed): {unprotected_exploitable}")
     print(f"  BLOCKED (System Defended): {unprotected_blocked}")
     if unprotected_exploitable + unprotected_blocked > 0:
-        exploit_rate = (unprotected_exploitable / (unprotected_exploitable + unprotected_blocked)) * 100
+        exploit_rate = (
+            unprotected_exploitable / (unprotected_exploitable + unprotected_blocked)
+        ) * 100
         print(f"  Exploit success rate: {exploit_rate:.1f}%")
 
-    print("\n" + "-"*70)
+    print("\n" + "-" * 70)
     print("PROTECTED MODE RESULTS (require_validation=True with MockValidator):")
-    print("-"*70)
+    print("-" * 70)
     print(f"  Total attack attempts: {protected_exploitable + protected_blocked}")
     print(f"  EXPLOITABLE (System Gamed): {protected_exploitable}")
     print(f"  BLOCKED (System Defended): {protected_blocked}")
@@ -1064,12 +1171,16 @@ def run_bad_actor_simulation():
 
     # Calculate improvement
     if unprotected_exploitable > 0:
-        improvement = ((unprotected_exploitable - protected_exploitable) / unprotected_exploitable) * 100
-        print(f"\n  IMPROVEMENT: {improvement:.1f}% fewer successful attacks with validation enabled")
+        improvement = (
+            (unprotected_exploitable - protected_exploitable) / unprotected_exploitable
+        ) * 100
+        print(
+            f"\n  IMPROVEMENT: {improvement:.1f}% fewer successful attacks with validation enabled"
+        )
 
-    print("\n" + "-"*70)
+    print("\n" + "-" * 70)
     print("FINDINGS BY CATEGORY (UNPROTECTED MODE):")
-    print("-"*70)
+    print("-" * 70)
 
     # Categorize findings from unprotected mode
     cryptographic_findings = []
@@ -1083,7 +1194,7 @@ def run_bad_actor_simulation():
                     "attack": name,
                     "success": attack["success"],
                     "severity": attack["severity"],
-                    "recommendation": attack["recommendation"]
+                    "recommendation": attack["recommendation"],
                 }
 
                 if name == "Chain Tampering":
@@ -1095,7 +1206,9 @@ def run_bad_actor_simulation():
 
     print("\n[CRYPTOGRAPHIC LAYER]")
     crypto_blocked = sum(1 for f in cryptographic_findings if not f["success"])
-    print(f"  Status: {'SECURE' if crypto_blocked == len(cryptographic_findings) else 'VULNERABLE'}")
+    print(
+        f"  Status: {'SECURE' if crypto_blocked == len(cryptographic_findings) else 'VULNERABLE'}"
+    )
     print(f"  Attacks blocked: {crypto_blocked}/{len(cryptographic_findings)}")
 
     print("\n[SEMANTIC LAYER - UNPROTECTED]")
@@ -1115,7 +1228,9 @@ def run_bad_actor_simulation():
                         protected_sem_blocked += 1
 
     print("\n[SEMANTIC LAYER - PROTECTED]")
-    print(f"  Status: {'SECURE' if protected_sem_blocked == protected_sem_total else 'PARTIALLY PROTECTED'}")
+    print(
+        f"  Status: {'SECURE' if protected_sem_blocked == protected_sem_total else 'PARTIALLY PROTECTED'}"
+    )
     print(f"  Attacks blocked: {protected_sem_blocked}/{protected_sem_total}")
 
     print("\n[OPERATIONAL LAYER]")
@@ -1131,13 +1246,19 @@ def run_bad_actor_simulation():
 
     # Check timestamp validation results
     timestamp_blocked = False
-    if "Timestamp Manipulation" in protected_results and "results" in protected_results["Timestamp Manipulation"]:
+    if (
+        "Timestamp Manipulation" in protected_results
+        and "results" in protected_results["Timestamp Manipulation"]
+    ):
         for r in protected_results["Timestamp Manipulation"]["results"]:
             timestamp_blocked = r.get("blocked_by_timestamp_validation", False)
 
     # Check metadata sanitization results
     metadata_sanitized = False
-    if "Metadata Injection" in protected_results and "results" in protected_results["Metadata Injection"]:
+    if (
+        "Metadata Injection" in protected_results
+        and "results" in protected_results["Metadata Injection"]
+    ):
         for r in protected_results["Metadata Injection"]["results"]:
             if r.get("stripped"):
                 metadata_sanitized = True
@@ -1145,15 +1266,18 @@ def run_bad_actor_simulation():
 
     # Check asset tracking results
     double_spend_blocked = False
-    if "Double-Spending Analog" in protected_results and "results" in protected_results["Double-Spending Analog"]:
+    if (
+        "Double-Spending Analog" in protected_results
+        and "results" in protected_results["Double-Spending Analog"]
+    ):
         for r in protected_results["Double-Spending Analog"]["results"]:
             if r.get("blocked_by_asset_tracking"):
                 double_spend_blocked = True
                 break
 
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("CONCLUSION")
-    print("="*70)
+    print("=" * 70)
     print(f"""
   The NatLangChain blockchain with full protections enabled shows:
 
@@ -1171,9 +1295,9 @@ def run_bad_actor_simulation():
   - PoU validation blocks most semantic layer attacks
   - Replay attacks: BLOCKED by entry deduplication
   - Flooding attacks: BLOCKED by rate limiting ({rate_limited_in_protected} entries blocked)
-  - Timestamp manipulation: {'BLOCKED by timestamp validation' if timestamp_blocked else 'NOT BLOCKED'}
-  - Metadata injection: {'BLOCKED by metadata sanitization' if metadata_sanitized else 'NOT BLOCKED'}
-  - Double-spending: {'BLOCKED by asset tracking' if double_spend_blocked else 'NOT BLOCKED'}
+  - Timestamp manipulation: {"BLOCKED by timestamp validation" if timestamp_blocked else "NOT BLOCKED"}
+  - Metadata injection: {"BLOCKED by metadata sanitization" if metadata_sanitized else "NOT BLOCKED"}
+  - Double-spending: {"BLOCKED by asset tracking" if double_spend_blocked else "NOT BLOCKED"}
 
   ALL SECURITY LAYERS IMPLEMENTED:
 
@@ -1189,13 +1313,14 @@ def run_bad_actor_simulation():
     return {
         "unprotected": unprotected_results,
         "protected": protected_results,
-        "improvement_pct": improvement if unprotected_exploitable > 0 else 0
+        "improvement_pct": improvement if unprotected_exploitable > 0 else 0,
     }
 
 
 # =============================================================================
 # TEST ENTRY POINTS
 # =============================================================================
+
 
 def test_all_bad_actors():
     """Pytest-compatible test runner."""
@@ -1218,7 +1343,9 @@ def test_all_bad_actors():
         chain_tampering = protected["Chain Tampering"]
         if isinstance(chain_tampering, dict) and "attack_log" in chain_tampering:
             for attack in chain_tampering["attack_log"]:
-                assert not attack["success"], f"CRITICAL: Chain tampering attack succeeded: {attack['details']}"
+                assert not attack["success"], (
+                    f"CRITICAL: Chain tampering attack succeeded: {attack['details']}"
+                )
 
     print(f"\nTest completed with {critical_failures} critical vulnerabilities in non-crypto layer")
 

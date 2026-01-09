@@ -24,22 +24,25 @@ from typing import Any
 
 class InitiationPath(Enum):
     """Two mutually exclusive initiation paths."""
-    BREACH_DISPUTE = "breach_dispute"      # Evidence of violation, requires symmetric stake
+
+    BREACH_DISPUTE = "breach_dispute"  # Evidence of violation, requires symmetric stake
     VOLUNTARY_REQUEST = "voluntary_request"  # New negotiation, small burn fee, can be ignored
 
 
 class DisputeResolution(Enum):
     """How a dispute was resolved."""
-    FALLBACK = "fallback"           # Counterparty declined to match stake
-    MUTUAL = "mutual"               # Both parties reached agreement
-    ESCALATED = "escalated"         # Escalated to higher authority
-    TIMEOUT = "timeout"             # Stake window expired
-    WITHDRAWN = "withdrawn"         # Initiator withdrew
+
+    FALLBACK = "fallback"  # Counterparty declined to match stake
+    MUTUAL = "mutual"  # Both parties reached agreement
+    ESCALATED = "escalated"  # Escalated to higher authority
+    TIMEOUT = "timeout"  # Stake window expired
+    WITHDRAWN = "withdrawn"  # Initiator withdrew
 
 
 @dataclass
 class StakeEscrow:
     """Represents escrowed stake for a breach/drift dispute."""
+
     escrow_id: str
     dispute_ref: str
     initiator: str
@@ -56,6 +59,7 @@ class StakeEscrow:
 @dataclass
 class HarassmentProfile:
     """Tracks harassment-related metrics for an address."""
+
     address: str
     # Counts
     initiated_disputes: int = 0
@@ -132,7 +136,7 @@ class AntiHarassmentManager:
         contract_ref: str,
         stake_amount: float,
         evidence_refs: list[dict[str, Any]],
-        description: str
+        description: str,
     ) -> tuple[bool, dict[str, Any]]:
         """
         Initiate a Breach/Drift Dispute with symmetric staking.
@@ -176,7 +180,7 @@ class AntiHarassmentManager:
             stake_amount=stake_amount,
             created_at=datetime.utcnow().isoformat(),
             stake_window_ends=stake_window_ends.isoformat(),
-            counterparty=counterparty
+            counterparty=counterparty,
         )
 
         self.escrows[escrow_id] = escrow
@@ -186,13 +190,16 @@ class AntiHarassmentManager:
         profile.last_updated = datetime.utcnow().isoformat()
 
         # Record action
-        self._record_action("breach_dispute_initiated", {
-            "escrow_id": escrow_id,
-            "initiator": initiator,
-            "counterparty": counterparty,
-            "stake_amount": stake_amount,
-            "contract_ref": contract_ref
-        })
+        self._record_action(
+            "breach_dispute_initiated",
+            {
+                "escrow_id": escrow_id,
+                "initiator": initiator,
+                "counterparty": counterparty,
+                "stake_amount": stake_amount,
+                "contract_ref": contract_ref,
+            },
+        )
 
         return True, {
             "status": "escrow_created",
@@ -203,14 +210,11 @@ class AntiHarassmentManager:
             "stake_window_ends": stake_window_ends.isoformat(),
             "counterparty_must_match": stake_amount,
             "path": InitiationPath.BREACH_DISPUTE.value,
-            "message": f"Counterparty must match stake within {self.DEFAULT_STAKE_WINDOW_HOURS} hours or dispute resolves to fallback"
+            "message": f"Counterparty must match stake within {self.DEFAULT_STAKE_WINDOW_HOURS} hours or dispute resolves to fallback",
         }
 
     def match_stake(
-        self,
-        escrow_id: str,
-        counterparty: str,
-        stake_amount: float
+        self, escrow_id: str, counterparty: str, stake_amount: float
     ) -> tuple[bool, dict[str, Any]]:
         """
         Match stake to enter symmetric dispute resolution.
@@ -243,7 +247,7 @@ class AntiHarassmentManager:
             return False, {
                 "error": "Stake amount insufficient",
                 "required": escrow.stake_amount,
-                "provided": stake_amount
+                "provided": stake_amount,
             }
 
         # Match the stake
@@ -251,25 +255,20 @@ class AntiHarassmentManager:
         escrow.counterparty_staked_at = datetime.utcnow().isoformat()
         escrow.status = "matched"
 
-        self._record_action("stake_matched", {
-            "escrow_id": escrow_id,
-            "counterparty": counterparty,
-            "stake_amount": stake_amount
-        })
+        self._record_action(
+            "stake_matched",
+            {"escrow_id": escrow_id, "counterparty": counterparty, "stake_amount": stake_amount},
+        )
 
         return True, {
             "status": "stakes_matched",
             "escrow_id": escrow_id,
             "total_escrowed": escrow.stake_amount + stake_amount,
             "dispute_ref": escrow.dispute_ref,
-            "message": "Both parties have staked. Dispute resolution may proceed."
+            "message": "Both parties have staked. Dispute resolution may proceed.",
         }
 
-    def decline_stake(
-        self,
-        escrow_id: str,
-        counterparty: str
-    ) -> tuple[bool, dict[str, Any]]:
+    def decline_stake(self, escrow_id: str, counterparty: str) -> tuple[bool, dict[str, Any]]:
         """
         Explicitly decline to match stake (immediate fallback resolution).
 
@@ -306,12 +305,15 @@ class AntiHarassmentManager:
         cooldown_end = datetime.utcnow() + timedelta(days=self.DEFAULT_COOLDOWN_DAYS)
         initiator_profile.contract_cooldowns[escrow.dispute_ref] = cooldown_end.isoformat()
 
-        self._record_action("stake_declined_fallback", {
-            "escrow_id": escrow_id,
-            "counterparty": counterparty,
-            "initiator": escrow.initiator,
-            "initiator_stake_returned": escrow.stake_amount
-        })
+        self._record_action(
+            "stake_declined_fallback",
+            {
+                "escrow_id": escrow_id,
+                "counterparty": counterparty,
+                "initiator": escrow.initiator,
+                "initiator_stake_returned": escrow.stake_amount,
+            },
+        )
 
         return True, {
             "status": "resolved_fallback",
@@ -320,7 +322,7 @@ class AntiHarassmentManager:
             "initiator_stake_returned": escrow.stake_amount,
             "counterparty_cost": 0,
             "message": "Dispute resolved to fallback. Initiator gains no leverage.",
-            "initiator_cooldown_until": cooldown_end.isoformat()
+            "initiator_cooldown_until": cooldown_end.isoformat(),
         }
 
     def initiate_voluntary_request(
@@ -329,7 +331,7 @@ class AntiHarassmentManager:
         recipient: str,
         request_type: str,
         description: str,
-        burn_fee: float | None = None
+        burn_fee: float | None = None,
     ) -> tuple[bool, dict[str, Any]]:
         """
         Initiate a Voluntary Request (negotiation, amendment, reconciliation).
@@ -353,11 +355,12 @@ class AntiHarassmentManager:
         burn_result = None
         if self.burn_manager:
             from observance_burn import BurnReason
+
             success, burn_result = self.burn_manager.perform_burn(
                 burner=initiator,
                 amount=burn_fee,
                 reason=BurnReason.VOLUNTARY_SIGNAL,
-                epitaph=f"Voluntary request to {recipient}: {request_type}"
+                epitaph=f"Voluntary request to {recipient}: {request_type}",
             )
             if not success:
                 return False, {"error": "Burn failed", "details": burn_result}
@@ -375,17 +378,20 @@ class AntiHarassmentManager:
             "created_at": datetime.utcnow().isoformat(),
             "status": "pending",  # pending, responded, ignored, withdrawn
             "response": None,
-            "responded_at": None
+            "responded_at": None,
         }
 
         self.voluntary_requests[request_id] = request_data
 
-        self._record_action("voluntary_request_initiated", {
-            "request_id": request_id,
-            "initiator": initiator,
-            "recipient": recipient,
-            "burn_fee": burn_fee
-        })
+        self._record_action(
+            "voluntary_request_initiated",
+            {
+                "request_id": request_id,
+                "initiator": initiator,
+                "recipient": recipient,
+                "burn_fee": burn_fee,
+            },
+        )
 
         return True, {
             "status": "request_sent",
@@ -394,15 +400,11 @@ class AntiHarassmentManager:
             "burn_fee_paid": burn_fee,
             "burn_tx_hash": burn_result.get("tx_hash") if burn_result else None,
             "recipient_obligation": "NONE - may ignore at zero cost",
-            "message": "Request sent. Recipient may respond or ignore with no penalty."
+            "message": "Request sent. Recipient may respond or ignore with no penalty.",
         }
 
     def respond_to_voluntary_request(
-        self,
-        request_id: str,
-        recipient: str,
-        response: str,
-        accept: bool
+        self, request_id: str, recipient: str, response: str, accept: bool
     ) -> tuple[bool, dict[str, Any]]:
         """
         Respond to a voluntary request (optional - ignoring is free).
@@ -432,27 +434,23 @@ class AntiHarassmentManager:
         request["accepted"] = accept
         request["responded_at"] = datetime.utcnow().isoformat()
 
-        self._record_action("voluntary_request_responded", {
-            "request_id": request_id,
-            "recipient": recipient,
-            "accepted": accept
-        })
+        self._record_action(
+            "voluntary_request_responded",
+            {"request_id": request_id, "recipient": recipient, "accepted": accept},
+        )
 
         return True, {
             "status": "responded",
             "request_id": request_id,
             "accepted": accept,
             "recipient_cost": 0,
-            "message": "Response recorded. No cost to recipient."
+            "message": "Response recorded. No cost to recipient.",
         }
 
     # ==================== GRIEFING LIMITS ====================
 
     def submit_counter_proposal(
-        self,
-        dispute_ref: str,
-        party: str,
-        proposal_content: str
+        self, dispute_ref: str, party: str, proposal_content: str
     ) -> tuple[bool, dict[str, Any]]:
         """
         Submit a counter-proposal with exponential fee enforcement.
@@ -478,21 +476,22 @@ class AntiHarassmentManager:
                 "error": "Counter-proposal limit reached",
                 "max_allowed": self.MAX_COUNTER_PROPOSALS,
                 "submitted": current_count,
-                "message": "You have exhausted your counter-proposals for this dispute."
+                "message": "You have exhausted your counter-proposals for this dispute.",
             }
 
         # Calculate exponential fee
-        fee = self.BASE_COUNTER_FEE * (self.COUNTER_FEE_MULTIPLIER ** current_count)
+        fee = self.BASE_COUNTER_FEE * (self.COUNTER_FEE_MULTIPLIER**current_count)
 
         # Perform burn if burn_manager available
         burn_result = None
         if self.burn_manager:
             from observance_burn import BurnReason
+
             success, burn_result = self.burn_manager.perform_burn(
                 burner=party,
                 amount=fee,
                 reason=BurnReason.RATE_LIMIT_EXCESS,
-                epitaph=f"Counter-proposal #{current_count + 1} for {dispute_ref}"
+                epitaph=f"Counter-proposal #{current_count + 1} for {dispute_ref}",
             )
             if not success:
                 return False, {"error": "Counter-proposal fee burn failed", "details": burn_result}
@@ -505,15 +504,22 @@ class AntiHarassmentManager:
         profile.counter_proposals_made += 1
         self._recalculate_harassment_score(profile)
 
-        self._record_action("counter_proposal_submitted", {
-            "dispute_ref": dispute_ref,
-            "party": party,
-            "counter_number": current_count + 1,
-            "fee_burned": fee
-        })
+        self._record_action(
+            "counter_proposal_submitted",
+            {
+                "dispute_ref": dispute_ref,
+                "party": party,
+                "counter_number": current_count + 1,
+                "fee_burned": fee,
+            },
+        )
 
         remaining = self.MAX_COUNTER_PROPOSALS - current_count - 1
-        next_fee = self.BASE_COUNTER_FEE * (self.COUNTER_FEE_MULTIPLIER ** (current_count + 1)) if remaining > 0 else None
+        next_fee = (
+            self.BASE_COUNTER_FEE * (self.COUNTER_FEE_MULTIPLIER ** (current_count + 1))
+            if remaining > 0
+            else None
+        )
 
         return True, {
             "status": "counter_proposal_accepted",
@@ -523,14 +529,10 @@ class AntiHarassmentManager:
             "burn_tx_hash": burn_result.get("tx_hash") if burn_result else None,
             "remaining_counters": remaining,
             "next_counter_fee": next_fee,
-            "message": f"Counter-proposal #{current_count + 1} accepted. Fee of {fee} burned."
+            "message": f"Counter-proposal #{current_count + 1} accepted. Fee of {fee} burned.",
         }
 
-    def get_counter_proposal_status(
-        self,
-        dispute_ref: str,
-        party: str
-    ) -> dict[str, Any]:
+    def get_counter_proposal_status(self, dispute_ref: str, party: str) -> dict[str, Any]:
         """
         Get counter-proposal status for a party in a dispute.
 
@@ -545,12 +547,20 @@ class AntiHarassmentManager:
         remaining = self.MAX_COUNTER_PROPOSALS - current_count
 
         # Calculate current and next fee
-        current_fee = self.BASE_COUNTER_FEE * (self.COUNTER_FEE_MULTIPLIER ** current_count) if remaining > 0 else None
-        next_fee = self.BASE_COUNTER_FEE * (self.COUNTER_FEE_MULTIPLIER ** (current_count + 1)) if remaining > 1 else None
+        current_fee = (
+            self.BASE_COUNTER_FEE * (self.COUNTER_FEE_MULTIPLIER**current_count)
+            if remaining > 0
+            else None
+        )
+        next_fee = (
+            self.BASE_COUNTER_FEE * (self.COUNTER_FEE_MULTIPLIER ** (current_count + 1))
+            if remaining > 1
+            else None
+        )
 
         # Calculate total possible cost of all counters
         total_possible = sum(
-            self.BASE_COUNTER_FEE * (self.COUNTER_FEE_MULTIPLIER ** i)
+            self.BASE_COUNTER_FEE * (self.COUNTER_FEE_MULTIPLIER**i)
             for i in range(self.MAX_COUNTER_PROPOSALS)
         )
 
@@ -562,7 +572,7 @@ class AntiHarassmentManager:
             "next_counter_fee": current_fee,
             "subsequent_fee": next_fee,
             "max_total_cost": total_possible,
-            "limit_reached": remaining == 0
+            "limit_reached": remaining == 0,
         }
 
     # ==================== HARASSMENT SCORING ====================
@@ -600,10 +610,10 @@ class AntiHarassmentManager:
                 "non_resolving_disputes": profile.non_resolving_disputes,
                 "ignored_voluntary_requests": profile.ignored_voluntary_requests,
                 "vetoes_used": profile.vetoes_used,
-                "counter_proposals_made": profile.counter_proposals_made
+                "counter_proposals_made": profile.counter_proposals_made,
             },
             "active_cooldowns": len(profile.contract_cooldowns),
-            "last_updated": profile.last_updated
+            "last_updated": profile.last_updated,
         }
 
     def record_veto(self, party: str, dispute_ref: str) -> None:
@@ -612,11 +622,10 @@ class AntiHarassmentManager:
         profile.vetoes_used += 1
         self._recalculate_harassment_score(profile)
 
-        self._record_action("veto_recorded", {
-            "party": party,
-            "dispute_ref": dispute_ref,
-            "new_score": profile.harassment_score
-        })
+        self._record_action(
+            "veto_recorded",
+            {"party": party, "dispute_ref": dispute_ref, "new_score": profile.harassment_score},
+        )
 
     def record_ignored_request(self, initiator: str, request_id: str) -> None:
         """Record when an initiator's request was ignored (for pattern tracking)."""
@@ -628,8 +637,7 @@ class AntiHarassmentManager:
         """Get or create harassment profile for address."""
         if address not in self.profiles:
             self.profiles[address] = HarassmentProfile(
-                address=address,
-                last_updated=datetime.utcnow().isoformat()
+                address=address, last_updated=datetime.utcnow().isoformat()
             )
         return self.profiles[address]
 
@@ -660,10 +668,7 @@ class AntiHarassmentManager:
         return 1.0
 
     def _calculate_adjusted_stake(
-        self,
-        base_stake: float,
-        profile: HarassmentProfile,
-        contract_ref: str
+        self, base_stake: float, profile: HarassmentProfile, contract_ref: str
     ) -> float:
         """
         Calculate adjusted stake based on harassment history.
@@ -698,7 +703,10 @@ class AntiHarassmentManager:
                 end_time = datetime.fromisoformat(cooldown_end)
                 if datetime.utcnow() < end_time:
                     remaining = end_time - datetime.utcnow()
-                    return False, f"Cooldown active. Cannot initiate dispute until {cooldown_end} ({remaining.days} days remaining)"
+                    return (
+                        False,
+                        f"Cooldown active. Cannot initiate dispute until {cooldown_end} ({remaining.days} days remaining)",
+                    )
 
         return True, ""
 
@@ -709,7 +717,8 @@ class AntiHarassmentManager:
 
         for profile in self.profiles.values():
             expired = [
-                ref for ref, end in profile.contract_cooldowns.items()
+                ref
+                for ref, end in profile.contract_cooldowns.items()
                 if datetime.fromisoformat(end) < now
             ]
             for ref in expired:
@@ -749,30 +758,28 @@ class AntiHarassmentManager:
                 cooldown_end = now + timedelta(days=self.DEFAULT_COOLDOWN_DAYS)
                 profile.contract_cooldowns[escrow.dispute_ref] = cooldown_end.isoformat()
 
-                resolved.append({
-                    "escrow_id": escrow_id,
-                    "dispute_ref": escrow.dispute_ref,
-                    "initiator": escrow.initiator,
-                    "stake_returned": escrow.stake_amount,
-                    "resolution": DisputeResolution.TIMEOUT.value,
-                    "cooldown_until": cooldown_end.isoformat()
-                })
+                resolved.append(
+                    {
+                        "escrow_id": escrow_id,
+                        "dispute_ref": escrow.dispute_ref,
+                        "initiator": escrow.initiator,
+                        "stake_returned": escrow.stake_amount,
+                        "resolution": DisputeResolution.TIMEOUT.value,
+                        "cooldown_until": cooldown_end.isoformat(),
+                    }
+                )
 
-                self._record_action("stake_timeout_fallback", {
-                    "escrow_id": escrow_id,
-                    "initiator": escrow.initiator
-                })
+                self._record_action(
+                    "stake_timeout_fallback",
+                    {"escrow_id": escrow_id, "initiator": escrow.initiator},
+                )
 
         return resolved
 
     # ==================== RESOLUTION ====================
 
     def resolve_dispute(
-        self,
-        escrow_id: str,
-        resolution: DisputeResolution,
-        resolver: str,
-        resolution_details: str
+        self, escrow_id: str, resolution: DisputeResolution, resolver: str, resolution_details: str
     ) -> tuple[bool, dict[str, Any]]:
         """
         Resolve a matched dispute.
@@ -800,12 +807,15 @@ class AntiHarassmentManager:
         # Return stakes (simplified - in production would handle distribution)
         total_stake = escrow.stake_amount + escrow.counterparty_stake
 
-        self._record_action("dispute_resolved", {
-            "escrow_id": escrow_id,
-            "resolution": resolution.value,
-            "resolver": resolver,
-            "total_stake_released": total_stake
-        })
+        self._record_action(
+            "dispute_resolved",
+            {
+                "escrow_id": escrow_id,
+                "resolution": resolution.value,
+                "resolver": resolver,
+                "total_stake_released": total_stake,
+            },
+        )
 
         return True, {
             "status": "resolved",
@@ -814,7 +824,7 @@ class AntiHarassmentManager:
             "resolution": resolution.value,
             "total_stake_released": total_stake,
             "resolved_by": resolver,
-            "details": resolution_details
+            "details": resolution_details,
         }
 
     # ==================== UTILITY METHODS ====================
@@ -825,7 +835,7 @@ class AntiHarassmentManager:
             "initiator": initiator,
             "counterparty": counterparty,
             "contract_ref": contract_ref,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         }
         hash_input = json.dumps(data, sort_keys=True)
         return f"ESCROW-{hashlib.sha256(hash_input.encode()).hexdigest()[:12].upper()}"
@@ -836,7 +846,7 @@ class AntiHarassmentManager:
             "initiator": initiator,
             "recipient": recipient,
             "request_type": request_type,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         }
         hash_input = json.dumps(data, sort_keys=True)
         return f"VREQ-{hashlib.sha256(hash_input.encode()).hexdigest()[:12].upper()}"
@@ -846,17 +856,13 @@ class AntiHarassmentManager:
         action = {
             "action_type": action_type,
             "timestamp": datetime.utcnow().isoformat(),
-            "details": details
+            "details": details,
         }
         self.actions.append(action)
 
     def get_audit_trail(self, limit: int = 100) -> list[dict[str, Any]]:
         """Get recent audit trail entries."""
-        return sorted(
-            self.actions[-limit:],
-            key=lambda x: x["timestamp"],
-            reverse=True
-        )
+        return sorted(self.actions[-limit:], key=lambda x: x["timestamp"], reverse=True)
 
     def get_statistics(self) -> dict[str, Any]:
         """Get anti-harassment system statistics."""
@@ -864,10 +870,13 @@ class AntiHarassmentManager:
         matched_escrows = sum(1 for e in self.escrows.values() if e.status == "matched")
         fallback_resolutions = sum(1 for e in self.escrows.values() if e.status == "fallback")
 
-        pending_requests = sum(1 for r in self.voluntary_requests.values() if r["status"] == "pending")
+        pending_requests = sum(
+            1 for r in self.voluntary_requests.values() if r["status"] == "pending"
+        )
 
         flagged_addresses = sum(
-            1 for p in self.profiles.values()
+            1
+            for p in self.profiles.values()
             if p.harassment_score >= self.HARASSMENT_THRESHOLD_MODERATE
         )
 
@@ -876,23 +885,23 @@ class AntiHarassmentManager:
                 "total": len(self.escrows),
                 "active_pending_match": active_escrows,
                 "matched_in_progress": matched_escrows,
-                "resolved_fallback": fallback_resolutions
+                "resolved_fallback": fallback_resolutions,
             },
             "voluntary_requests": {
                 "total": len(self.voluntary_requests),
-                "pending": pending_requests
+                "pending": pending_requests,
             },
             "harassment_profiles": {
                 "total_tracked": len(self.profiles),
-                "flagged_moderate_plus": flagged_addresses
+                "flagged_moderate_plus": flagged_addresses,
             },
             "counter_proposal_limits": {
                 "max_per_party": self.MAX_COUNTER_PROPOSALS,
                 "base_fee": self.BASE_COUNTER_FEE,
-                "fee_multiplier": self.COUNTER_FEE_MULTIPLIER
+                "fee_multiplier": self.COUNTER_FEE_MULTIPLIER,
             },
             "cooldowns": {
                 "default_days": self.DEFAULT_COOLDOWN_DAYS,
-                "stake_window_hours": self.DEFAULT_STAKE_WINDOW_HOURS
-            }
+                "stake_window_hours": self.DEFAULT_STAKE_WINDOW_HOURS,
+            },
         }

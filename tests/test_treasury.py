@@ -8,25 +8,26 @@ Tests cover:
 - Balance management and reserves
 """
 
-import pytest
 import sys
 from datetime import datetime
+
+import pytest
 
 sys.path.insert(0, "src")
 
 from treasury import (
-    NatLangChainTreasury,
-    InflowType,
-    SubsidyStatus,
     DenialReason,
     Inflow,
+    InflowType,
+    NatLangChainTreasury,
     SubsidyRequest,
+    SubsidyStatus,
 )
-
 
 # ============================================================
 # Treasury Initialization Tests
 # ============================================================
+
 
 class TestTreasuryInitialization:
     """Tests for treasury initialization."""
@@ -59,6 +60,7 @@ class TestTreasuryInitialization:
 # Deposit Tests
 # ============================================================
 
+
 class TestTreasuryDeposits:
     """Tests for treasury deposit operations."""
 
@@ -70,9 +72,7 @@ class TestTreasuryDeposits:
     def test_deposit_basic(self, treasury):
         """Should accept basic deposit."""
         success, result = treasury.deposit(
-            amount=100.0,
-            inflow_type=InflowType.PROTOCOL_FEE,
-            source="test_source"
+            amount=100.0, inflow_type=InflowType.PROTOCOL_FEE, source="test_source"
         )
 
         assert success is True
@@ -91,9 +91,7 @@ class TestTreasuryDeposits:
     def test_deposit_zero_amount_fails(self, treasury):
         """Should reject zero amount deposit."""
         success, result = treasury.deposit(
-            amount=0.0,
-            inflow_type=InflowType.PROTOCOL_FEE,
-            source="test"
+            amount=0.0, inflow_type=InflowType.PROTOCOL_FEE, source="test"
         )
 
         assert success is False
@@ -102,9 +100,7 @@ class TestTreasuryDeposits:
     def test_deposit_negative_amount_fails(self, treasury):
         """Should reject negative amount deposit."""
         success, result = treasury.deposit(
-            amount=-100.0,
-            inflow_type=InflowType.PROTOCOL_FEE,
-            source="test"
+            amount=-100.0, inflow_type=InflowType.PROTOCOL_FEE, source="test"
         )
 
         assert success is False
@@ -112,9 +108,7 @@ class TestTreasuryDeposits:
     def test_deposit_timeout_burn(self, treasury):
         """Should handle timeout burn deposit."""
         success, result = treasury.deposit_timeout_burn(
-            dispute_id="DISPUTE-001",
-            amount=500.0,
-            initiator="alice"
+            dispute_id="DISPUTE-001", amount=500.0, initiator="alice"
         )
 
         assert success is True
@@ -123,10 +117,7 @@ class TestTreasuryDeposits:
     def test_deposit_counter_fee(self, treasury):
         """Should handle counter fee deposit."""
         success, result = treasury.deposit_counter_fee(
-            dispute_id="DISPUTE-002",
-            amount=25.0,
-            party="bob",
-            counter_number=2
+            dispute_id="DISPUTE-002", amount=25.0, party="bob", counter_number=2
         )
 
         assert success is True
@@ -135,10 +126,7 @@ class TestTreasuryDeposits:
     def test_deposit_escalated_stake(self, treasury):
         """Should handle escalated stake deposit."""
         success, result = treasury.deposit_escalated_stake(
-            dispute_id="DISPUTE-003",
-            amount=1000.0,
-            party="carol",
-            escalation_multiplier=2.0
+            dispute_id="DISPUTE-003", amount=1000.0, party="carol", escalation_multiplier=2.0
         )
 
         assert success is True
@@ -160,7 +148,7 @@ class TestTreasuryDeposits:
             amount=100.0,
             inflow_type=InflowType.PROTOCOL_FEE,
             source="test",
-            metadata={"note": "test deposit", "category": "testing"}
+            metadata={"note": "test deposit", "category": "testing"},
         )
 
         inflow = treasury.inflows[0]
@@ -178,6 +166,7 @@ class TestTreasuryDeposits:
 # ============================================================
 # Balance Tests
 # ============================================================
+
 
 class TestTreasuryBalance:
     """Tests for balance operations."""
@@ -226,6 +215,7 @@ class TestTreasuryBalance:
 # Inflow History Tests
 # ============================================================
 
+
 class TestInflowHistory:
     """Tests for inflow history queries."""
 
@@ -255,9 +245,7 @@ class TestInflowHistory:
 
     def test_get_inflow_history_filter_by_type(self, treasury_with_inflows):
         """Should filter by inflow type."""
-        history = treasury_with_inflows.get_inflow_history(
-            inflow_type=InflowType.DONATION
-        )
+        history = treasury_with_inflows.get_inflow_history(inflow_type=InflowType.DONATION)
 
         assert history["count"] == 2
         assert all(i["inflow_type"] == "donation" for i in history["inflows"])
@@ -266,6 +254,7 @@ class TestInflowHistory:
 # ============================================================
 # Subsidy Request Tests
 # ============================================================
+
 
 class TestSubsidyRequests:
     """Tests for subsidy request system."""
@@ -281,7 +270,7 @@ class TestSubsidyRequests:
             dispute_id="DISPUTE-001",
             requester="defender@example.com",
             stake_required=500.0,
-            is_dispute_target=True
+            is_dispute_target=True,
         )
 
         assert success is True
@@ -294,7 +283,7 @@ class TestSubsidyRequests:
             dispute_id="DISPUTE-001",
             requester="initiator@example.com",
             stake_required=500.0,
-            is_dispute_target=False
+            is_dispute_target=False,
         )
 
         assert success is False
@@ -307,7 +296,7 @@ class TestSubsidyRequests:
             dispute_id="DISPUTE-001",
             requester="defender1",
             stake_required=500.0,
-            is_dispute_target=True
+            is_dispute_target=True,
         )
 
         # Second request for same dispute fails
@@ -315,7 +304,7 @@ class TestSubsidyRequests:
             dispute_id="DISPUTE-001",
             requester="defender2",
             stake_required=500.0,
-            is_dispute_target=True
+            is_dispute_target=True,
         )
 
         assert success is False
@@ -329,7 +318,7 @@ class TestSubsidyRequests:
             dispute_id="DISPUTE-001",
             requester="defender",
             stake_required=10000.0,
-            is_dispute_target=True
+            is_dispute_target=True,
         )
 
         # May be partial or denied depending on available
@@ -342,7 +331,7 @@ class TestSubsidyRequests:
             dispute_id="DISPUTE-001",
             requester="defender",
             stake_required=1000.0,
-            is_dispute_target=True
+            is_dispute_target=True,
         )
 
         assert success is True
@@ -355,7 +344,7 @@ class TestSubsidyRequests:
             dispute_id="DISPUTE-001",
             requester="defender",
             stake_required=10000.0,  # High stake
-            is_dispute_target=True
+            is_dispute_target=True,
         )
 
         assert success is True
@@ -367,7 +356,7 @@ class TestSubsidyRequests:
             dispute_id="DISPUTE-001",
             requester="defender",
             stake_required=500.0,
-            is_dispute_target=True
+            is_dispute_target=True,
         )
 
         assert len(funded_treasury.subsidy_requests) == 1
@@ -377,6 +366,7 @@ class TestSubsidyRequests:
 # ============================================================
 # Anti-Sybil Protection Tests
 # ============================================================
+
 
 class TestAntiSybilProtection:
     """Tests for anti-Sybil protections."""
@@ -393,7 +383,7 @@ class TestAntiSybilProtection:
             dispute_id="DISPUTE-001",
             requester="user1",
             stake_required=500.0,
-            is_dispute_target=True
+            is_dispute_target=True,
         )
 
         # Second request same dispute
@@ -401,7 +391,7 @@ class TestAntiSybilProtection:
             dispute_id="DISPUTE-001",
             requester="user2",
             stake_required=500.0,
-            is_dispute_target=True
+            is_dispute_target=True,
         )
 
         assert success is False
@@ -417,6 +407,7 @@ class TestAntiSybilProtection:
         # Manually simulate that this user has already received subsidies
         # by adding to participant_subsidies directly
         from datetime import datetime
+
         funded_treasury.participant_subsidies["capped_user"] = [
             {"amount": 600.0, "timestamp": datetime.utcnow().isoformat()},
             {"amount": 500.0, "timestamp": datetime.utcnow().isoformat()},
@@ -427,7 +418,7 @@ class TestAntiSybilProtection:
             dispute_id="DISPUTE-CAP-TEST",
             requester="capped_user",
             stake_required=300.0,
-            is_dispute_target=True
+            is_dispute_target=True,
         )
 
         assert success is False
@@ -437,6 +428,7 @@ class TestAntiSybilProtection:
 # ============================================================
 # Event Emission Tests
 # ============================================================
+
 
 class TestEventEmission:
     """Tests for event emission."""
@@ -454,10 +446,7 @@ class TestEventEmission:
         """Subsidy approval should emit event."""
         treasury = NatLangChainTreasury(initial_balance=10000.0)
         treasury.request_subsidy(
-            dispute_id="D1",
-            requester="user",
-            stake_required=500.0,
-            is_dispute_target=True
+            dispute_id="D1", requester="user", stake_required=500.0, is_dispute_target=True
         )
 
         events = [e for e in treasury.events if e["event_type"] == "SubsidyApproved"]
@@ -470,7 +459,7 @@ class TestEventEmission:
             dispute_id="D1",
             requester="user",
             stake_required=500.0,
-            is_dispute_target=False  # Will be denied
+            is_dispute_target=False,  # Will be denied
         )
 
         events = [e for e in treasury.events if e["event_type"] == "SubsidyDenied"]
@@ -480,6 +469,7 @@ class TestEventEmission:
 # ============================================================
 # Data Class Tests
 # ============================================================
+
 
 class TestDataClasses:
     """Tests for data classes."""
@@ -491,7 +481,7 @@ class TestDataClasses:
             inflow_type="donation",
             amount=100.0,
             source="donor",
-            timestamp=datetime.utcnow().isoformat()
+            timestamp=datetime.utcnow().isoformat(),
         )
 
         assert inflow.inflow_id == "INF-001"
@@ -507,7 +497,7 @@ class TestDataClasses:
             subsidy_requested=400.0,
             subsidy_approved=350.0,
             status=SubsidyStatus.APPROVED.value,
-            created_at=datetime.utcnow().isoformat()
+            created_at=datetime.utcnow().isoformat(),
         )
 
         assert request.request_id == "REQ-001"
@@ -517,6 +507,7 @@ class TestDataClasses:
 # ============================================================
 # Enum Tests
 # ============================================================
+
 
 class TestEnums:
     """Tests for treasury enums."""
@@ -546,6 +537,7 @@ class TestEnums:
 # Integration Tests
 # ============================================================
 
+
 class TestTreasuryIntegration:
     """Integration tests for treasury."""
 
@@ -565,10 +557,7 @@ class TestTreasuryIntegration:
 
         # 4. Process subsidy request
         success, result = treasury.request_subsidy(
-            dispute_id="D-NEW",
-            requester="defender",
-            stake_required=1000.0,
-            is_dispute_target=True
+            dispute_id="D-NEW", requester="defender", stake_required=1000.0, is_dispute_target=True
         )
 
         assert success is True
@@ -584,10 +573,7 @@ class TestTreasuryIntegration:
 
         # Try to request large subsidy
         _, result = treasury.request_subsidy(
-            dispute_id="D1",
-            requester="user",
-            stake_required=5000.0,
-            is_dispute_target=True
+            dispute_id="D1", requester="user", stake_required=5000.0, is_dispute_target=True
         )
 
         # Should not deplete below reserve

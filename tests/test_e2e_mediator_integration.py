@@ -22,7 +22,7 @@ import time
 
 import pytest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from chain_interface import (
     HMAC_HEADER,
@@ -48,6 +48,7 @@ from negotiation_engine import AutomatedNegotiationEngine, ClauseType
 # Test Fixtures
 # =============================================================================
 
+
 @pytest.fixture
 def mock_chain():
     """Create a mock chain interface with test data."""
@@ -60,39 +61,39 @@ def mock_chain():
         hash="0xalice123",
         author="user_alice",
         prose="I am offering a high-performance Rust library for fluid dynamics simulation. "
-              "400 hours of work. Looking for 500 units or equivalent compute time.",
+        "400 hours of work. Looking for 500 units or equivalent compute time.",
         desires=["compensation", "open-source collaboration"],
         constraints=["attribution required", "legitimate research only"],
         offered_fee=5.0,
         timestamp=int(time.time()) - 3600,
         status=IntentStatus.PENDING,
-        branch="Professional/Engineering"
+        branch="Professional/Engineering",
     )
 
     bob_intent = ChainIntent(
         hash="0xbob456",
         author="user_bob",
         prose="We need a high-resolution ocean current simulation for climate research. "
-              "Budget of 800 units. Must be fast, auditable, and documented.",
+        "Budget of 800 units. Must be fast, auditable, and documented.",
         desires=["performance", "documentation", "auditability"],
         constraints=["60 day deadline", "testing data required"],
         offered_fee=8.0,
         timestamp=int(time.time()) - 1800,
         status=IntentStatus.PENDING,
-        branch="Research/Climate"
+        branch="Research/Climate",
     )
 
     charlie_intent = ChainIntent(
         hash="0xcharlie789",
         author="user_charlie",
         prose="Seeking data visualization expert for interactive climate charts. "
-              "Budget 300 units. Need D3.js or similar.",
+        "Budget 300 units. Need D3.js or similar.",
         desires=["interactive visualization", "responsive design"],
         constraints=["mobile compatible", "accessibility required"],
         offered_fee=3.0,
         timestamp=int(time.time()) - 7200,
         status=IntentStatus.PENDING,
-        branch="Professional/Design"
+        branch="Professional/Design",
     )
 
     interface.add_test_intent(alice_intent)
@@ -112,14 +113,11 @@ def reputation_manager():
         "test_mediator_001",
         stake_amount=50000,
         supported_domains=["Engineering", "Research"],
-        models_used=["claude-3"]
+        models_used=["claude-3"],
     )
 
     manager.register_mediator(
-        "test_mediator_002",
-        stake_amount=30000,
-        supported_domains=["Design"],
-        models_used=["gpt-4"]
+        "test_mediator_002", stake_amount=30000, supported_domains=["Design"], models_used=["gpt-4"]
     )
 
     return manager
@@ -135,6 +133,7 @@ def negotiation_engine():
 # HMAC Authentication Tests
 # =============================================================================
 
+
 class TestHMACAuthentication:
     """Tests for HMAC request authentication."""
 
@@ -143,9 +142,7 @@ class TestHMACAuthentication:
         auth = HMACAuthenticator("test_secret_key")
 
         headers = auth.sign_request(
-            method="POST",
-            path="/api/v1/entries",
-            body='{"type": "settlement"}'
+            method="POST", path="/api/v1/entries", body='{"type": "settlement"}'
         )
 
         assert HMAC_HEADER in headers
@@ -162,10 +159,7 @@ class TestHMACAuthentication:
         body = '{"test": "data"}'
 
         headers = auth.sign_request(
-            method="POST",
-            path="/api/v1/test",
-            body=body,
-            timestamp=timestamp
+            method="POST", path="/api/v1/test", body=body, timestamp=timestamp
         )
 
         is_valid, message = auth.verify_request(
@@ -174,7 +168,7 @@ class TestHMACAuthentication:
             body=body,
             signature=headers[HMAC_HEADER],
             timestamp=headers[TIMESTAMP_HEADER],
-            nonce=headers[NONCE_HEADER]
+            nonce=headers[NONCE_HEADER],
         )
 
         assert is_valid
@@ -187,11 +181,7 @@ class TestHMACAuthentication:
         # Use timestamp from 10 minutes ago
         old_timestamp = int(time.time()) - 600
 
-        headers = auth.sign_request(
-            method="GET",
-            path="/api/v1/test",
-            timestamp=old_timestamp
-        )
+        headers = auth.sign_request(method="GET", path="/api/v1/test", timestamp=old_timestamp)
 
         is_valid, message = auth.verify_request(
             method="GET",
@@ -199,7 +189,7 @@ class TestHMACAuthentication:
             body=None,
             signature=headers[HMAC_HEADER],
             timestamp=headers[TIMESTAMP_HEADER],
-            nonce=headers[NONCE_HEADER]
+            nonce=headers[NONCE_HEADER],
         )
 
         assert not is_valid
@@ -209,11 +199,7 @@ class TestHMACAuthentication:
         """Test rejection of replayed requests."""
         auth = HMACAuthenticator("test_secret_key")
 
-        headers = auth.sign_request(
-            method="POST",
-            path="/api/v1/entries",
-            body='{"type": "test"}'
-        )
+        headers = auth.sign_request(method="POST", path="/api/v1/entries", body='{"type": "test"}')
 
         # First request should succeed
         is_valid, _ = auth.verify_request(
@@ -222,7 +208,7 @@ class TestHMACAuthentication:
             body='{"type": "test"}',
             signature=headers[HMAC_HEADER],
             timestamp=headers[TIMESTAMP_HEADER],
-            nonce=headers[NONCE_HEADER]
+            nonce=headers[NONCE_HEADER],
         )
         assert is_valid
 
@@ -233,7 +219,7 @@ class TestHMACAuthentication:
             body='{"type": "test"}',
             signature=headers[HMAC_HEADER],
             timestamp=headers[TIMESTAMP_HEADER],
-            nonce=headers[NONCE_HEADER]
+            nonce=headers[NONCE_HEADER],
         )
         assert not is_valid
         assert "replay" in message.lower()
@@ -242,11 +228,7 @@ class TestHMACAuthentication:
         """Test rejection of tampered signature."""
         auth = HMACAuthenticator("test_secret_key")
 
-        headers = auth.sign_request(
-            method="POST",
-            path="/api/v1/entries",
-            body='{"type": "test"}'
-        )
+        headers = auth.sign_request(method="POST", path="/api/v1/entries", body='{"type": "test"}')
 
         # Tamper with signature
         tampered_signature = headers[HMAC_HEADER][:-4] + "0000"
@@ -257,7 +239,7 @@ class TestHMACAuthentication:
             body='{"type": "test"}',
             signature=tampered_signature,
             timestamp=headers[TIMESTAMP_HEADER],
-            nonce=headers[NONCE_HEADER]
+            nonce=headers[NONCE_HEADER],
         )
 
         assert not is_valid
@@ -267,6 +249,7 @@ class TestHMACAuthentication:
 # =============================================================================
 # Chain Interface Tests
 # =============================================================================
+
 
 class TestChainInterface:
     """Tests for the chain interface."""
@@ -307,9 +290,9 @@ class TestChainInterface:
                 "deliverable": "Rust fluid dynamics library",
                 "compensation": 650,
                 "timeline": "45 days",
-                "attribution": True
+                "attribution": True,
             },
-            fee=13.0
+            fee=13.0,
         )
 
         assert success
@@ -324,10 +307,7 @@ class TestChainInterface:
         """Test full settlement acceptance flow."""
         # 1. Propose settlement
         success, _result = mock_chain.propose_settlement(
-            intent_hash_a="0xalice123",
-            intent_hash_b="0xbob456",
-            terms={"amount": 500},
-            fee=10.0
+            intent_hash_a="0xalice123", intent_hash_b="0xbob456", terms={"amount": 500}, fee=10.0
         )
         assert success
 
@@ -345,9 +325,7 @@ class TestChainInterface:
 
         # 3. Party A accepts
         success, _ = mock_chain.accept_settlement(
-            settlement_id=settlement_id,
-            party="A",
-            party_identifier="user_alice"
+            settlement_id=settlement_id, party="A", party_identifier="user_alice"
         )
         assert success
 
@@ -359,9 +337,7 @@ class TestChainInterface:
 
         # 5. Party B accepts
         success, _ = mock_chain.accept_settlement(
-            settlement_id=settlement_id,
-            party="B",
-            party_identifier="user_bob"
+            settlement_id=settlement_id, party="B", party_identifier="user_bob"
         )
         assert success
 
@@ -374,21 +350,14 @@ class TestChainInterface:
         """Test claiming payout for accepted settlement."""
         # Create and accept settlement
         mock_chain.propose_settlement(
-            intent_hash_a="0xalice123",
-            intent_hash_b="0xbob456",
-            terms={"amount": 500},
-            fee=10.0
+            intent_hash_a="0xalice123", intent_hash_b="0xbob456", terms={"amount": 500}, fee=10.0
         )
 
         entries = mock_chain.get_submitted_entries()
         settlement_id = entries[0]["metadata"]["id"]
 
         # Accept from both parties
-        mock_chain.set_test_settlement_accepted(
-            settlement_id,
-            party_a=True,
-            party_b=True
-        )
+        mock_chain.set_test_settlement_accepted(settlement_id, party_a=True, party_b=True)
 
         # Claim payout
         success, _result = mock_chain.claim_payout(settlement_id)
@@ -410,16 +379,10 @@ class TestChainInterface:
     def test_update_reputation(self, mock_chain):
         """Test updating mediator reputation."""
         new_reputation = ChainReputation(
-            mediator_id="test_mediator_001",
-            successful_closures=5,
-            failed_challenges=1,
-            weight=1.5
+            mediator_id="test_mediator_001", successful_closures=5, failed_challenges=1, weight=1.5
         )
 
-        success, _ = mock_chain.update_reputation(
-            "test_mediator_001",
-            new_reputation
-        )
+        success, _ = mock_chain.update_reputation("test_mediator_001", new_reputation)
         assert success
 
         # Verify update
@@ -435,7 +398,7 @@ class TestChainInterface:
             delegator_id="user_dave",
             mediator_id="test_mediator_001",
             amount=1000,
-            timestamp=int(time.time())
+            timestamp=int(time.time()),
         )
         mock_chain.add_test_delegation(delegation)
 
@@ -472,6 +435,7 @@ class TestChainInterface:
 # Full Negotiation Flow Tests
 # =============================================================================
 
+
 class TestFullNegotiationFlow:
     """Tests for the complete negotiation and mediation flow."""
 
@@ -502,7 +466,7 @@ class TestFullNegotiationFlow:
             "timeline_days": 45,
             "attribution_required": True,
             "documentation_required": True,
-            "testing_data_provided": True
+            "testing_data_provided": True,
         }
 
         total_fee = alice_intent.offered_fee + bob_intent.offered_fee
@@ -510,7 +474,7 @@ class TestFullNegotiationFlow:
             intent_hash_a=alice_intent.hash,
             intent_hash_b=bob_intent.hash,
             terms=settlement_terms,
-            fee=total_fee
+            fee=total_fee,
         )
         assert success
 
@@ -546,17 +510,20 @@ class TestFullNegotiationFlow:
             accepted=True,
             semantic_drift_score=0.1,  # Low drift = high accuracy
             latency_seconds=30,
-            coercion_detected=False
+            coercion_detected=False,
         )
 
-        assert result["new_cts"] > profile.composite_trust_score or result["new_cts"] == profile.composite_trust_score
+        assert (
+            result["new_cts"] > profile.composite_trust_score
+            or result["new_cts"] == profile.composite_trust_score
+        )
         assert result["accepted_count"] >= 1
 
         # Step 9: Update chain reputation
         chain_reputation = ChainReputation(
             mediator_id=mediator_id,
             successful_closures=profile.accepted_count,
-            weight=profile.composite_trust_score
+            weight=profile.composite_trust_score,
         )
 
         success, _ = mock_chain.update_reputation(mediator_id, chain_reputation)
@@ -568,10 +535,7 @@ class TestFullNegotiationFlow:
 
         # Propose settlement
         mock_chain.propose_settlement(
-            intent_hash_a="0xalice123",
-            intent_hash_b="0xbob456",
-            terms={"amount": 500},
-            fee=10.0
+            intent_hash_a="0xalice123", intent_hash_b="0xbob456", terms={"amount": 500}, fee=10.0
         )
 
         entries = mock_chain.get_submitted_entries()
@@ -581,10 +545,7 @@ class TestFullNegotiationFlow:
         # In a real scenario, this would be a separate challenge entry
 
         # Record the challenge outcome (mediator lost)
-        reputation_manager.record_appeal_outcome(
-            mediator_id=mediator_id,
-            appeal_survived=False
-        )
+        reputation_manager.record_appeal_outcome(mediator_id=mediator_id, appeal_survived=False)
 
         # Verify reputation decreased
         profile = reputation_manager.get_mediator(mediator_id)
@@ -598,13 +559,11 @@ class TestFullNegotiationFlow:
             "mediator_high_rep",
             stake_amount=100000,
             supported_domains=["Engineering", "Research"],  # Multiple domains for diversity bonus
-            models_used=["claude-3", "gpt-4"]  # Multi-model for diversity bonus
+            models_used=["claude-3", "gpt-4"],  # Multi-model for diversity bonus
         )
 
         reputation_manager.register_mediator(
-            "mediator_low_rep",
-            stake_amount=15000,
-            supported_domains=["General"]
+            "mediator_low_rep", stake_amount=15000, supported_domains=["General"]
         )
 
         # Update reputations to create differentiation
@@ -614,7 +573,7 @@ class TestFullNegotiationFlow:
                 "mediator_high_rep",
                 accepted=True,
                 semantic_drift_score=0.02,  # Very low drift = high accuracy
-                latency_seconds=15  # Fast response
+                latency_seconds=15,  # Fast response
             )
 
         # Low rep: more proposals but poor quality
@@ -622,12 +581,9 @@ class TestFullNegotiationFlow:
             reputation_manager.record_proposal_outcome(
                 "mediator_low_rep",
                 accepted=True,
-                semantic_drift_score=0.4  # High drift = low accuracy
+                semantic_drift_score=0.4,  # High drift = low accuracy
             )
-            reputation_manager.record_proposal_outcome(
-                "mediator_low_rep",
-                accepted=False
-            )
+            reputation_manager.record_proposal_outcome("mediator_low_rep", accepted=False)
 
         # Get rankings
         mediator_ids = ["test_mediator_001", "mediator_high_rep", "mediator_low_rep"]
@@ -653,10 +609,7 @@ class TestFullNegotiationFlow:
             assert "cts" in ranking
 
         # Sample by trust
-        samples = reputation_manager.sample_proposals_by_trust(
-            mediator_ids,
-            sample_size=2
-        )
+        samples = reputation_manager.sample_proposals_by_trust(mediator_ids, sample_size=2)
 
         assert len(samples) == 2
 
@@ -672,7 +625,7 @@ class TestFullNegotiationFlow:
             mediator_id=mediator_id,
             offense=SlashingOffense.SEMANTIC_MANIPULATION,
             severity=0.7,
-            evidence={"drift_score": 0.85, "threshold": 0.3}
+            evidence={"drift_score": 0.85, "threshold": 0.3},
         )
 
         assert event is not None
@@ -688,7 +641,7 @@ class TestFullNegotiationFlow:
             mediator_id=mediator_id,
             successful_closures=profile_after.accepted_count,
             failed_challenges=profile_after.appeal_losses,
-            weight=profile_after.composite_trust_score
+            weight=profile_after.composite_trust_score,
         )
 
         mock_chain.update_reputation(mediator_id, chain_reputation)
@@ -697,6 +650,7 @@ class TestFullNegotiationFlow:
 # =============================================================================
 # Reputation Scoring Tests
 # =============================================================================
+
 
 class TestReputationScoring:
     """Tests for reputation scoring and metrics."""
@@ -714,10 +668,7 @@ class TestReputationScoring:
         # Record good outcomes
         for _ in range(5):
             reputation_manager.record_proposal_outcome(
-                mediator_id,
-                accepted=True,
-                semantic_drift_score=0.1,
-                latency_seconds=20
+                mediator_id, accepted=True, semantic_drift_score=0.1, latency_seconds=20
             )
 
         profile = reputation_manager.get_mediator(mediator_id)
@@ -752,7 +703,7 @@ class TestReputationScoring:
         reputation_manager.record_proposal_outcome(
             mediator_id,
             accepted=True,
-            semantic_drift_score=0.05  # Very low drift
+            semantic_drift_score=0.05,  # Very low drift
         )
 
         profile = reputation_manager.get_mediator(mediator_id)
@@ -763,7 +714,7 @@ class TestReputationScoring:
         reputation_manager.record_proposal_outcome(
             mediator_id_2,
             accepted=True,
-            semantic_drift_score=0.8  # High drift
+            semantic_drift_score=0.8,  # High drift
         )
 
         profile_2 = reputation_manager.get_mediator(mediator_id_2)
@@ -774,11 +725,7 @@ class TestReputationScoring:
         mediator_id = "test_mediator_001"
 
         # Fast response
-        reputation_manager.record_proposal_outcome(
-            mediator_id,
-            accepted=True,
-            latency_seconds=30
-        )
+        reputation_manager.record_proposal_outcome(mediator_id, accepted=True, latency_seconds=30)
 
         profile = reputation_manager.get_mediator(mediator_id)
         high_latency_score = profile.scores.latency_discipline
@@ -788,7 +735,7 @@ class TestReputationScoring:
             reputation_manager.record_proposal_outcome(
                 mediator_id,
                 accepted=True,
-                latency_seconds=3000  # 50 minutes
+                latency_seconds=3000,  # 50 minutes
             )
 
         profile = reputation_manager.get_mediator(mediator_id)
@@ -806,9 +753,7 @@ class TestReputationScoring:
         # Record coercion detection
         for _ in range(5):
             reputation_manager.record_proposal_outcome(
-                mediator_id,
-                accepted=True,
-                coercion_detected=True
+                mediator_id, accepted=True, coercion_detected=True
             )
 
         profile_after = reputation_manager.get_mediator(mediator_id)
@@ -844,10 +789,7 @@ class TestReputationScoring:
 
         # Record disputes
         for _ in range(5):
-            reputation_manager.record_downstream_dispute(
-                mediator_id,
-                dispute_occurred=True
-            )
+            reputation_manager.record_downstream_dispute(mediator_id, dispute_occurred=True)
 
         profile = reputation_manager.get_mediator(mediator_id)
         assert profile.scores.dispute_avoidance < 1.0
@@ -857,14 +799,12 @@ class TestReputationScoring:
 # Integration with Negotiation Engine Tests
 # =============================================================================
 
+
 class TestNegotiationEngineIntegration:
     """Tests for integration between chain interface and negotiation engine."""
 
     def test_full_negotiation_to_settlement(
-        self,
-        mock_chain,
-        negotiation_engine,
-        reputation_manager
+        self, mock_chain, negotiation_engine, reputation_manager
     ):
         """Test full flow from negotiation session to chain settlement."""
         # Step 1: Get aligned intents from chain
@@ -880,20 +820,14 @@ class TestNegotiationEngineIntegration:
             counterparty="user_bob",
             subject="Fluid dynamics library for climate research",
             initiator_statement=alice_intent.prose,
-            initial_terms={
-                "compensation_min": 500,
-                "compensation_max": 800,
-                "timeline_days": 60
-            }
+            initial_terms={"compensation_min": 500, "compensation_max": 800, "timeline_days": 60},
         )
         assert success
         session_id = session_data["session_id"]
 
         # Step 3: Counterparty joins
         success, join_data = negotiation_engine.join_session(
-            session_id=session_id,
-            counterparty="user_bob",
-            counterparty_statement=bob_intent.prose
+            session_id=session_id, counterparty="user_bob", counterparty_statement=bob_intent.prose
         )
         assert success
         assert join_data["alignment_score"] > 0
@@ -906,9 +840,9 @@ class TestNegotiationEngineIntegration:
                 "amount": "650",  # In configured staking currency
                 "method": "crypto transfer",
                 "timeline": "upon completion",
-                "trigger": "acceptance of deliverables"
+                "trigger": "acceptance of deliverables",
             },
-            proposed_by="user_alice"
+            proposed_by="user_alice",
         )
         assert success
 
@@ -919,9 +853,9 @@ class TestNegotiationEngineIntegration:
             terms={
                 "compensation": 650,
                 "timeline_days": 45,
-                "deliverables": ["Rust library", "Documentation", "Test suite"]
+                "deliverables": ["Rust library", "Documentation", "Test suite"],
             },
-            message="I propose meeting in the middle on compensation and timeline."
+            message="I propose meeting in the middle on compensation and timeline.",
         )
         assert success
 
@@ -930,7 +864,7 @@ class TestNegotiationEngineIntegration:
             session_id=session_id,
             offer_id=offer_data["offer_id"],
             party="user_bob",
-            response="accept"
+            response="accept",
         )
         assert success
         assert response["status"] == "agreed"
@@ -941,26 +875,19 @@ class TestNegotiationEngineIntegration:
             intent_hash_a=alice_intent.hash,
             intent_hash_b=bob_intent.hash,
             terms=agreed_terms,
-            fee=alice_intent.offered_fee + bob_intent.offered_fee
+            fee=alice_intent.offered_fee + bob_intent.offered_fee,
         )
         assert success
 
         # Step 8: Update reputation
         reputation_manager.record_proposal_outcome(
-            "test_mediator_001",
-            accepted=True,
-            semantic_drift_score=0.15
+            "test_mediator_001", accepted=True, semantic_drift_score=0.15
         )
 
         profile = reputation_manager.get_mediator("test_mediator_001")
         assert profile.accepted_count >= 1
 
-    def test_negotiation_failure_handling(
-        self,
-        mock_chain,
-        negotiation_engine,
-        reputation_manager
-    ):
+    def test_negotiation_failure_handling(self, mock_chain, negotiation_engine, reputation_manager):
         """Test handling of failed negotiations."""
         mediator_id = "test_mediator_001"
 
@@ -970,7 +897,7 @@ class TestNegotiationEngineIntegration:
             counterparty="user_charlie",
             subject="Incompatible request",
             initiator_statement="I want to sell software",
-            initial_terms={}
+            initial_terms={},
         )
         assert success
         session_id = session_data["session_id"]
@@ -979,21 +906,19 @@ class TestNegotiationEngineIntegration:
         negotiation_engine.join_session(
             session_id=session_id,
             counterparty="user_charlie",
-            counterparty_statement="I want to buy visualization services"
+            counterparty_statement="I want to buy visualization services",
         )
 
         negotiation_engine.make_offer(
             session_id=session_id,
             from_party="user_alice",
             terms={"price": 10000},
-            message="My offer"
+            message="My offer",
         )
 
         # Record rejection
         reputation_manager.record_proposal_outcome(
-            mediator_id,
-            accepted=False,
-            semantic_drift_score=0.6
+            mediator_id, accepted=False, semantic_drift_score=0.6
         )
 
         profile = reputation_manager.get_mediator(mediator_id)
@@ -1003,6 +928,7 @@ class TestNegotiationEngineIntegration:
 # =============================================================================
 # Edge Cases and Error Handling Tests
 # =============================================================================
+
 
 class TestEdgeCases:
     """Tests for edge cases and error handling."""
@@ -1016,10 +942,7 @@ class TestEdgeCases:
         """Test handling of duplicate acceptance."""
         # Propose settlement
         mock_chain.propose_settlement(
-            intent_hash_a="0xalice123",
-            intent_hash_b="0xbob456",
-            terms={"amount": 500},
-            fee=10.0
+            intent_hash_a="0xalice123", intent_hash_b="0xbob456", terms={"amount": 500}, fee=10.0
         )
 
         entries = mock_chain.get_submitted_entries()
@@ -1048,7 +971,7 @@ class TestEdgeCases:
         with pytest.raises(ValueError) as exc_info:
             reputation_manager.register_mediator(
                 "underbonded_mediator",
-                stake_amount=1000  # Below minimum
+                stake_amount=1000,  # Below minimum
             )
 
         assert "below minimum" in str(exc_info.value).lower()
@@ -1059,11 +982,7 @@ class TestEdgeCases:
 
         # Slash heavily multiple times
         for _ in range(10):
-            reputation_manager.slash(
-                mediator_id,
-                SlashingOffense.COLLUSION_SIGNALS,
-                severity=1.0
-            )
+            reputation_manager.slash(mediator_id, SlashingOffense.COLLUSION_SIGNALS, severity=1.0)
 
         profile = reputation_manager.get_mediator(mediator_id)
 
@@ -1077,9 +996,7 @@ class TestEdgeCases:
 
         # Trigger cooldown via slashing
         reputation_manager.slash(
-            mediator_id,
-            SlashingOffense.REPEATED_INVALID_PROPOSALS,
-            severity=0.5
+            mediator_id, SlashingOffense.REPEATED_INVALID_PROPOSALS, severity=0.5
         )
 
         profile = reputation_manager.get_mediator(mediator_id)
@@ -1089,6 +1006,7 @@ class TestEdgeCases:
 # =============================================================================
 # Event Callback Tests
 # =============================================================================
+
 
 class TestEventCallbacks:
     """Tests for event callback system."""
@@ -1116,10 +1034,7 @@ class TestEventCallbacks:
         mock_chain.on("entry_submitted", on_entry_submitted)
 
         mock_chain.propose_settlement(
-            intent_hash_a="0xtest1",
-            intent_hash_b="0xtest2",
-            terms={},
-            fee=5.0
+            intent_hash_a="0xtest1", intent_hash_b="0xtest2", terms={}, fee=5.0
         )
 
         assert len(callback_data) == 1
@@ -1145,6 +1060,7 @@ class TestEventCallbacks:
 # Performance and Stress Tests
 # =============================================================================
 
+
 class TestPerformance:
     """Basic performance tests."""
 
@@ -1163,7 +1079,7 @@ class TestPerformance:
                 offered_fee=float(i % 10),
                 timestamp=int(time.time()) - i,
                 status=IntentStatus.PENDING,
-                branch="Test"
+                branch="Test",
             )
             interface.add_test_intent(intent)
 
@@ -1186,7 +1102,7 @@ class TestPerformance:
                 intent_hash_a=f"0xa{i:03d}",
                 intent_hash_b=f"0xb{i:03d}",
                 terms={"index": i},
-                fee=float(i)
+                fee=float(i),
             )
 
         entries = interface.get_submitted_entries()

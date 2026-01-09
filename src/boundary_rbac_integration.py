@@ -68,11 +68,12 @@ import logging
 import os
 import threading
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from functools import wraps
-from typing import Any, Callable
+from typing import Any
 
 from flask import g, jsonify, request
 
@@ -80,39 +81,34 @@ from api.utils import DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT
 
 # Import boundary daemon
 from boundary_daemon import (
-    AuditRecord,
     BoundaryDaemon,
-    BoundaryPolicy,
     DataClassification,
     EnforcementMode,
-    PolicyViolation,
-    ViolationType,
 )
 
 # Import RBAC
 from rbac import (
-    APIKeyInfo,
     Permission,
-    Role,
     RBACManager,
-    ROLE_PERMISSIONS,
+    Role,
     get_rbac_manager,
 )
 
 # Import security enforcement layer (NEW - provides ACTUAL enforcement)
 try:
     from security_enforcement import (
-        SecurityEnforcementManager,
-        NetworkEnforcement,
-        USBEnforcement,
-        ProcessSandbox,
-        ImmutableAuditLog,
         DaemonWatchdog,
-        SystemCapabilityDetector,
         EnforcementCapability,
         EnforcementResult,
+        ImmutableAuditLog,
+        NetworkEnforcement,
+        ProcessSandbox,
+        SecurityEnforcementManager,
+        SystemCapabilityDetector,
+        USBEnforcement,
         enforce_boundary_mode,
     )
+
     ENFORCEMENT_AVAILABLE = True
 except ImportError:
     ENFORCEMENT_AVAILABLE = False
@@ -124,6 +120,7 @@ logger = logging.getLogger(__name__)
 # Boundary Mode to RBAC Role Mapping
 # =============================================================================
 
+
 class AccessLevel(Enum):
     """
     Access levels that control overall API access restrictions.
@@ -132,11 +129,12 @@ class AccessLevel(Enum):
     defines the 6 trust levels for the boundary daemon. This enum defines
     the 5 RBAC access levels for API operations.
     """
-    OPEN = "open"              # Development mode, minimal restrictions
-    STANDARD = "standard"      # Normal operation, standard policies
-    ELEVATED = "elevated"      # Heightened security, additional checks
+
+    OPEN = "open"  # Development mode, minimal restrictions
+    STANDARD = "standard"  # Normal operation, standard policies
+    ELEVATED = "elevated"  # Heightened security, additional checks
     RESTRICTED = "restricted"  # Limited operations, high-value protection
-    LOCKDOWN = "lockdown"      # Emergency mode, minimal operations
+    LOCKDOWN = "lockdown"  # Emergency mode, minimal operations
 
 
 # Map access levels to RBAC restrictions
@@ -157,8 +155,9 @@ ACCESS_LEVEL_RESTRICTIONS: dict[AccessLevel, set[Permission]] = {
     },
     AccessLevel.LOCKDOWN: {
         # In lockdown, only allow read operations
-        permission for permission in Permission
-        if not permission.name.endswith('_READ') and permission != Permission.CHAIN_VALIDATE
+        permission
+        for permission in Permission
+        if not permission.name.endswith("_READ") and permission != Permission.CHAIN_VALIDATE
     },
 }
 
@@ -187,6 +186,7 @@ ROLE_TO_CLASSIFICATION: dict[Role, DataClassification] = {
 # Unified Security Event
 # =============================================================================
 
+
 @dataclass
 class SecurityEvent:
     """Unified security event for audit trail."""
@@ -194,13 +194,13 @@ class SecurityEvent:
     event_id: str
     timestamp: str
     event_type: str  # rbac_check, boundary_check, combined_auth
-    source: str      # IP, agent_id, api_key_name
-    action: str      # The operation attempted
+    source: str  # IP, agent_id, api_key_name
+    action: str  # The operation attempted
     permission: str | None
     role: str | None
     boundary_mode: str
     enforcement_mode: str
-    decision: str    # allowed, denied, blocked
+    decision: str  # allowed, denied, blocked
     reason: str
     data_classification: str | None = None
     violation_id: str | None = None
@@ -231,7 +231,7 @@ class SecurityEvent:
                 "role": self.role,
                 "boundary_mode": self.boundary_mode,
                 "timestamp": self.timestamp,
-            }
+            },
         }
 
     def to_dict(self) -> dict[str, Any]:
@@ -259,6 +259,7 @@ class SecurityEvent:
 # Boundary RBAC Gateway
 # =============================================================================
 
+
 class BoundaryRBACGateway:
     """
     Unified security gateway combining boundary-daemon and RBAC.
@@ -281,9 +282,7 @@ class BoundaryRBACGateway:
         self._boundary_mode = boundary_mode
         self._enforcement_mode = ACCESS_LEVEL_TO_ENFORCEMENT[boundary_mode]
 
-        self._daemon = boundary_daemon or BoundaryDaemon(
-            enforcement_mode=self._enforcement_mode
-        )
+        self._daemon = boundary_daemon or BoundaryDaemon(enforcement_mode=self._enforcement_mode)
 
         self._event_counter = 0
         self._events: list[SecurityEvent] = []
@@ -302,8 +301,10 @@ class BoundaryRBACGateway:
             try:
                 self._enforcement_manager = SecurityEnforcementManager()
                 self._enforcement_capabilities = self._enforcement_manager.capabilities
-                logger.info(f"Enforcement layer initialized with capabilities: "
-                           f"{[k.value for k, v in self._enforcement_capabilities.items() if v]}")
+                logger.info(
+                    f"Enforcement layer initialized with capabilities: "
+                    f"{[k.value for k, v in self._enforcement_capabilities.items() if v]}"
+                )
             except Exception as e:
                 logger.warning(f"Failed to initialize enforcement layer: {e}")
                 self._enforcement_enabled = False
@@ -328,9 +329,7 @@ class BoundaryRBACGateway:
             self._enforcement_mode = ACCESS_LEVEL_TO_ENFORCEMENT[mode]
 
             # Update daemon enforcement mode
-            self._daemon = BoundaryDaemon(
-                enforcement_mode=self._enforcement_mode
-            )
+            self._daemon = BoundaryDaemon(enforcement_mode=self._enforcement_mode)
 
             self._log_event(
                 event_type="mode_change",
@@ -340,9 +339,7 @@ class BoundaryRBACGateway:
                 reason=f"Boundary mode changed from {old_mode.value} to {mode.value}",
             )
 
-            logger.warning(
-                f"Boundary mode changed: {old_mode.value} -> {mode.value}"
-            )
+            logger.warning(f"Boundary mode changed: {old_mode.value} -> {mode.value}")
 
     def set_chain_callback(self, callback: Callable[[dict], None]):
         """Set callback for recording events to blockchain."""
@@ -394,7 +391,7 @@ class BoundaryRBACGateway:
         with self._lock:
             self._events.append(event)
             if len(self._events) > self._max_events:
-                self._events = self._events[-self._max_events:]
+                self._events = self._events[-self._max_events :]
 
         # Record significant events to blockchain
         if record_to_chain and self._chain_callback:
@@ -474,13 +471,17 @@ class BoundaryRBACGateway:
 
         # Step 3: Boundary daemon check (if request data provided)
         if request_data:
-            boundary_result = self._daemon.authorize_request({
-                "request_id": f"RBAC-{int(time.time())}",
-                "source": source,
-                "destination": destination,
-                "payload": request_data,
-                "data_classification": data_classification.value if data_classification else None,
-            })
+            boundary_result = self._daemon.authorize_request(
+                {
+                    "request_id": f"RBAC-{int(time.time())}",
+                    "source": source,
+                    "destination": destination,
+                    "payload": request_data,
+                    "data_classification": data_classification.value
+                    if data_classification
+                    else None,
+                }
+            )
 
             if not boundary_result.get("authorized", False):
                 violation = boundary_result.get("violation", {})
@@ -535,13 +536,15 @@ class BoundaryRBACGateway:
         """
         payload = {"content": data} if isinstance(data, str) else data
 
-        result = self._daemon.authorize_request({
-            "request_id": f"FLOW-{int(time.time())}",
-            "source": source,
-            "destination": destination,
-            "payload": payload,
-            "data_classification": classification.value if classification else None,
-        })
+        result = self._daemon.authorize_request(
+            {
+                "request_id": f"FLOW-{int(time.time())}",
+                "source": source,
+                "destination": destination,
+                "payload": payload,
+                "data_classification": classification.value if classification else None,
+            }
+        )
 
         if result.get("authorized", False):
             return True, "Data flow authorized", None
@@ -580,8 +583,9 @@ class BoundaryRBACGateway:
 
     def get_violations(self, limit: int = 100) -> list[dict[str, Any]]:
         """Get security violations (denied/blocked events)."""
-        return self.get_events(decision="denied", limit=limit) + \
-               self.get_events(decision="blocked", limit=limit)
+        return self.get_events(decision="denied", limit=limit) + self.get_events(
+            decision="blocked", limit=limit
+        )
 
     def get_stats(self) -> dict[str, Any]:
         """Get security statistics."""
@@ -632,7 +636,7 @@ class BoundaryRBACGateway:
             return {
                 "success": False,
                 "error": "Enforcement layer not available",
-                "hint": "Install required system tools (iptables, udev, etc.) and run with sudo"
+                "hint": "Install required system tools (iptables, udev, etc.) and run with sudo",
             }
 
         if isinstance(mode, str):
@@ -681,7 +685,7 @@ class BoundaryRBACGateway:
             "success": all(v for v in results.values() if isinstance(v, bool)),
             "mode": mode.value,
             "enforcement_results": results,
-            "enforcement_active": self._enforcement_active
+            "enforcement_active": self._enforcement_active,
         }
 
     def block_network(self) -> dict[str, Any]:
@@ -700,11 +704,7 @@ class BoundaryRBACGateway:
             record_to_chain=True,
         )
 
-        return {
-            "success": result.success,
-            "error": result.error,
-            "details": result.details
-        }
+        return {"success": result.success, "error": result.error, "details": result.details}
 
     def unblock_network(self) -> dict[str, Any]:
         """Remove network blocking rules."""
@@ -712,10 +712,7 @@ class BoundaryRBACGateway:
             return {"success": False, "error": "Enforcement not available"}
 
         result = self._enforcement_manager.network.clear_rules()
-        return {
-            "success": result.success,
-            "error": result.error
-        }
+        return {"success": result.success, "error": result.error}
 
     def block_usb(self) -> dict[str, Any]:
         """Block USB storage devices."""
@@ -733,10 +730,7 @@ class BoundaryRBACGateway:
             record_to_chain=True,
         )
 
-        return {
-            "success": result.success,
-            "error": result.error
-        }
+        return {"success": result.success, "error": result.error}
 
     def run_sandboxed(self, command: list[str], timeout: int = 60) -> dict[str, Any]:
         """Run a command in a sandboxed environment."""
@@ -744,11 +738,7 @@ class BoundaryRBACGateway:
             return {"success": False, "error": "Enforcement not available"}
 
         result = self._enforcement_manager.sandbox.run_sandboxed(command, timeout)
-        return {
-            "success": result.success,
-            "error": result.error,
-            "details": result.details
-        }
+        return {"success": result.success, "error": result.error, "details": result.details}
 
     def verify_audit_integrity(self) -> dict[str, Any]:
         """Verify the integrity of immutable audit logs."""
@@ -759,16 +749,13 @@ class BoundaryRBACGateway:
         return {
             "integrity_verified": result.success,
             "details": result.details,
-            "error": result.error
+            "error": result.error,
         }
 
     def get_enforcement_status(self) -> dict[str, Any]:
         """Get current enforcement status and capabilities."""
         if not self._enforcement_enabled:
-            return {
-                "enforcement_available": False,
-                "reason": "Enforcement layer not initialized"
-            }
+            return {"enforcement_available": False, "reason": "Enforcement layer not initialized"}
 
         status = self._enforcement_manager.get_enforcement_status()
         status["enforcement_active"] = self._enforcement_active
@@ -781,11 +768,7 @@ class BoundaryRBACGateway:
             return {"success": False, "error": "Enforcement not available"}
 
         result = self._enforcement_manager.start_watchdog(restart_command)
-        return {
-            "success": result.success,
-            "error": result.error,
-            "details": result.details
-        }
+        return {"success": result.success, "error": result.error, "details": result.details}
 
 
 # =============================================================================
@@ -829,6 +812,7 @@ def get_boundary_mode() -> AccessLevel:
 # Decorators
 # =============================================================================
 
+
 def require_boundary_permission(
     permission: Permission,
     check_payload: bool = False,
@@ -848,13 +832,14 @@ def require_boundary_permission(
         def create_entry():
             ...
     """
+
     def decorator(f: Callable) -> Callable:
         @wraps(f)
         def decorated_function(*args, **kwargs):
             gateway = get_security_gateway()
 
             # Get API key
-            api_key = request.headers.get('X-API-Key')
+            api_key = request.headers.get("X-API-Key")
 
             # Get request data if checking payload
             request_data = None
@@ -874,16 +859,19 @@ def require_boundary_permission(
             g.security_allowed = allowed
 
             if not allowed:
-                return jsonify({
-                    "error": "Access denied",
-                    "reason": reason,
-                    "event_id": event.event_id,
-                    "boundary_mode": event.boundary_mode,
-                }), 403
+                return jsonify(
+                    {
+                        "error": "Access denied",
+                        "reason": reason,
+                        "event_id": event.event_id,
+                        "boundary_mode": event.boundary_mode,
+                    }
+                ), 403
 
             return f(*args, **kwargs)
 
         return decorated_function
+
     return decorator
 
 
@@ -919,11 +907,13 @@ def require_boundary_mode(max_mode: AccessLevel):
                 max_level = mode_hierarchy.index(max_mode)
 
                 if current_level > max_level:
-                    return jsonify({
-                        "error": "Operation not available",
-                        "reason": f"Current mode ({current_mode.value}) restricts this operation",
-                        "required_mode": f"{max_mode.value} or lower",
-                    }), 503
+                    return jsonify(
+                        {
+                            "error": "Operation not available",
+                            "reason": f"Current mode ({current_mode.value}) restricts this operation",
+                            "required_mode": f"{max_mode.value} or lower",
+                        }
+                    ), 503
 
             except ValueError:
                 pass  # Unknown mode, allow
@@ -931,12 +921,14 @@ def require_boundary_mode(max_mode: AccessLevel):
             return f(*args, **kwargs)
 
         return decorated_function
+
     return decorator
 
 
 # =============================================================================
 # Chain Integration Helpers
 # =============================================================================
+
 
 def record_security_event_to_chain(
     chain,
@@ -999,6 +991,7 @@ def setup_chain_integration(chain):
 # API Endpoints for Security Management
 # =============================================================================
 
+
 def register_security_endpoints(app):
     """
     Register security management API endpoints.
@@ -1006,18 +999,20 @@ def register_security_endpoints(app):
     Args:
         app: Flask application
     """
-    from rbac import require_role, Role
+    from rbac import Role, require_role
 
-    @app.route('/security/mode', methods=['GET'])
+    @app.route("/security/mode", methods=["GET"])
     def get_mode():
         """Get current boundary mode."""
         gateway = get_security_gateway()
-        return jsonify({
-            "boundary_mode": gateway.boundary_mode.value,
-            "enforcement_mode": gateway._enforcement_mode.value,
-        })
+        return jsonify(
+            {
+                "boundary_mode": gateway.boundary_mode.value,
+                "enforcement_mode": gateway._enforcement_mode.value,
+            }
+        )
 
-    @app.route('/security/mode', methods=['PUT'])
+    @app.route("/security/mode", methods=["PUT"])
     @require_role(Role.ADMIN)
     def set_mode():
         """Set boundary mode (admin only)."""
@@ -1027,17 +1022,21 @@ def register_security_endpoints(app):
         try:
             mode = AccessLevel(mode_str)
             set_boundary_mode(mode)
-            return jsonify({
-                "success": True,
-                "boundary_mode": mode.value,
-            })
+            return jsonify(
+                {
+                    "success": True,
+                    "boundary_mode": mode.value,
+                }
+            )
         except ValueError:
-            return jsonify({
-                "error": f"Invalid mode: {mode_str}",
-                "valid_modes": [m.value for m in AccessLevel],
-            }), 400
+            return jsonify(
+                {
+                    "error": f"Invalid mode: {mode_str}",
+                    "valid_modes": [m.value for m in AccessLevel],
+                }
+            ), 400
 
-    @app.route('/security/events', methods=['GET'])
+    @app.route("/security/events", methods=["GET"])
     @require_role(Role.OPERATOR)
     def get_events():
         """Get security events."""
@@ -1055,18 +1054,16 @@ def register_security_endpoints(app):
 
         return jsonify({"events": events})
 
-    @app.route('/security/violations', methods=['GET'])
+    @app.route("/security/violations", methods=["GET"])
     @require_role(Role.OPERATOR)
     def get_violations():
         """Get security violations."""
         gateway = get_security_gateway()
         limit = min(int(request.args.get("limit", DEFAULT_PAGE_LIMIT)), MAX_PAGE_LIMIT)
 
-        return jsonify({
-            "violations": gateway.get_violations(limit=limit)
-        })
+        return jsonify({"violations": gateway.get_violations(limit=limit)})
 
-    @app.route('/security/stats', methods=['GET'])
+    @app.route("/security/stats", methods=["GET"])
     def get_stats():
         """Get security statistics."""
         gateway = get_security_gateway()
@@ -1076,13 +1073,13 @@ def register_security_endpoints(app):
     # NEW: Enforcement Endpoints - These provide REAL security controls
     # =========================================================================
 
-    @app.route('/security/enforcement/status', methods=['GET'])
+    @app.route("/security/enforcement/status", methods=["GET"])
     def get_enforcement_status():
         """Get current enforcement capabilities and status."""
         gateway = get_security_gateway()
         return jsonify(gateway.get_enforcement_status())
 
-    @app.route('/security/enforcement/mode', methods=['POST'])
+    @app.route("/security/enforcement/mode", methods=["POST"])
     @require_role(Role.ADMIN)
     def enforce_mode():
         """
@@ -1101,7 +1098,7 @@ def register_security_endpoints(app):
         result = gateway.enforce_mode(mode)
         return jsonify(result)
 
-    @app.route('/security/enforcement/network/block', methods=['POST'])
+    @app.route("/security/enforcement/network/block", methods=["POST"])
     @require_role(Role.ADMIN)
     def block_network():
         """Block all outbound network traffic (AIRGAP)."""
@@ -1110,7 +1107,7 @@ def register_security_endpoints(app):
         status_code = 200 if result.get("success") else 500
         return jsonify(result), status_code
 
-    @app.route('/security/enforcement/network/unblock', methods=['POST'])
+    @app.route("/security/enforcement/network/unblock", methods=["POST"])
     @require_role(Role.ADMIN)
     def unblock_network():
         """Remove network blocking rules."""
@@ -1118,7 +1115,7 @@ def register_security_endpoints(app):
         result = gateway.unblock_network()
         return jsonify(result)
 
-    @app.route('/security/enforcement/usb/block', methods=['POST'])
+    @app.route("/security/enforcement/usb/block", methods=["POST"])
     @require_role(Role.ADMIN)
     def block_usb():
         """Block USB storage devices."""
@@ -1127,7 +1124,7 @@ def register_security_endpoints(app):
         status_code = 200 if result.get("success") else 500
         return jsonify(result), status_code
 
-    @app.route('/security/enforcement/sandbox/run', methods=['POST'])
+    @app.route("/security/enforcement/sandbox/run", methods=["POST"])
     @require_role(Role.ADMIN)
     def run_sandboxed():
         """Run a command in a sandboxed environment."""
@@ -1143,7 +1140,7 @@ def register_security_endpoints(app):
         result = gateway.run_sandboxed(command, timeout)
         return jsonify(result)
 
-    @app.route('/security/enforcement/audit/verify', methods=['GET'])
+    @app.route("/security/enforcement/audit/verify", methods=["GET"])
     @require_role(Role.OPERATOR)
     def verify_audit_integrity():
         """Verify integrity of immutable audit logs."""
@@ -1151,7 +1148,7 @@ def register_security_endpoints(app):
         result = gateway.verify_audit_integrity()
         return jsonify(result)
 
-    @app.route('/security/enforcement/watchdog/start', methods=['POST'])
+    @app.route("/security/enforcement/watchdog/start", methods=["POST"])
     @require_role(Role.ADMIN)
     def start_watchdog():
         """Start the daemon watchdog for self-healing."""

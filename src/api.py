@@ -38,6 +38,7 @@ try:
         is_encrypted,
         is_encryption_enabled,
     )
+
     ENCRYPTION_AVAILABLE = True
 except ImportError:
     ENCRYPTION_AVAILABLE = False
@@ -210,6 +211,7 @@ try:
         get_p2p_network,
         init_p2p_network,
     )
+
     P2P_AVAILABLE = True
 except ImportError:
     P2P_AVAILABLE = False
@@ -232,6 +234,7 @@ try:
         get_adaptive_cache,
         make_cache_key,
     )
+
     ADAPTIVE_CACHE_AVAILABLE = True
 except ImportError:
     ADAPTIVE_CACHE_AVAILABLE = False
@@ -243,6 +246,7 @@ except ImportError:
 # SSRF protection utilities
 try:
     from api.utils import is_safe_peer_endpoint, validate_url_for_ssrf
+
     SSRF_PROTECTION_AVAILABLE = True
 except ImportError:
     SSRF_PROTECTION_AVAILABLE = False
@@ -261,7 +265,7 @@ load_dotenv()
 
 # Initialize Flask app
 app = Flask(__name__)
-app.config['JSON_SORT_KEYS'] = False
+app.config["JSON_SORT_KEYS"] = False
 
 # ============================================================
 # Security Configuration
@@ -269,7 +273,7 @@ app.config['JSON_SORT_KEYS'] = False
 
 # SECURITY: Request size limit reduced from 16MB to 2MB to prevent storage attacks
 # Natural language entries shouldn't need more than 2MB
-app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024
+app.config["MAX_CONTENT_LENGTH"] = 2 * 1024 * 1024
 
 # API Key for authentication (set via environment or generate secure default)
 API_KEY = os.getenv("NATLANGCHAIN_API_KEY", None)
@@ -284,7 +288,8 @@ rate_limit_store: dict[str, dict[str, Any]] = {}  # Legacy in-memory store
 
 # Distributed rate limiter (Redis-backed when available)
 try:
-    from rate_limiter import RateLimiter, RateLimitConfig, get_rate_limiter
+    from rate_limiter import RateLimitConfig, RateLimiter, get_rate_limiter
+
     DISTRIBUTED_RATE_LIMIT_AVAILABLE = True
 except ImportError:
     DISTRIBUTED_RATE_LIMIT_AVAILABLE = False
@@ -336,7 +341,7 @@ def _graceful_shutdown(signum: int, frame) -> None:
         signum: Signal number received
         frame: Current stack frame (unused)
     """
-    signal_name = signal.Signals(signum).name if hasattr(signal, 'Signals') else str(signum)
+    signal_name = signal.Signals(signum).name if hasattr(signal, "Signals") else str(signum)
     logger.info(f"Received {signal_name} - initiating graceful shutdown...")
     print(f"\n[SHUTDOWN] Received {signal_name} - initiating graceful shutdown...")
 
@@ -354,8 +359,12 @@ def _graceful_shutdown(signum: int, frame) -> None:
             print("[SHUTDOWN] All in-flight requests completed")
             break
 
-        logger.info(f"Waiting for {current_requests} in-flight request(s)... ({waited}s/{_shutdown_timeout}s)")
-        print(f"[SHUTDOWN] Waiting for {current_requests} in-flight request(s)... ({waited}s/{_shutdown_timeout}s)")
+        logger.info(
+            f"Waiting for {current_requests} in-flight request(s)... ({waited}s/{_shutdown_timeout}s)"
+        )
+        print(
+            f"[SHUTDOWN] Waiting for {current_requests} in-flight request(s)... ({waited}s/{_shutdown_timeout}s)"
+        )
         time.sleep(1)
         waited += 1
 
@@ -406,10 +415,7 @@ def is_shutting_down() -> bool:
 
 
 def validate_pagination_params(
-    limit: int,
-    offset: int = 0,
-    max_limit: int = MAX_RESULTS,
-    max_offset: int = MAX_OFFSET
+    limit: int, offset: int = 0, max_limit: int = MAX_RESULTS, max_offset: int = MAX_OFFSET
 ) -> tuple:
     """
     Validate and bound pagination parameters to prevent DoS attacks.
@@ -436,7 +442,7 @@ def validate_json_schema(
     data: dict[str, Any],
     required_fields: dict[str, type],
     optional_fields: dict[str, type] | None = None,
-    max_lengths: dict[str, int] | None = None
+    max_lengths: dict[str, int] | None = None,
 ) -> tuple:
     """
     Validate JSON payload against a simple schema.
@@ -491,6 +497,7 @@ def is_valid_ip(ip_str: str) -> bool:
         True if valid IP address, False otherwise
     """
     import ipaddress
+
     try:
         ipaddress.ip_address(ip_str.strip())
         return True
@@ -503,8 +510,7 @@ def is_valid_ip(ip_str: str) -> bool:
 # Set via environment variable as comma-separated list
 # If not set, X-Forwarded-For is NOT trusted (secure default)
 TRUSTED_PROXIES = set(
-    ip.strip() for ip in os.getenv("NATLANGCHAIN_TRUSTED_PROXIES", "").split(",")
-    if ip.strip()
+    ip.strip() for ip in os.getenv("NATLANGCHAIN_TRUSTED_PROXIES", "").split(",") if ip.strip()
 )
 
 
@@ -519,15 +525,15 @@ def get_client_ip() -> str:
 
     Configure trusted proxies via NATLANGCHAIN_TRUSTED_PROXIES env var.
     """
-    remote_addr = request.remote_addr or 'unknown'
+    remote_addr = request.remote_addr or "unknown"
 
     # Only trust X-Forwarded-For if the request came from a trusted proxy
     if TRUSTED_PROXIES and remote_addr in TRUSTED_PROXIES:
-        xff = request.headers.get('X-Forwarded-For')
+        xff = request.headers.get("X-Forwarded-For")
         if xff:
             # Parse all IPs in the chain
             # Format: "client, proxy1, proxy2, ..."
-            parts = [p.strip() for p in xff.split(',')]
+            parts = [p.strip() for p in xff.split(",")]
 
             # Use rightmost IP that is NOT a trusted proxy
             # This is the IP that the last trusted proxy saw
@@ -579,10 +585,7 @@ def check_rate_limit() -> dict[str, Any] | None:
     current_time = time.time()
 
     if client_ip not in rate_limit_store:
-        rate_limit_store[client_ip] = {
-            "count": 0,
-            "window_start": current_time
-        }
+        rate_limit_store[client_ip] = {"count": 0, "window_start": current_time}
 
     client_data = rate_limit_store[client_ip]
 
@@ -595,7 +598,7 @@ def check_rate_limit() -> dict[str, Any] | None:
     if client_data["count"] >= RATE_LIMIT_REQUESTS:
         return {
             "error": "Rate limit exceeded",
-            "retry_after": int(RATE_LIMIT_WINDOW - (current_time - client_data["window_start"]))
+            "retry_after": int(RATE_LIMIT_WINDOW - (current_time - client_data["window_start"])),
         }
 
     client_data["count"] += 1
@@ -604,30 +607,33 @@ def check_rate_limit() -> dict[str, Any] | None:
 
 def require_api_key(f):
     """Decorator to require API key authentication."""
+
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not API_KEY_REQUIRED:
             return f(*args, **kwargs)
 
         # Check for API key in header
-        provided_key = request.headers.get('X-API-Key')
+        provided_key = request.headers.get("X-API-Key")
 
         if not provided_key:
-            return jsonify({
-                "error": "API key required",
-                "hint": "Provide API key in X-API-Key header"
-            }), 401
+            return jsonify(
+                {"error": "API key required", "hint": "Provide API key in X-API-Key header"}
+            ), 401
 
         if not API_KEY:
-            return jsonify({
-                "error": "Server API key not configured",
-                "hint": "Set NATLANGCHAIN_API_KEY environment variable"
-            }), 503
+            return jsonify(
+                {
+                    "error": "Server API key not configured",
+                    "hint": "Set NATLANGCHAIN_API_KEY environment variable",
+                }
+            ), 503
 
         if not secrets.compare_digest(provided_key, API_KEY):
             return jsonify({"error": "Invalid API key"}), 403
 
         return f(*args, **kwargs)
+
     return decorated_function
 
 
@@ -635,18 +641,16 @@ def require_api_key(f):
 def before_request_security():
     """Apply security checks before each request."""
     # Skip shutdown check for health endpoints (needed for K8s probes)
-    if request.endpoint in ('health_check', 'health_live', 'health_ready', 'api_health'):
+    if request.endpoint in ("health_check", "health_live", "health_ready", "api_health"):
         return None
 
     # Reject new requests during shutdown
     if is_shutting_down():
-        response = jsonify({
-            "error": "Service is shutting down",
-            "status": "unavailable",
-            "retry_after": 30
-        })
+        response = jsonify(
+            {"error": "Service is shutting down", "status": "unavailable", "retry_after": 30}
+        )
         response.status_code = 503
-        response.headers['Retry-After'] = '30'
+        response.headers["Retry-After"] = "30"
         return response
 
     # Track this request for graceful shutdown
@@ -658,7 +662,7 @@ def before_request_security():
         _track_request_end()  # Don't count rate-limited requests
         response = jsonify(rate_error)
         response.status_code = 429
-        response.headers['Retry-After'] = str(rate_error.get('retry_after', 60))
+        response.headers["Retry-After"] = str(rate_error.get("retry_after", 60))
         return response
 
     return None
@@ -668,7 +672,7 @@ def before_request_security():
 def teardown_request_tracking(exception=None):
     """Track request completion for graceful shutdown."""
     # Only decrement if we incremented (non-health endpoints, non-shutdown)
-    if request.endpoint not in ('health_check', 'health_live', 'health_ready', 'api_health'):
+    if request.endpoint not in ("health_check", "health_live", "health_ready", "api_health"):
         if not is_shutting_down():
             _track_request_end()
 
@@ -676,15 +680,15 @@ def teardown_request_tracking(exception=None):
 @app.after_request
 def add_security_headers(response):
     """Add security headers to all responses."""
-    response.headers['X-Content-Type-Options'] = 'nosniff'
-    response.headers['X-Frame-Options'] = 'DENY'
-    response.headers['X-XSS-Protection'] = '1; mode=block'
-    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate'
-    response.headers['Pragma'] = 'no-cache'
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
 
     # SECURITY: Content Security Policy - restrictive defaults for API
     # This is an API server, so we restrict all content loading
-    response.headers['Content-Security-Policy'] = (
+    response.headers["Content-Security-Policy"] = (
         "default-src 'none'; "  # Block everything by default
         "frame-ancestors 'none'; "  # Prevent embedding in frames
         "form-action 'none'; "  # Prevent form submissions
@@ -695,9 +699,7 @@ def add_security_headers(response):
     # Tells browsers to always use HTTPS for this domain
     # max-age=31536000 = 1 year, includeSubDomains for all subdomains
     if os.getenv("NATLANGCHAIN_ENABLE_HSTS", "false").lower() == "true":
-        response.headers['Strict-Transport-Security'] = (
-            'max-age=31536000; includeSubDomains'
-        )
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
 
     # SECURITY: CORS headers - restrictive by default
     # Set CORS_ALLOWED_ORIGINS to comma-separated list of allowed origins
@@ -706,19 +708,19 @@ def add_security_headers(response):
 
     if allowed_origins_str == "*":
         # Explicitly allowed wildcard (development only)
-        response.headers['Access-Control-Allow-Origin'] = "*"
+        response.headers["Access-Control-Allow-Origin"] = "*"
     elif allowed_origins_str:
         # Check if request origin matches any allowed origin
-        request_origin = request.headers.get('Origin', '')
-        allowed_list = [o.strip() for o in allowed_origins_str.split(',')]
+        request_origin = request.headers.get("Origin", "")
+        allowed_list = [o.strip() for o in allowed_origins_str.split(",")]
         if request_origin in allowed_list:
-            response.headers['Access-Control-Allow-Origin'] = request_origin
-            response.headers['Vary'] = 'Origin'
+            response.headers["Access-Control-Allow-Origin"] = request_origin
+            response.headers["Vary"] = "Origin"
         # If origin not in list, don't set CORS header (request will be blocked)
     # If CORS_ALLOWED_ORIGINS not set, no CORS header = same-origin only
 
-    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
-    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, X-API-Key, Authorization'
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, X-API-Key, Authorization"
 
     return response
 
@@ -726,10 +728,12 @@ def add_security_headers(response):
 @app.errorhandler(413)
 def request_entity_too_large(error):
     """Handle request too large error."""
-    return jsonify({
-        "error": "Request too large",
-        "max_size_mb": app.config['MAX_CONTENT_LENGTH'] / (1024 * 1024)
-    }), 413
+    return jsonify(
+        {
+            "error": "Request too large",
+            "max_size_mb": app.config["MAX_CONTENT_LENGTH"] / (1024 * 1024),
+        }
+    ), 413
 
 
 @app.errorhandler(400)
@@ -740,10 +744,7 @@ def bad_request(error):
     SECURITY: Returns generic error message to prevent information disclosure
     about internal type expectations.
     """
-    return jsonify({
-        "error": "Bad request",
-        "message": "Invalid request format or parameters"
-    }), 400
+    return jsonify({"error": "Bad request", "message": "Invalid request format or parameters"}), 400
 
 
 @app.errorhandler(ValueError)
@@ -754,10 +755,12 @@ def handle_value_error(error):
     SECURITY: Catches errors from Flask's request.args.get(type=int) etc.
     Returns generic message to prevent leaking internal type information.
     """
-    return jsonify({
-        "error": "Invalid parameter value",
-        "message": "One or more parameters have invalid values"
-    }), 400
+    return jsonify(
+        {
+            "error": "Invalid parameter value",
+            "message": "One or more parameters have invalid values",
+        }
+    ), 400
 
 
 # Initialize blockchain and validator
@@ -882,9 +885,11 @@ def init_validators():
             managers.market_pricing = market_pricing
             managers.mobile_deployment = mobile_deployment
 
-            print("LLM-based features initialized (contracts, oracles, disputes, forks, "
-                  "burns, anti-harassment, treasury, FIDO2, ZK privacy, negotiation, "
-                  "market pricing, mobile deployment, multi-model consensus)")
+            print(
+                "LLM-based features initialized (contracts, oracles, disputes, forks, "
+                "burns, anti-harassment, treasury, FIDO2, ZK privacy, negotiation, "
+                "market pricing, mobile deployment, multi-model consensus)"
+            )
         except Exception as e:
             print(f"Warning: Could not initialize LLM features: {e}")
             print("API will operate without LLM validation")
@@ -1002,7 +1007,7 @@ def save_chain():
                     encrypted_data = encrypt_chain_data(chain_data)
                     # Write encrypted data to file
                     temp_file = f"{CHAIN_DATA_FILE}.tmp"
-                    with open(temp_file, 'w') as f:
+                    with open(temp_file, "w") as f:
                         f.write(encrypted_data)
                     os.replace(temp_file, CHAIN_DATA_FILE)
                     print("Chain data saved with encryption")
@@ -1014,7 +1019,7 @@ def save_chain():
 
             # Write to temporary file first for atomic operation (unencrypted)
             temp_file = f"{CHAIN_DATA_FILE}.tmp"
-            with open(temp_file, 'w') as f:
+            with open(temp_file, "w") as f:
                 json.dump(chain_data, f, indent=2)
             # Atomic rename for data integrity
             os.replace(temp_file, CHAIN_DATA_FILE)
@@ -1032,8 +1037,9 @@ def save_chain():
             print("WARNING: Error saving chain data")
 
 
-def create_entry_with_encryption(content: str, author: str, intent: str,
-                                   metadata: dict[str, Any] | None = None) -> NaturalLanguageEntry:
+def create_entry_with_encryption(
+    content: str, author: str, intent: str, metadata: dict[str, Any] | None = None
+) -> NaturalLanguageEntry:
     """
     Create a NaturalLanguageEntry with sensitive metadata fields encrypted.
 
@@ -1061,10 +1067,7 @@ def create_entry_with_encryption(content: str, author: str, intent: str,
             # Continue with unencrypted metadata
 
     return NaturalLanguageEntry(
-        content=content,
-        author=author,
-        intent=intent,
-        metadata=processed_metadata
+        content=content, author=author, intent=intent, metadata=processed_metadata
     )
 
 
@@ -1096,19 +1099,21 @@ init_validators()
 load_chain()
 
 
-@app.route('/health', methods=['GET'])
+@app.route("/health", methods=["GET"])
 def health_check():
     """Basic health check endpoint."""
-    return jsonify({
-        "status": "healthy",
-        "service": "NatLangChain API",
-        "llm_validation_available": llm_validator is not None,
-        "blocks": len(blockchain.chain),
-        "pending_entries": len(blockchain.pending_entries)
-    })
+    return jsonify(
+        {
+            "status": "healthy",
+            "service": "NatLangChain API",
+            "llm_validation_available": llm_validator is not None,
+            "blocks": len(blockchain.chain),
+            "pending_entries": len(blockchain.pending_entries),
+        }
+    )
 
 
-@app.route('/health/live', methods=['GET'])
+@app.route("/health/live", methods=["GET"])
 def health_live():
     """
     Kubernetes liveness probe endpoint.
@@ -1116,14 +1121,12 @@ def health_live():
     Returns 200 if the process is alive and responding.
     This should be a simple check that doesn't depend on external services.
     """
-    return jsonify({
-        "status": "alive",
-        "service": "NatLangChain API",
-        "timestamp": time.time()
-    }), 200
+    return jsonify(
+        {"status": "alive", "service": "NatLangChain API", "timestamp": time.time()}
+    ), 200
 
 
-@app.route('/health/ready', methods=['GET'])
+@app.route("/health/ready", methods=["GET"])
 def health_ready():
     """
     Kubernetes readiness probe endpoint.
@@ -1157,7 +1160,7 @@ def health_ready():
         else:
             errors.append("Blockchain not loaded or empty")
     except Exception as e:
-        errors.append(f"Blockchain check failed: {str(e)}")
+        errors.append(f"Blockchain check failed: {e!s}")
 
     # Check chain validity
     try:
@@ -1166,19 +1169,19 @@ def health_ready():
         else:
             errors.append("Chain validation failed")
     except Exception as e:
-        errors.append(f"Chain validation error: {str(e)}")
+        errors.append(f"Chain validation error: {e!s}")
 
     # Check storage accessibility
     try:
         # Verify we can access the chain data file or storage
         if os.path.exists(CHAIN_DATA_FILE):
             # Check file is readable
-            with open(CHAIN_DATA_FILE, 'r') as f:
+            with open(CHAIN_DATA_FILE) as f:
                 f.read(1)  # Just read 1 byte to verify access
             checks["storage_accessible"] = True
         else:
             # No file yet is OK for fresh start - check directory is writable
-            chain_dir = os.path.dirname(CHAIN_DATA_FILE) or '.'
+            chain_dir = os.path.dirname(CHAIN_DATA_FILE) or "."
             if os.access(chain_dir, os.W_OK):
                 checks["storage_accessible"] = True
             else:
@@ -1186,7 +1189,7 @@ def health_ready():
     except PermissionError:
         errors.append("Storage file not readable")
     except Exception as e:
-        errors.append(f"Storage check failed: {str(e)}")
+        errors.append(f"Storage check failed: {e!s}")
 
     # Determine overall status
     all_passed = all(checks.values())
@@ -1194,7 +1197,7 @@ def health_ready():
     response = {
         "status": "ready" if all_passed else "not_ready",
         "checks": checks,
-        "timestamp": time.time()
+        "timestamp": time.time(),
     }
 
     if errors:
@@ -1203,7 +1206,7 @@ def health_ready():
     return jsonify(response), 200 if all_passed else 503
 
 
-@app.route('/chain', methods=['GET'])
+@app.route("/chain", methods=["GET"])
 def get_chain():
     """
     Get the entire blockchain.
@@ -1211,14 +1214,16 @@ def get_chain():
     Returns:
         Full blockchain data
     """
-    return jsonify({
-        "length": len(blockchain.chain),
-        "chain": blockchain.to_dict(),
-        "valid": blockchain.validate_chain()
-    })
+    return jsonify(
+        {
+            "length": len(blockchain.chain),
+            "chain": blockchain.to_dict(),
+            "valid": blockchain.validate_chain(),
+        }
+    )
 
 
-@app.route('/chain/narrative', methods=['GET'])
+@app.route("/chain/narrative", methods=["GET"])
 def get_narrative():
     """
     Get the full narrative history as human-readable text.
@@ -1229,10 +1234,10 @@ def get_narrative():
         Complete narrative of all entries
     """
     narrative = blockchain.get_full_narrative()
-    return narrative, 200, {'Content-Type': 'text/plain; charset=utf-8'}
+    return narrative, 200, {"Content-Type": "text/plain; charset=utf-8"}
 
 
-@app.route('/entry', methods=['POST'])
+@app.route("/entry", methods=["POST"])
 @require_api_key
 def add_entry():
     """
@@ -1258,9 +1263,9 @@ def add_entry():
 
     # SECURITY: Schema validation for entry payload
     ENTRY_MAX_LENGTHS = {
-        "content": 50000,   # 50KB max for content
-        "author": 500,      # 500 chars for author
-        "intent": 2000,     # 2KB for intent
+        "content": 50000,  # 50KB max for content
+        "author": 500,  # 500 chars for author
+        "intent": 2000,  # 2KB for intent
     }
 
     is_valid, error_msg = validate_json_schema(
@@ -1271,9 +1276,9 @@ def add_entry():
             "validate": bool,
             "auto_mine": bool,
             "validation_mode": str,
-            "multi_validator": bool
+            "multi_validator": bool,
         },
-        max_lengths=ENTRY_MAX_LENGTHS
+        max_lengths=ENTRY_MAX_LENGTHS,
     )
 
     if not is_valid:
@@ -1291,11 +1296,13 @@ def add_entry():
         try:
             metadata_str = json.dumps(metadata)
             if len(metadata_str) > MAX_METADATA_LEN:
-                return jsonify({
-                    "error": "Metadata too large",
-                    "max_length": MAX_METADATA_LEN,
-                    "received_length": len(metadata_str)
-                }), 400
+                return jsonify(
+                    {
+                        "error": "Metadata too large",
+                        "max_length": MAX_METADATA_LEN,
+                        "received_length": len(metadata_str),
+                    }
+                ), 400
         except (TypeError, ValueError):
             return jsonify({"error": "Invalid metadata format"}), 400
 
@@ -1303,10 +1310,7 @@ def add_entry():
 
     # Create entry with encrypted sensitive metadata
     entry = create_entry_with_encryption(
-        content=content,
-        author=author,
-        intent=intent,
-        metadata=data.get("metadata", {})
+        content=content, author=author, intent=intent, metadata=data.get("metadata", {})
     )
 
     # Validate if requested
@@ -1321,7 +1325,7 @@ def add_entry():
             validation_result = {
                 "validation_mode": "dialectic",
                 "dialectic_validation": dialectic_result,
-                "overall_decision": dialectic_result.get("decision", "ERROR")
+                "overall_decision": dialectic_result.get("decision", "ERROR"),
             }
         elif hybrid_validator:
             # Use standard or multi-validator mode
@@ -1330,7 +1334,7 @@ def add_entry():
                 intent=intent,
                 author=author,
                 use_llm=True,
-                multi_validator=(validation_mode == "multi" or data.get("multi_validator", False))
+                multi_validator=(validation_mode == "multi" or data.get("multi_validator", False)),
             )
             validation_result["validation_mode"] = validation_mode
         else:
@@ -1338,7 +1342,7 @@ def add_entry():
             validation_result = {
                 "validation_mode": "none",
                 "overall_decision": "ACCEPTED",
-                "note": "No LLM validator configured - entry accepted without semantic validation"
+                "note": "No LLM validator configured - entry accepted without semantic validation",
             }
 
         # Update entry with validation results
@@ -1352,9 +1356,7 @@ def add_entry():
                 entry.validation_paraphrases = llm_val.get("paraphrases", [])
             elif "validation" in llm_val:
                 # Single validator
-                entry.validation_paraphrases = [
-                    llm_val["validation"].get("paraphrase", "")
-                ]
+                entry.validation_paraphrases = [llm_val["validation"].get("paraphrase", "")]
 
     # Add to blockchain
     result = blockchain.add_entry(entry)
@@ -1375,22 +1377,15 @@ def add_entry():
             cache = get_adaptive_cache()
             cache.on_new_block()
 
-    response = {
-        "status": "success",
-        "entry": result,
-        "validation": validation_result
-    }
+    response = {"status": "success", "entry": result, "validation": validation_result}
 
     if mined_block:
-        response["mined_block"] = {
-            "index": mined_block.index,
-            "hash": mined_block.hash
-        }
+        response["mined_block"] = {"index": mined_block.index, "hash": mined_block.hash}
 
     return jsonify(response), 201
 
 
-@app.route('/entry/validate', methods=['POST'])
+@app.route("/entry/validate", methods=["POST"])
 @require_api_key
 def validate_entry():
     """
@@ -1408,10 +1403,9 @@ def validate_entry():
         Validation results
     """
     if not hybrid_validator:
-        return jsonify({
-            "error": "LLM validation not available",
-            "reason": "ANTHROPIC_API_KEY not configured"
-        }), 503
+        return jsonify(
+            {"error": "LLM validation not available", "reason": "ANTHROPIC_API_KEY not configured"}
+        ), 503
 
     data = request.get_json()
 
@@ -1423,7 +1417,7 @@ def validate_entry():
         data,
         required_fields={"content": str, "author": str, "intent": str},
         optional_fields={"multi_validator": bool},
-        max_lengths={"content": 50000, "author": 500, "intent": 2000}
+        max_lengths={"content": 50000, "author": 500, "intent": 2000},
     )
 
     if not is_valid:
@@ -1434,23 +1428,22 @@ def validate_entry():
     intent = data.get("intent")
 
     if not all([content, author, intent]):
-        return jsonify({
-            "error": "Missing required fields",
-            "required": ["content", "author", "intent"]
-        }), 400
+        return jsonify(
+            {"error": "Missing required fields", "required": ["content", "author", "intent"]}
+        ), 400
 
     validation_result = hybrid_validator.validate(
         content=content,
         intent=intent,
         author=author,
         use_llm=True,
-        multi_validator=data.get("multi_validator", False)
+        multi_validator=data.get("multi_validator", False),
     )
 
     return jsonify(validation_result)
 
 
-@app.route('/mine', methods=['POST'])
+@app.route("/mine", methods=["POST"])
 @require_api_key
 def mine_block():
     """
@@ -1468,9 +1461,7 @@ def mine_block():
         Newly mined block with any contract proposals
     """
     if not blockchain.pending_entries:
-        return jsonify({
-            "error": "No pending entries to mine"
-        }), 400
+        return jsonify({"error": "No pending entries to mine"}), 400
 
     data = request.get_json() or {}
     difficulty = data.get("difficulty", 2)
@@ -1481,9 +1472,7 @@ def mine_block():
     if contract_matcher:
         try:
             proposals = contract_matcher.find_matches(
-                blockchain,
-                blockchain.pending_entries,
-                miner_id
+                blockchain, blockchain.pending_entries, miner_id
             )
 
             # Add proposals to pending entries
@@ -1502,16 +1491,18 @@ def mine_block():
         cache = get_adaptive_cache()
         cache.on_new_block()
 
-    return jsonify({
-        "status": "success",
-        "message": "Block mined successfully",
-        "block": mined_block.to_dict(),
-        "contract_proposals": len(proposals),
-        "proposals": [p.to_dict() for p in proposals] if proposals else []
-    })
+    return jsonify(
+        {
+            "status": "success",
+            "message": "Block mined successfully",
+            "block": mined_block.to_dict(),
+            "contract_proposals": len(proposals),
+            "proposals": [p.to_dict() for p in proposals] if proposals else [],
+        }
+    )
 
 
-@app.route('/block/<int:index>', methods=['GET'])
+@app.route("/block/<int:index>", methods=["GET"])
 def get_block(index: int):
     """
     Get a specific block by index.
@@ -1523,16 +1514,15 @@ def get_block(index: int):
         Block data
     """
     if index < 0 or index >= len(blockchain.chain):
-        return jsonify({
-            "error": "Block not found",
-            "valid_range": f"0-{len(blockchain.chain) - 1}"
-        }), 404
+        return jsonify(
+            {"error": "Block not found", "valid_range": f"0-{len(blockchain.chain) - 1}"}
+        ), 404
 
     block = blockchain.chain[index]
     return jsonify(block.to_dict())
 
 
-@app.route('/block/latest', methods=['GET'])
+@app.route("/block/latest", methods=["GET"])
 def get_latest_block():
     """
     Get the latest (most recent) block in the chain.
@@ -1545,21 +1535,25 @@ def get_latest_block():
         An empty chain indicates initialization failure.
     """
     # Check if blockchain or chain is not properly initialized
-    if blockchain is None or not hasattr(blockchain, 'chain'):
-        return jsonify({
-            "error": "Blockchain not initialized",
-            "message": "The blockchain instance is not properly configured",
-            "hint": "Restart the server or check initialization logs"
-        }), 503
+    if blockchain is None or not hasattr(blockchain, "chain"):
+        return jsonify(
+            {
+                "error": "Blockchain not initialized",
+                "message": "The blockchain instance is not properly configured",
+                "hint": "Restart the server or check initialization logs",
+            }
+        ), 503
 
     # Check for empty chain (should have at least genesis block)
     if not blockchain.chain or len(blockchain.chain) == 0:
-        return jsonify({
-            "error": "Chain is empty",
-            "message": "No blocks found in the chain. A genesis block should exist.",
-            "hint": "The chain may not have been properly initialized. Try mining a block first.",
-            "expected_minimum": 1
-        }), 404
+        return jsonify(
+            {
+                "error": "Chain is empty",
+                "message": "No blocks found in the chain. A genesis block should exist.",
+                "hint": "The chain may not have been properly initialized. Try mining a block first.",
+                "expected_minimum": 1,
+            }
+        ), 404
 
     block = blockchain.chain[-1]
 
@@ -1568,18 +1562,20 @@ def get_latest_block():
         block_data = block.to_dict()
         block_data["_meta"] = {
             "is_genesis": block.index == 0,
-            "chain_length": len(blockchain.chain)
+            "chain_length": len(blockchain.chain),
         }
         return jsonify(block_data)
     except Exception as e:
-        return jsonify({
-            "error": "Failed to serialize block",
-            "message": str(e),
-            "block_index": getattr(block, 'index', 'unknown')
-        }), 500
+        return jsonify(
+            {
+                "error": "Failed to serialize block",
+                "message": str(e),
+                "block_index": getattr(block, "index", "unknown"),
+            }
+        ), 500
 
 
-@app.route('/entries/author/<author>', methods=['GET'])
+@app.route("/entries/author/<author>", methods=["GET"])
 def get_entries_by_author(author: str):
     """
     Get all entries by a specific author.
@@ -1591,14 +1587,10 @@ def get_entries_by_author(author: str):
         List of entries by the author
     """
     entries = blockchain.get_entries_by_author(author)
-    return jsonify({
-        "author": author,
-        "count": len(entries),
-        "entries": entries
-    })
+    return jsonify({"author": author, "count": len(entries), "entries": entries})
 
 
-@app.route('/entries/search', methods=['GET'])
+@app.route("/entries/search", methods=["GET"])
 def search_entries():
     """
     Search for entries by intent keyword.
@@ -1609,37 +1601,26 @@ def search_entries():
     Returns:
         List of matching entries
     """
-    intent_keyword = request.args.get('intent')
+    intent_keyword = request.args.get("intent")
 
     if not intent_keyword:
-        return jsonify({
-            "error": "Missing 'intent' query parameter"
-        }), 400
+        return jsonify({"error": "Missing 'intent' query parameter"}), 400
 
     # SECURITY: Validate intent query parameter
     MAX_SEARCH_LEN = 500  # Maximum search term length
     if len(intent_keyword) > MAX_SEARCH_LEN:
-        return jsonify({
-            "error": "Search term too long",
-            "max_length": MAX_SEARCH_LEN
-        }), 400
+        return jsonify({"error": "Search term too long", "max_length": MAX_SEARCH_LEN}), 400
 
     # Strip whitespace and validate non-empty after strip
     intent_keyword = intent_keyword.strip()
     if not intent_keyword:
-        return jsonify({
-            "error": "Search term cannot be empty or whitespace only"
-        }), 400
+        return jsonify({"error": "Search term cannot be empty or whitespace only"}), 400
 
     entries = blockchain.get_entries_by_intent(intent_keyword)
-    return jsonify({
-        "keyword": intent_keyword,
-        "count": len(entries),
-        "entries": entries
-    })
+    return jsonify({"keyword": intent_keyword, "count": len(entries), "entries": entries})
 
 
-@app.route('/validate/chain', methods=['GET'])
+@app.route("/validate/chain", methods=["GET"])
 def validate_blockchain():
     """
     Validate the entire blockchain for integrity.
@@ -1648,14 +1629,16 @@ def validate_blockchain():
         Validation status
     """
     is_valid = blockchain.validate_chain()
-    return jsonify({
-        "valid": is_valid,
-        "blocks": len(blockchain.chain),
-        "message": "Blockchain is valid" if is_valid else "Blockchain integrity compromised"
-    })
+    return jsonify(
+        {
+            "valid": is_valid,
+            "blocks": len(blockchain.chain),
+            "message": "Blockchain is valid" if is_valid else "Blockchain integrity compromised",
+        }
+    )
 
 
-@app.route('/pending', methods=['GET'])
+@app.route("/pending", methods=["GET"])
 def get_pending_entries():
     """
     Get all pending entries awaiting mining.
@@ -1663,13 +1646,15 @@ def get_pending_entries():
     Returns:
         List of pending entries
     """
-    return jsonify({
-        "count": len(blockchain.pending_entries),
-        "entries": [entry.to_dict() for entry in blockchain.pending_entries]
-    })
+    return jsonify(
+        {
+            "count": len(blockchain.pending_entries),
+            "entries": [entry.to_dict() for entry in blockchain.pending_entries],
+        }
+    )
 
 
-@app.route('/stats', methods=['GET'])
+@app.route("/stats", methods=["GET"])
 def get_stats():
     """
     Get blockchain statistics.
@@ -1685,11 +1670,7 @@ def get_stats():
         def compute_stats():
             return _compute_stats()
 
-        result = cache.get_or_compute(
-            CacheCategory.STATS,
-            "blockchain_stats",
-            compute_stats
-        )
+        result = cache.get_or_compute(CacheCategory.STATS, "blockchain_stats", compute_stats)
         return jsonify(result)
 
     # Fallback: compute directly without cache
@@ -1740,14 +1721,28 @@ def _compute_stats() -> dict:
         "total_contracts": total_contracts,
         "open_contracts": open_contracts,
         "matched_contracts": matched_contracts,
-        "total_disputes": sum(1 for block in blockchain.chain for entry in block.entries if entry.metadata.get("is_dispute") and entry.metadata.get("dispute_type") == "dispute_declaration"),
-        "open_disputes": sum(1 for block in blockchain.chain for entry in block.entries if entry.metadata.get("is_dispute") and entry.metadata.get("dispute_type") == "dispute_declaration" and entry.metadata.get("status") == "open")
+        "total_disputes": sum(
+            1
+            for block in blockchain.chain
+            for entry in block.entries
+            if entry.metadata.get("is_dispute")
+            and entry.metadata.get("dispute_type") == "dispute_declaration"
+        ),
+        "open_disputes": sum(
+            1
+            for block in blockchain.chain
+            for entry in block.entries
+            if entry.metadata.get("is_dispute")
+            and entry.metadata.get("dispute_type") == "dispute_declaration"
+            and entry.metadata.get("status") == "open"
+        ),
     }
 
 
 # ========== Semantic Search Endpoints ==========
 
-@app.route('/search/semantic', methods=['POST'])
+
+@app.route("/search/semantic", methods=["POST"])
 def semantic_search():
     """
     Perform semantic search across blockchain entries.
@@ -1764,17 +1759,14 @@ def semantic_search():
         List of semantically similar entries
     """
     if not search_engine:
-        return jsonify({
-            "error": "Semantic search not available",
-            "reason": "Search engine not initialized"
-        }), 503
+        return jsonify(
+            {"error": "Semantic search not available", "reason": "Search engine not initialized"}
+        ), 503
 
     data = request.get_json()
 
     if not data or "query" not in data:
-        return jsonify({
-            "error": "Missing required field: query"
-        }), 400
+        return jsonify({"error": "Missing required field: query"}), 400
 
     query = data["query"]
     top_k = data.get("top_k", 5)
@@ -1787,25 +1779,15 @@ def semantic_search():
                 blockchain, query, field=field, top_k=top_k, min_score=min_score
             )
         else:
-            results = search_engine.search(
-                blockchain, query, top_k=top_k, min_score=min_score
-            )
+            results = search_engine.search(blockchain, query, top_k=top_k, min_score=min_score)
 
-        return jsonify({
-            "query": query,
-            "field": field,
-            "count": len(results),
-            "results": results
-        })
+        return jsonify({"query": query, "field": field, "count": len(results), "results": results})
 
     except Exception as e:
-        return jsonify({
-            "error": "Search failed",
-            "reason": str(e)
-        }), 500
+        return jsonify({"error": "Search failed", "reason": str(e)}), 500
 
 
-@app.route('/search/similar', methods=['POST'])
+@app.route("/search/similar", methods=["POST"])
 def find_similar():
     """
     Find entries similar to a given content.
@@ -1821,16 +1803,12 @@ def find_similar():
         List of similar entries
     """
     if not search_engine:
-        return jsonify({
-            "error": "Semantic search not available"
-        }), 503
+        return jsonify({"error": "Semantic search not available"}), 503
 
     data = request.get_json()
 
     if not data or "content" not in data:
-        return jsonify({
-            "error": "Missing required field: content"
-        }), 400
+        return jsonify({"error": "Missing required field: content"}), 400
 
     content = data["content"]
     top_k = data.get("top_k", 5)
@@ -1841,22 +1819,16 @@ def find_similar():
             blockchain, content, top_k=top_k, exclude_exact=exclude_exact
         )
 
-        return jsonify({
-            "content": content,
-            "count": len(results),
-            "similar_entries": results
-        })
+        return jsonify({"content": content, "count": len(results), "similar_entries": results})
 
     except Exception as e:
-        return jsonify({
-            "error": "Search failed",
-            "reason": str(e)
-        }), 500
+        return jsonify({"error": "Search failed", "reason": str(e)}), 500
 
 
 # ========== Semantic Drift Detection Endpoints ==========
 
-@app.route('/drift/check', methods=['POST'])
+
+@app.route("/drift/check", methods=["POST"])
 def check_drift():
     """
     Check semantic drift between intent and execution.
@@ -1871,10 +1843,9 @@ def check_drift():
         Drift analysis with score and recommendations
     """
     if not drift_detector:
-        return jsonify({
-            "error": "Drift detection not available",
-            "reason": "ANTHROPIC_API_KEY not configured"
-        }), 503
+        return jsonify(
+            {"error": "Drift detection not available", "reason": "ANTHROPIC_API_KEY not configured"}
+        ), 503
 
     data = request.get_json()
 
@@ -1885,17 +1856,16 @@ def check_drift():
     execution_log = data.get("execution_log")
 
     if not all([on_chain_intent, execution_log]):
-        return jsonify({
-            "error": "Missing required fields",
-            "required": ["on_chain_intent", "execution_log"]
-        }), 400
+        return jsonify(
+            {"error": "Missing required fields", "required": ["on_chain_intent", "execution_log"]}
+        ), 400
 
     result = drift_detector.check_alignment(on_chain_intent, execution_log)
 
     return jsonify(result)
 
 
-@app.route('/drift/entry/<int:block_index>/<int:entry_index>', methods=['POST'])
+@app.route("/drift/entry/<int:block_index>/<int:entry_index>", methods=["POST"])
 def check_entry_drift(block_index: int, entry_index: int):
     """
     Check drift for a specific blockchain entry against an execution log.
@@ -1913,34 +1883,28 @@ def check_entry_drift(block_index: int, entry_index: int):
         Drift analysis for the specific entry
     """
     if not drift_detector:
-        return jsonify({
-            "error": "Drift detection not available"
-        }), 503
+        return jsonify({"error": "Drift detection not available"}), 503
 
     # Validate block index
     if block_index < 0 or block_index >= len(blockchain.chain):
-        return jsonify({
-            "error": "Block not found",
-            "valid_range": f"0-{len(blockchain.chain) - 1}"
-        }), 404
+        return jsonify(
+            {"error": "Block not found", "valid_range": f"0-{len(blockchain.chain) - 1}"}
+        ), 404
 
     block = blockchain.chain[block_index]
 
     # Validate entry index
     if entry_index < 0 or entry_index >= len(block.entries):
-        return jsonify({
-            "error": "Entry not found",
-            "valid_range": f"0-{len(block.entries) - 1}"
-        }), 404
+        return jsonify(
+            {"error": "Entry not found", "valid_range": f"0-{len(block.entries) - 1}"}
+        ), 404
 
     entry = block.entries[entry_index]
 
     # Get execution log from request
     data = request.get_json()
     if not data or "execution_log" not in data:
-        return jsonify({
-            "error": "Missing required field: execution_log"
-        }), 400
+        return jsonify({"error": "Missing required field: execution_log"}), 400
 
     execution_log = data["execution_log"]
 
@@ -1953,7 +1917,7 @@ def check_entry_drift(block_index: int, entry_index: int):
         "block_index": block_index,
         "entry_index": entry_index,
         "author": entry.author,
-        "intent": entry.intent
+        "intent": entry.intent,
     }
 
     return jsonify(result)
@@ -1961,7 +1925,8 @@ def check_entry_drift(block_index: int, entry_index: int):
 
 # ========== Dialectic Consensus Endpoint ==========
 
-@app.route('/validate/dialectic', methods=['POST'])
+
+@app.route("/validate/dialectic", methods=["POST"])
 def validate_dialectic():
     """
     Validate an entry using dialectic consensus (Skeptic/Facilitator debate).
@@ -1977,10 +1942,12 @@ def validate_dialectic():
         Dialectic validation result with both perspectives
     """
     if not dialectic_validator:
-        return jsonify({
-            "error": "Dialectic consensus not available",
-            "reason": "ANTHROPIC_API_KEY not configured"
-        }), 503
+        return jsonify(
+            {
+                "error": "Dialectic consensus not available",
+                "reason": "ANTHROPIC_API_KEY not configured",
+            }
+        ), 503
 
     data = request.get_json()
 
@@ -1992,10 +1959,9 @@ def validate_dialectic():
     intent = data.get("intent")
 
     if not all([content, author, intent]):
-        return jsonify({
-            "error": "Missing required fields",
-            "required": ["content", "author", "intent"]
-        }), 400
+        return jsonify(
+            {"error": "Missing required fields", "required": ["content", "author", "intent"]}
+        ), 400
 
     result = dialectic_validator.validate_entry(content, intent, author)
 
@@ -2004,7 +1970,8 @@ def validate_dialectic():
 
 # ========== Semantic Oracle Endpoints ==========
 
-@app.route('/oracle/verify', methods=['POST'])
+
+@app.route("/oracle/verify", methods=["POST"])
 def verify_oracle_event():
     """
     Verify if an external event triggers a contract condition using semantic analysis.
@@ -2021,10 +1988,9 @@ def verify_oracle_event():
         Oracle verification result with trigger decision and reasoning
     """
     if not semantic_oracle:
-        return jsonify({
-            "error": "Semantic oracle not available",
-            "reason": "ANTHROPIC_API_KEY not configured"
-        }), 503
+        return jsonify(
+            {"error": "Semantic oracle not available", "reason": "ANTHROPIC_API_KEY not configured"}
+        ), 503
 
     data = request.get_json()
 
@@ -2037,34 +2003,31 @@ def verify_oracle_event():
     event_data = data.get("event_data", {})
 
     if not all([contract_condition, contract_intent, event_description]):
-        return jsonify({
-            "error": "Missing required fields",
-            "required": ["contract_condition", "contract_intent", "event_description"]
-        }), 400
+        return jsonify(
+            {
+                "error": "Missing required fields",
+                "required": ["contract_condition", "contract_intent", "event_description"],
+            }
+        ), 400
 
     try:
         result = semantic_oracle.verify_event_trigger(
             contract_condition=contract_condition,
             contract_intent=contract_intent,
             event_description=event_description,
-            event_data=event_data
+            event_data=event_data,
         )
-        return jsonify({
-            "status": "success",
-            "verification": result
-        })
+        return jsonify({"status": "success", "verification": result})
     except Exception as e:
-        return jsonify({
-            "error": "Oracle verification failed",
-            "details": str(e)
-        }), 500
+        return jsonify({"error": "Oracle verification failed", "details": str(e)}), 500
 
 
 # Live Contract Endpoints moved to api/contracts.py
 
 # ========== Dispute Protocol (MP-03) Endpoints ==========
 
-@app.route('/dispute/file', methods=['POST'])
+
+@app.route("/dispute/file", methods=["POST"])
 @require_api_key
 def file_dispute():
     """
@@ -2105,16 +2068,20 @@ def file_dispute():
     description = data.get("description")
 
     if not all([claimant, respondent, description]):
-        return jsonify({
-            "error": "Missing required fields",
-            "required": ["claimant", "respondent", "description"]
-        }), 400
+        return jsonify(
+            {
+                "error": "Missing required fields",
+                "required": ["claimant", "respondent", "description"],
+            }
+        ), 400
 
     if not contested_refs:
-        return jsonify({
-            "error": "No contested entries specified",
-            "required": "contested_refs: [{\"block\": int, \"entry\": int}, ...]"
-        }), 400
+        return jsonify(
+            {
+                "error": "No contested entries specified",
+                "required": 'contested_refs: [{"block": int, "entry": int}, ...]',
+            }
+        ), 400
 
     # Validate contested refs exist
     for ref in contested_refs:
@@ -2122,25 +2089,26 @@ def file_dispute():
         entry_idx = ref.get("entry", -1)
 
         if block_idx < 0 or block_idx >= len(blockchain.chain):
-            return jsonify({
-                "error": f"Invalid block reference: {block_idx}",
-                "valid_range": f"0-{len(blockchain.chain) - 1}"
-            }), 400
+            return jsonify(
+                {
+                    "error": f"Invalid block reference: {block_idx}",
+                    "valid_range": f"0-{len(blockchain.chain) - 1}",
+                }
+            ), 400
 
         block = blockchain.chain[block_idx]
         if entry_idx < 0 or entry_idx >= len(block.entries):
-            return jsonify({
-                "error": f"Invalid entry reference in block {block_idx}: {entry_idx}",
-                "valid_range": f"0-{len(block.entries) - 1}"
-            }), 400
+            return jsonify(
+                {
+                    "error": f"Invalid entry reference in block {block_idx}: {entry_idx}",
+                    "valid_range": f"0-{len(block.entries) - 1}",
+                }
+            ), 400
 
     # Validate dispute clarity
     is_valid, reason = dispute_manager.validate_dispute_clarity(description)
     if not is_valid:
-        return jsonify({
-            "error": "Dispute validation failed",
-            "reason": reason
-        }), 400
+        return jsonify({"error": "Dispute validation failed", "reason": reason}), 400
 
     try:
         # Create dispute
@@ -2150,14 +2118,12 @@ def file_dispute():
             contested_refs=contested_refs,
             description=description,
             escalation_path=data.get("escalation_path", DisputeManager.ESCALATION_MEDIATOR),
-            supporting_evidence=data.get("supporting_evidence")
+            supporting_evidence=data.get("supporting_evidence"),
         )
 
         # Format dispute content
         formatted_content = dispute_manager.format_dispute_entry(
-            DisputeManager.TYPE_DECLARATION,
-            description,
-            dispute_data["dispute_id"]
+            DisputeManager.TYPE_DECLARATION, description, dispute_data["dispute_id"]
         )
 
         # Create blockchain entry with encrypted sensitive fields
@@ -2165,7 +2131,7 @@ def file_dispute():
             content=formatted_content,
             author=claimant,
             intent=f"File dispute against {respondent}",
-            metadata=dispute_data
+            metadata=dispute_data,
         )
         entry.validation_status = "valid"
 
@@ -2185,25 +2151,19 @@ def file_dispute():
             "dispute_id": dispute_data["dispute_id"],
             "entry": result,
             "evidence_frozen": True,
-            "frozen_entries_count": len(contested_refs)
+            "frozen_entries_count": len(contested_refs),
         }
 
         if mined_block:
-            response["mined_block"] = {
-                "index": mined_block.index,
-                "hash": mined_block.hash
-            }
+            response["mined_block"] = {"index": mined_block.index, "hash": mined_block.hash}
 
         return jsonify(response), 201
 
     except Exception as e:
-        return jsonify({
-            "error": "Failed to file dispute",
-            "reason": str(e)
-        }), 500
+        return jsonify({"error": "Failed to file dispute", "reason": str(e)}), 500
 
 
-@app.route('/dispute/list', methods=['GET'])
+@app.route("/dispute/list", methods=["GET"])
 def list_disputes():
     """
     List all disputes, optionally filtered.
@@ -2216,9 +2176,9 @@ def list_disputes():
     Returns:
         List of dispute entries
     """
-    status_filter = request.args.get('status')
-    claimant_filter = request.args.get('claimant')
-    respondent_filter = request.args.get('respondent')
+    status_filter = request.args.get("status")
+    claimant_filter = request.args.get("claimant")
+    respondent_filter = request.args.get("respondent")
 
     disputes = []
 
@@ -2242,25 +2202,24 @@ def list_disputes():
             if respondent_filter and metadata.get("respondent") != respondent_filter:
                 continue
 
-            disputes.append({
-                "block_index": block.index,
-                "block_hash": block.hash,
-                "entry_index": entry_idx,
-                "dispute_id": metadata.get("dispute_id"),
-                "claimant": metadata.get("claimant"),
-                "respondent": metadata.get("respondent"),
-                "status": metadata.get("status"),
-                "created_at": metadata.get("created_at"),
-                "entry": entry.to_dict()
-            })
+            disputes.append(
+                {
+                    "block_index": block.index,
+                    "block_hash": block.hash,
+                    "entry_index": entry_idx,
+                    "dispute_id": metadata.get("dispute_id"),
+                    "claimant": metadata.get("claimant"),
+                    "respondent": metadata.get("respondent"),
+                    "status": metadata.get("status"),
+                    "created_at": metadata.get("created_at"),
+                    "entry": entry.to_dict(),
+                }
+            )
 
-    return jsonify({
-        "count": len(disputes),
-        "disputes": disputes
-    })
+    return jsonify({"count": len(disputes), "disputes": disputes})
 
 
-@app.route('/dispute/<dispute_id>', methods=['GET'])
+@app.route("/dispute/<dispute_id>", methods=["GET"])
 def get_dispute(dispute_id: str):
     """
     Get detailed status of a specific dispute.
@@ -2277,15 +2236,12 @@ def get_dispute(dispute_id: str):
     status = dispute_manager.get_dispute_status(dispute_id, blockchain)
 
     if not status:
-        return jsonify({
-            "error": "Dispute not found",
-            "dispute_id": dispute_id
-        }), 404
+        return jsonify({"error": "Dispute not found", "dispute_id": dispute_id}), 404
 
     return jsonify(status)
 
 
-@app.route('/dispute/<dispute_id>/evidence', methods=['POST'])
+@app.route("/dispute/<dispute_id>/evidence", methods=["POST"])
 @require_api_key
 def add_dispute_evidence(dispute_id: str):
     """
@@ -2310,16 +2266,12 @@ def add_dispute_evidence(dispute_id: str):
     # Verify dispute exists
     status = dispute_manager.get_dispute_status(dispute_id, blockchain)
     if not status:
-        return jsonify({
-            "error": "Dispute not found",
-            "dispute_id": dispute_id
-        }), 404
+        return jsonify({"error": "Dispute not found", "dispute_id": dispute_id}), 404
 
     if status.get("is_resolved"):
-        return jsonify({
-            "error": "Cannot add evidence to resolved dispute",
-            "dispute_id": dispute_id
-        }), 400
+        return jsonify(
+            {"error": "Cannot add evidence to resolved dispute", "dispute_id": dispute_id}
+        ), 400
 
     data = request.get_json()
 
@@ -2330,10 +2282,9 @@ def add_dispute_evidence(dispute_id: str):
     evidence_content = data.get("evidence_content")
 
     if not all([author, evidence_content]):
-        return jsonify({
-            "error": "Missing required fields",
-            "required": ["author", "evidence_content"]
-        }), 400
+        return jsonify(
+            {"error": "Missing required fields", "required": ["author", "evidence_content"]}
+        ), 400
 
     try:
         evidence_data = dispute_manager.add_evidence(
@@ -2341,41 +2292,38 @@ def add_dispute_evidence(dispute_id: str):
             author=author,
             evidence_content=evidence_content,
             evidence_type=data.get("evidence_type", "document"),
-            evidence_hash=data.get("evidence_hash")
+            evidence_hash=data.get("evidence_hash"),
         )
 
         formatted_content = dispute_manager.format_dispute_entry(
-            DisputeManager.TYPE_EVIDENCE,
-            evidence_content,
-            dispute_id
+            DisputeManager.TYPE_EVIDENCE, evidence_content, dispute_id
         )
 
         entry = create_entry_with_encryption(
             content=formatted_content,
             author=author,
             intent=f"Submit evidence for dispute {dispute_id}",
-            metadata=evidence_data
+            metadata=evidence_data,
         )
         entry.validation_status = "valid"
 
         result = blockchain.add_entry(entry)
 
-        return jsonify({
-            "status": "success",
-            "message": "Evidence added to dispute",
-            "dispute_id": dispute_id,
-            "evidence_hash": evidence_data.get("evidence_hash"),
-            "entry": result
-        }), 201
+        return jsonify(
+            {
+                "status": "success",
+                "message": "Evidence added to dispute",
+                "dispute_id": dispute_id,
+                "evidence_hash": evidence_data.get("evidence_hash"),
+                "entry": result,
+            }
+        ), 201
 
     except Exception as e:
-        return jsonify({
-            "error": "Failed to add evidence",
-            "reason": str(e)
-        }), 500
+        return jsonify({"error": "Failed to add evidence", "reason": str(e)}), 500
 
 
-@app.route('/dispute/<dispute_id>/escalate', methods=['POST'])
+@app.route("/dispute/<dispute_id>/escalate", methods=["POST"])
 @require_api_key
 def escalate_dispute(dispute_id: str):
     """
@@ -2398,16 +2346,10 @@ def escalate_dispute(dispute_id: str):
     # Verify dispute exists
     status = dispute_manager.get_dispute_status(dispute_id, blockchain)
     if not status:
-        return jsonify({
-            "error": "Dispute not found",
-            "dispute_id": dispute_id
-        }), 404
+        return jsonify({"error": "Dispute not found", "dispute_id": dispute_id}), 404
 
     if status.get("is_resolved"):
-        return jsonify({
-            "error": "Cannot escalate resolved dispute",
-            "dispute_id": dispute_id
-        }), 400
+        return jsonify({"error": "Cannot escalate resolved dispute", "dispute_id": dispute_id}), 400
 
     data = request.get_json()
 
@@ -2419,10 +2361,12 @@ def escalate_dispute(dispute_id: str):
     escalation_reason = data.get("escalation_reason")
 
     if not all([escalating_party, escalation_path, escalation_reason]):
-        return jsonify({
-            "error": "Missing required fields",
-            "required": ["escalating_party", "escalation_path", "escalation_reason"]
-        }), 400
+        return jsonify(
+            {
+                "error": "Missing required fields",
+                "required": ["escalating_party", "escalation_path", "escalation_reason"],
+            }
+        ), 400
 
     try:
         escalation_data = dispute_manager.escalate_dispute(
@@ -2430,41 +2374,38 @@ def escalate_dispute(dispute_id: str):
             escalating_party=escalating_party,
             escalation_path=escalation_path,
             escalation_reason=escalation_reason,
-            escalation_authority=data.get("escalation_authority")
+            escalation_authority=data.get("escalation_authority"),
         )
 
         formatted_content = dispute_manager.format_dispute_entry(
-            DisputeManager.TYPE_ESCALATION,
-            escalation_reason,
-            dispute_id
+            DisputeManager.TYPE_ESCALATION, escalation_reason, dispute_id
         )
 
         entry = create_entry_with_encryption(
             content=formatted_content,
             author=escalating_party,
             intent=f"Escalate dispute {dispute_id} to {escalation_path}",
-            metadata=escalation_data
+            metadata=escalation_data,
         )
         entry.validation_status = "valid"
 
         result = blockchain.add_entry(entry)
 
-        return jsonify({
-            "status": "success",
-            "message": f"Dispute escalated to {escalation_path}",
-            "dispute_id": dispute_id,
-            "escalation_path": escalation_path,
-            "entry": result
-        }), 201
+        return jsonify(
+            {
+                "status": "success",
+                "message": f"Dispute escalated to {escalation_path}",
+                "dispute_id": dispute_id,
+                "escalation_path": escalation_path,
+                "entry": result,
+            }
+        ), 201
 
     except Exception as e:
-        return jsonify({
-            "error": "Failed to escalate dispute",
-            "reason": str(e)
-        }), 500
+        return jsonify({"error": "Failed to escalate dispute", "reason": str(e)}), 500
 
 
-@app.route('/dispute/<dispute_id>/resolve', methods=['POST'])
+@app.route("/dispute/<dispute_id>/resolve", methods=["POST"])
 @require_api_key
 def resolve_dispute(dispute_id: str):
     """
@@ -2491,16 +2432,10 @@ def resolve_dispute(dispute_id: str):
     # Verify dispute exists
     status = dispute_manager.get_dispute_status(dispute_id, blockchain)
     if not status:
-        return jsonify({
-            "error": "Dispute not found",
-            "dispute_id": dispute_id
-        }), 404
+        return jsonify({"error": "Dispute not found", "dispute_id": dispute_id}), 404
 
     if status.get("is_resolved"):
-        return jsonify({
-            "error": "Dispute already resolved",
-            "dispute_id": dispute_id
-        }), 400
+        return jsonify({"error": "Dispute already resolved", "dispute_id": dispute_id}), 400
 
     data = request.get_json()
 
@@ -2512,16 +2447,18 @@ def resolve_dispute(dispute_id: str):
     resolution_content = data.get("resolution_content")
 
     if not all([resolution_authority, resolution_type, resolution_content]):
-        return jsonify({
-            "error": "Missing required fields",
-            "required": ["resolution_authority", "resolution_type", "resolution_content"]
-        }), 400
+        return jsonify(
+            {
+                "error": "Missing required fields",
+                "required": ["resolution_authority", "resolution_type", "resolution_content"],
+            }
+        ), 400
 
     valid_resolution_types = ["settled", "arbitrated", "adjudicated", "withdrawn"]
     if resolution_type not in valid_resolution_types:
-        return jsonify({
-            "error": f"Invalid resolution_type. Must be one of: {valid_resolution_types}"
-        }), 400
+        return jsonify(
+            {"error": f"Invalid resolution_type. Must be one of: {valid_resolution_types}"}
+        ), 400
 
     try:
         resolution_data = dispute_manager.record_resolution(
@@ -2530,42 +2467,39 @@ def resolve_dispute(dispute_id: str):
             resolution_type=resolution_type,
             resolution_content=resolution_content,
             findings=data.get("findings"),
-            remedies=data.get("remedies")
+            remedies=data.get("remedies"),
         )
 
         formatted_content = dispute_manager.format_dispute_entry(
-            DisputeManager.TYPE_RESOLUTION,
-            resolution_content,
-            dispute_id
+            DisputeManager.TYPE_RESOLUTION, resolution_content, dispute_id
         )
 
         entry = create_entry_with_encryption(
             content=formatted_content,
             author=resolution_authority,
             intent=f"Resolve dispute {dispute_id}: {resolution_type}",
-            metadata=resolution_data
+            metadata=resolution_data,
         )
         entry.validation_status = "valid"
 
         result = blockchain.add_entry(entry)
         save_chain()
 
-        return jsonify({
-            "status": "success",
-            "message": f"Dispute resolved: {resolution_type}",
-            "dispute_id": dispute_id,
-            "entries_unfrozen": resolution_data.get("entries_unfrozen", 0),
-            "entry": result
-        }), 201
+        return jsonify(
+            {
+                "status": "success",
+                "message": f"Dispute resolved: {resolution_type}",
+                "dispute_id": dispute_id,
+                "entries_unfrozen": resolution_data.get("entries_unfrozen", 0),
+                "entry": result,
+            }
+        ), 201
 
     except Exception as e:
-        return jsonify({
-            "error": "Failed to record resolution",
-            "reason": str(e)
-        }), 500
+        return jsonify({"error": "Failed to record resolution", "reason": str(e)}), 500
 
 
-@app.route('/dispute/<dispute_id>/package', methods=['GET'])
+@app.route("/dispute/<dispute_id>/package", methods=["GET"])
 def get_dispute_package(dispute_id: str):
     """
     Generate a complete dispute package for external arbitration.
@@ -2585,30 +2519,22 @@ def get_dispute_package(dispute_id: str):
     # Verify dispute exists
     status = dispute_manager.get_dispute_status(dispute_id, blockchain)
     if not status:
-        return jsonify({
-            "error": "Dispute not found",
-            "dispute_id": dispute_id
-        }), 404
+        return jsonify({"error": "Dispute not found", "dispute_id": dispute_id}), 404
 
-    include_entries = request.args.get('include_entries', 'true').lower() == 'true'
+    include_entries = request.args.get("include_entries", "true").lower() == "true"
 
     try:
         package = dispute_manager.generate_dispute_package(
-            dispute_id=dispute_id,
-            blockchain=blockchain,
-            include_frozen_entries=include_entries
+            dispute_id=dispute_id, blockchain=blockchain, include_frozen_entries=include_entries
         )
 
         return jsonify(package)
 
     except Exception as e:
-        return jsonify({
-            "error": "Failed to generate dispute package",
-            "reason": str(e)
-        }), 500
+        return jsonify({"error": "Failed to generate dispute package", "reason": str(e)}), 500
 
 
-@app.route('/dispute/<dispute_id>/analyze', methods=['GET'])
+@app.route("/dispute/<dispute_id>/analyze", methods=["GET"])
 def analyze_dispute(dispute_id: str):
     """
     Get LLM analysis of a dispute (for understanding, not resolution).
@@ -2620,18 +2546,14 @@ def analyze_dispute(dispute_id: str):
         Dispute analysis with key issues identified
     """
     if not dispute_manager or not dispute_manager.client:
-        return jsonify({
-            "error": "Dispute analysis not available",
-            "reason": "LLM features not configured"
-        }), 503
+        return jsonify(
+            {"error": "Dispute analysis not available", "reason": "LLM features not configured"}
+        ), 503
 
     # Verify dispute exists and get details
     status = dispute_manager.get_dispute_status(dispute_id, blockchain)
     if not status:
-        return jsonify({
-            "error": "Dispute not found",
-            "dispute_id": dispute_id
-        }), 404
+        return jsonify({"error": "Dispute not found", "dispute_id": dispute_id}), 404
 
     # Get the dispute description and contested content
     dispute_description = None
@@ -2657,37 +2579,34 @@ def analyze_dispute(dispute_id: str):
                     break
 
     if not dispute_description:
-        return jsonify({
-            "error": "Could not find dispute description",
-            "dispute_id": dispute_id
-        }), 404
+        return jsonify(
+            {"error": "Could not find dispute description", "dispute_id": dispute_id}
+        ), 404
 
     try:
         analysis = dispute_manager.analyze_dispute(
             dispute_description=dispute_description,
-            contested_content="\n\n---\n\n".join(contested_content)
+            contested_content="\n\n---\n\n".join(contested_content),
         )
 
         if not analysis:
-            return jsonify({
-                "error": "Analysis failed",
-                "reason": "LLM analysis returned empty result"
-            }), 500
+            return jsonify(
+                {"error": "Analysis failed", "reason": "LLM analysis returned empty result"}
+            ), 500
 
-        return jsonify({
-            "dispute_id": dispute_id,
-            "analysis": analysis,
-            "disclaimer": "This analysis is for understanding only. Per NatLangChain Refusal Doctrine, dispute resolution requires human judgment."
-        })
+        return jsonify(
+            {
+                "dispute_id": dispute_id,
+                "analysis": analysis,
+                "disclaimer": "This analysis is for understanding only. Per NatLangChain Refusal Doctrine, dispute resolution requires human judgment.",
+            }
+        )
 
     except Exception as e:
-        return jsonify({
-            "error": "Analysis failed",
-            "reason": str(e)
-        }), 500
+        return jsonify({"error": "Analysis failed", "reason": str(e)}), 500
 
 
-@app.route('/entry/frozen/<int:block_index>/<int:entry_index>', methods=['GET'])
+@app.route("/entry/frozen/<int:block_index>/<int:entry_index>", methods=["GET"])
 def check_entry_frozen(block_index: int, entry_index: int):
     """
     Check if an entry is frozen due to dispute.
@@ -2700,25 +2619,26 @@ def check_entry_frozen(block_index: int, entry_index: int):
         Frozen status and dispute ID if frozen
     """
     if not dispute_manager:
-        return jsonify({
-            "frozen": False,
-            "dispute_id": None,
-            "message": "Dispute features not initialized"
-        })
+        return jsonify(
+            {"frozen": False, "dispute_id": None, "message": "Dispute features not initialized"}
+        )
 
     is_frozen, dispute_id = dispute_manager.is_entry_frozen(block_index, entry_index)
 
-    return jsonify({
-        "block_index": block_index,
-        "entry_index": entry_index,
-        "frozen": is_frozen,
-        "dispute_id": dispute_id
-    })
+    return jsonify(
+        {
+            "block_index": block_index,
+            "entry_index": entry_index,
+            "frozen": is_frozen,
+            "dispute_id": dispute_id,
+        }
+    )
 
 
 # ========== Escalation Fork Endpoints ==========
 
-@app.route('/fork/trigger', methods=['POST'])
+
+@app.route("/fork/trigger", methods=["POST"])
 @require_api_key
 def trigger_escalation_fork():
     """
@@ -2739,47 +2659,47 @@ def trigger_escalation_fork():
         Fork metadata
     """
     if not escalation_fork_manager:
-        return jsonify({
-            "error": "Escalation fork not available",
-            "reason": "Features not initialized"
-        }), 503
+        return jsonify(
+            {"error": "Escalation fork not available", "reason": "Features not initialized"}
+        ), 503
 
     data = request.get_json()
 
     if not data:
         return jsonify({"error": "No data provided"}), 400
 
-    required_fields = ["dispute_id", "trigger_reason", "triggering_party",
-                       "original_mediator", "original_pool", "burn_tx_hash"]
+    required_fields = [
+        "dispute_id",
+        "trigger_reason",
+        "triggering_party",
+        "original_mediator",
+        "original_pool",
+        "burn_tx_hash",
+    ]
     missing = [f for f in required_fields if f not in data]
 
     if missing:
-        return jsonify({
-            "error": "Missing required fields",
-            "missing": missing
-        }), 400
+        return jsonify({"error": "Missing required fields", "missing": missing}), 400
 
     # Validate trigger reason
     try:
         trigger_reason = TriggerReason(data["trigger_reason"])
     except ValueError:
-        return jsonify({
-            "error": "Invalid trigger_reason",
-            "valid_values": [r.value for r in TriggerReason]
-        }), 400
+        return jsonify(
+            {"error": "Invalid trigger_reason", "valid_values": [r.value for r in TriggerReason]}
+        ), 400
 
     # Verify the observance burn if burn manager available
     if observance_burn_manager:
         is_valid, burn_result = observance_burn_manager.verify_escalation_burn(
             data["burn_tx_hash"],
             observance_burn_manager.calculate_escalation_burn(data["original_pool"]),
-            data["dispute_id"]
+            data["dispute_id"],
         )
         if not is_valid:
-            return jsonify({
-                "error": "Observance burn verification failed",
-                "details": burn_result
-            }), 400
+            return jsonify(
+                {"error": "Observance burn verification failed", "details": burn_result}
+            ), 400
 
     fork_data = escalation_fork_manager.trigger_fork(
         dispute_id=data["dispute_id"],
@@ -2788,13 +2708,13 @@ def trigger_escalation_fork():
         original_mediator=data["original_mediator"],
         original_pool=data["original_pool"],
         burn_tx_hash=data["burn_tx_hash"],
-        evidence_of_failure=data.get("evidence_of_failure")
+        evidence_of_failure=data.get("evidence_of_failure"),
     )
 
     return jsonify(fork_data)
 
 
-@app.route('/fork/<fork_id>', methods=['GET'])
+@app.route("/fork/<fork_id>", methods=["GET"])
 def get_fork_status(fork_id: str):
     """Get current status of an escalation fork."""
     if not escalation_fork_manager:
@@ -2808,7 +2728,7 @@ def get_fork_status(fork_id: str):
     return jsonify(status)
 
 
-@app.route('/fork/<fork_id>/submit-proposal', methods=['POST'])
+@app.route("/fork/<fork_id>/submit-proposal", methods=["POST"])
 @require_api_key
 def submit_fork_proposal(fork_id: str):
     """
@@ -2834,17 +2754,14 @@ def submit_fork_proposal(fork_id: str):
     missing = [f for f in required_fields if f not in data]
 
     if missing:
-        return jsonify({
-            "error": "Missing required fields",
-            "missing": missing
-        }), 400
+        return jsonify({"error": "Missing required fields", "missing": missing}), 400
 
     success, result = escalation_fork_manager.submit_proposal(
         fork_id=fork_id,
         solver=data["solver"],
         proposal_content=data["proposal_content"],
         addresses_concerns=data["addresses_concerns"],
-        supporting_evidence=data.get("supporting_evidence")
+        supporting_evidence=data.get("supporting_evidence"),
     )
 
     if not success:
@@ -2853,7 +2770,7 @@ def submit_fork_proposal(fork_id: str):
     return jsonify(result)
 
 
-@app.route('/fork/<fork_id>/proposals', methods=['GET'])
+@app.route("/fork/<fork_id>/proposals", methods=["GET"])
 def list_fork_proposals(fork_id: str):
     """List all proposals for a fork."""
     if not escalation_fork_manager:
@@ -2864,14 +2781,10 @@ def list_fork_proposals(fork_id: str):
 
     proposals = escalation_fork_manager.proposals.get(fork_id, [])
 
-    return jsonify({
-        "fork_id": fork_id,
-        "count": len(proposals),
-        "proposals": proposals
-    })
+    return jsonify({"fork_id": fork_id, "count": len(proposals), "proposals": proposals})
 
 
-@app.route('/fork/<fork_id>/ratify', methods=['POST'])
+@app.route("/fork/<fork_id>/ratify", methods=["POST"])
 @require_api_key
 def ratify_fork_proposal(fork_id: str):
     """
@@ -2897,17 +2810,14 @@ def ratify_fork_proposal(fork_id: str):
     missing = [f for f in required_fields if f not in data]
 
     if missing:
-        return jsonify({
-            "error": "Missing required fields",
-            "missing": missing
-        }), 400
+        return jsonify({"error": "Missing required fields", "missing": missing}), 400
 
     success, result = escalation_fork_manager.ratify_proposal(
         fork_id=fork_id,
         proposal_id=data["proposal_id"],
         ratifying_party=data["ratifying_party"],
         satisfaction_rating=data["satisfaction_rating"],
-        comments=data.get("comments")
+        comments=data.get("comments"),
     )
 
     if not success:
@@ -2916,7 +2826,7 @@ def ratify_fork_proposal(fork_id: str):
     return jsonify(result)
 
 
-@app.route('/fork/<fork_id>/veto', methods=['POST'])
+@app.route("/fork/<fork_id>/veto", methods=["POST"])
 @require_api_key
 def veto_fork_proposal(fork_id: str):
     """
@@ -2942,17 +2852,14 @@ def veto_fork_proposal(fork_id: str):
     missing = [f for f in required_fields if f not in data]
 
     if missing:
-        return jsonify({
-            "error": "Missing required fields",
-            "missing": missing
-        }), 400
+        return jsonify({"error": "Missing required fields", "missing": missing}), 400
 
     success, result = escalation_fork_manager.veto_proposal(
         fork_id=fork_id,
         proposal_id=data["proposal_id"],
         vetoing_party=data["vetoing_party"],
         veto_reason=data["veto_reason"],
-        evidence_refs=data.get("evidence_refs")
+        evidence_refs=data.get("evidence_refs"),
     )
 
     if not success:
@@ -2961,7 +2868,7 @@ def veto_fork_proposal(fork_id: str):
     return jsonify(result)
 
 
-@app.route('/fork/<fork_id>/distribution', methods=['GET'])
+@app.route("/fork/<fork_id>/distribution", methods=["GET"])
 def get_fork_distribution(fork_id: str):
     """Get bounty distribution for a resolved fork."""
     if not escalation_fork_manager:
@@ -2973,20 +2880,19 @@ def get_fork_distribution(fork_id: str):
     fork = escalation_fork_manager.forks[fork_id]
 
     if fork["status"] not in [ForkStatus.RESOLVED.value, ForkStatus.TIMEOUT.value]:
-        return jsonify({
-            "error": "Fork not yet resolved",
-            "status": fork["status"]
-        }), 400
+        return jsonify({"error": "Fork not yet resolved", "status": fork["status"]}), 400
 
-    return jsonify({
-        "fork_id": fork_id,
-        "status": fork["status"],
-        "bounty_pool": fork["bounty_pool"],
-        "distribution": fork.get("distribution", {})
-    })
+    return jsonify(
+        {
+            "fork_id": fork_id,
+            "status": fork["status"],
+            "bounty_pool": fork["bounty_pool"],
+            "distribution": fork.get("distribution", {}),
+        }
+    )
 
 
-@app.route('/fork/<fork_id>/audit', methods=['GET'])
+@app.route("/fork/<fork_id>/audit", methods=["GET"])
 def get_fork_audit_trail(fork_id: str):
     """Get complete audit trail for a fork."""
     if not escalation_fork_manager:
@@ -2997,14 +2903,10 @@ def get_fork_audit_trail(fork_id: str):
     if not trail:
         return jsonify({"error": "Fork not found"}), 404
 
-    return jsonify({
-        "fork_id": fork_id,
-        "audit_count": len(trail),
-        "audit_trail": trail
-    })
+    return jsonify({"fork_id": fork_id, "audit_count": len(trail), "audit_trail": trail})
 
 
-@app.route('/fork/active', methods=['GET'])
+@app.route("/fork/active", methods=["GET"])
 def list_active_forks():
     """List all active escalation forks."""
     if not escalation_fork_manager:
@@ -3012,15 +2914,13 @@ def list_active_forks():
 
     forks = escalation_fork_manager.list_active_forks()
 
-    return jsonify({
-        "count": len(forks),
-        "active_forks": forks
-    })
+    return jsonify({"count": len(forks), "active_forks": forks})
 
 
 # ========== Observance Burn Endpoints ==========
 
-@app.route('/burn/observance', methods=['POST'])
+
+@app.route("/burn/observance", methods=["POST"])
 @require_api_key
 def perform_observance_burn():
     """
@@ -3039,10 +2939,9 @@ def perform_observance_burn():
         Burn confirmation with redistribution effect
     """
     if not observance_burn_manager:
-        return jsonify({
-            "error": "Observance burn not available",
-            "reason": "Features not initialized"
-        }), 503
+        return jsonify(
+            {"error": "Observance burn not available", "reason": "Features not initialized"}
+        ), 503
 
     data = request.get_json()
 
@@ -3053,32 +2952,26 @@ def perform_observance_burn():
     missing = [f for f in required_fields if f not in data]
 
     if missing:
-        return jsonify({
-            "error": "Missing required fields",
-            "missing": missing
-        }), 400
+        return jsonify({"error": "Missing required fields", "missing": missing}), 400
 
     # Validate reason
     try:
         reason = BurnReason(data["reason"])
     except ValueError:
-        return jsonify({
-            "error": "Invalid reason",
-            "valid_values": [r.value for r in BurnReason]
-        }), 400
+        return jsonify(
+            {"error": "Invalid reason", "valid_values": [r.value for r in BurnReason]}
+        ), 400
 
     # Escalation commitment requires intent_hash
     if reason == BurnReason.ESCALATION_COMMITMENT and not data.get("intent_hash"):
-        return jsonify({
-            "error": "intent_hash required for EscalationCommitment burns"
-        }), 400
+        return jsonify({"error": "intent_hash required for EscalationCommitment burns"}), 400
 
     success, result = observance_burn_manager.perform_burn(
         burner=data["burner"],
         amount=data["amount"],
         reason=reason,
         intent_hash=data.get("intent_hash"),
-        epitaph=data.get("epitaph")
+        epitaph=data.get("epitaph"),
     )
 
     if not success:
@@ -3087,7 +2980,7 @@ def perform_observance_burn():
     return jsonify(result)
 
 
-@app.route('/burn/voluntary', methods=['POST'])
+@app.route("/burn/voluntary", methods=["POST"])
 @require_api_key
 def perform_voluntary_burn():
     """
@@ -3109,15 +3002,10 @@ def perform_voluntary_burn():
         return jsonify({"error": "No data provided"}), 400
 
     if "burner" not in data or "amount" not in data:
-        return jsonify({
-            "error": "Missing required fields",
-            "required": ["burner", "amount"]
-        }), 400
+        return jsonify({"error": "Missing required fields", "required": ["burner", "amount"]}), 400
 
     success, result = observance_burn_manager.perform_voluntary_burn(
-        burner=data["burner"],
-        amount=data["amount"],
-        epitaph=data.get("epitaph")
+        burner=data["burner"], amount=data["amount"], epitaph=data.get("epitaph")
     )
 
     if not success:
@@ -3126,7 +3014,7 @@ def perform_voluntary_burn():
     return jsonify(result)
 
 
-@app.route('/burn/history', methods=['GET'])
+@app.route("/burn/history", methods=["GET"])
 def get_burn_history():
     """
     Get paginated burn history.
@@ -3148,7 +3036,7 @@ def get_burn_history():
     return jsonify(history)
 
 
-@app.route('/burn/stats', methods=['GET'])
+@app.route("/burn/stats", methods=["GET"])
 def get_burn_statistics():
     """Get burn statistics."""
     if not observance_burn_manager:
@@ -3159,7 +3047,7 @@ def get_burn_statistics():
     return jsonify(stats)
 
 
-@app.route('/burn/<tx_hash>', methods=['GET'])
+@app.route("/burn/<tx_hash>", methods=["GET"])
 def get_burn_by_hash(tx_hash: str):
     """Get specific burn by transaction hash."""
     if not observance_burn_manager:
@@ -3173,7 +3061,7 @@ def get_burn_by_hash(tx_hash: str):
     return jsonify(burn)
 
 
-@app.route('/burn/address/<address>', methods=['GET'])
+@app.route("/burn/address/<address>", methods=["GET"])
 def get_burns_by_address(address: str):
     """Get all burns by a specific address."""
     if not observance_burn_manager:
@@ -3181,14 +3069,10 @@ def get_burns_by_address(address: str):
 
     burns = observance_burn_manager.get_burns_by_address(address)
 
-    return jsonify({
-        "address": address,
-        "count": len(burns),
-        "burns": burns
-    })
+    return jsonify({"address": address, "count": len(burns), "burns": burns})
 
 
-@app.route('/burn/ledger', methods=['GET'])
+@app.route("/burn/ledger", methods=["GET"])
 def get_observance_ledger():
     """
     Get Observance Ledger data for explorer display.
@@ -3208,7 +3092,7 @@ def get_observance_ledger():
     return jsonify(ledger)
 
 
-@app.route('/burn/calculate-escalation', methods=['GET'])
+@app.route("/burn/calculate-escalation", methods=["GET"])
 def calculate_escalation_burn():
     """
     Calculate required burn for escalation commitment.
@@ -3222,23 +3106,24 @@ def calculate_escalation_burn():
     stake = request.args.get("stake", type=float)
 
     if not stake:
-        return jsonify({
-            "error": "Missing required parameter: stake"
-        }), 400
+        return jsonify({"error": "Missing required parameter: stake"}), 400
 
     burn_amount = observance_burn_manager.calculate_escalation_burn(stake)
 
-    return jsonify({
-        "mediation_stake": stake,
-        "burn_percentage": observance_burn_manager.DEFAULT_ESCALATION_BURN_PERCENTAGE * 100,
-        "required_burn": burn_amount,
-        "message": f"To escalate, you must burn {burn_amount} tokens (5% of stake)"
-    })
+    return jsonify(
+        {
+            "mediation_stake": stake,
+            "burn_percentage": observance_burn_manager.DEFAULT_ESCALATION_BURN_PERCENTAGE * 100,
+            "required_burn": burn_amount,
+            "message": f"To escalate, you must burn {burn_amount} tokens (5% of stake)",
+        }
+    )
 
 
 # ========== Anti-Harassment Economic Layer Endpoints ==========
 
-@app.route('/harassment/breach-dispute', methods=['POST'])
+
+@app.route("/harassment/breach-dispute", methods=["POST"])
 def initiate_breach_dispute():
     """
     Initiate a Breach/Drift Dispute with symmetric staking.
@@ -3260,24 +3145,30 @@ def initiate_breach_dispute():
         Escrow details with stake window
     """
     if not anti_harassment_manager:
-        return jsonify({
-            "error": "Anti-harassment features not available",
-            "reason": "Features not initialized"
-        }), 503
+        return jsonify(
+            {
+                "error": "Anti-harassment features not available",
+                "reason": "Features not initialized",
+            }
+        ), 503
 
     data = request.get_json()
 
     if not data:
         return jsonify({"error": "No data provided"}), 400
 
-    required_fields = ["initiator", "counterparty", "contract_ref", "stake_amount", "evidence_refs", "description"]
+    required_fields = [
+        "initiator",
+        "counterparty",
+        "contract_ref",
+        "stake_amount",
+        "evidence_refs",
+        "description",
+    ]
     missing = [f for f in required_fields if f not in data]
 
     if missing:
-        return jsonify({
-            "error": "Missing required fields",
-            "missing": missing
-        }), 400
+        return jsonify({"error": "Missing required fields", "missing": missing}), 400
 
     success, result = anti_harassment_manager.initiate_breach_dispute(
         initiator=data["initiator"],
@@ -3285,7 +3176,7 @@ def initiate_breach_dispute():
         contract_ref=data["contract_ref"],
         stake_amount=data["stake_amount"],
         evidence_refs=data["evidence_refs"],
-        description=data["description"]
+        description=data["description"],
     )
 
     if not success:
@@ -3294,7 +3185,7 @@ def initiate_breach_dispute():
     return jsonify(result), 201
 
 
-@app.route('/harassment/match-stake', methods=['POST'])
+@app.route("/harassment/match-stake", methods=["POST"])
 def match_dispute_stake():
     """
     Match stake to enter symmetric dispute resolution.
@@ -3318,15 +3209,12 @@ def match_dispute_stake():
     missing = [f for f in required_fields if f not in data]
 
     if missing:
-        return jsonify({
-            "error": "Missing required fields",
-            "missing": missing
-        }), 400
+        return jsonify({"error": "Missing required fields", "missing": missing}), 400
 
     success, result = anti_harassment_manager.match_stake(
         escrow_id=data["escrow_id"],
         counterparty=data["counterparty"],
-        stake_amount=data["stake_amount"]
+        stake_amount=data["stake_amount"],
     )
 
     if not success:
@@ -3335,7 +3223,7 @@ def match_dispute_stake():
     return jsonify(result)
 
 
-@app.route('/harassment/decline-stake', methods=['POST'])
+@app.route("/harassment/decline-stake", methods=["POST"])
 def decline_dispute_stake():
     """
     Decline to match stake (FREE for counterparty, resolves to fallback).
@@ -3358,14 +3246,12 @@ def decline_dispute_stake():
         return jsonify({"error": "No data provided"}), 400
 
     if "escrow_id" not in data or "counterparty" not in data:
-        return jsonify({
-            "error": "Missing required fields",
-            "required": ["escrow_id", "counterparty"]
-        }), 400
+        return jsonify(
+            {"error": "Missing required fields", "required": ["escrow_id", "counterparty"]}
+        ), 400
 
     success, result = anti_harassment_manager.decline_stake(
-        escrow_id=data["escrow_id"],
-        counterparty=data["counterparty"]
+        escrow_id=data["escrow_id"], counterparty=data["counterparty"]
     )
 
     if not success:
@@ -3374,7 +3260,7 @@ def decline_dispute_stake():
     return jsonify(result)
 
 
-@app.route('/harassment/voluntary-request', methods=['POST'])
+@app.route("/harassment/voluntary-request", methods=["POST"])
 def initiate_voluntary_request():
     """
     Initiate a Voluntary Request (can be ignored at zero cost by recipient).
@@ -3400,17 +3286,14 @@ def initiate_voluntary_request():
     missing = [f for f in required_fields if f not in data]
 
     if missing:
-        return jsonify({
-            "error": "Missing required fields",
-            "missing": missing
-        }), 400
+        return jsonify({"error": "Missing required fields", "missing": missing}), 400
 
     success, result = anti_harassment_manager.initiate_voluntary_request(
         initiator=data["initiator"],
         recipient=data["recipient"],
         request_type=data["request_type"],
         description=data["description"],
-        burn_fee=data.get("burn_fee")
+        burn_fee=data.get("burn_fee"),
     )
 
     if not success:
@@ -3419,7 +3302,7 @@ def initiate_voluntary_request():
     return jsonify(result), 201
 
 
-@app.route('/harassment/respond-request', methods=['POST'])
+@app.route("/harassment/respond-request", methods=["POST"])
 def respond_to_voluntary_request():
     """
     Respond to a voluntary request (optional - ignoring is free).
@@ -3444,16 +3327,13 @@ def respond_to_voluntary_request():
     missing = [f for f in required_fields if f not in data]
 
     if missing:
-        return jsonify({
-            "error": "Missing required fields",
-            "missing": missing
-        }), 400
+        return jsonify({"error": "Missing required fields", "missing": missing}), 400
 
     success, result = anti_harassment_manager.respond_to_voluntary_request(
         request_id=data["request_id"],
         recipient=data["recipient"],
         response=data["response"],
-        accept=data["accept"]
+        accept=data["accept"],
     )
 
     if not success:
@@ -3462,7 +3342,7 @@ def respond_to_voluntary_request():
     return jsonify(result)
 
 
-@app.route('/harassment/counter-proposal', methods=['POST'])
+@app.route("/harassment/counter-proposal", methods=["POST"])
 def submit_counter_proposal():
     """
     Submit a counter-proposal with exponential fee enforcement.
@@ -3489,15 +3369,12 @@ def submit_counter_proposal():
     missing = [f for f in required_fields if f not in data]
 
     if missing:
-        return jsonify({
-            "error": "Missing required fields",
-            "missing": missing
-        }), 400
+        return jsonify({"error": "Missing required fields", "missing": missing}), 400
 
     success, result = anti_harassment_manager.submit_counter_proposal(
         dispute_ref=data["dispute_ref"],
         party=data["party"],
-        proposal_content=data["proposal_content"]
+        proposal_content=data["proposal_content"],
     )
 
     if not success:
@@ -3506,7 +3383,7 @@ def submit_counter_proposal():
     return jsonify(result)
 
 
-@app.route('/harassment/counter-status/<dispute_ref>/<party>', methods=['GET'])
+@app.route("/harassment/counter-status/<dispute_ref>/<party>", methods=["GET"])
 def get_counter_proposal_status(dispute_ref: str, party: str):
     """
     Get counter-proposal status for a party in a dispute.
@@ -3520,7 +3397,7 @@ def get_counter_proposal_status(dispute_ref: str, party: str):
     return jsonify(status)
 
 
-@app.route('/harassment/score/<address>', methods=['GET'])
+@app.route("/harassment/score/<address>", methods=["GET"])
 def get_harassment_score(address: str):
     """
     Get harassment score and profile for an address.
@@ -3535,7 +3412,7 @@ def get_harassment_score(address: str):
     return jsonify(profile)
 
 
-@app.route('/harassment/escrow/<escrow_id>', methods=['GET'])
+@app.route("/harassment/escrow/<escrow_id>", methods=["GET"])
 def get_escrow_status(escrow_id: str):
     """Get status of a stake escrow."""
     if not anti_harassment_manager:
@@ -3546,21 +3423,23 @@ def get_escrow_status(escrow_id: str):
 
     escrow = anti_harassment_manager.escrows[escrow_id]
 
-    return jsonify({
-        "escrow_id": escrow.escrow_id,
-        "dispute_ref": escrow.dispute_ref,
-        "initiator": escrow.initiator,
-        "counterparty": escrow.counterparty,
-        "initiator_stake": escrow.stake_amount,
-        "counterparty_stake": escrow.counterparty_stake,
-        "status": escrow.status,
-        "resolution": escrow.resolution,
-        "stake_window_ends": escrow.stake_window_ends,
-        "created_at": escrow.created_at
-    })
+    return jsonify(
+        {
+            "escrow_id": escrow.escrow_id,
+            "dispute_ref": escrow.dispute_ref,
+            "initiator": escrow.initiator,
+            "counterparty": escrow.counterparty,
+            "initiator_stake": escrow.stake_amount,
+            "counterparty_stake": escrow.counterparty_stake,
+            "status": escrow.status,
+            "resolution": escrow.resolution,
+            "stake_window_ends": escrow.stake_window_ends,
+            "created_at": escrow.created_at,
+        }
+    )
 
 
-@app.route('/harassment/resolve', methods=['POST'])
+@app.route("/harassment/resolve", methods=["POST"])
 def resolve_harassment_dispute():
     """
     Resolve a matched dispute.
@@ -3585,24 +3464,23 @@ def resolve_harassment_dispute():
     missing = [f for f in required_fields if f not in data]
 
     if missing:
-        return jsonify({
-            "error": "Missing required fields",
-            "missing": missing
-        }), 400
+        return jsonify({"error": "Missing required fields", "missing": missing}), 400
 
     try:
         resolution = DisputeResolution(data["resolution"])
     except ValueError:
-        return jsonify({
-            "error": "Invalid resolution type",
-            "valid_values": [r.value for r in DisputeResolution]
-        }), 400
+        return jsonify(
+            {
+                "error": "Invalid resolution type",
+                "valid_values": [r.value for r in DisputeResolution],
+            }
+        ), 400
 
     success, result = anti_harassment_manager.resolve_dispute(
         escrow_id=data["escrow_id"],
         resolution=resolution,
         resolver=data["resolver"],
-        resolution_details=data["details"]
+        resolution_details=data["details"],
     )
 
     if not success:
@@ -3611,7 +3489,7 @@ def resolve_harassment_dispute():
     return jsonify(result)
 
 
-@app.route('/harassment/check-timeouts', methods=['POST'])
+@app.route("/harassment/check-timeouts", methods=["POST"])
 def check_stake_timeouts():
     """
     Check for stake window timeouts and resolve to fallback.
@@ -3623,13 +3501,10 @@ def check_stake_timeouts():
 
     resolved = anti_harassment_manager.check_stake_timeouts()
 
-    return jsonify({
-        "timeouts_resolved": len(resolved),
-        "escrows": resolved
-    })
+    return jsonify({"timeouts_resolved": len(resolved), "escrows": resolved})
 
 
-@app.route('/harassment/stats', methods=['GET'])
+@app.route("/harassment/stats", methods=["GET"])
 def get_harassment_stats():
     """Get anti-harassment system statistics."""
     if not anti_harassment_manager:
@@ -3639,7 +3514,7 @@ def get_harassment_stats():
     return jsonify(stats)
 
 
-@app.route('/harassment/audit', methods=['GET'])
+@app.route("/harassment/audit", methods=["GET"])
 def get_harassment_audit_trail():
     """
     Get anti-harassment audit trail.
@@ -3656,15 +3531,13 @@ def get_harassment_audit_trail():
 
     trail = anti_harassment_manager.get_audit_trail(limit=limit)
 
-    return jsonify({
-        "count": len(trail),
-        "audit_trail": trail
-    })
+    return jsonify({"count": len(trail), "audit_trail": trail})
 
 
 # ========== Treasury System Endpoints ==========
 
-@app.route('/treasury/balance', methods=['GET'])
+
+@app.route("/treasury/balance", methods=["GET"])
 def get_treasury_balance():
     """
     Get current treasury balance and statistics.
@@ -3673,16 +3546,15 @@ def get_treasury_balance():
         Balance details including available for subsidies
     """
     if not treasury:
-        return jsonify({
-            "error": "Treasury not available",
-            "reason": "Features not initialized"
-        }), 503
+        return jsonify(
+            {"error": "Treasury not available", "reason": "Features not initialized"}
+        ), 503
 
     balance = treasury.get_balance()
     return jsonify(balance)
 
 
-@app.route('/treasury/deposit', methods=['POST'])
+@app.route("/treasury/deposit", methods=["POST"])
 @require_api_key
 def deposit_to_treasury():
     """
@@ -3709,25 +3581,21 @@ def deposit_to_treasury():
     missing = [f for f in required_fields if f not in data]
 
     if missing:
-        return jsonify({
-            "error": "Missing required fields",
-            "missing": missing
-        }), 400
+        return jsonify({"error": "Missing required fields", "missing": missing}), 400
 
     try:
         inflow_type = InflowType(data["inflow_type"])
     except ValueError:
-        return jsonify({
-            "error": "Invalid inflow_type",
-            "valid_values": [t.value for t in InflowType]
-        }), 400
+        return jsonify(
+            {"error": "Invalid inflow_type", "valid_values": [t.value for t in InflowType]}
+        ), 400
 
     success, result = treasury.deposit(
         amount=data["amount"],
         inflow_type=inflow_type,
         source=data["source"],
         tx_hash=data.get("tx_hash"),
-        metadata=data.get("metadata")
+        metadata=data.get("metadata"),
     )
 
     if not success:
@@ -3736,7 +3604,7 @@ def deposit_to_treasury():
     return jsonify(result), 201
 
 
-@app.route('/treasury/deposit/timeout-burn', methods=['POST'])
+@app.route("/treasury/deposit/timeout-burn", methods=["POST"])
 def deposit_timeout_burn():
     """
     Deposit from a dispute timeout burn.
@@ -3760,15 +3628,10 @@ def deposit_timeout_burn():
     missing = [f for f in required_fields if f not in data]
 
     if missing:
-        return jsonify({
-            "error": "Missing required fields",
-            "missing": missing
-        }), 400
+        return jsonify({"error": "Missing required fields", "missing": missing}), 400
 
     success, result = treasury.deposit_timeout_burn(
-        dispute_id=data["dispute_id"],
-        amount=data["amount"],
-        initiator=data["initiator"]
+        dispute_id=data["dispute_id"], amount=data["amount"], initiator=data["initiator"]
     )
 
     if not success:
@@ -3777,7 +3640,7 @@ def deposit_timeout_burn():
     return jsonify(result), 201
 
 
-@app.route('/treasury/deposit/counter-fee', methods=['POST'])
+@app.route("/treasury/deposit/counter-fee", methods=["POST"])
 def deposit_counter_fee():
     """
     Deposit from counter-proposal fee burn.
@@ -3802,16 +3665,13 @@ def deposit_counter_fee():
     missing = [f for f in required_fields if f not in data]
 
     if missing:
-        return jsonify({
-            "error": "Missing required fields",
-            "missing": missing
-        }), 400
+        return jsonify({"error": "Missing required fields", "missing": missing}), 400
 
     success, result = treasury.deposit_counter_fee(
         dispute_id=data["dispute_id"],
         amount=data["amount"],
         party=data["party"],
-        counter_number=data["counter_number"]
+        counter_number=data["counter_number"],
     )
 
     if not success:
@@ -3820,7 +3680,7 @@ def deposit_counter_fee():
     return jsonify(result), 201
 
 
-@app.route('/treasury/inflows', methods=['GET'])
+@app.route("/treasury/inflows", methods=["GET"])
 def get_treasury_inflows():
     """
     Get treasury inflow history.
@@ -3842,16 +3702,15 @@ def get_treasury_inflows():
         try:
             inflow_type = InflowType(inflow_type_str)
         except ValueError:
-            return jsonify({
-                "error": "Invalid inflow type",
-                "valid_values": [t.value for t in InflowType]
-            }), 400
+            return jsonify(
+                {"error": "Invalid inflow type", "valid_values": [t.value for t in InflowType]}
+            ), 400
 
     history = treasury.get_inflow_history(limit=limit, inflow_type=inflow_type)
     return jsonify(history)
 
 
-@app.route('/treasury/subsidy/request', methods=['POST'])
+@app.route("/treasury/subsidy/request", methods=["POST"])
 @require_api_key
 def request_treasury_subsidy():
     """
@@ -3883,16 +3742,13 @@ def request_treasury_subsidy():
     missing = [f for f in required_fields if f not in data]
 
     if missing:
-        return jsonify({
-            "error": "Missing required fields",
-            "missing": missing
-        }), 400
+        return jsonify({"error": "Missing required fields", "missing": missing}), 400
 
     success, result = treasury.request_subsidy(
         dispute_id=data["dispute_id"],
         requester=data["requester"],
         stake_required=data["stake_required"],
-        is_dispute_target=data.get("is_dispute_target", True)
+        is_dispute_target=data.get("is_dispute_target", True),
     )
 
     if not success:
@@ -3901,7 +3757,7 @@ def request_treasury_subsidy():
     return jsonify(result), 201
 
 
-@app.route('/treasury/subsidy/disburse', methods=['POST'])
+@app.route("/treasury/subsidy/disburse", methods=["POST"])
 @require_api_key
 def disburse_treasury_subsidy():
     """
@@ -3922,14 +3778,12 @@ def disburse_treasury_subsidy():
         return jsonify({"error": "No data provided"}), 400
 
     if "request_id" not in data or "escrow_address" not in data:
-        return jsonify({
-            "error": "Missing required fields",
-            "required": ["request_id", "escrow_address"]
-        }), 400
+        return jsonify(
+            {"error": "Missing required fields", "required": ["request_id", "escrow_address"]}
+        ), 400
 
     success, result = treasury.disburse_subsidy(
-        request_id=data["request_id"],
-        escrow_address=data["escrow_address"]
+        request_id=data["request_id"], escrow_address=data["escrow_address"]
     )
 
     if not success:
@@ -3938,7 +3792,7 @@ def disburse_treasury_subsidy():
     return jsonify(result)
 
 
-@app.route('/treasury/subsidy/<request_id>', methods=['GET'])
+@app.route("/treasury/subsidy/<request_id>", methods=["GET"])
 def get_subsidy_request(request_id: str):
     """Get details of a subsidy request."""
     if not treasury:
@@ -3952,7 +3806,7 @@ def get_subsidy_request(request_id: str):
     return jsonify(request_data)
 
 
-@app.route('/treasury/subsidy/simulate', methods=['POST'])
+@app.route("/treasury/subsidy/simulate", methods=["POST"])
 def simulate_subsidy():
     """
     Simulate a subsidy request without creating a record.
@@ -3973,20 +3827,18 @@ def simulate_subsidy():
         return jsonify({"error": "No data provided"}), 400
 
     if "requester" not in data or "stake_required" not in data:
-        return jsonify({
-            "error": "Missing required fields",
-            "required": ["requester", "stake_required"]
-        }), 400
+        return jsonify(
+            {"error": "Missing required fields", "required": ["requester", "stake_required"]}
+        ), 400
 
     result = treasury.simulate_subsidy(
-        requester=data["requester"],
-        stake_required=data["stake_required"]
+        requester=data["requester"], stake_required=data["stake_required"]
     )
 
     return jsonify(result)
 
 
-@app.route('/treasury/participant/<address>', methods=['GET'])
+@app.route("/treasury/participant/<address>", methods=["GET"])
 def get_participant_subsidy_status(address: str):
     """
     Get subsidy status for a participant.
@@ -4000,7 +3852,7 @@ def get_participant_subsidy_status(address: str):
     return jsonify(status)
 
 
-@app.route('/treasury/dispute/<dispute_id>/subsidized', methods=['GET'])
+@app.route("/treasury/dispute/<dispute_id>/subsidized", methods=["GET"])
 def check_dispute_subsidized(dispute_id: str):
     """Check if a dispute has been subsidized."""
     if not treasury:
@@ -4008,14 +3860,12 @@ def check_dispute_subsidized(dispute_id: str):
 
     is_subsidized, request_id = treasury.is_dispute_subsidized(dispute_id)
 
-    return jsonify({
-        "dispute_id": dispute_id,
-        "is_subsidized": is_subsidized,
-        "subsidy_request_id": request_id
-    })
+    return jsonify(
+        {"dispute_id": dispute_id, "is_subsidized": is_subsidized, "subsidy_request_id": request_id}
+    )
 
 
-@app.route('/treasury/stats', methods=['GET'])
+@app.route("/treasury/stats", methods=["GET"])
 def get_treasury_stats():
     """Get comprehensive treasury statistics."""
     if not treasury:
@@ -4025,7 +3875,7 @@ def get_treasury_stats():
     return jsonify(stats)
 
 
-@app.route('/treasury/audit', methods=['GET'])
+@app.route("/treasury/audit", methods=["GET"])
 def get_treasury_audit():
     """
     Get treasury audit trail.
@@ -4042,13 +3892,10 @@ def get_treasury_audit():
 
     trail = treasury.get_audit_trail(limit=limit)
 
-    return jsonify({
-        "count": len(trail),
-        "audit_trail": trail
-    })
+    return jsonify({"count": len(trail), "audit_trail": trail})
 
 
-@app.route('/treasury/cleanup', methods=['POST'])
+@app.route("/treasury/cleanup", methods=["POST"])
 def cleanup_treasury_records():
     """
     Clean up expired usage records.
@@ -4059,15 +3906,13 @@ def cleanup_treasury_records():
 
     removed = treasury.cleanup_expired_usage()
 
-    return jsonify({
-        "status": "cleanup_complete",
-        "records_removed": removed
-    })
+    return jsonify({"status": "cleanup_complete", "records_removed": removed})
 
 
 # ========== FIDO2/WebAuthn Endpoints ==========
 
-@app.route('/fido2/register/begin', methods=['POST'])
+
+@app.route("/fido2/register/begin", methods=["POST"])
 def begin_fido2_registration():
     """
     Begin FIDO2 credential registration (WebAuthn).
@@ -4087,10 +3932,9 @@ def begin_fido2_registration():
         Registration options to pass to WebAuthn API
     """
     if not fido2_manager:
-        return jsonify({
-            "error": "FIDO2 authentication not available",
-            "reason": "Features not initialized"
-        }), 503
+        return jsonify(
+            {"error": "FIDO2 authentication not available", "reason": "Features not initialized"}
+        ), 503
 
     data = request.get_json()
 
@@ -4101,10 +3945,7 @@ def begin_fido2_registration():
     missing = [f for f in required_fields if f not in data]
 
     if missing:
-        return jsonify({
-            "error": "Missing required fields",
-            "missing": missing
-        }), 400
+        return jsonify({"error": "Missing required fields", "missing": missing}), 400
 
     # Parse user verification preference
     user_verification = None
@@ -4112,17 +3953,19 @@ def begin_fido2_registration():
         try:
             user_verification = UserVerification(data["user_verification"])
         except ValueError:
-            return jsonify({
-                "error": "Invalid user_verification",
-                "valid_values": [v.value for v in UserVerification]
-            }), 400
+            return jsonify(
+                {
+                    "error": "Invalid user_verification",
+                    "valid_values": [v.value for v in UserVerification],
+                }
+            ), 400
 
     success, result = fido2_manager.begin_registration(
         user_id=data["user_id"],
         user_name=data["user_name"],
         display_name=data["display_name"],
         authenticator_attachment=data.get("authenticator_attachment"),
-        user_verification=user_verification
+        user_verification=user_verification,
     )
 
     if not success:
@@ -4131,7 +3974,7 @@ def begin_fido2_registration():
     return jsonify(result)
 
 
-@app.route('/fido2/register/complete', methods=['POST'])
+@app.route("/fido2/register/complete", methods=["POST"])
 def complete_fido2_registration():
     """
     Complete FIDO2 credential registration.
@@ -4159,14 +4002,17 @@ def complete_fido2_registration():
     if not data:
         return jsonify({"error": "No data provided"}), 400
 
-    required_fields = ["challenge_id", "credential_id", "public_key", "attestation_object", "client_data_json"]
+    required_fields = [
+        "challenge_id",
+        "credential_id",
+        "public_key",
+        "attestation_object",
+        "client_data_json",
+    ]
     missing = [f for f in required_fields if f not in data]
 
     if missing:
-        return jsonify({
-            "error": "Missing required fields",
-            "missing": missing
-        }), 400
+        return jsonify({"error": "Missing required fields", "missing": missing}), 400
 
     success, result = fido2_manager.complete_registration(
         challenge_id=data["challenge_id"],
@@ -4174,7 +4020,7 @@ def complete_fido2_registration():
         public_key=data["public_key"],
         attestation_object=data["attestation_object"],
         client_data_json=data["client_data_json"],
-        device_name=data.get("device_name")
+        device_name=data.get("device_name"),
     )
 
     if not success:
@@ -4183,7 +4029,7 @@ def complete_fido2_registration():
     return jsonify(result), 201
 
 
-@app.route('/fido2/authenticate/begin', methods=['POST'])
+@app.route("/fido2/authenticate/begin", methods=["POST"])
 def begin_fido2_authentication():
     """
     Begin FIDO2 authentication challenge.
@@ -4206,9 +4052,7 @@ def begin_fido2_authentication():
         return jsonify({"error": "No data provided"}), 400
 
     if "user_id" not in data:
-        return jsonify({
-            "error": "Missing required field: user_id"
-        }), 400
+        return jsonify({"error": "Missing required field: user_id"}), 400
 
     # Parse user verification preference
     user_verification = None
@@ -4216,14 +4060,15 @@ def begin_fido2_authentication():
         try:
             user_verification = UserVerification(data["user_verification"])
         except ValueError:
-            return jsonify({
-                "error": "Invalid user_verification",
-                "valid_values": [v.value for v in UserVerification]
-            }), 400
+            return jsonify(
+                {
+                    "error": "Invalid user_verification",
+                    "valid_values": [v.value for v in UserVerification],
+                }
+            ), 400
 
     success, result = fido2_manager.begin_authentication(
-        user_id=data["user_id"],
-        user_verification=user_verification
+        user_id=data["user_id"], user_verification=user_verification
     )
 
     if not success:
@@ -4232,7 +4077,7 @@ def begin_fido2_authentication():
     return jsonify(result)
 
 
-@app.route('/fido2/authenticate/verify', methods=['POST'])
+@app.route("/fido2/authenticate/verify", methods=["POST"])
 def verify_fido2_authentication():
     """
     Verify FIDO2 authentication response.
@@ -4257,21 +4102,24 @@ def verify_fido2_authentication():
     if not data:
         return jsonify({"error": "No data provided"}), 400
 
-    required_fields = ["challenge_id", "credential_id", "authenticator_data", "client_data_json", "signature"]
+    required_fields = [
+        "challenge_id",
+        "credential_id",
+        "authenticator_data",
+        "client_data_json",
+        "signature",
+    ]
     missing = [f for f in required_fields if f not in data]
 
     if missing:
-        return jsonify({
-            "error": "Missing required fields",
-            "missing": missing
-        }), 400
+        return jsonify({"error": "Missing required fields", "missing": missing}), 400
 
     success, result = fido2_manager.verify_authentication(
         challenge_id=data["challenge_id"],
         credential_id=data["credential_id"],
         authenticator_data=data["authenticator_data"],
         client_data_json=data["client_data_json"],
-        signature=data["signature"]
+        signature=data["signature"],
     )
 
     if not success:
@@ -4280,7 +4128,7 @@ def verify_fido2_authentication():
     return jsonify(result)
 
 
-@app.route('/fido2/sign/proposal', methods=['POST'])
+@app.route("/fido2/sign/proposal", methods=["POST"])
 def sign_proposal_with_fido2():
     """
     Sign a proposal with FIDO2 hardware key.
@@ -4310,15 +4158,19 @@ def sign_proposal_with_fido2():
     if not data:
         return jsonify({"error": "No data provided"}), 400
 
-    required_fields = ["user_id", "credential_id", "proposal_hash", "proposal_content",
-                       "signature", "authenticator_data", "client_data_json"]
+    required_fields = [
+        "user_id",
+        "credential_id",
+        "proposal_hash",
+        "proposal_content",
+        "signature",
+        "authenticator_data",
+        "client_data_json",
+    ]
     missing = [f for f in required_fields if f not in data]
 
     if missing:
-        return jsonify({
-            "error": "Missing required fields",
-            "missing": missing
-        }), 400
+        return jsonify({"error": "Missing required fields", "missing": missing}), 400
 
     success, result = fido2_manager.sign_proposal(
         user_id=data["user_id"],
@@ -4327,7 +4179,7 @@ def sign_proposal_with_fido2():
         proposal_content=data["proposal_content"],
         signature=data["signature"],
         authenticator_data=data["authenticator_data"],
-        client_data_json=data["client_data_json"]
+        client_data_json=data["client_data_json"],
     )
 
     if not success:
@@ -4336,7 +4188,7 @@ def sign_proposal_with_fido2():
     return jsonify(result), 201
 
 
-@app.route('/fido2/sign/contract', methods=['POST'])
+@app.route("/fido2/sign/contract", methods=["POST"])
 def sign_contract_with_fido2():
     """
     Sign a contract with FIDO2 hardware key.
@@ -4366,15 +4218,20 @@ def sign_contract_with_fido2():
     if not data:
         return jsonify({"error": "No data provided"}), 400
 
-    required_fields = ["user_id", "credential_id", "contract_hash", "contract_content",
-                       "counterparty", "signature", "authenticator_data", "client_data_json"]
+    required_fields = [
+        "user_id",
+        "credential_id",
+        "contract_hash",
+        "contract_content",
+        "counterparty",
+        "signature",
+        "authenticator_data",
+        "client_data_json",
+    ]
     missing = [f for f in required_fields if f not in data]
 
     if missing:
-        return jsonify({
-            "error": "Missing required fields",
-            "missing": missing
-        }), 400
+        return jsonify({"error": "Missing required fields", "missing": missing}), 400
 
     success, result = fido2_manager.sign_contract(
         user_id=data["user_id"],
@@ -4384,7 +4241,7 @@ def sign_contract_with_fido2():
         counterparty=data["counterparty"],
         signature=data["signature"],
         authenticator_data=data["authenticator_data"],
-        client_data_json=data["client_data_json"]
+        client_data_json=data["client_data_json"],
     )
 
     if not success:
@@ -4393,7 +4250,7 @@ def sign_contract_with_fido2():
     return jsonify(result), 201
 
 
-@app.route('/fido2/delegation/begin', methods=['POST'])
+@app.route("/fido2/delegation/begin", methods=["POST"])
 def begin_agent_delegation():
     """
     Begin hardware-authorized agent delegation.
@@ -4426,10 +4283,7 @@ def begin_agent_delegation():
     missing = [f for f in required_fields if f not in data]
 
     if missing:
-        return jsonify({
-            "error": "Missing required fields",
-            "missing": missing
-        }), 400
+        return jsonify({"error": "Missing required fields", "missing": missing}), 400
 
     success, result = fido2_manager.begin_agent_delegation(
         user_id=data["user_id"],
@@ -4437,7 +4291,7 @@ def begin_agent_delegation():
         permissions=data["permissions"],
         spending_limit=data.get("spending_limit"),
         expires_in_hours=data.get("expires_in_hours", 24),
-        contract_refs=data.get("contract_refs")
+        contract_refs=data.get("contract_refs"),
     )
 
     if not success:
@@ -4446,7 +4300,7 @@ def begin_agent_delegation():
     return jsonify(result)
 
 
-@app.route('/fido2/delegation/complete', methods=['POST'])
+@app.route("/fido2/delegation/complete", methods=["POST"])
 def complete_agent_delegation():
     """
     Complete agent delegation with hardware signature.
@@ -4471,21 +4325,24 @@ def complete_agent_delegation():
     if not data:
         return jsonify({"error": "No data provided"}), 400
 
-    required_fields = ["challenge_id", "credential_id", "signature", "authenticator_data", "client_data_json"]
+    required_fields = [
+        "challenge_id",
+        "credential_id",
+        "signature",
+        "authenticator_data",
+        "client_data_json",
+    ]
     missing = [f for f in required_fields if f not in data]
 
     if missing:
-        return jsonify({
-            "error": "Missing required fields",
-            "missing": missing
-        }), 400
+        return jsonify({"error": "Missing required fields", "missing": missing}), 400
 
     success, result = fido2_manager.complete_agent_delegation(
         challenge_id=data["challenge_id"],
         credential_id=data["credential_id"],
         signature=data["signature"],
         authenticator_data=data["authenticator_data"],
-        client_data_json=data["client_data_json"]
+        client_data_json=data["client_data_json"],
     )
 
     if not success:
@@ -4494,7 +4351,7 @@ def complete_agent_delegation():
     return jsonify(result), 201
 
 
-@app.route('/fido2/delegation/<delegation_id>', methods=['GET'])
+@app.route("/fido2/delegation/<delegation_id>", methods=["GET"])
 def get_agent_delegation(delegation_id: str):
     """Get details of an agent delegation."""
     if not fido2_manager:
@@ -4508,7 +4365,7 @@ def get_agent_delegation(delegation_id: str):
     return jsonify(delegation)
 
 
-@app.route('/fido2/delegation/<delegation_id>/revoke', methods=['POST'])
+@app.route("/fido2/delegation/<delegation_id>/revoke", methods=["POST"])
 def revoke_agent_delegation(delegation_id: str):
     """
     Revoke an agent delegation.
@@ -4531,14 +4388,10 @@ def revoke_agent_delegation(delegation_id: str):
         return jsonify({"error": "No data provided"}), 400
 
     if "user_id" not in data:
-        return jsonify({
-            "error": "Missing required field: user_id"
-        }), 400
+        return jsonify({"error": "Missing required field: user_id"}), 400
 
     success, result = fido2_manager.revoke_delegation(
-        delegation_id=delegation_id,
-        user_id=data["user_id"],
-        reason=data.get("reason")
+        delegation_id=delegation_id, user_id=data["user_id"], reason=data.get("reason")
     )
 
     if not success:
@@ -4547,7 +4400,7 @@ def revoke_agent_delegation(delegation_id: str):
     return jsonify(result)
 
 
-@app.route('/fido2/delegation/user/<user_id>', methods=['GET'])
+@app.route("/fido2/delegation/user/<user_id>", methods=["GET"])
 def get_user_delegations(user_id: str):
     """
     Get all delegations for a user.
@@ -4562,14 +4415,10 @@ def get_user_delegations(user_id: str):
 
     delegations = fido2_manager.get_user_delegations(user_id, active_only=active_only)
 
-    return jsonify({
-        "user_id": user_id,
-        "count": len(delegations),
-        "delegations": delegations
-    })
+    return jsonify({"user_id": user_id, "count": len(delegations), "delegations": delegations})
 
 
-@app.route('/fido2/delegation/verify', methods=['POST'])
+@app.route("/fido2/delegation/verify", methods=["POST"])
 def verify_agent_action():
     """
     Verify an agent action against its delegation.
@@ -4598,26 +4447,20 @@ def verify_agent_action():
     missing = [f for f in required_fields if f not in data]
 
     if missing:
-        return jsonify({
-            "error": "Missing required fields",
-            "missing": missing
-        }), 400
+        return jsonify({"error": "Missing required fields", "missing": missing}), 400
 
     is_valid, result = fido2_manager.verify_agent_action(
         delegation_id=data["delegation_id"],
         agent_id=data["agent_id"],
         action=data["action"],
         spending_amount=data.get("spending_amount"),
-        contract_ref=data.get("contract_ref")
+        contract_ref=data.get("contract_ref"),
     )
 
-    return jsonify({
-        "valid": is_valid,
-        "result": result
-    })
+    return jsonify({"valid": is_valid, "result": result})
 
 
-@app.route('/fido2/credentials/<user_id>', methods=['GET'])
+@app.route("/fido2/credentials/<user_id>", methods=["GET"])
 def get_user_credentials(user_id: str):
     """Get all FIDO2 credentials for a user."""
     if not fido2_manager:
@@ -4625,14 +4468,10 @@ def get_user_credentials(user_id: str):
 
     credentials = fido2_manager.get_user_credentials(user_id)
 
-    return jsonify({
-        "user_id": user_id,
-        "count": len(credentials),
-        "credentials": credentials
-    })
+    return jsonify({"user_id": user_id, "count": len(credentials), "credentials": credentials})
 
 
-@app.route('/fido2/credentials/<user_id>/<credential_id>', methods=['DELETE'])
+@app.route("/fido2/credentials/<user_id>/<credential_id>", methods=["DELETE"])
 def remove_user_credential(user_id: str, credential_id: str):
     """
     Remove a FIDO2 credential.
@@ -4650,7 +4489,7 @@ def remove_user_credential(user_id: str, credential_id: str):
     return jsonify(result)
 
 
-@app.route('/fido2/signatures/<user_id>', methods=['GET'])
+@app.route("/fido2/signatures/<user_id>", methods=["GET"])
 def get_signature_history(user_id: str):
     """
     Get signature history for a user.
@@ -4672,25 +4511,21 @@ def get_signature_history(user_id: str):
         try:
             signature_type = SignatureType(sig_type_str)
         except ValueError:
-            return jsonify({
-                "error": "Invalid signature_type",
-                "valid_values": [t.value for t in SignatureType]
-            }), 400
+            return jsonify(
+                {
+                    "error": "Invalid signature_type",
+                    "valid_values": [t.value for t in SignatureType],
+                }
+            ), 400
 
     history = fido2_manager.get_signature_history(
-        user_id=user_id,
-        limit=limit,
-        signature_type=signature_type
+        user_id=user_id, limit=limit, signature_type=signature_type
     )
 
-    return jsonify({
-        "user_id": user_id,
-        "count": len(history),
-        "signatures": history
-    })
+    return jsonify({"user_id": user_id, "count": len(history), "signatures": history})
 
 
-@app.route('/fido2/stats', methods=['GET'])
+@app.route("/fido2/stats", methods=["GET"])
 def get_fido2_stats():
     """Get FIDO2 authentication statistics."""
     if not fido2_manager:
@@ -4700,7 +4535,7 @@ def get_fido2_stats():
     return jsonify(stats)
 
 
-@app.route('/fido2/audit', methods=['GET'])
+@app.route("/fido2/audit", methods=["GET"])
 def get_fido2_audit():
     """
     Get FIDO2 audit trail.
@@ -4717,17 +4552,15 @@ def get_fido2_audit():
 
     trail = fido2_manager.get_audit_trail(limit=limit)
 
-    return jsonify({
-        "count": len(trail),
-        "audit_trail": trail
-    })
+    return jsonify({"count": len(trail), "audit_trail": trail})
 
 
 # ========== ZK Privacy Infrastructure Endpoints ==========
 
 # ----- Phase 14A: Dispute Membership Circuit -----
 
-@app.route('/zk/identity/commitment', methods=['POST'])
+
+@app.route("/zk/identity/commitment", methods=["POST"])
 def generate_identity_commitment():
     """
     Generate identity commitment for on-chain registration.
@@ -4745,10 +4578,9 @@ def generate_identity_commitment():
         Identity secret and hash for on-chain commitment
     """
     if not zk_privacy_manager:
-        return jsonify({
-            "error": "ZK privacy not available",
-            "reason": "Features not initialized"
-        }), 503
+        return jsonify(
+            {"error": "ZK privacy not available", "reason": "Features not initialized"}
+        ), 503
 
     data = request.get_json()
 
@@ -4756,19 +4588,16 @@ def generate_identity_commitment():
         return jsonify({"error": "No data provided"}), 400
 
     if "user_address" not in data:
-        return jsonify({
-            "error": "Missing required field: user_address"
-        }), 400
+        return jsonify({"error": "Missing required field: user_address"}), 400
 
     result = zk_privacy_manager.generate_identity_commitment(
-        user_address=data["user_address"],
-        salt=data.get("salt")
+        user_address=data["user_address"], salt=data.get("salt")
     )
 
     return jsonify(result), 201
 
 
-@app.route('/zk/identity/proof', methods=['POST'])
+@app.route("/zk/identity/proof", methods=["POST"])
 def generate_identity_proof():
     """
     Generate ZK proof of dispute membership.
@@ -4799,16 +4628,13 @@ def generate_identity_proof():
     missing = [f for f in required_fields if f not in data]
 
     if missing:
-        return jsonify({
-            "error": "Missing required fields",
-            "missing": missing
-        }), 400
+        return jsonify({"error": "Missing required fields", "missing": missing}), 400
 
     success, result = zk_privacy_manager.generate_identity_proof(
         dispute_id=data["dispute_id"],
         prover_address=data["prover_address"],
         identity_secret=data["identity_secret"],
-        identity_manager=data["identity_manager"]
+        identity_manager=data["identity_manager"],
     )
 
     if not success:
@@ -4817,7 +4643,7 @@ def generate_identity_proof():
     return jsonify(result), 201
 
 
-@app.route('/zk/identity/verify', methods=['POST'])
+@app.route("/zk/identity/verify", methods=["POST"])
 def verify_identity_proof():
     """
     Verify ZK identity proof on-chain (simulated).
@@ -4840,14 +4666,12 @@ def verify_identity_proof():
         return jsonify({"error": "No data provided"}), 400
 
     if "proof_id" not in data or "expected_identity_hash" not in data:
-        return jsonify({
-            "error": "Missing required fields",
-            "required": ["proof_id", "expected_identity_hash"]
-        }), 400
+        return jsonify(
+            {"error": "Missing required fields", "required": ["proof_id", "expected_identity_hash"]}
+        ), 400
 
     success, result = zk_privacy_manager.verify_identity_proof(
-        proof_id=data["proof_id"],
-        expected_identity_hash=data["expected_identity_hash"]
+        proof_id=data["proof_id"], expected_identity_hash=data["expected_identity_hash"]
     )
 
     if not success:
@@ -4856,7 +4680,7 @@ def verify_identity_proof():
     return jsonify(result)
 
 
-@app.route('/zk/identity/proof/<proof_id>', methods=['GET'])
+@app.route("/zk/identity/proof/<proof_id>", methods=["GET"])
 def get_identity_proof(proof_id: str):
     """Get identity proof details."""
     if not zk_privacy_manager:
@@ -4872,7 +4696,8 @@ def get_identity_proof(proof_id: str):
 
 # ----- Phase 14B: Viewing Key Infrastructure -----
 
-@app.route('/zk/viewing-key/create', methods=['POST'])
+
+@app.route("/zk/viewing-key/create", methods=["POST"])
 def create_viewing_key():
     """
     Create a viewing key for dispute metadata.
@@ -4900,16 +4725,15 @@ def create_viewing_key():
         return jsonify({"error": "No data provided"}), 400
 
     if "dispute_id" not in data or "metadata" not in data:
-        return jsonify({
-            "error": "Missing required fields",
-            "required": ["dispute_id", "metadata"]
-        }), 400
+        return jsonify(
+            {"error": "Missing required fields", "required": ["dispute_id", "metadata"]}
+        ), 400
 
     success, result = zk_privacy_manager.create_viewing_key(
         dispute_id=data["dispute_id"],
         metadata=data["metadata"],
         share_holders=data.get("share_holders"),
-        threshold=data.get("threshold", 3)
+        threshold=data.get("threshold", 3),
     )
 
     if not success:
@@ -4918,7 +4742,7 @@ def create_viewing_key():
     return jsonify(result), 201
 
 
-@app.route('/zk/viewing-key/share', methods=['POST'])
+@app.route("/zk/viewing-key/share", methods=["POST"])
 def submit_viewing_key_share():
     """
     Submit a key share for reconstruction.
@@ -4948,15 +4772,10 @@ def submit_viewing_key_share():
     missing = [f for f in required_fields if f not in data]
 
     if missing:
-        return jsonify({
-            "error": "Missing required fields",
-            "missing": missing
-        }), 400
+        return jsonify({"error": "Missing required fields", "missing": missing}), 400
 
     success, result = zk_privacy_manager.submit_key_share(
-        key_id=data["key_id"],
-        holder=data["holder"],
-        share_data=data["share_data"]
+        key_id=data["key_id"], holder=data["holder"], share_data=data["share_data"]
     )
 
     if not success:
@@ -4965,7 +4784,7 @@ def submit_viewing_key_share():
     return jsonify(result)
 
 
-@app.route('/zk/viewing-key/reconstruct', methods=['POST'])
+@app.route("/zk/viewing-key/reconstruct", methods=["POST"])
 def reconstruct_viewing_key():
     """
     Reconstruct viewing key from submitted shares.
@@ -4990,14 +4809,12 @@ def reconstruct_viewing_key():
         return jsonify({"error": "No data provided"}), 400
 
     if "key_id" not in data or "authorization" not in data:
-        return jsonify({
-            "error": "Missing required fields",
-            "required": ["key_id", "authorization"]
-        }), 400
+        return jsonify(
+            {"error": "Missing required fields", "required": ["key_id", "authorization"]}
+        ), 400
 
     success, result = zk_privacy_manager.reconstruct_viewing_key(
-        key_id=data["key_id"],
-        authorization=data["authorization"]
+        key_id=data["key_id"], authorization=data["authorization"]
     )
 
     if not success:
@@ -5006,7 +4823,7 @@ def reconstruct_viewing_key():
     return jsonify(result)
 
 
-@app.route('/zk/viewing-key/<key_id>', methods=['GET'])
+@app.route("/zk/viewing-key/<key_id>", methods=["GET"])
 def get_viewing_key_status(key_id: str):
     """Get viewing key status."""
     if not zk_privacy_manager:
@@ -5022,7 +4839,8 @@ def get_viewing_key_status(key_id: str):
 
 # ----- Phase 14C: Inference Attack Mitigations -----
 
-@app.route('/zk/batch/submit', methods=['POST'])
+
+@app.route("/zk/batch/submit", methods=["POST"])
 def submit_to_batch():
     """
     Submit transaction to batching queue.
@@ -5048,14 +4866,12 @@ def submit_to_batch():
         return jsonify({"error": "No data provided"}), 400
 
     if "tx_type" not in data or "tx_data" not in data:
-        return jsonify({
-            "error": "Missing required fields",
-            "required": ["tx_type", "tx_data"]
-        }), 400
+        return jsonify(
+            {"error": "Missing required fields", "required": ["tx_type", "tx_data"]}
+        ), 400
 
     success, result = zk_privacy_manager.submit_to_batch(
-        tx_type=data["tx_type"],
-        tx_data=data["tx_data"]
+        tx_type=data["tx_type"], tx_data=data["tx_data"]
     )
 
     if not success:
@@ -5064,7 +4880,7 @@ def submit_to_batch():
     return jsonify(result)
 
 
-@app.route('/zk/batch/advance', methods=['POST'])
+@app.route("/zk/batch/advance", methods=["POST"])
 def advance_block_release():
     """
     Advance block and release ready batches.
@@ -5085,20 +4901,16 @@ def advance_block_release():
     data = request.get_json()
 
     if not data or "new_block" not in data:
-        return jsonify({
-            "error": "Missing required field: new_block"
-        }), 400
+        return jsonify({"error": "Missing required field: new_block"}), 400
 
     released = zk_privacy_manager.advance_block(data["new_block"])
 
-    return jsonify({
-        "block": data["new_block"],
-        "released_count": len(released),
-        "transactions": released
-    })
+    return jsonify(
+        {"block": data["new_block"], "released_count": len(released), "transactions": released}
+    )
 
 
-@app.route('/zk/batch/<batch_id>', methods=['GET'])
+@app.route("/zk/batch/<batch_id>", methods=["GET"])
 def get_batch_status(batch_id: str):
     """Get batch status."""
     if not zk_privacy_manager:
@@ -5112,7 +4924,7 @@ def get_batch_status(batch_id: str):
     return jsonify(status)
 
 
-@app.route('/zk/dummy/generate', methods=['POST'])
+@app.route("/zk/dummy/generate", methods=["POST"])
 def generate_dummy_transaction():
     """
     Manually generate a dummy transaction.
@@ -5130,7 +4942,7 @@ def generate_dummy_transaction():
     return jsonify(dummy)
 
 
-@app.route('/zk/dummy/stats', methods=['GET'])
+@app.route("/zk/dummy/stats", methods=["GET"])
 def get_dummy_stats():
     """Get dummy transaction statistics."""
     if not zk_privacy_manager:
@@ -5142,7 +4954,8 @@ def get_dummy_stats():
 
 # ----- Phase 14D: Threshold Decryption / Compliance -----
 
-@app.route('/zk/compliance/request', methods=['POST'])
+
+@app.route("/zk/compliance/request", methods=["POST"])
 def submit_compliance_request():
     """
     Submit compliance request for key disclosure.
@@ -5172,16 +4985,13 @@ def submit_compliance_request():
     missing = [f for f in required_fields if f not in data]
 
     if missing:
-        return jsonify({
-            "error": "Missing required fields",
-            "missing": missing
-        }), 400
+        return jsonify({"error": "Missing required fields", "missing": missing}), 400
 
     success, result = zk_privacy_manager.submit_compliance_request(
         key_id=data["key_id"],
         requester=data["requester"],
         warrant_hash=data["warrant_hash"],
-        justification=data["justification"]
+        justification=data["justification"],
     )
 
     if not success:
@@ -5190,7 +5000,7 @@ def submit_compliance_request():
     return jsonify(result), 201
 
 
-@app.route('/zk/compliance/vote', methods=['POST'])
+@app.route("/zk/compliance/vote", methods=["POST"])
 def submit_compliance_vote():
     """
     Submit vote on compliance request.
@@ -5220,16 +5030,13 @@ def submit_compliance_vote():
     missing = [f for f in required_fields if f not in data]
 
     if missing:
-        return jsonify({
-            "error": "Missing required fields",
-            "missing": missing
-        }), 400
+        return jsonify({"error": "Missing required fields", "missing": missing}), 400
 
     success, result = zk_privacy_manager.submit_compliance_vote(
         request_id=data["request_id"],
         voter=data["voter"],
         approve=data["approve"],
-        signature=data["signature"]
+        signature=data["signature"],
     )
 
     if not success:
@@ -5238,7 +5045,7 @@ def submit_compliance_vote():
     return jsonify(result)
 
 
-@app.route('/zk/compliance/<request_id>', methods=['GET'])
+@app.route("/zk/compliance/<request_id>", methods=["GET"])
 def get_compliance_request_status(request_id: str):
     """Get compliance request status."""
     if not zk_privacy_manager:
@@ -5252,7 +5059,7 @@ def get_compliance_request_status(request_id: str):
     return jsonify(status)
 
 
-@app.route('/zk/compliance/threshold-sign', methods=['POST'])
+@app.route("/zk/compliance/threshold-sign", methods=["POST"])
 def generate_threshold_signature():
     """
     Generate threshold signature for approved request.
@@ -5277,14 +5084,12 @@ def generate_threshold_signature():
         return jsonify({"error": "No data provided"}), 400
 
     if "request_id" not in data or "message" not in data:
-        return jsonify({
-            "error": "Missing required fields",
-            "required": ["request_id", "message"]
-        }), 400
+        return jsonify(
+            {"error": "Missing required fields", "required": ["request_id", "message"]}
+        ), 400
 
     success, result = zk_privacy_manager.threshold_decryption.generate_threshold_signature(
-        request_id=data["request_id"],
-        message=data["message"]
+        request_id=data["request_id"], message=data["message"]
     )
 
     if not success:
@@ -5293,7 +5098,7 @@ def generate_threshold_signature():
     return jsonify(result)
 
 
-@app.route('/zk/compliance/council', methods=['GET'])
+@app.route("/zk/compliance/council", methods=["GET"])
 def get_compliance_council():
     """Get compliance council members."""
     if not zk_privacy_manager:
@@ -5302,19 +5107,21 @@ def get_compliance_council():
     council = zk_privacy_manager.threshold_decryption.council_members
     public_keys = zk_privacy_manager.threshold_decryption.member_public_keys
 
-    return jsonify({
-        "council_size": len(council),
-        "default_threshold": zk_privacy_manager.threshold_decryption.DEFAULT_THRESHOLD,
-        "members": [
-            {"address": m, "public_key": public_keys.get(m, "unknown")}
-            for m in council
-        ]
-    })
+    return jsonify(
+        {
+            "council_size": len(council),
+            "default_threshold": zk_privacy_manager.threshold_decryption.DEFAULT_THRESHOLD,
+            "members": [
+                {"address": m, "public_key": public_keys.get(m, "unknown")} for m in council
+            ],
+        }
+    )
 
 
 # ----- ZK Privacy General -----
 
-@app.route('/zk/stats', methods=['GET'])
+
+@app.route("/zk/stats", methods=["GET"])
 def get_zk_privacy_stats():
     """Get ZK privacy infrastructure statistics."""
     if not zk_privacy_manager:
@@ -5324,7 +5131,7 @@ def get_zk_privacy_stats():
     return jsonify(stats)
 
 
-@app.route('/zk/audit', methods=['GET'])
+@app.route("/zk/audit", methods=["GET"])
 def get_zk_privacy_audit():
     """
     Get ZK privacy audit trail.
@@ -5341,15 +5148,13 @@ def get_zk_privacy_audit():
 
     trail = zk_privacy_manager.get_audit_trail(limit=limit)
 
-    return jsonify({
-        "count": len(trail),
-        "audit_trail": trail
-    })
+    return jsonify({"count": len(trail), "audit_trail": trail})
 
 
 # ========== Automated Negotiation Engine Endpoints ==========
 
-@app.route('/negotiation/session', methods=['POST'])
+
+@app.route("/negotiation/session", methods=["POST"])
 @require_api_key
 def initiate_negotiation_session():
     """
@@ -5368,10 +5173,9 @@ def initiate_negotiation_session():
         Session info with ID and next steps
     """
     if not negotiation_engine:
-        return jsonify({
-            "error": "Negotiation engine not available",
-            "reason": "Features not initialized"
-        }), 503
+        return jsonify(
+            {"error": "Negotiation engine not available", "reason": "Features not initialized"}
+        ), 503
 
     data = request.get_json()
 
@@ -5382,17 +5186,14 @@ def initiate_negotiation_session():
     missing = [f for f in required_fields if f not in data]
 
     if missing:
-        return jsonify({
-            "error": "Missing required fields",
-            "missing": missing
-        }), 400
+        return jsonify({"error": "Missing required fields", "missing": missing}), 400
 
     success, result = negotiation_engine.initiate_session(
         initiator=data["initiator"],
         counterparty=data["counterparty"],
         subject=data["subject"],
         initiator_statement=data["initiator_statement"],
-        initial_terms=data.get("initial_terms")
+        initial_terms=data.get("initial_terms"),
     )
 
     if not success:
@@ -5401,7 +5202,7 @@ def initiate_negotiation_session():
     return jsonify(result), 201
 
 
-@app.route('/negotiation/session/<session_id>/join', methods=['POST'])
+@app.route("/negotiation/session/<session_id>/join", methods=["POST"])
 def join_negotiation_session(session_id: str):
     """
     Counterparty joins a negotiation session.
@@ -5424,15 +5225,17 @@ def join_negotiation_session(session_id: str):
         return jsonify({"error": "No data provided"}), 400
 
     if "counterparty" not in data or "counterparty_statement" not in data:
-        return jsonify({
-            "error": "Missing required fields",
-            "required": ["counterparty", "counterparty_statement"]
-        }), 400
+        return jsonify(
+            {
+                "error": "Missing required fields",
+                "required": ["counterparty", "counterparty_statement"],
+            }
+        ), 400
 
     success, result = negotiation_engine.join_session(
         session_id=session_id,
         counterparty=data["counterparty"],
-        counterparty_statement=data["counterparty_statement"]
+        counterparty_statement=data["counterparty_statement"],
     )
 
     if not success:
@@ -5441,7 +5244,7 @@ def join_negotiation_session(session_id: str):
     return jsonify(result)
 
 
-@app.route('/negotiation/session/<session_id>', methods=['GET'])
+@app.route("/negotiation/session/<session_id>", methods=["GET"])
 def get_negotiation_session(session_id: str):
     """Get negotiation session details."""
     if not negotiation_engine:
@@ -5455,7 +5258,7 @@ def get_negotiation_session(session_id: str):
     return jsonify(session)
 
 
-@app.route('/negotiation/session/<session_id>/advance', methods=['POST'])
+@app.route("/negotiation/session/<session_id>/advance", methods=["POST"])
 def advance_negotiation_phase(session_id: str):
     """
     Advance session to next phase.
@@ -5476,10 +5279,7 @@ def advance_negotiation_phase(session_id: str):
     if not data or "party" not in data:
         return jsonify({"error": "Missing required field: party"}), 400
 
-    success, result = negotiation_engine.advance_phase(
-        session_id=session_id,
-        party=data["party"]
-    )
+    success, result = negotiation_engine.advance_phase(session_id=session_id, party=data["party"])
 
     if not success:
         return jsonify(result), 400
@@ -5487,7 +5287,7 @@ def advance_negotiation_phase(session_id: str):
     return jsonify(result)
 
 
-@app.route('/negotiation/session/<session_id>/clause', methods=['POST'])
+@app.route("/negotiation/session/<session_id>/clause", methods=["POST"])
 def add_negotiation_clause(session_id: str):
     """
     Add a clause to the session.
@@ -5514,24 +5314,20 @@ def add_negotiation_clause(session_id: str):
     missing = [f for f in required_fields if f not in data]
 
     if missing:
-        return jsonify({
-            "error": "Missing required fields",
-            "missing": missing
-        }), 400
+        return jsonify({"error": "Missing required fields", "missing": missing}), 400
 
     try:
         clause_type = ClauseType(data["clause_type"])
     except ValueError:
-        return jsonify({
-            "error": "Invalid clause_type",
-            "valid_values": [t.value for t in ClauseType]
-        }), 400
+        return jsonify(
+            {"error": "Invalid clause_type", "valid_values": [t.value for t in ClauseType]}
+        ), 400
 
     success, result = negotiation_engine.add_clause(
         session_id=session_id,
         clause_type=clause_type,
         parameters=data["parameters"],
-        proposed_by=data["proposed_by"]
+        proposed_by=data["proposed_by"],
     )
 
     if not success:
@@ -5540,7 +5336,7 @@ def add_negotiation_clause(session_id: str):
     return jsonify(result), 201
 
 
-@app.route('/negotiation/session/<session_id>/clause/<clause_id>/respond', methods=['POST'])
+@app.route("/negotiation/session/<session_id>/clause/<clause_id>/respond", methods=["POST"])
 def respond_to_negotiation_clause(session_id: str, clause_id: str):
     """
     Respond to a proposed clause.
@@ -5564,23 +5360,19 @@ def respond_to_negotiation_clause(session_id: str, clause_id: str):
         return jsonify({"error": "No data provided"}), 400
 
     if "party" not in data or "response" not in data:
-        return jsonify({
-            "error": "Missing required fields",
-            "required": ["party", "response"]
-        }), 400
+        return jsonify({"error": "Missing required fields", "required": ["party", "response"]}), 400
 
     if data["response"] not in ["accept", "reject", "modify"]:
-        return jsonify({
-            "error": "Invalid response",
-            "valid_values": ["accept", "reject", "modify"]
-        }), 400
+        return jsonify(
+            {"error": "Invalid response", "valid_values": ["accept", "reject", "modify"]}
+        ), 400
 
     success, result = negotiation_engine.respond_to_clause(
         session_id=session_id,
         clause_id=clause_id,
         party=data["party"],
         response=data["response"],
-        modified_content=data.get("modified_content")
+        modified_content=data.get("modified_content"),
     )
 
     if not success:
@@ -5589,7 +5381,7 @@ def respond_to_negotiation_clause(session_id: str, clause_id: str):
     return jsonify(result)
 
 
-@app.route('/negotiation/session/<session_id>/clauses', methods=['GET'])
+@app.route("/negotiation/session/<session_id>/clauses", methods=["GET"])
 def get_negotiation_clauses(session_id: str):
     """Get all clauses in a session."""
     if not negotiation_engine:
@@ -5597,14 +5389,10 @@ def get_negotiation_clauses(session_id: str):
 
     clauses = negotiation_engine.get_session_clauses(session_id)
 
-    return jsonify({
-        "session_id": session_id,
-        "count": len(clauses),
-        "clauses": clauses
-    })
+    return jsonify({"session_id": session_id, "count": len(clauses), "clauses": clauses})
 
 
-@app.route('/negotiation/session/<session_id>/offer', methods=['POST'])
+@app.route("/negotiation/session/<session_id>/offer", methods=["POST"])
 def make_negotiation_offer(session_id: str):
     """
     Make an offer in the negotiation.
@@ -5632,27 +5420,23 @@ def make_negotiation_offer(session_id: str):
     missing = [f for f in required_fields if f not in data]
 
     if missing:
-        return jsonify({
-            "error": "Missing required fields",
-            "missing": missing
-        }), 400
+        return jsonify({"error": "Missing required fields", "missing": missing}), 400
 
     offer_type = OfferType.INITIAL
     if data.get("offer_type"):
         try:
             offer_type = OfferType(data["offer_type"])
         except ValueError:
-            return jsonify({
-                "error": "Invalid offer_type",
-                "valid_values": [t.value for t in OfferType]
-            }), 400
+            return jsonify(
+                {"error": "Invalid offer_type", "valid_values": [t.value for t in OfferType]}
+            ), 400
 
     success, result = negotiation_engine.make_offer(
         session_id=session_id,
         from_party=data["from_party"],
         terms=data["terms"],
         message=data["message"],
-        offer_type=offer_type
+        offer_type=offer_type,
     )
 
     if not success:
@@ -5661,7 +5445,7 @@ def make_negotiation_offer(session_id: str):
     return jsonify(result), 201
 
 
-@app.route('/negotiation/session/<session_id>/offer/<offer_id>/respond', methods=['POST'])
+@app.route("/negotiation/session/<session_id>/offer/<offer_id>/respond", methods=["POST"])
 def respond_to_negotiation_offer(session_id: str, offer_id: str):
     """
     Respond to an offer.
@@ -5686,16 +5470,12 @@ def respond_to_negotiation_offer(session_id: str, offer_id: str):
         return jsonify({"error": "No data provided"}), 400
 
     if "party" not in data or "response" not in data:
-        return jsonify({
-            "error": "Missing required fields",
-            "required": ["party", "response"]
-        }), 400
+        return jsonify({"error": "Missing required fields", "required": ["party", "response"]}), 400
 
     if data["response"] not in ["accept", "reject", "counter"]:
-        return jsonify({
-            "error": "Invalid response",
-            "valid_values": ["accept", "reject", "counter"]
-        }), 400
+        return jsonify(
+            {"error": "Invalid response", "valid_values": ["accept", "reject", "counter"]}
+        ), 400
 
     success, result = negotiation_engine.respond_to_offer(
         session_id=session_id,
@@ -5703,7 +5483,7 @@ def respond_to_negotiation_offer(session_id: str, offer_id: str):
         party=data["party"],
         response=data["response"],
         counter_terms=data.get("counter_terms"),
-        message=data.get("message")
+        message=data.get("message"),
     )
 
     if not success:
@@ -5712,7 +5492,7 @@ def respond_to_negotiation_offer(session_id: str, offer_id: str):
     return jsonify(result)
 
 
-@app.route('/negotiation/session/<session_id>/offers', methods=['GET'])
+@app.route("/negotiation/session/<session_id>/offers", methods=["GET"])
 def get_negotiation_offers(session_id: str):
     """Get all offers in a session."""
     if not negotiation_engine:
@@ -5720,14 +5500,10 @@ def get_negotiation_offers(session_id: str):
 
     offers = negotiation_engine.get_session_offers(session_id)
 
-    return jsonify({
-        "session_id": session_id,
-        "count": len(offers),
-        "offers": offers
-    })
+    return jsonify({"session_id": session_id, "count": len(offers), "offers": offers})
 
 
-@app.route('/negotiation/session/<session_id>/auto-counter', methods=['POST'])
+@app.route("/negotiation/session/<session_id>/auto-counter", methods=["POST"])
 def auto_draft_counter_offer(session_id: str):
     """
     Automatically draft a counter-offer using AI.
@@ -5751,15 +5527,12 @@ def auto_draft_counter_offer(session_id: str):
 
     strategy = data.get("strategy", "balanced")
     if strategy not in ["aggressive", "balanced", "cooperative"]:
-        return jsonify({
-            "error": "Invalid strategy",
-            "valid_values": ["aggressive", "balanced", "cooperative"]
-        }), 400
+        return jsonify(
+            {"error": "Invalid strategy", "valid_values": ["aggressive", "balanced", "cooperative"]}
+        ), 400
 
     success, result = negotiation_engine.auto_draft_counter(
-        session_id=session_id,
-        party=data["party"],
-        strategy=strategy
+        session_id=session_id, party=data["party"], strategy=strategy
     )
 
     if not success:
@@ -5768,7 +5541,7 @@ def auto_draft_counter_offer(session_id: str):
     return jsonify(result), 201
 
 
-@app.route('/negotiation/session/<session_id>/strategies', methods=['GET'])
+@app.route("/negotiation/session/<session_id>/strategies", methods=["GET"])
 def get_alignment_strategies(session_id: str):
     """
     Get alignment strategies for a party.
@@ -5785,14 +5558,10 @@ def get_alignment_strategies(session_id: str):
 
     strategies = negotiation_engine.get_alignment_strategies(session_id, party)
 
-    return jsonify({
-        "session_id": session_id,
-        "party": party,
-        "strategies": strategies
-    })
+    return jsonify({"session_id": session_id, "party": party, "strategies": strategies})
 
 
-@app.route('/negotiation/session/<session_id>/finalize', methods=['POST'])
+@app.route("/negotiation/session/<session_id>/finalize", methods=["POST"])
 def finalize_negotiation_agreement(session_id: str):
     """
     Finalize an agreed negotiation into a contract.
@@ -5814,8 +5583,7 @@ def finalize_negotiation_agreement(session_id: str):
         return jsonify({"error": "Missing required field: party"}), 400
 
     success, result = negotiation_engine.finalize_agreement(
-        session_id=session_id,
-        party=data["party"]
+        session_id=session_id, party=data["party"]
     )
 
     if not success:
@@ -5824,7 +5592,7 @@ def finalize_negotiation_agreement(session_id: str):
     return jsonify(result)
 
 
-@app.route('/negotiation/stats', methods=['GET'])
+@app.route("/negotiation/stats", methods=["GET"])
 def get_negotiation_stats():
     """Get negotiation engine statistics."""
     if not negotiation_engine:
@@ -5834,7 +5602,7 @@ def get_negotiation_stats():
     return jsonify(stats)
 
 
-@app.route('/negotiation/audit', methods=['GET'])
+@app.route("/negotiation/audit", methods=["GET"])
 def get_negotiation_audit():
     """
     Get negotiation audit trail.
@@ -5851,40 +5619,40 @@ def get_negotiation_audit():
 
     trail = negotiation_engine.get_audit_trail(limit=limit)
 
-    return jsonify({
-        "count": len(trail),
-        "audit_trail": trail
-    })
+    return jsonify({"count": len(trail), "audit_trail": trail})
 
 
-@app.route('/negotiation/clause-types', methods=['GET'])
+@app.route("/negotiation/clause-types", methods=["GET"])
 def get_clause_types():
     """Get available clause types."""
-    return jsonify({
-        "clause_types": [
-            {
-                "value": t.value,
-                "name": t.name,
-                "description": {
-                    "payment": "Payment terms and conditions",
-                    "delivery": "Delivery location and timing",
-                    "quality": "Quality standards and verification",
-                    "timeline": "Project timeline and milestones",
-                    "liability": "Liability limits and exclusions",
-                    "termination": "Contract termination conditions",
-                    "dispute_resolution": "Dispute resolution method",
-                    "confidentiality": "Confidentiality and NDA terms",
-                    "custom": "Custom clause"
-                }.get(t.value, "Contract clause")
-            }
-            for t in ClauseType
-        ]
-    })
+    return jsonify(
+        {
+            "clause_types": [
+                {
+                    "value": t.value,
+                    "name": t.name,
+                    "description": {
+                        "payment": "Payment terms and conditions",
+                        "delivery": "Delivery location and timing",
+                        "quality": "Quality standards and verification",
+                        "timeline": "Project timeline and milestones",
+                        "liability": "Liability limits and exclusions",
+                        "termination": "Contract termination conditions",
+                        "dispute_resolution": "Dispute resolution method",
+                        "confidentiality": "Confidentiality and NDA terms",
+                        "custom": "Custom clause",
+                    }.get(t.value, "Contract clause"),
+                }
+                for t in ClauseType
+            ]
+        }
+    )
 
 
 # ========== Market-Aware Pricing Endpoints ==========
 
-@app.route('/market/price/<asset>', methods=['GET'])
+
+@app.route("/market/price/<asset>", methods=["GET"])
 def get_market_price(asset: str):
     """
     Get current price for an asset.
@@ -5896,10 +5664,9 @@ def get_market_price(asset: str):
         Current price data
     """
     if not market_pricing:
-        return jsonify({
-            "error": "Market pricing not available",
-            "reason": "Features not initialized"
-        }), 503
+        return jsonify(
+            {"error": "Market pricing not available", "reason": "Features not initialized"}
+        ), 503
 
     price = market_pricing.get_price(asset)
 
@@ -5909,7 +5676,7 @@ def get_market_price(asset: str):
     return jsonify(price)
 
 
-@app.route('/market/prices', methods=['POST'])
+@app.route("/market/prices", methods=["POST"])
 def get_market_prices():
     """
     Get prices for multiple assets.
@@ -5932,13 +5699,10 @@ def get_market_prices():
 
     prices = market_pricing.get_prices(data["assets"])
 
-    return jsonify({
-        "count": len(prices),
-        "prices": prices
-    })
+    return jsonify({"count": len(prices), "prices": prices})
 
 
-@app.route('/market/analyze/<asset>', methods=['GET'])
+@app.route("/market/analyze/<asset>", methods=["GET"])
 def analyze_market_asset(asset: str):
     """
     Get market analysis for an asset.
@@ -5957,7 +5721,7 @@ def analyze_market_asset(asset: str):
     return jsonify(analysis)
 
 
-@app.route('/market/summary', methods=['POST'])
+@app.route("/market/summary", methods=["POST"])
 def get_market_summary():
     """
     Get market summary for multiple assets.
@@ -5983,7 +5747,7 @@ def get_market_summary():
     return jsonify(summary)
 
 
-@app.route('/market/suggest-price', methods=['POST'])
+@app.route("/market/suggest-price", methods=["POST"])
 def suggest_market_price():
     """
     Get a price suggestion for a negotiation.
@@ -6009,23 +5773,22 @@ def suggest_market_price():
         return jsonify({"error": "No data provided"}), 400
 
     if "asset_or_service" not in data or "base_amount" not in data:
-        return jsonify({
-            "error": "Missing required fields",
-            "required": ["asset_or_service", "base_amount"]
-        }), 400
+        return jsonify(
+            {"error": "Missing required fields", "required": ["asset_or_service", "base_amount"]}
+        ), 400
 
     suggestion = market_pricing.suggest_price(
         asset_or_service=data["asset_or_service"],
         base_amount=data["base_amount"],
         currency=data.get("currency", "USD"),
         strategy=data.get("strategy", "market"),
-        context=data.get("context")
+        context=data.get("context"),
     )
 
     return jsonify(suggestion)
 
 
-@app.route('/market/adjust-price', methods=['POST'])
+@app.route("/market/adjust-price", methods=["POST"])
 def adjust_market_price():
     """
     Adjust a price based on market conditions.
@@ -6049,21 +5812,20 @@ def adjust_market_price():
         return jsonify({"error": "No data provided"}), 400
 
     if "base_price" not in data or "asset" not in data:
-        return jsonify({
-            "error": "Missing required fields",
-            "required": ["base_price", "asset"]
-        }), 400
+        return jsonify(
+            {"error": "Missing required fields", "required": ["base_price", "asset"]}
+        ), 400
 
     result = market_pricing.adjust_price(
         base_price=data["base_price"],
         asset=data["asset"],
-        adjustment_type=data.get("adjustment_type", "auto")
+        adjustment_type=data.get("adjustment_type", "auto"),
     )
 
     return jsonify(result)
 
 
-@app.route('/market/counteroffer', methods=['POST'])
+@app.route("/market/counteroffer", methods=["POST"])
 def generate_market_counteroffer():
     """
     Generate a market-aware counter-offer price.
@@ -6092,23 +5854,20 @@ def generate_market_counteroffer():
     missing = [f for f in required_fields if f not in data]
 
     if missing:
-        return jsonify({
-            "error": "Missing required fields",
-            "missing": missing
-        }), 400
+        return jsonify({"error": "Missing required fields", "missing": missing}), 400
 
     result = market_pricing.generate_counteroffer(
         their_offer=data["their_offer"],
         your_target=data["your_target"],
         asset=data["asset"],
         round_number=data["round_number"],
-        max_rounds=data.get("max_rounds", 10)
+        max_rounds=data.get("max_rounds", 10),
     )
 
     return jsonify(result)
 
 
-@app.route('/market/history/<asset>', methods=['GET'])
+@app.route("/market/history/<asset>", methods=["GET"])
 def get_price_history(asset: str):
     """
     Get price history with statistics.
@@ -6132,7 +5891,7 @@ def get_price_history(asset: str):
     return jsonify(history)
 
 
-@app.route('/market/benchmark/<asset>', methods=['GET'])
+@app.route("/market/benchmark/<asset>", methods=["GET"])
 def get_price_benchmark(asset: str):
     """
     Get price benchmark analysis.
@@ -6156,7 +5915,7 @@ def get_price_benchmark(asset: str):
     return jsonify(benchmark)
 
 
-@app.route('/market/similar-prices', methods=['POST'])
+@app.route("/market/similar-prices", methods=["POST"])
 def find_similar_market_prices():
     """
     Find historical periods with similar prices.
@@ -6180,21 +5939,20 @@ def find_similar_market_prices():
         return jsonify({"error": "No data provided"}), 400
 
     if "asset" not in data or "target_price" not in data:
-        return jsonify({
-            "error": "Missing required fields",
-            "required": ["asset", "target_price"]
-        }), 400
+        return jsonify(
+            {"error": "Missing required fields", "required": ["asset", "target_price"]}
+        ), 400
 
     result = market_pricing.find_similar_prices(
         asset=data["asset"],
         target_price=data["target_price"],
-        tolerance=data.get("tolerance", 0.05)
+        tolerance=data.get("tolerance", 0.05),
     )
 
     return jsonify(result)
 
 
-@app.route('/market/asset', methods=['POST'])
+@app.route("/market/asset", methods=["POST"])
 def add_custom_market_asset():
     """
     Add a custom asset for pricing.
@@ -6220,23 +5978,20 @@ def add_custom_market_asset():
         return jsonify({"error": "No data provided"}), 400
 
     if "asset" not in data or "price" not in data:
-        return jsonify({
-            "error": "Missing required fields",
-            "required": ["asset", "price"]
-        }), 400
+        return jsonify({"error": "Missing required fields", "required": ["asset", "price"]}), 400
 
     result = market_pricing.add_custom_asset(
         asset=data["asset"],
         price=data["price"],
         asset_class=data.get("asset_class", "custom"),
         currency=data.get("currency", "USD"),
-        volatility=data.get("volatility", 0.02)
+        volatility=data.get("volatility", 0.02),
     )
 
     return jsonify(result), 201
 
 
-@app.route('/market/assets', methods=['GET'])
+@app.route("/market/assets", methods=["GET"])
 def get_available_market_assets():
     """Get list of available assets."""
     if not market_pricing:
@@ -6244,57 +5999,58 @@ def get_available_market_assets():
 
     assets = market_pricing.get_available_assets()
 
-    return jsonify({
-        "count": len(assets),
-        "assets": assets
-    })
+    return jsonify({"count": len(assets), "assets": assets})
 
 
-@app.route('/market/strategies', methods=['GET'])
+@app.route("/market/strategies", methods=["GET"])
 def get_pricing_strategies():
     """Get available pricing strategies."""
-    return jsonify({
-        "strategies": [
-            {
-                "value": s.value,
-                "name": s.name,
-                "description": {
-                    "market": "Follow current market price",
-                    "premium": "Price above market (10% premium)",
-                    "discount": "Price below market (10% discount)",
-                    "anchored": "Use provided anchor price",
-                    "competitive": "Slightly below market for competitiveness",
-                    "value_based": "Based on fair value analysis"
-                }.get(s.value, "Pricing strategy")
-            }
-            for s in PricingStrategy
-        ]
-    })
+    return jsonify(
+        {
+            "strategies": [
+                {
+                    "value": s.value,
+                    "name": s.name,
+                    "description": {
+                        "market": "Follow current market price",
+                        "premium": "Price above market (10% premium)",
+                        "discount": "Price below market (10% discount)",
+                        "anchored": "Use provided anchor price",
+                        "competitive": "Slightly below market for competitiveness",
+                        "value_based": "Based on fair value analysis",
+                    }.get(s.value, "Pricing strategy"),
+                }
+                for s in PricingStrategy
+            ]
+        }
+    )
 
 
-@app.route('/market/conditions', methods=['GET'])
+@app.route("/market/conditions", methods=["GET"])
 def get_market_conditions():
     """Get market condition types."""
-    return jsonify({
-        "conditions": [
-            {
-                "value": c.value,
-                "name": c.name,
-                "description": {
-                    "bullish": "Strong upward trend",
-                    "bearish": "Strong downward trend",
-                    "neutral": "Sideways/stable market",
-                    "volatile": "High volatility, no clear direction",
-                    "trending_up": "Moderate upward movement",
-                    "trending_down": "Moderate downward movement"
-                }.get(c.value, "Market condition")
-            }
-            for c in MarketCondition
-        ]
-    })
+    return jsonify(
+        {
+            "conditions": [
+                {
+                    "value": c.value,
+                    "name": c.name,
+                    "description": {
+                        "bullish": "Strong upward trend",
+                        "bearish": "Strong downward trend",
+                        "neutral": "Sideways/stable market",
+                        "volatile": "High volatility, no clear direction",
+                        "trending_up": "Moderate upward movement",
+                        "trending_down": "Moderate downward movement",
+                    }.get(c.value, "Market condition"),
+                }
+                for c in MarketCondition
+            ]
+        }
+    )
 
 
-@app.route('/market/stats', methods=['GET'])
+@app.route("/market/stats", methods=["GET"])
 def get_market_pricing_stats():
     """Get market pricing statistics."""
     if not market_pricing:
@@ -6304,7 +6060,7 @@ def get_market_pricing_stats():
     return jsonify(stats)
 
 
-@app.route('/market/audit', methods=['GET'])
+@app.route("/market/audit", methods=["GET"])
 def get_market_pricing_audit():
     """
     Get market pricing audit trail.
@@ -6321,17 +6077,15 @@ def get_market_pricing_audit():
 
     trail = market_pricing.get_audit_trail(limit=limit)
 
-    return jsonify({
-        "count": len(trail),
-        "audit_trail": trail
-    })
+    return jsonify({"count": len(trail), "audit_trail": trail})
 
 
 # ============================================================
 # Mobile Deployment Endpoints (Plan 17)
 # ============================================================
 
-@app.route('/mobile/device/register', methods=['POST'])
+
+@app.route("/mobile/device/register", methods=["POST"])
 def register_device():
     """
     Register a new mobile device.
@@ -6355,23 +6109,25 @@ def register_device():
     try:
         device_type = DeviceType[device_type_str.upper()]
     except KeyError:
-        return jsonify({"error": f"Invalid device_type. Valid: {[t.name.lower() for t in DeviceType]}"}), 400
+        return jsonify(
+            {"error": f"Invalid device_type. Valid: {[t.name.lower() for t in DeviceType]}"}
+        ), 400
 
     device_id = mobile_deployment.register_device(
-        device_type=device_type,
-        device_name=device_name,
-        capabilities=capabilities
+        device_type=device_type, device_name=device_name, capabilities=capabilities
     )
 
-    return jsonify({
-        "device_id": device_id,
-        "device_type": device_type_str,
-        "device_name": device_name,
-        "registered": True
-    })
+    return jsonify(
+        {
+            "device_id": device_id,
+            "device_type": device_type_str,
+            "device_name": device_name,
+            "registered": True,
+        }
+    )
 
 
-@app.route('/mobile/device/<device_id>', methods=['GET'])
+@app.route("/mobile/device/<device_id>", methods=["GET"])
 def get_device_info(device_id: str):
     """Get information about a registered device."""
     if not mobile_deployment:
@@ -6381,19 +6137,21 @@ def get_device_info(device_id: str):
     if not device:
         return jsonify({"error": "Device not found"}), 404
 
-    return jsonify({
-        "device_id": device.device_id,
-        "device_type": device.device_type.name.lower(),
-        "device_name": device.device_name,
-        "capabilities": device.capabilities,
-        "registered_at": device.registered_at.isoformat(),
-        "last_sync": device.last_sync.isoformat() if device.last_sync else None,
-        "is_active": device.is_active,
-        "platform_version": device.platform_version
-    })
+    return jsonify(
+        {
+            "device_id": device.device_id,
+            "device_type": device.device_type.name.lower(),
+            "device_name": device.device_name,
+            "capabilities": device.capabilities,
+            "registered_at": device.registered_at.isoformat(),
+            "last_sync": device.last_sync.isoformat() if device.last_sync else None,
+            "is_active": device.is_active,
+            "platform_version": device.platform_version,
+        }
+    )
 
 
-@app.route('/mobile/device/<device_id>/features', methods=['GET'])
+@app.route("/mobile/device/<device_id>/features", methods=["GET"])
 def get_device_features(device_id: str):
     """Get feature flags for a specific device."""
     if not mobile_deployment:
@@ -6403,13 +6161,10 @@ def get_device_features(device_id: str):
     if not features:
         return jsonify({"error": "Device not found"}), 404
 
-    return jsonify({
-        "device_id": device_id,
-        "features": features
-    })
+    return jsonify({"device_id": device_id, "features": features})
 
 
-@app.route('/mobile/edge/model/load', methods=['POST'])
+@app.route("/mobile/edge/model/load", methods=["POST"])
 def load_edge_model():
     """
     Load an AI model for edge inference.
@@ -6436,20 +6191,13 @@ def load_edge_model():
         return jsonify({"error": "model_id required"}), 400
 
     success = mobile_deployment.load_edge_model(
-        model_id=model_id,
-        model_type=model_type,
-        model_path=model_path,
-        device_id=device_id
+        model_id=model_id, model_type=model_type, model_path=model_path, device_id=device_id
     )
 
-    return jsonify({
-        "model_id": model_id,
-        "loaded": success,
-        "device_id": device_id
-    })
+    return jsonify({"model_id": model_id, "loaded": success, "device_id": device_id})
 
 
-@app.route('/mobile/edge/inference', methods=['POST'])
+@app.route("/mobile/edge/inference", methods=["POST"])
 def run_edge_inference():
     """
     Run inference on a loaded edge model.
@@ -6474,15 +6222,13 @@ def run_edge_inference():
         return jsonify({"error": "model_id and input_data required"}), 400
 
     result = mobile_deployment.run_inference(
-        model_id=model_id,
-        input_data=input_data,
-        device_id=device_id
+        model_id=model_id, input_data=input_data, device_id=device_id
     )
 
     return jsonify(result)
 
 
-@app.route('/mobile/edge/models', methods=['GET'])
+@app.route("/mobile/edge/models", methods=["GET"])
 def list_edge_models():
     """List all loaded edge models."""
     if not mobile_deployment:
@@ -6490,21 +6236,20 @@ def list_edge_models():
 
     models = []
     for model_id, config in mobile_deployment.edge_ai.loaded_models.items():
-        models.append({
-            "model_id": model_id,
-            "model_type": config.model_type,
-            "is_quantized": config.is_quantized,
-            "loaded_at": config.loaded_at.isoformat(),
-            "inference_count": config.inference_count
-        })
+        models.append(
+            {
+                "model_id": model_id,
+                "model_type": config.model_type,
+                "is_quantized": config.is_quantized,
+                "loaded_at": config.loaded_at.isoformat(),
+                "inference_count": config.inference_count,
+            }
+        )
 
-    return jsonify({
-        "count": len(models),
-        "models": models
-    })
+    return jsonify({"count": len(models), "models": models})
 
 
-@app.route('/mobile/edge/resources', methods=['GET'])
+@app.route("/mobile/edge/resources", methods=["GET"])
 def get_edge_resources():
     """Get current edge AI resource usage."""
     if not mobile_deployment:
@@ -6513,18 +6258,20 @@ def get_edge_resources():
     resources = mobile_deployment.edge_ai.resource_limits
     stats = mobile_deployment.edge_ai.get_statistics()
 
-    return jsonify({
-        "limits": {
-            "max_memory_mb": resources.max_memory_mb,
-            "max_cpu_percent": resources.max_cpu_percent,
-            "max_battery_drain_percent": resources.max_battery_drain_percent,
-            "prefer_wifi": resources.prefer_wifi
-        },
-        "current": stats
-    })
+    return jsonify(
+        {
+            "limits": {
+                "max_memory_mb": resources.max_memory_mb,
+                "max_cpu_percent": resources.max_cpu_percent,
+                "max_battery_drain_percent": resources.max_battery_drain_percent,
+                "prefer_wifi": resources.prefer_wifi,
+            },
+            "current": stats,
+        }
+    )
 
 
-@app.route('/mobile/wallet/connect', methods=['POST'])
+@app.route("/mobile/wallet/connect", methods=["POST"])
 def connect_mobile_wallet():
     """
     Connect a mobile wallet.
@@ -6548,26 +6295,28 @@ def connect_mobile_wallet():
     try:
         wallet_type = WalletType[wallet_type_str.upper()]
     except KeyError:
-        return jsonify({"error": f"Invalid wallet_type. Valid: {[t.name.lower() for t in WalletType]}"}), 400
+        return jsonify(
+            {"error": f"Invalid wallet_type. Valid: {[t.name.lower() for t in WalletType]}"}
+        ), 400
 
     connection_id = mobile_deployment.connect_wallet(
-        wallet_type=wallet_type,
-        device_id=device_id,
-        wallet_address=wallet_address
+        wallet_type=wallet_type, device_id=device_id, wallet_address=wallet_address
     )
 
     if not connection_id:
         return jsonify({"error": "Failed to connect wallet"}), 500
 
-    return jsonify({
-        "connection_id": connection_id,
-        "wallet_type": wallet_type_str,
-        "device_id": device_id,
-        "connected": True
-    })
+    return jsonify(
+        {
+            "connection_id": connection_id,
+            "wallet_type": wallet_type_str,
+            "device_id": device_id,
+            "connected": True,
+        }
+    )
 
 
-@app.route('/mobile/wallet/<connection_id>', methods=['GET'])
+@app.route("/mobile/wallet/<connection_id>", methods=["GET"])
 def get_wallet_connection(connection_id: str):
     """Get wallet connection details."""
     if not mobile_deployment:
@@ -6577,18 +6326,22 @@ def get_wallet_connection(connection_id: str):
     if not connection:
         return jsonify({"error": "Connection not found"}), 404
 
-    return jsonify({
-        "connection_id": connection.connection_id,
-        "wallet_type": connection.wallet_type.name.lower(),
-        "wallet_address": connection.wallet_address,
-        "chain_id": connection.chain_id,
-        "state": connection.state.name.lower(),
-        "connected_at": connection.connected_at.isoformat() if connection.connected_at else None,
-        "device_id": connection.device_id
-    })
+    return jsonify(
+        {
+            "connection_id": connection.connection_id,
+            "wallet_type": connection.wallet_type.name.lower(),
+            "wallet_address": connection.wallet_address,
+            "chain_id": connection.chain_id,
+            "state": connection.state.name.lower(),
+            "connected_at": connection.connected_at.isoformat()
+            if connection.connected_at
+            else None,
+            "device_id": connection.device_id,
+        }
+    )
 
 
-@app.route('/mobile/wallet/<connection_id>/disconnect', methods=['POST'])
+@app.route("/mobile/wallet/<connection_id>/disconnect", methods=["POST"])
 def disconnect_mobile_wallet(connection_id: str):
     """Disconnect a mobile wallet."""
     if not mobile_deployment:
@@ -6596,13 +6349,10 @@ def disconnect_mobile_wallet(connection_id: str):
 
     success = mobile_deployment.disconnect_wallet(connection_id)
 
-    return jsonify({
-        "connection_id": connection_id,
-        "disconnected": success
-    })
+    return jsonify({"connection_id": connection_id, "disconnected": success})
 
 
-@app.route('/mobile/wallet/<connection_id>/sign', methods=['POST'])
+@app.route("/mobile/wallet/<connection_id>/sign", methods=["POST"])
 def sign_with_wallet(connection_id: str):
     """
     Sign a message with connected wallet.
@@ -6625,15 +6375,13 @@ def sign_with_wallet(connection_id: str):
         return jsonify({"error": "message required"}), 400
 
     result = mobile_deployment.sign_message(
-        connection_id=connection_id,
-        message=message,
-        sign_type=sign_type
+        connection_id=connection_id, message=message, sign_type=sign_type
     )
 
     return jsonify(result)
 
 
-@app.route('/mobile/wallet/list', methods=['GET'])
+@app.route("/mobile/wallet/list", methods=["GET"])
 def list_wallet_connections():
     """List all wallet connections."""
     if not mobile_deployment:
@@ -6645,21 +6393,20 @@ def list_wallet_connections():
     for _conn_id, conn in mobile_deployment.wallet_manager.connections.items():
         if device_id and conn.device_id != device_id:
             continue
-        connections.append({
-            "connection_id": conn.connection_id,
-            "wallet_type": conn.wallet_type.name.lower(),
-            "wallet_address": conn.wallet_address,
-            "state": conn.state.name.lower(),
-            "device_id": conn.device_id
-        })
+        connections.append(
+            {
+                "connection_id": conn.connection_id,
+                "wallet_type": conn.wallet_type.name.lower(),
+                "wallet_address": conn.wallet_address,
+                "state": conn.state.name.lower(),
+                "device_id": conn.device_id,
+            }
+        )
 
-    return jsonify({
-        "count": len(connections),
-        "connections": connections
-    })
+    return jsonify({"count": len(connections), "connections": connections})
 
 
-@app.route('/mobile/offline/state/save', methods=['POST'])
+@app.route("/mobile/offline/state/save", methods=["POST"])
 def save_offline_state():
     """
     Save state for offline access.
@@ -6684,20 +6431,15 @@ def save_offline_state():
         return jsonify({"error": "device_id required"}), 400
 
     state_id = mobile_deployment.save_offline_state(
-        device_id=device_id,
-        state_type=state_type,
-        state_data=state_data
+        device_id=device_id, state_type=state_type, state_data=state_data
     )
 
-    return jsonify({
-        "state_id": state_id,
-        "device_id": device_id,
-        "state_type": state_type,
-        "saved": True
-    })
+    return jsonify(
+        {"state_id": state_id, "device_id": device_id, "state_type": state_type, "saved": True}
+    )
 
 
-@app.route('/mobile/offline/state/<device_id>', methods=['GET'])
+@app.route("/mobile/offline/state/<device_id>", methods=["GET"])
 def get_offline_state(device_id: str):
     """Get offline state for a device."""
     if not mobile_deployment:
@@ -6707,13 +6449,10 @@ def get_offline_state(device_id: str):
 
     state = mobile_deployment.get_offline_state(device_id, state_type)
 
-    return jsonify({
-        "device_id": device_id,
-        "state": state
-    })
+    return jsonify({"device_id": device_id, "state": state})
 
 
-@app.route('/mobile/offline/queue/add', methods=['POST'])
+@app.route("/mobile/offline/queue/add", methods=["POST"])
 def add_to_sync_queue():
     """
     Add an operation to the offline sync queue.
@@ -6743,17 +6482,13 @@ def add_to_sync_queue():
         device_id=device_id,
         operation_type=operation_type,
         resource_type=resource_type,
-        resource_data=resource_data
+        resource_data=resource_data,
     )
 
-    return jsonify({
-        "operation_id": operation_id,
-        "device_id": device_id,
-        "queued": True
-    })
+    return jsonify({"operation_id": operation_id, "device_id": device_id, "queued": True})
 
 
-@app.route('/mobile/offline/sync', methods=['POST'])
+@app.route("/mobile/offline/sync", methods=["POST"])
 def sync_offline_data():
     """
     Synchronize offline data with server.
@@ -6780,7 +6515,7 @@ def sync_offline_data():
     return jsonify(result)
 
 
-@app.route('/mobile/offline/queue/<device_id>', methods=['GET'])
+@app.route("/mobile/offline/queue/<device_id>", methods=["GET"])
 def get_sync_queue(device_id: str):
     """Get pending sync operations for a device."""
     if not mobile_deployment:
@@ -6788,14 +6523,10 @@ def get_sync_queue(device_id: str):
 
     queue = mobile_deployment.get_sync_queue(device_id)
 
-    return jsonify({
-        "device_id": device_id,
-        "pending_count": len(queue),
-        "operations": queue
-    })
+    return jsonify({"device_id": device_id, "pending_count": len(queue), "operations": queue})
 
 
-@app.route('/mobile/offline/conflicts/<device_id>', methods=['GET'])
+@app.route("/mobile/offline/conflicts/<device_id>", methods=["GET"])
 def get_sync_conflicts(device_id: str):
     """Get sync conflicts for a device."""
     if not mobile_deployment:
@@ -6803,14 +6534,12 @@ def get_sync_conflicts(device_id: str):
 
     conflicts = mobile_deployment.get_conflicts(device_id)
 
-    return jsonify({
-        "device_id": device_id,
-        "conflict_count": len(conflicts),
-        "conflicts": conflicts
-    })
+    return jsonify(
+        {"device_id": device_id, "conflict_count": len(conflicts), "conflicts": conflicts}
+    )
 
 
-@app.route('/mobile/offline/conflict/resolve', methods=['POST'])
+@app.route("/mobile/offline/conflict/resolve", methods=["POST"])
 def resolve_sync_conflict():
     """
     Resolve a sync conflict.
@@ -6835,19 +6564,13 @@ def resolve_sync_conflict():
         return jsonify({"error": "conflict_id required"}), 400
 
     success = mobile_deployment.resolve_conflict(
-        conflict_id=conflict_id,
-        resolution=resolution,
-        merged_data=merged_data
+        conflict_id=conflict_id, resolution=resolution, merged_data=merged_data
     )
 
-    return jsonify({
-        "conflict_id": conflict_id,
-        "resolved": success,
-        "resolution": resolution
-    })
+    return jsonify({"conflict_id": conflict_id, "resolved": success, "resolution": resolution})
 
 
-@app.route('/mobile/stats', methods=['GET'])
+@app.route("/mobile/stats", methods=["GET"])
 def get_mobile_stats():
     """Get mobile deployment statistics."""
     if not mobile_deployment:
@@ -6858,7 +6581,7 @@ def get_mobile_stats():
     return jsonify(stats)
 
 
-@app.route('/mobile/audit', methods=['GET'])
+@app.route("/mobile/audit", methods=["GET"])
 def get_mobile_audit():
     """
     Get mobile deployment audit trail.
@@ -6875,10 +6598,7 @@ def get_mobile_audit():
 
     trail = mobile_deployment.get_audit_trail(limit=limit)
 
-    return jsonify({
-        "count": len(trail),
-        "audit_trail": trail
-    })
+    return jsonify({"count": len(trail), "audit_trail": trail})
 
 
 # Chat Helper Endpoints moved to api/chat.py
@@ -6900,8 +6620,10 @@ def init_p2p():
 
         p2p_network = init_p2p_network(
             node_id=os.getenv("NATLANGCHAIN_NODE_ID"),
-            endpoint=os.getenv("NATLANGCHAIN_ENDPOINT", f"http://localhost:{os.getenv('PORT', 5000)}"),
-            bootstrap_peers=bootstrap_peers if bootstrap_peers else None
+            endpoint=os.getenv(
+                "NATLANGCHAIN_ENDPOINT", f"http://localhost:{os.getenv('PORT', 5000)}"
+            ),
+            bootstrap_peers=bootstrap_peers if bootstrap_peers else None,
         )
 
         # Set up chain provider callbacks
@@ -6911,7 +6633,7 @@ def init_p2p():
                 blockchain.chain[i].to_dict()
                 for i in range(start, min(end + 1, len(blockchain.chain)))
             ],
-            add_block=lambda block_data: _add_synced_block(block_data)
+            add_block=lambda block_data: _add_synced_block(block_data),
         )
 
         # Set up broadcast handlers
@@ -6928,6 +6650,7 @@ def _add_synced_block(block_data):
     """Add a block received from sync."""
     try:
         from blockchain import Block
+
         block = Block.from_dict(block_data)
         # Verify block links to our chain
         if len(blockchain.chain) > 0 and block.previous_hash != blockchain.chain[-1].hash:
@@ -6944,6 +6667,7 @@ def _handle_broadcast_entry(entry_data):
     """Handle a broadcast entry from peers."""
     try:
         from blockchain import NaturalLanguageEntry
+
         entry = NaturalLanguageEntry.from_dict(entry_data)
         blockchain.add_entry(entry)
     except Exception as e:
@@ -6963,14 +6687,14 @@ def _handle_broadcast_settlement(settlement_data):
             content=settlement_data.get("content", ""),
             author=settlement_data.get("author", "mediator"),
             intent="settlement",
-            metadata=settlement_data.get("metadata", {})
+            metadata=settlement_data.get("metadata", {}),
         )
         blockchain.add_entry(entry)
     except Exception as e:
         print(f"Failed to handle broadcast settlement: {e}")
 
 
-@app.route('/api/v1/node/info', methods=['GET'])
+@app.route("/api/v1/node/info", methods=["GET"])
 def get_node_info():
     """
     Get this node's information for peer discovery.
@@ -6979,14 +6703,16 @@ def get_node_info():
         Node ID, role, chain height, capabilities
     """
     if not P2P_AVAILABLE:
-        return jsonify({
-            "node_id": "standalone",
-            "role": "full_node",
-            "chain_height": len(blockchain.chain) - 1,
-            "chain_tip_hash": blockchain.chain[-1].hash if blockchain.chain else "",
-            "version": "0.1.0-alpha",
-            "p2p_enabled": False
-        })
+        return jsonify(
+            {
+                "node_id": "standalone",
+                "role": "full_node",
+                "chain_height": len(blockchain.chain) - 1,
+                "chain_tip_hash": blockchain.chain[-1].hash if blockchain.chain else "",
+                "version": "0.1.0-alpha",
+                "p2p_enabled": False,
+            }
+        )
 
     if p2p_network is None:
         init_p2p()
@@ -6997,14 +6723,14 @@ def get_node_info():
         return jsonify({"error": "P2P network not initialized"}), 503
 
 
-@app.route('/api/v1/health', methods=['GET'])
+@app.route("/api/v1/health", methods=["GET"])
 def p2p_health():
     """P2P health check endpoint for peers."""
     response = {
         "status": "healthy",
         "chain_height": len(blockchain.chain) - 1,
         "pending_entries": len(blockchain.pending_entries),
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.utcnow().isoformat(),
     }
 
     # Include cache congestion info if available
@@ -7013,13 +6739,13 @@ def p2p_health():
         congestion = cache.congestion.get_state()
         response["congestion"] = {
             "level": congestion.level.value,
-            "factor": round(congestion.factor, 2)
+            "factor": round(congestion.factor, 2),
         }
 
     return jsonify(response)
 
 
-@app.route('/api/v1/cache/stats', methods=['GET'])
+@app.route("/api/v1/cache/stats", methods=["GET"])
 def get_cache_stats():
     """
     Get adaptive cache statistics.
@@ -7028,16 +6754,13 @@ def get_cache_stats():
     Useful for monitoring mediator node performance.
     """
     if not ADAPTIVE_CACHE_AVAILABLE or not get_adaptive_cache:
-        return jsonify({
-            "enabled": False,
-            "reason": "Adaptive cache not available"
-        })
+        return jsonify({"enabled": False, "reason": "Adaptive cache not available"})
 
     cache = get_adaptive_cache()
     return jsonify(cache.get_stats())
 
 
-@app.route('/api/v1/peers/register', methods=['POST'])
+@app.route("/api/v1/peers/register", methods=["POST"])
 def register_peer():
     """
     Register a peer with this node.
@@ -7084,31 +6807,25 @@ def register_peer():
         chain_tip_hash=data.get("chain_tip_hash", ""),
         last_seen=datetime.utcnow(),
         version=data.get("version", "unknown"),
-        capabilities=set(data.get("capabilities", []))
+        capabilities=set(data.get("capabilities", [])),
     )
 
     p2p_network.peers[peer_id] = peer
 
-    return jsonify({
-        "status": "registered",
-        "node_id": p2p_network.node_id
-    })
+    return jsonify({"status": "registered", "node_id": p2p_network.node_id})
 
 
-@app.route('/api/v1/peers', methods=['GET'])
+@app.route("/api/v1/peers", methods=["GET"])
 def list_peers():
     """List all connected peers."""
     if not P2P_AVAILABLE or p2p_network is None:
         return jsonify({"peers": [], "count": 0})
 
     peers = [p.to_dict() for p in p2p_network.get_connected_peers()]
-    return jsonify({
-        "peers": peers,
-        "count": len(peers)
-    })
+    return jsonify({"peers": peers, "count": len(peers)})
 
 
-@app.route('/api/v1/peers/connect', methods=['POST'])
+@app.route("/api/v1/peers/connect", methods=["POST"])
 def connect_peer():
     """
     Connect to a new peer.
@@ -7141,10 +6858,7 @@ def connect_peer():
     success, peer = p2p_network.connect_to_peer(endpoint)
 
     if success:
-        return jsonify({
-            "status": "connected",
-            "peer": peer.to_dict()
-        })
+        return jsonify({"status": "connected", "peer": peer.to_dict()})
     else:
         return jsonify({"error": "Failed to connect to peer"}), 500
 
@@ -7153,7 +6867,8 @@ def connect_peer():
 # Mediator Node Integration API
 # =============================================================================
 
-@app.route('/api/v1/intents', methods=['GET'])
+
+@app.route("/api/v1/intents", methods=["GET"])
 def get_intents():
     """
     Get pending intents for mediator nodes.
@@ -7168,8 +6883,8 @@ def get_intents():
     Returns:
         List of intent entries ready for matching
     """
-    status_filter = request.args.get('status', 'open')
-    limit = min(int(request.args.get('limit', DEFAULT_PAGE_LIMIT)), MAX_PAGE_LIMIT)
+    status_filter = request.args.get("status", "open")
+    limit = min(int(request.args.get("limit", DEFAULT_PAGE_LIMIT)), MAX_PAGE_LIMIT)
 
     # Try adaptive cache first
     if ADAPTIVE_CACHE_AVAILABLE and get_adaptive_cache:
@@ -7182,11 +6897,7 @@ def get_intents():
         def compute_intents():
             return _compute_intents(status_filter, limit)
 
-        result = cache.get_or_compute(
-            CacheCategory.INTENTS,
-            cache_key,
-            compute_intents
-        )
+        result = cache.get_or_compute(CacheCategory.INTENTS, cache_key, compute_intents)
         return jsonify(result)
 
     # Fallback: compute directly without cache
@@ -7204,15 +6915,17 @@ def _compute_intents(status_filter: str, limit: int) -> dict:
                 json.dumps(entry.to_dict(), sort_keys=True).encode()
             ).hexdigest()[:16]
 
-            intents.append({
-                "intent_id": intent_id,
-                "content": entry.content,
-                "author": entry.author,
-                "intent": entry.intent,
-                "metadata": decrypt_entry_metadata(entry.to_dict()).get("metadata", {}),
-                "timestamp": entry.timestamp,
-                "status": "pending"
-            })
+            intents.append(
+                {
+                    "intent_id": intent_id,
+                    "content": entry.content,
+                    "author": entry.author,
+                    "intent": entry.intent,
+                    "metadata": decrypt_entry_metadata(entry.to_dict()).get("metadata", {}),
+                    "timestamp": entry.timestamp,
+                    "status": "pending",
+                }
+            )
 
     # Get open contracts from chain
     if status_filter in ("open", "all"):
@@ -7226,25 +6939,24 @@ def _compute_intents(status_filter: str, limit: int) -> dict:
                         json.dumps(entry.to_dict(), sort_keys=True).encode()
                     ).hexdigest()[:16]
 
-                    intents.append({
-                        "intent_id": intent_id,
-                        "block_index": block.index,
-                        "block_hash": block.hash,
-                        "content": entry.content,
-                        "author": entry.author,
-                        "intent": entry.intent,
-                        "metadata": decrypt_entry_metadata(entry.to_dict()).get("metadata", {}),
-                        "timestamp": entry.timestamp,
-                        "status": "open"
-                    })
+                    intents.append(
+                        {
+                            "intent_id": intent_id,
+                            "block_index": block.index,
+                            "block_hash": block.hash,
+                            "content": entry.content,
+                            "author": entry.author,
+                            "intent": entry.intent,
+                            "metadata": decrypt_entry_metadata(entry.to_dict()).get("metadata", {}),
+                            "timestamp": entry.timestamp,
+                            "status": "open",
+                        }
+                    )
 
-    return {
-        "intents": intents,
-        "count": len(intents)
-    }
+    return {"intents": intents, "count": len(intents)}
 
 
-@app.route('/api/v1/entries', methods=['POST'])
+@app.route("/api/v1/entries", methods=["POST"])
 @require_api_key
 def submit_entry_v1():
     """
@@ -7277,7 +6989,7 @@ def submit_entry_v1():
             content=content if isinstance(content, str) else json.dumps(content),
             author=author,
             intent=entry_type,
-            metadata=metadata
+            metadata=metadata,
         )
 
         result = blockchain.add_entry(entry)
@@ -7286,19 +6998,21 @@ def submit_entry_v1():
         if P2P_AVAILABLE and p2p_network:
             p2p_network.broadcast_entry(entry.to_dict())
 
-        return jsonify({
-            "status": "accepted",
-            "entryId": hashlib.sha256(
-                json.dumps(entry.to_dict(), sort_keys=True).encode()
-            ).hexdigest()[:16],
-            "result": result
-        }), 201
+        return jsonify(
+            {
+                "status": "accepted",
+                "entryId": hashlib.sha256(
+                    json.dumps(entry.to_dict(), sort_keys=True).encode()
+                ).hexdigest()[:16],
+                "result": result,
+            }
+        ), 201
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 
-@app.route('/api/v1/settlements', methods=['POST'])
+@app.route("/api/v1/settlements", methods=["POST"])
 @require_api_key
 def submit_settlement():
     """
@@ -7339,14 +7053,14 @@ def submit_settlement():
             "consensus_mode": data.get("consensus_mode", "permissionless"),
             "acceptance_window_hours": data.get("acceptance_window", 72),
             "status": "proposed",
-            "proposed_at": datetime.utcnow().isoformat()
+            "proposed_at": datetime.utcnow().isoformat(),
         }
 
         entry = create_entry_with_encryption(
             content=data["settlement_text"],
             author=data["mediator_id"],
             intent="settlement",
-            metadata=metadata
+            metadata=metadata,
         )
 
         result = blockchain.add_entry(entry)
@@ -7355,44 +7069,46 @@ def submit_settlement():
         if P2P_AVAILABLE and p2p_network:
             p2p_network.broadcast_settlement(entry.to_dict())
 
-        return jsonify({
-            "status": "proposed",
-            "settlement_id": settlement_id,
-            "acceptance_window_hours": metadata["acceptance_window_hours"],
-            "result": result
-        }), 201
+        return jsonify(
+            {
+                "status": "proposed",
+                "settlement_id": settlement_id,
+                "acceptance_window_hours": metadata["acceptance_window_hours"],
+                "result": result,
+            }
+        ), 201
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 
-@app.route('/api/v1/settlements/<settlement_id>/status', methods=['GET'])
+@app.route("/api/v1/settlements/<settlement_id>/status", methods=["GET"])
 def get_settlement_status(settlement_id):
     """Get status of a settlement."""
     for block in blockchain.chain:
         for entry in block.entries:
             if entry.metadata.get("settlement_id") == settlement_id:
-                return jsonify({
-                    "settlement_id": settlement_id,
-                    "status": entry.metadata.get("status", "unknown"),
-                    "block_index": block.index,
-                    "block_hash": block.hash,
-                    "metadata": entry.metadata
-                })
+                return jsonify(
+                    {
+                        "settlement_id": settlement_id,
+                        "status": entry.metadata.get("status", "unknown"),
+                        "block_index": block.index,
+                        "block_hash": block.hash,
+                        "metadata": entry.metadata,
+                    }
+                )
 
     # Check pending
     for entry in blockchain.pending_entries:
         if entry.metadata.get("settlement_id") == settlement_id:
-            return jsonify({
-                "settlement_id": settlement_id,
-                "status": "pending",
-                "metadata": entry.metadata
-            })
+            return jsonify(
+                {"settlement_id": settlement_id, "status": "pending", "metadata": entry.metadata}
+            )
 
     return jsonify({"error": "Settlement not found"}), 404
 
 
-@app.route('/api/v1/settlements/<settlement_id>/accept', methods=['POST'])
+@app.route("/api/v1/settlements/<settlement_id>/accept", methods=["POST"])
 def accept_settlement(settlement_id):
     """
     Accept a settlement.
@@ -7427,21 +7143,19 @@ def accept_settlement(settlement_id):
                         "settlement_id": settlement_id,
                         "party": party,
                         "party_id": party_id,
-                        "accepted_at": datetime.utcnow().isoformat()
-                    }
+                        "accepted_at": datetime.utcnow().isoformat(),
+                    },
                 )
                 blockchain.add_entry(acceptance)
 
-                return jsonify({
-                    "status": "accepted",
-                    "settlement_id": settlement_id,
-                    "party": party
-                })
+                return jsonify(
+                    {"status": "accepted", "settlement_id": settlement_id, "party": party}
+                )
 
     return jsonify({"error": "Settlement not found"}), 404
 
 
-@app.route('/api/v1/reputation/<mediator_id>', methods=['GET'])
+@app.route("/api/v1/reputation/<mediator_id>", methods=["GET"])
 def get_mediator_reputation(mediator_id):
     """Get reputation metrics for a mediator."""
     # Count successful settlements
@@ -7466,16 +7180,18 @@ def get_mediator_reputation(mediator_id):
     else:
         score = 0.5  # Default for new mediators
 
-    return jsonify({
-        "mediator_id": mediator_id,
-        "reputation_score": score,
-        "total_settlements": total,
-        "successful": successes,
-        "violations": violations
-    })
+    return jsonify(
+        {
+            "mediator_id": mediator_id,
+            "reputation_score": score,
+            "total_settlements": total,
+            "successful": successes,
+            "violations": violations,
+        }
+    )
 
 
-@app.route('/api/v1/reputation', methods=['POST'])
+@app.route("/api/v1/reputation", methods=["POST"])
 def update_reputation():
     """
     Update mediator reputation (called after settlement finalization).
@@ -7502,8 +7218,8 @@ def update_reputation():
             "settlement_id": data.get("settlement_id"),
             "outcome": data.get("outcome"),
             "reason": data.get("reason"),
-            "updated_at": datetime.utcnow().isoformat()
-        }
+            "updated_at": datetime.utcnow().isoformat(),
+        },
     )
     blockchain.add_entry(entry)
 
@@ -7514,7 +7230,8 @@ def update_reputation():
 # Chain Sync API
 # =============================================================================
 
-@app.route('/api/v1/blocks', methods=['GET'])
+
+@app.route("/api/v1/blocks", methods=["GET"])
 def get_blocks_range():
     """
     Get blocks in a range (for chain sync).
@@ -7523,28 +7240,21 @@ def get_blocks_range():
         start: Start block index
         end: End block index
     """
-    start = int(request.args.get('start', 0))
-    end = int(request.args.get('end', len(blockchain.chain) - 1))
+    start = int(request.args.get("start", 0))
+    end = int(request.args.get("end", len(blockchain.chain) - 1))
 
     # Limit range
     end = min(end, start + 100)
     end = min(end, len(blockchain.chain) - 1)
 
     blocks = [
-        blockchain.chain[i].to_dict()
-        for i in range(start, end + 1)
-        if i < len(blockchain.chain)
+        blockchain.chain[i].to_dict() for i in range(start, end + 1) if i < len(blockchain.chain)
     ]
 
-    return jsonify({
-        "blocks": blocks,
-        "start": start,
-        "end": end,
-        "total": len(blockchain.chain)
-    })
+    return jsonify({"blocks": blocks, "start": start, "end": end, "total": len(blockchain.chain)})
 
 
-@app.route('/api/v1/sync', methods=['POST'])
+@app.route("/api/v1/sync", methods=["POST"])
 def trigger_sync():
     """
     Trigger chain synchronization with peers.
@@ -7562,13 +7272,12 @@ def trigger_sync():
 
     success = p2p_network.sync_chain(target_peer)
 
-    return jsonify({
-        "status": "success" if success else "failed",
-        "chain_height": len(blockchain.chain) - 1
-    })
+    return jsonify(
+        {"status": "success" if success else "failed", "chain_height": len(blockchain.chain) - 1}
+    )
 
 
-@app.route('/api/v1/broadcast', methods=['POST'])
+@app.route("/api/v1/broadcast", methods=["POST"])
 @require_api_key
 def receive_broadcast():
     """
@@ -7588,14 +7297,11 @@ def receive_broadcast():
     return jsonify({"status": "received" if success else "duplicate"})
 
 
-@app.route('/api/v1/network/stats', methods=['GET'])
+@app.route("/api/v1/network/stats", methods=["GET"])
 def network_stats():
     """Get P2P network statistics."""
     if not P2P_AVAILABLE or p2p_network is None:
-        return jsonify({
-            "p2p_enabled": False,
-            "peer_count": 0
-        })
+        return jsonify({"p2p_enabled": False, "peer_count": 0})
 
     return jsonify(p2p_network.get_network_stats())
 
@@ -7632,25 +7338,30 @@ def run_server():
     swagger_enabled = False
     try:
         from swagger import init_swagger
+
         swagger_enabled = init_swagger(app)
     except ImportError:
         pass
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("NatLangChain API Server")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     print(f"Listening on: http://{host}:{port}")
-    print(f"API Docs: http://{host}:{port}/docs" if swagger_enabled else "API Docs: Disabled (install flask-swagger-ui)")
+    print(
+        f"API Docs: http://{host}:{port}/docs"
+        if swagger_enabled
+        else "API Docs: Disabled (install flask-swagger-ui)"
+    )
     print(f"Debug Mode: {'ENABLED (not for production!)' if debug else 'Disabled'}")
     print(f"Auth Required: {'Yes' if API_KEY_REQUIRED else 'No'}")
     print(f"Rate Limit: {RATE_LIMIT_REQUESTS} req/{RATE_LIMIT_WINDOW}s")
     print(f"LLM Validation: {'Enabled' if llm_validator else 'Disabled'}")
     print(f"Blockchain: {len(blockchain.chain)} blocks loaded")
     print(f"Graceful Shutdown: Enabled (timeout: {_shutdown_timeout}s)")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
 
     app.run(host=host, port=port, debug=debug)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     run_server()

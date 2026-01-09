@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 # Import SentenceTransformer with error handling for optional dependency
 try:
     from sentence_transformers import SentenceTransformer
+
     SENTENCE_TRANSFORMERS_AVAILABLE = True
 except ImportError:
     SentenceTransformer = None
@@ -29,16 +30,19 @@ from blockchain import NatLangChain
 
 class SemanticSearchError(Exception):
     """Exception raised for semantic search errors."""
+
     pass
 
 
 class ModelLoadError(SemanticSearchError):
     """Exception raised when model fails to load."""
+
     pass
 
 
 class EncodingError(SemanticSearchError):
     """Exception raised when encoding fails."""
+
     pass
 
 
@@ -77,7 +81,8 @@ class SemanticSearchEngine:
             logger.error(
                 "Failed to load model '%s': %s. "
                 "The model may not exist or there may be network issues.",
-                model_name, str(e)
+                model_name,
+                str(e),
             )
             raise ModelLoadError(
                 f"Failed to load sentence transformer model '{model_name}': {e!s}. "
@@ -85,8 +90,7 @@ class SemanticSearchEngine:
             ) from e
         except Exception as e:
             logger.error(
-                "Unexpected error loading model '%s': %s: %s",
-                model_name, type(e).__name__, str(e)
+                "Unexpected error loading model '%s': %s: %s", model_name, type(e).__name__, str(e)
             )
             raise ModelLoadError(
                 f"Unexpected error loading model '{model_name}': {type(e).__name__}: {e!s}"
@@ -110,16 +114,18 @@ class SemanticSearchEngine:
 
         for block in blockchain.chain:
             for entry in block.entries:
-                all_entries.append({
-                    "block_index": block.index,
-                    "block_hash": block.hash,
-                    "timestamp": block.timestamp,
-                    "author": entry.author,
-                    "content": entry.content,
-                    "intent": entry.intent,
-                    "validation_status": entry.validation_status,
-                    "metadata": entry.metadata
-                })
+                all_entries.append(
+                    {
+                        "block_index": block.index,
+                        "block_hash": block.hash,
+                        "timestamp": block.timestamp,
+                        "author": entry.author,
+                        "content": entry.content,
+                        "intent": entry.intent,
+                        "validation_status": entry.validation_status,
+                        "metadata": entry.metadata,
+                    }
+                )
 
         return all_entries
 
@@ -144,33 +150,24 @@ class SemanticSearchEngine:
             except RuntimeError as e:
                 # Common for out-of-memory errors
                 logger.error(
-                    "Failed to encode %d entries: %s. "
-                    "This may be due to memory constraints.",
-                    len(content_list), str(e)
+                    "Failed to encode %d entries: %s. This may be due to memory constraints.",
+                    len(content_list),
+                    str(e),
                 )
                 raise EncodingError(
                     f"Failed to encode entries: {e!s}. "
                     f"Try reducing batch size or using a smaller model."
                 ) from e
             except Exception as e:
-                logger.error(
-                    "Unexpected error encoding entries: %s: %s",
-                    type(e).__name__, str(e)
-                )
-                raise EncodingError(
-                    f"Encoding failed: {type(e).__name__}: {e!s}"
-                ) from e
+                logger.error("Unexpected error encoding entries: %s: %s", type(e).__name__, str(e))
+                raise EncodingError(f"Encoding failed: {type(e).__name__}: {e!s}") from e
         else:
             self._embeddings_cache = np.array([])
 
         self._cache_valid = True
 
     def search(
-        self,
-        blockchain: NatLangChain,
-        query: str,
-        top_k: int = 5,
-        min_score: float = 0.0
+        self, blockchain: NatLangChain, query: str, top_k: int = 5, min_score: float = 0.0
     ) -> list[dict[str, Any]]:
         """
         Perform semantic search across all blockchain entries.
@@ -206,10 +203,7 @@ class SemanticSearchEngine:
         try:
             query_embedding = self.model.encode([query])
         except Exception as e:
-            logger.error(
-                "Failed to encode search query: %s: %s",
-                type(e).__name__, str(e)
-            )
+            logger.error("Failed to encode search query: %s: %s", type(e).__name__, str(e))
             raise EncodingError(f"Failed to encode query: {e!s}") from e
 
         # Calculate cosine similarity with safe normalization
@@ -237,10 +231,9 @@ class SemanticSearchEngine:
         # Build results
         results = []
         for idx in top_indices:
-            results.append({
-                "score": round(float(similarities[idx]), 4),
-                "entry": self._entries_cache[idx]
-            })
+            results.append(
+                {"score": round(float(similarities[idx]), 4), "entry": self._entries_cache[idx]}
+            )
 
         return results
 
@@ -250,7 +243,7 @@ class SemanticSearchEngine:
         query: str,
         field: str = "content",
         top_k: int = 5,
-        min_score: float = 0.0
+        min_score: float = 0.0,
     ) -> list[dict[str, Any]]:
         """
         Perform semantic search on a specific field (content, intent, etc.).
@@ -289,10 +282,7 @@ class SemanticSearchEngine:
         elif field == "intent":
             corpus = [entry["intent"] for entry in self._entries_cache]
         elif field == "both":
-            corpus = [
-                f"{entry['intent']}: {entry['content']}"
-                for entry in self._entries_cache
-            ]
+            corpus = [f"{entry['intent']}: {entry['content']}" for entry in self._entries_cache]
         else:
             raise ValueError(f"Invalid field: {field}. Use 'content', 'intent', or 'both'")
 
@@ -301,10 +291,7 @@ class SemanticSearchEngine:
             corpus_embeddings = self.model.encode(corpus)
             query_embedding = self.model.encode([query])
         except Exception as e:
-            logger.error(
-                "Failed to encode during field search: %s: %s",
-                type(e).__name__, str(e)
-            )
+            logger.error("Failed to encode during field search: %s: %s", type(e).__name__, str(e))
             raise EncodingError(f"Encoding failed: {e!s}") from e
 
         # Calculate cosine similarity with safe normalization
@@ -328,11 +315,13 @@ class SemanticSearchEngine:
         # Build results
         results = []
         for idx in top_indices:
-            results.append({
-                "score": round(float(similarities[idx]), 4),
-                "entry": self._entries_cache[idx],
-                "matched_field": field
-            })
+            results.append(
+                {
+                    "score": round(float(similarities[idx]), 4),
+                    "entry": self._entries_cache[idx],
+                    "matched_field": field,
+                }
+            )
 
         return results
 
@@ -341,7 +330,7 @@ class SemanticSearchEngine:
         blockchain: NatLangChain,
         entry_content: str,
         top_k: int = 5,
-        exclude_exact: bool = True
+        exclude_exact: bool = True,
     ) -> list[dict[str, Any]]:
         """
         Find entries similar to a given entry.

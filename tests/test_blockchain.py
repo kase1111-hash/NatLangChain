@@ -5,7 +5,7 @@ Tests for NatLangChain blockchain functionality
 import os
 import sys
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from blockchain import NatLangChain, NaturalLanguageEntry
 
@@ -13,7 +13,14 @@ from blockchain import NatLangChain, NaturalLanguageEntry
 def test_genesis_block():
     """Test that genesis block is created correctly."""
     # Use require_validation=False, enable_deduplication=False, and enable_rate_limiting=False for unit tests
-    chain = NatLangChain(require_validation=False, enable_deduplication=False, enable_rate_limiting=False, enable_timestamp_validation=False, enable_metadata_sanitization=False, enable_asset_tracking=False)
+    chain = NatLangChain(
+        require_validation=False,
+        enable_deduplication=False,
+        enable_rate_limiting=False,
+        enable_timestamp_validation=False,
+        enable_metadata_sanitization=False,
+        enable_asset_tracking=False,
+    )
     assert len(chain.chain) == 1
     assert chain.chain[0].index == 0
     assert chain.chain[0].previous_hash == "0"
@@ -22,13 +29,20 @@ def test_genesis_block():
 
 def test_add_entry():
     """Test adding a natural language entry."""
-    chain = NatLangChain(require_validation=False, enable_deduplication=False, enable_rate_limiting=False, enable_timestamp_validation=False, enable_metadata_sanitization=False, enable_asset_tracking=False)
+    chain = NatLangChain(
+        require_validation=False,
+        enable_deduplication=False,
+        enable_rate_limiting=False,
+        enable_timestamp_validation=False,
+        enable_metadata_sanitization=False,
+        enable_asset_tracking=False,
+    )
 
     entry = NaturalLanguageEntry(
         content="Alice transfers ownership of the vintage 1967 Mustang to Bob for $25,000.",
         author="alice",
         intent="Transfer vehicle ownership",
-        metadata={"vehicle": "1967 Mustang", "price": 25000}
+        metadata={"vehicle": "1967 Mustang", "price": 25000},
     )
 
     result = chain.add_entry(entry)
@@ -39,18 +53,25 @@ def test_add_entry():
 
 def test_mine_block():
     """Test mining a block with pending entries."""
-    chain = NatLangChain(require_validation=False, enable_deduplication=False, enable_rate_limiting=False, enable_timestamp_validation=False, enable_metadata_sanitization=False, enable_asset_tracking=False)
+    chain = NatLangChain(
+        require_validation=False,
+        enable_deduplication=False,
+        enable_rate_limiting=False,
+        enable_timestamp_validation=False,
+        enable_metadata_sanitization=False,
+        enable_asset_tracking=False,
+    )
 
     entry1 = NaturalLanguageEntry(
         content="The quarterly review meeting concluded with approval of three new initiatives.",
         author="board",
-        intent="Record meeting outcome"
+        intent="Record meeting outcome",
     )
 
     entry2 = NaturalLanguageEntry(
         content="Dr. Smith prescribed medication X for patient condition Y, dosage 50mg daily.",
         author="dr_smith",
-        intent="Medical prescription"
+        intent="Medical prescription",
     )
 
     chain.add_entry(entry1)
@@ -69,12 +90,17 @@ def test_mine_block():
 
 def test_chain_validation():
     """Test blockchain integrity validation."""
-    chain = NatLangChain(require_validation=False, enable_deduplication=False, enable_rate_limiting=False, enable_timestamp_validation=False, enable_metadata_sanitization=False, enable_asset_tracking=False)
+    chain = NatLangChain(
+        require_validation=False,
+        enable_deduplication=False,
+        enable_rate_limiting=False,
+        enable_timestamp_validation=False,
+        enable_metadata_sanitization=False,
+        enable_asset_tracking=False,
+    )
 
     entry = NaturalLanguageEntry(
-        content="Test entry for validation.",
-        author="test",
-        intent="Testing"
+        content="Test entry for validation.", author="test", intent="Testing"
     )
 
     chain.add_entry(entry)
@@ -86,25 +112,21 @@ def test_chain_validation():
 
 def test_get_entries_by_author():
     """Test retrieving entries by author."""
-    chain = NatLangChain(require_validation=False, enable_deduplication=False, enable_rate_limiting=False, enable_timestamp_validation=False, enable_metadata_sanitization=False, enable_asset_tracking=False, enable_quality_checks=False)
-
-    entry1 = NaturalLanguageEntry(
-        content="Alice's first entry.",
-        author="alice",
-        intent="Test"
+    chain = NatLangChain(
+        require_validation=False,
+        enable_deduplication=False,
+        enable_rate_limiting=False,
+        enable_timestamp_validation=False,
+        enable_metadata_sanitization=False,
+        enable_asset_tracking=False,
+        enable_quality_checks=False,
     )
 
-    entry2 = NaturalLanguageEntry(
-        content="Bob's entry.",
-        author="bob",
-        intent="Test"
-    )
+    entry1 = NaturalLanguageEntry(content="Alice's first entry.", author="alice", intent="Test")
 
-    entry3 = NaturalLanguageEntry(
-        content="Alice's second entry.",
-        author="alice",
-        intent="Test"
-    )
+    entry2 = NaturalLanguageEntry(content="Bob's entry.", author="bob", intent="Test")
+
+    entry3 = NaturalLanguageEntry(content="Alice's second entry.", author="alice", intent="Test")
 
     chain.add_entry(entry1)
     chain.add_entry(entry2)
@@ -122,12 +144,19 @@ def test_get_entries_by_author():
 
 def test_narrative_generation():
     """Test full narrative generation."""
-    chain = NatLangChain(require_validation=False, enable_deduplication=False, enable_rate_limiting=False, enable_timestamp_validation=False, enable_metadata_sanitization=False, enable_asset_tracking=False)
+    chain = NatLangChain(
+        require_validation=False,
+        enable_deduplication=False,
+        enable_rate_limiting=False,
+        enable_timestamp_validation=False,
+        enable_metadata_sanitization=False,
+        enable_asset_tracking=False,
+    )
 
     entry = NaturalLanguageEntry(
         content="This is a test entry for narrative generation.",
         author="test_user",
-        intent="Testing narrative"
+        intent="Testing narrative",
     )
 
     chain.add_entry(entry)
@@ -143,12 +172,17 @@ def test_narrative_generation():
 
 def test_serialization():
     """Test blockchain serialization and deserialization."""
-    chain = NatLangChain(require_validation=False, enable_deduplication=False, enable_rate_limiting=False, enable_timestamp_validation=False, enable_metadata_sanitization=False, enable_asset_tracking=False)
+    chain = NatLangChain(
+        require_validation=False,
+        enable_deduplication=False,
+        enable_rate_limiting=False,
+        enable_timestamp_validation=False,
+        enable_metadata_sanitization=False,
+        enable_asset_tracking=False,
+    )
 
     entry = NaturalLanguageEntry(
-        content="Serialization test entry.",
-        author="test",
-        intent="Test serialization"
+        content="Serialization test entry.", author="test", intent="Test serialization"
     )
 
     chain.add_entry(entry)
@@ -190,10 +224,11 @@ def run_all_tests():
     except Exception as e:
         print(f"\n✗ Error during tests: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     success = run_all_tests()
     sys.exit(0 if success else 1)

@@ -7,7 +7,7 @@ import sys
 import unittest
 
 # Add src to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from observance_burn import BurnReason, ObservanceBurnManager
 
@@ -28,9 +28,7 @@ class TestObservanceBurnManager(unittest.TestCase):
     def test_perform_voluntary_burn(self):
         """Test performing a voluntary signal burn."""
         success, result = self.manager.perform_voluntary_burn(
-            burner="0xAlice",
-            amount=100.0,
-            epitaph="For the long-term health of NatLangChain"
+            burner="0xAlice", amount=100.0, epitaph="For the long-term health of NatLangChain"
         )
 
         self.assertTrue(success)
@@ -47,7 +45,7 @@ class TestObservanceBurnManager(unittest.TestCase):
             amount=5.0,
             reason=BurnReason.ESCALATION_COMMITMENT,
             intent_hash="0xabc123def456",
-            epitaph="Burned to fairly escalate"
+            epitaph="Burned to fairly escalate",
         )
 
         self.assertTrue(success)
@@ -57,9 +55,7 @@ class TestObservanceBurnManager(unittest.TestCase):
     def test_reject_zero_amount(self):
         """Test that zero amount burns are rejected."""
         success, result = self.manager.perform_burn(
-            burner="0xAlice",
-            amount=0,
-            reason=BurnReason.VOLUNTARY_SIGNAL
+            burner="0xAlice", amount=0, reason=BurnReason.VOLUNTARY_SIGNAL
         )
 
         self.assertFalse(success)
@@ -70,7 +66,7 @@ class TestObservanceBurnManager(unittest.TestCase):
         success, result = self.manager.perform_burn(
             burner="0xAlice",
             amount=2_000_000.0,  # More than total supply
-            reason=BurnReason.VOLUNTARY_SIGNAL
+            reason=BurnReason.VOLUNTARY_SIGNAL,
         )
 
         self.assertFalse(success)
@@ -81,10 +77,7 @@ class TestObservanceBurnManager(unittest.TestCase):
         long_epitaph = "x" * 300  # 300 chars, exceeds 280 limit
 
         success, result = self.manager.perform_burn(
-            burner="0xAlice",
-            amount=10.0,
-            reason=BurnReason.VOLUNTARY_SIGNAL,
-            epitaph=long_epitaph
+            burner="0xAlice", amount=10.0, reason=BurnReason.VOLUNTARY_SIGNAL, epitaph=long_epitaph
         )
 
         self.assertFalse(success)
@@ -105,7 +98,7 @@ class TestBurnReasons(unittest.TestCase):
             BurnReason.ESCALATION_COMMITMENT,
             BurnReason.RATE_LIMIT_EXCESS,
             BurnReason.PROTOCOL_VIOLATION,
-            BurnReason.COMMUNITY_DIRECTIVE
+            BurnReason.COMMUNITY_DIRECTIVE,
         ]
 
         for reason in reasons:
@@ -113,7 +106,7 @@ class TestBurnReasons(unittest.TestCase):
                 burner="0xTest",
                 amount=1.0,
                 reason=reason,
-                intent_hash="0x" + "0" * 64 if reason == BurnReason.ESCALATION_COMMITMENT else None
+                intent_hash="0x" + "0" * 64 if reason == BurnReason.ESCALATION_COMMITMENT else None,
             )
             self.assertTrue(success, f"Failed for reason: {reason}")
 
@@ -126,7 +119,7 @@ class TestBurnReasons(unittest.TestCase):
             burner="0xCharlie",
             amount=5.0,
             reason=BurnReason.ESCALATION_COMMITMENT,
-            intent_hash="0x123"
+            intent_hash="0x123",
         )
 
         stats = self.manager.get_statistics()
@@ -156,16 +149,14 @@ class TestEscalationBurnCalculation(unittest.TestCase):
             burner="0xAlice",
             amount=5.0,
             reason=BurnReason.ESCALATION_COMMITMENT,
-            intent_hash="0xDispute123"
+            intent_hash="0xDispute123",
         )
 
         tx_hash = burn_result["tx_hash"]
 
         # Verify it
         is_valid, _verification = self.manager.verify_escalation_burn(
-            tx_hash=tx_hash,
-            expected_amount=5.0,
-            expected_intent_hash="0xDispute123"
+            tx_hash=tx_hash, expected_amount=5.0, expected_intent_hash="0xDispute123"
         )
 
         self.assertTrue(is_valid)
@@ -173,9 +164,7 @@ class TestEscalationBurnCalculation(unittest.TestCase):
     def test_verify_invalid_burn(self):
         """Test verifying non-existent burn fails."""
         is_valid, result = self.manager.verify_escalation_burn(
-            tx_hash="0xNonExistent",
-            expected_amount=5.0,
-            expected_intent_hash="0xTest"
+            tx_hash="0xNonExistent", expected_amount=5.0, expected_intent_hash="0xTest"
         )
 
         self.assertFalse(is_valid)
@@ -194,9 +183,7 @@ class TestBurnStatistics(unittest.TestCase):
         self.manager.perform_voluntary_burn("0xAlice", 100.0)
         self.manager.perform_voluntary_burn("0xBob", 50.0)
         self.manager.perform_burn(
-            burner="0xCharlie",
-            amount=25.0,
-            reason=BurnReason.RATE_LIMIT_EXCESS
+            burner="0xCharlie", amount=25.0, reason=BurnReason.RATE_LIMIT_EXCESS
         )
 
         stats = self.manager.get_statistics()
@@ -226,9 +213,7 @@ class TestBurnHistory(unittest.TestCase):
 
         for i in range(5):
             self.manager.perform_voluntary_burn(
-                burner=f"0xUser{i}",
-                amount=float(i + 1) * 10,
-                epitaph=f"Burn number {i + 1}"
+                burner=f"0xUser{i}", amount=float(i + 1) * 10, epitaph=f"Burn number {i + 1}"
             )
 
     def test_get_burn_history(self):
@@ -259,9 +244,7 @@ class TestBurnForDisplay(unittest.TestCase):
     def test_format_burn_for_display(self):
         """Test formatting burn for explorer display."""
         _success, result = self.manager.perform_voluntary_burn(
-            burner="0xBeliever",
-            amount=100.0,
-            epitaph="For the health of NatLangChain"
+            burner="0xBeliever", amount=100.0, epitaph="For the health of NatLangChain"
         )
 
         tx_hash = result["tx_hash"]
@@ -293,10 +276,7 @@ class TestRedistributionEffect(unittest.TestCase):
         """Test that redistribution effect is calculated correctly."""
         manager = ObservanceBurnManager(initial_supply=1_000_000.0)
 
-        _success, result = manager.perform_voluntary_burn(
-            burner="0xAlice",
-            amount=100.0
-        )
+        _success, result = manager.perform_voluntary_burn(burner="0xAlice", amount=100.0)
 
         # After burning 100 from 1,000,000:
         # New supply: 999,900
@@ -306,7 +286,7 @@ class TestRedistributionEffect(unittest.TestCase):
         self.assertAlmostEqual(
             burn["redistribution_effect_percent"],
             0.01001,  # Approximately
-            places=3
+            places=3,
         )
 
 
@@ -322,7 +302,7 @@ class TestEventEmission(unittest.TestCase):
             amount=5.0,
             reason=BurnReason.ESCALATION_COMMITMENT,
             intent_hash="0xabc123",
-            epitaph="Burned for escalation"
+            epitaph="Burned for escalation",
         )
 
         burn = manager.get_burn_by_tx_hash(result["tx_hash"])
@@ -347,15 +327,12 @@ class TestRateLimitBurn(unittest.TestCase):
         """Test performing rate limit excess burn."""
         manager = ObservanceBurnManager()
 
-        success, result = manager.perform_rate_limit_burn(
-            address="0xPowerUser",
-            excess_contracts=5
-        )
+        success, result = manager.perform_rate_limit_burn(address="0xPowerUser", excess_contracts=5)
 
         self.assertTrue(success)
         self.assertEqual(result["amount"], 0.5)  # 5 * 0.1 = 0.5
         self.assertEqual(result["reason"], "RateLimitExcess")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

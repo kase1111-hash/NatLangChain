@@ -32,9 +32,10 @@ import logging
 import os
 import threading
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -44,9 +45,9 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 # Congestion thresholds (pending queue depth)
-CONGESTION_THRESHOLD_LOW = 50      # Below this: light load
+CONGESTION_THRESHOLD_LOW = 50  # Below this: light load
 CONGESTION_THRESHOLD_MEDIUM = 100  # Above this: moderate congestion
-CONGESTION_THRESHOLD_HIGH = 200    # Above this: heavy congestion
+CONGESTION_THRESHOLD_HIGH = 200  # Above this: heavy congestion
 
 # Base TTLs (seconds) - used during light load
 BASE_TTL_INTENTS = 30
@@ -69,16 +70,18 @@ CLEANUP_INTERVAL = 30  # seconds
 
 class CacheCategory(Enum):
     """Categories of cached data with different TTL characteristics."""
-    INTENTS = "intents"           # Pending intents for mediators
-    CONTRACTS = "contracts"       # Open contract queries
-    STATS = "stats"               # Chain statistics
-    SEARCH = "search"             # Semantic search results
-    METADATA = "metadata"         # Entry/contract metadata
-    BLOCKS = "blocks"             # Block data (for sync)
+
+    INTENTS = "intents"  # Pending intents for mediators
+    CONTRACTS = "contracts"  # Open contract queries
+    STATS = "stats"  # Chain statistics
+    SEARCH = "search"  # Semantic search results
+    METADATA = "metadata"  # Entry/contract metadata
+    BLOCKS = "blocks"  # Block data (for sync)
 
 
 class CongestionLevel(Enum):
     """System congestion levels."""
+
     LIGHT = "light"
     MODERATE = "moderate"
     HEAVY = "heavy"
@@ -88,6 +91,7 @@ class CongestionLevel(Enum):
 @dataclass
 class CacheConfig:
     """Configuration for a cache category."""
+
     base_ttl: float
     max_ttl: float
     priority: int = 1  # Higher = kept longer during eviction
@@ -112,6 +116,7 @@ DEFAULT_CACHE_CONFIGS: dict[CacheCategory, CacheConfig] = {
 @dataclass
 class AdaptiveCacheEntry:
     """A cached value with metadata for the adaptive cache system."""
+
     value: Any
     category: CacheCategory
     created_at: float
@@ -136,6 +141,7 @@ class AdaptiveCacheEntry:
 @dataclass
 class CongestionState:
     """Current congestion state of the system."""
+
     pending_count: int = 0
     request_rate: float = 0.0  # requests per second
     level: CongestionLevel = CongestionLevel.LIGHT
@@ -156,6 +162,7 @@ class CongestionState:
 @dataclass
 class CacheStats:
     """Statistics for cache operations."""
+
     hits: int = 0
     misses: int = 0
     invalidations: int = 0
@@ -260,13 +267,21 @@ class CongestionDetector:
                 factor = 1.0
             elif pending_count >= self.threshold_high:
                 level = CongestionLevel.HEAVY
-                factor = 0.75 + 0.25 * min(1.0, (pending_count - self.threshold_high) / self.threshold_high)
+                factor = 0.75 + 0.25 * min(
+                    1.0, (pending_count - self.threshold_high) / self.threshold_high
+                )
             elif pending_count >= self.threshold_medium:
                 level = CongestionLevel.MODERATE
-                factor = 0.5 + 0.25 * (pending_count - self.threshold_medium) / (self.threshold_high - self.threshold_medium)
+                factor = 0.5 + 0.25 * (pending_count - self.threshold_medium) / (
+                    self.threshold_high - self.threshold_medium
+                )
             elif pending_count >= self.threshold_low:
                 level = CongestionLevel.LIGHT
-                factor = 0.25 * (pending_count - self.threshold_low) / (self.threshold_medium - self.threshold_low)
+                factor = (
+                    0.25
+                    * (pending_count - self.threshold_low)
+                    / (self.threshold_medium - self.threshold_low)
+                )
             else:
                 level = CongestionLevel.LIGHT
                 factor = 0.0
@@ -334,10 +349,7 @@ class AdaptiveCache:
         # Congestion detection
         self.congestion = CongestionDetector()
 
-        logger.info(
-            f"AdaptiveCache initialized: max_entries={max_entries}, "
-            f"enabled={enabled}"
-        )
+        logger.info(f"AdaptiveCache initialized: max_entries={max_entries}, enabled={enabled}")
 
     def _make_key(self, category: CacheCategory, key: str) -> str:
         """Create internal cache key."""
@@ -374,8 +386,8 @@ class AdaptiveCache:
                 self._cache.items(),
                 key=lambda x: (
                     self.configs.get(x[1].category, CacheConfig(30, 120)).priority,
-                    -x[1].age
-                )
+                    -x[1].age,
+                ),
             )
 
             # Remove 10% of entries
@@ -591,19 +603,16 @@ class AdaptiveCache:
                 "congestion": congestion_state.to_dict(),
                 "overall": self._stats.to_dict(),
                 "by_category": {
-                    cat.value: stats.to_dict()
-                    for cat, stats in self._stats_by_category.items()
+                    cat.value: stats.to_dict() for cat, stats in self._stats_by_category.items()
                 },
-                "current_ttls": {
-                    cat.value: round(self._get_ttl(cat), 1)
-                    for cat in CacheCategory
-                },
+                "current_ttls": {cat.value: round(self._get_ttl(cat), 1) for cat in CacheCategory},
             }
 
 
 # =============================================================================
 # Helper Functions
 # =============================================================================
+
 
 def make_cache_key(*args, **kwargs) -> str:
     """
@@ -639,11 +648,15 @@ def create_cache_from_env() -> AdaptiveCache:
     Returns:
         Configured AdaptiveCache instance
     """
-    enabled = os.getenv('NATLANGCHAIN_QUERY_CACHE_ENABLED', 'true').lower() == 'true'
-    max_size = int(os.getenv('NATLANGCHAIN_QUERY_CACHE_MAX_SIZE', str(MAX_CACHE_ENTRIES)))
+    enabled = os.getenv("NATLANGCHAIN_QUERY_CACHE_ENABLED", "true").lower() == "true"
+    max_size = int(os.getenv("NATLANGCHAIN_QUERY_CACHE_MAX_SIZE", str(MAX_CACHE_ENTRIES)))
 
-    threshold_low = int(os.getenv('NATLANGCHAIN_CONGESTION_THRESHOLD_LOW', str(CONGESTION_THRESHOLD_LOW)))
-    threshold_high = int(os.getenv('NATLANGCHAIN_CONGESTION_THRESHOLD_HIGH', str(CONGESTION_THRESHOLD_HIGH)))
+    threshold_low = int(
+        os.getenv("NATLANGCHAIN_CONGESTION_THRESHOLD_LOW", str(CONGESTION_THRESHOLD_LOW))
+    )
+    threshold_high = int(
+        os.getenv("NATLANGCHAIN_CONGESTION_THRESHOLD_HIGH", str(CONGESTION_THRESHOLD_HIGH))
+    )
 
     cache = AdaptiveCache(max_entries=max_size, enabled=enabled)
     cache.congestion.threshold_low = threshold_low

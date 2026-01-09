@@ -19,12 +19,7 @@ from typing import Any
 # =============================================================================
 
 # Base weights by validator type
-BASE_WEIGHTS = {
-    "llm": 1.0,
-    "hybrid": 1.1,
-    "symbolic": 0.9,
-    "human": 1.2
-}
+BASE_WEIGHTS = {"llm": 1.0, "hybrid": 1.1, "symbolic": 0.9, "human": 1.2}
 
 # Maximum effective weight any single validator can have (anti-centralization)
 MAX_EFFECTIVE_WEIGHT = 0.35
@@ -42,8 +37,10 @@ MINORITY_SIGNAL_VISIBILITY = True  # Low-trust signals must be visible
 # Enums
 # =============================================================================
 
+
 class ValidatorType(Enum):
     """Types of validators in the NatLangChain ecosystem."""
+
     LLM = "llm"
     HYBRID = "hybrid"
     SYMBOLIC = "symbolic"
@@ -55,6 +52,7 @@ class TrustScope(Enum):
     Trust is scoped, not global.
     A validator may be trusted in one scope and weak in another.
     """
+
     SEMANTIC_PARSING = "semantic_parsing"
     DRIFT_DETECTION = "drift_detection"
     PROOF_OF_UNDERSTANDING = "proof_of_understanding"
@@ -64,6 +62,7 @@ class TrustScope(Enum):
 
 class TrustSignalType(Enum):
     """Types of trust signals."""
+
     POSITIVE = "positive"
     NEGATIVE = "negative"
 
@@ -72,6 +71,7 @@ class PositiveSignal(Enum):
     """
     Positive signals that increase trust (Section 5.1).
     """
+
     CONSENSUS_MATCH = "consensus_match"  # Matches consensus outcomes
     POU_RATIFIED = "pou_ratified"  # Produces PoUs later ratified by humans
     CORRECT_DRIFT_FLAG = "correct_drift_flag"  # Correctly flags semantic drift
@@ -83,9 +83,12 @@ class NegativeSignal(Enum):
     """
     Negative signals that decrease trust (Section 5.2).
     """
+
     OVERRULED_BY_LOCK = "overruled_by_lock"  # Overruled by Semantic Lock
     FALSE_POSITIVE_DRIFT = "false_positive_drift"  # High false-positive drift detection
-    UNAUTHORIZED_INTERPRETATION = "unauthorized_interpretation"  # Introduces unauthorized interpretations
+    UNAUTHORIZED_INTERPRETATION = (
+        "unauthorized_interpretation"  # Introduces unauthorized interpretations
+    )
     CONSENSUS_DISAGREEMENT = "consensus_disagreement"  # Disagrees with consensus disproportionately
     HARASSMENT_PATTERN = "harassment_pattern"  # Implicated in harassment patterns
 
@@ -94,11 +97,13 @@ class NegativeSignal(Enum):
 # Data Classes
 # =============================================================================
 
+
 @dataclass
 class ValidatorIdentity:
     """
     Each validator has a persistent identity (Section 3).
     """
+
     validator_id: str
     validator_type: ValidatorType
     model_version: str | None = None
@@ -114,13 +119,14 @@ class ValidatorIdentity:
             "model_version": self.model_version,
             "operator_id": self.operator_id,
             "declared_capabilities": [c.value for c in self.declared_capabilities],
-            "created_at": self.created_at.isoformat()
+            "created_at": self.created_at.isoformat(),
         }
 
 
 @dataclass
 class ScopedScore:
     """Score for a specific trust scope."""
+
     scope: TrustScope
     score: float  # 0.0 to 1.0
     sample_size: int = 0
@@ -132,13 +138,14 @@ class ScopedScore:
             "scope": self.scope.value,
             "score": self.score,
             "sample_size": self.sample_size,
-            "last_updated": self.last_updated.isoformat()
+            "last_updated": self.last_updated.isoformat(),
         }
 
 
 @dataclass
 class TrustEvent:
     """A single trust-affecting event."""
+
     event_id: str
     validator_id: str
     signal_type: TrustSignalType
@@ -158,7 +165,7 @@ class TrustEvent:
             "scope": self.scope.value,
             "magnitude": self.magnitude,
             "timestamp": self.timestamp.isoformat(),
-            "metadata": self.metadata
+            "metadata": self.metadata,
         }
 
 
@@ -167,6 +174,7 @@ class TrustProfile:
     """
     Each validator maintains a Trust Profile (Section 4).
     """
+
     validator_id: str
     version: str = "1.0"
     overall_score: float = 0.5  # Default neutral score
@@ -193,8 +201,7 @@ class TrustProfile:
             "version": self.version,
             "overall_score": self.overall_score,
             "scoped_scores": {
-                scope.value: score.to_dict()
-                for scope, score in self.scoped_scores.items()
+                scope.value: score.to_dict() for scope, score in self.scoped_scores.items()
             },
             "confidence_interval": self.confidence_interval,
             "sample_size": self.sample_size,
@@ -202,13 +209,14 @@ class TrustProfile:
             "last_activity": self.last_activity.isoformat(),
             "is_frozen": self.is_frozen,
             "frozen_at": self.frozen_at.isoformat() if self.frozen_at else None,
-            "freeze_reason": self.freeze_reason
+            "freeze_reason": self.freeze_reason,
         }
 
 
 @dataclass
 class WeightedSignal:
     """A validator's signal with its computed weight."""
+
     validator_id: str
     signal_value: Any  # The actual validation output
     raw_weight: float
@@ -221,6 +229,7 @@ class WeightedSignal:
 @dataclass
 class ConsensusInput:
     """Input for weighted consensus calculation."""
+
     signals: list[WeightedSignal]
     min_validators: int = MIN_VALIDATOR_DIVERSITY
     enforce_diversity: bool = True
@@ -229,6 +238,7 @@ class ConsensusInput:
 # =============================================================================
 # Trust Score Manager
 # =============================================================================
+
 
 class TrustManager:
     """
@@ -260,7 +270,7 @@ class TrustManager:
         validator_type: ValidatorType,
         model_version: str | None = None,
         operator_id: str | None = None,
-        declared_capabilities: list[TrustScope] | None = None
+        declared_capabilities: list[TrustScope] | None = None,
     ) -> TrustProfile:
         """
         Register a new validator and create its trust profile.
@@ -284,7 +294,7 @@ class TrustManager:
             validator_type=validator_type,
             model_version=model_version,
             operator_id=operator_id,
-            declared_capabilities=declared_capabilities or []
+            declared_capabilities=declared_capabilities or [],
         )
         self.identities[validator_id] = identity
 
@@ -292,11 +302,11 @@ class TrustManager:
         profile = TrustProfile(validator_id=validator_id)
 
         # Initialize scoped scores for declared capabilities
-        for scope in (declared_capabilities or []):
+        for scope in declared_capabilities or []:
             profile.scoped_scores[scope] = ScopedScore(
                 scope=scope,
                 score=0.5,  # Neutral starting score
-                sample_size=0
+                sample_size=0,
             )
 
         self.profiles[validator_id] = profile
@@ -320,7 +330,7 @@ class TrustManager:
         signal: PositiveSignal,
         scope: TrustScope,
         magnitude: float = 0.05,
-        metadata: dict[str, Any] | None = None
+        metadata: dict[str, Any] | None = None,
     ) -> TrustEvent | None:
         """
         Record a positive trust signal for a validator.
@@ -351,15 +361,13 @@ class TrustManager:
             signal=signal.value,
             scope=scope,
             magnitude=magnitude,
-            metadata=metadata or {}
+            metadata=metadata or {},
         )
 
         # Update scoped score
         if scope not in profile.scoped_scores:
             profile.scoped_scores[scope] = ScopedScore(
-                scope=scope,
-                score=profile.overall_score,
-                sample_size=0
+                scope=scope, score=profile.overall_score, sample_size=0
             )
 
         scoped = profile.scoped_scores[scope]
@@ -387,7 +395,7 @@ class TrustManager:
         signal: NegativeSignal,
         scope: TrustScope,
         magnitude: float = 0.05,
-        metadata: dict[str, Any] | None = None
+        metadata: dict[str, Any] | None = None,
     ) -> TrustEvent | None:
         """
         Record a negative trust signal for a validator.
@@ -422,15 +430,13 @@ class TrustManager:
             signal=signal.value,
             scope=scope,
             magnitude=magnitude,
-            metadata=metadata or {}
+            metadata=metadata or {},
         )
 
         # Update scoped score
         if scope not in profile.scoped_scores:
             profile.scoped_scores[scope] = ScopedScore(
-                scope=scope,
-                score=profile.overall_score,
-                sample_size=0
+                scope=scope, score=profile.overall_score, sample_size=0
             )
 
         scoped = profile.scoped_scores[scope]
@@ -491,9 +497,7 @@ class TrustManager:
     # =========================================================================
 
     def apply_temporal_decay(
-        self,
-        validator_id: str,
-        reference_time: datetime | None = None
+        self, validator_id: str, reference_time: datetime | None = None
     ) -> TrustProfile | None:
         """
         Apply temporal decay to a validator's trust score.
@@ -540,10 +544,7 @@ class TrustManager:
 
         return profile
 
-    def apply_decay_to_all(
-        self,
-        reference_time: datetime | None = None
-    ) -> list[str]:
+    def apply_decay_to_all(self, reference_time: datetime | None = None) -> list[str]:
         """
         Apply temporal decay to all registered validators.
 
@@ -571,9 +572,7 @@ class TrustManager:
     # =========================================================================
 
     def initiate_recovery(
-        self,
-        validator_id: str,
-        recovery_type: str = "low_stakes_validation"
+        self, validator_id: str, recovery_type: str = "low_stakes_validation"
     ) -> dict[str, Any]:
         """
         Initiate trust recovery process for a validator.
@@ -592,38 +591,23 @@ class TrustManager:
         """
         profile = self.profiles.get(validator_id)
         if not profile:
-            return {
-                "status": "error",
-                "message": f"Validator {validator_id} not found"
-            }
+            return {"status": "error", "message": f"Validator {validator_id} not found"}
 
         if profile.is_frozen:
-            return {
-                "status": "error",
-                "message": "Cannot initiate recovery while trust is frozen"
-            }
+            return {"status": "error", "message": "Cannot initiate recovery while trust is frozen"}
 
         recovery_requirements = {
             "low_stakes_validation": {
                 "required_validations": 10,
                 "max_stake_level": "low",
-                "required_success_rate": 0.8
+                "required_success_rate": 0.8,
             },
-            "benchmark_challenge": {
-                "required_challenges": 5,
-                "min_score": 0.75
-            },
-            "corrected_behavior": {
-                "observation_period_days": 14,
-                "max_negative_signals": 1
-            }
+            "benchmark_challenge": {"required_challenges": 5, "min_score": 0.75},
+            "corrected_behavior": {"observation_period_days": 14, "max_negative_signals": 1},
         }
 
         if recovery_type not in recovery_requirements:
-            return {
-                "status": "error",
-                "message": f"Unknown recovery type: {recovery_type}"
-            }
+            return {"status": "error", "message": f"Unknown recovery type: {recovery_type}"}
 
         return {
             "status": "initiated",
@@ -631,7 +615,7 @@ class TrustManager:
             "recovery_type": recovery_type,
             "current_score": profile.overall_score,
             "requirements": recovery_requirements[recovery_type],
-            "message": "Recovery process initiated"
+            "message": "Recovery process initiated",
         }
 
     # =========================================================================
@@ -639,10 +623,7 @@ class TrustManager:
     # =========================================================================
 
     def calculate_effective_weight(
-        self,
-        validator_id: str,
-        scope: TrustScope,
-        scope_modifier: float = 1.0
+        self, validator_id: str, scope: TrustScope, scope_modifier: float = 1.0
     ) -> float:
         """
         Calculate effective weight for a validator's signal.
@@ -678,11 +659,7 @@ class TrustManager:
         return min(effective_weight, MAX_EFFECTIVE_WEIGHT)
 
     def get_weighted_signal(
-        self,
-        validator_id: str,
-        signal_value: Any,
-        scope: TrustScope,
-        scope_modifier: float = 1.0
+        self, validator_id: str, signal_value: Any, scope: TrustScope, scope_modifier: float = 1.0
     ) -> WeightedSignal | None:
         """
         Create a weighted signal from a validator's output.
@@ -704,9 +681,7 @@ class TrustManager:
 
         base_weight = BASE_WEIGHTS.get(identity.validator_type.value, 1.0)
         trust_score = profile.get_scoped_score(scope)
-        effective_weight = self.calculate_effective_weight(
-            validator_id, scope, scope_modifier
-        )
+        effective_weight = self.calculate_effective_weight(validator_id, scope, scope_modifier)
 
         return WeightedSignal(
             validator_id=validator_id,
@@ -714,18 +689,14 @@ class TrustManager:
             raw_weight=base_weight,
             effective_weight=effective_weight,
             trust_score=trust_score,
-            scope_modifier=scope_modifier
+            scope_modifier=scope_modifier,
         )
 
     # =========================================================================
     # Dispute Handling (Section 9)
     # =========================================================================
 
-    def freeze_trust(
-        self,
-        validator_id: str,
-        dispute_id: str
-    ) -> bool:
+    def freeze_trust(self, validator_id: str, dispute_id: str) -> bool:
         """
         Freeze a validator's trust score at dispute start.
 
@@ -752,9 +723,7 @@ class TrustManager:
         return True
 
     def unfreeze_trust(
-        self,
-        validator_id: str,
-        dispute_outcome: dict[str, Any] | None = None
+        self, validator_id: str, dispute_outcome: dict[str, Any] | None = None
     ) -> bool:
         """
         Unfreeze a validator's trust after dispute resolution.
@@ -786,14 +755,14 @@ class TrustManager:
                     validator_id,
                     PositiveSignal.DISPUTE_PERFORMANCE,
                     scope,
-                    magnitude=dispute_outcome.get("magnitude", 0.05)
+                    magnitude=dispute_outcome.get("magnitude", 0.05),
                 )
             elif outcome_type == "negative":
                 self.record_negative_signal(
                     validator_id,
                     NegativeSignal.OVERRULED_BY_LOCK,
                     scope,
-                    magnitude=dispute_outcome.get("magnitude", 0.05)
+                    magnitude=dispute_outcome.get("magnitude", 0.05),
                 )
 
         return True
@@ -818,10 +787,7 @@ class TrustManager:
     # Anti-Centralization Safeguards (Section 10)
     # =========================================================================
 
-    def check_diversity_threshold(
-        self,
-        validator_ids: list[str]
-    ) -> dict[str, Any]:
+    def check_diversity_threshold(self, validator_ids: list[str]) -> dict[str, Any]:
         """
         Check if validator set meets diversity threshold.
 
@@ -846,13 +812,11 @@ class TrustManager:
             "unique_validators": unique_validators,
             "required_validators": MIN_VALIDATOR_DIVERSITY,
             "unique_types": len(unique_types),
-            "types_present": [t.value for t in unique_types]
+            "types_present": [t.value for t in unique_types],
         }
 
     def identify_minority_signals(
-        self,
-        weighted_signals: list[WeightedSignal],
-        threshold: float = 0.25
+        self, weighted_signals: list[WeightedSignal], threshold: float = 0.25
     ) -> list[WeightedSignal]:
         """
         Identify minority signals that must remain visible.
@@ -874,9 +838,7 @@ class TrustManager:
         return minority
 
     def validate_consensus_input(
-        self,
-        signals: list[WeightedSignal],
-        scope: TrustScope
+        self, signals: list[WeightedSignal], scope: TrustScope
     ) -> dict[str, Any]:
         """
         Validate inputs for weighted consensus calculation.
@@ -926,7 +888,7 @@ class TrustManager:
             "issues": issues,
             "warnings": warnings,
             "diversity": diversity,
-            "minority_count": len(self.identify_minority_signals(signals))
+            "minority_count": len(self.identify_minority_signals(signals)),
         }
 
     # =========================================================================
@@ -948,21 +910,18 @@ class TrustManager:
             "confidence_interval": profile.confidence_interval,
             "sample_size": profile.sample_size,
             "is_frozen": profile.is_frozen,
-            "days_since_activity": (
-                datetime.utcnow() - profile.last_activity
-            ).days,
+            "days_since_activity": (datetime.utcnow() - profile.last_activity).days,
             "scoped_scores": {
-                scope.value: score.score
-                for scope, score in profile.scoped_scores.items()
+                scope.value: score.score for scope, score in profile.scoped_scores.items()
             },
-            "base_weight": BASE_WEIGHTS.get(identity.validator_type.value, 1.0)
+            "base_weight": BASE_WEIGHTS.get(identity.validator_type.value, 1.0),
         }
 
     def list_validators(
         self,
         min_score: float | None = None,
         validator_type: ValidatorType | None = None,
-        scope: TrustScope | None = None
+        scope: TrustScope | None = None,
     ) -> list[dict[str, Any]]:
         """
         List validators matching criteria.
@@ -1022,8 +981,7 @@ def reset_trust_manager() -> None:
 
 
 def calculate_weighted_consensus(
-    signals: list[WeightedSignal],
-    aggregation: str = "weighted_average"
+    signals: list[WeightedSignal], aggregation: str = "weighted_average"
 ) -> dict[str, Any]:
     """
     Calculate weighted consensus from validator signals.
@@ -1040,31 +998,21 @@ def calculate_weighted_consensus(
         Consensus result
     """
     if not signals:
-        return {
-            "consensus": None,
-            "error": "No signals provided"
-        }
+        return {"consensus": None, "error": "No signals provided"}
 
     total_weight = sum(s.effective_weight for s in signals)
     if total_weight == 0:
-        return {
-            "consensus": None,
-            "error": "Total weight is zero"
-        }
+        return {"consensus": None, "error": "Total weight is zero"}
 
     # Check diversity
     manager = get_trust_manager()
     validation = manager.validate_consensus_input(
         signals,
-        TrustScope.SEMANTIC_PARSING  # Default scope
+        TrustScope.SEMANTIC_PARSING,  # Default scope
     )
 
     if not validation["valid"]:
-        return {
-            "consensus": None,
-            "error": "Validation failed",
-            "issues": validation["issues"]
-        }
+        return {"consensus": None, "error": "Validation failed", "issues": validation["issues"]}
 
     # For now, just return the weighted signals summary
     # Actual aggregation depends on signal type
@@ -1077,10 +1025,10 @@ def calculate_weighted_consensus(
             {
                 "validator_id": s.validator_id,
                 "effective_weight": s.effective_weight,
-                "normalized_weight": s.effective_weight / total_weight
+                "normalized_weight": s.effective_weight / total_weight,
             }
             for s in signals
-        ]
+        ],
     }
 
 
@@ -1090,13 +1038,10 @@ def get_ncip_007_config() -> dict[str, Any]:
         "version": "1.0",
         "base_weights": BASE_WEIGHTS,
         "max_effective_weight": MAX_EFFECTIVE_WEIGHT,
-        "decay": {
-            "lambda": DECAY_LAMBDA,
-            "inactivity_threshold_days": INACTIVITY_THRESHOLD_DAYS
-        },
+        "decay": {"lambda": DECAY_LAMBDA, "inactivity_threshold_days": INACTIVITY_THRESHOLD_DAYS},
         "safeguards": {
             "min_validator_diversity": MIN_VALIDATOR_DIVERSITY,
             "enforce_weight_cap": True,
-            "minority_signal_visibility": MINORITY_SIGNAL_VISIBILITY
-        }
+            "minority_signal_visibility": MINORITY_SIGNAL_VISIBILITY,
+        },
     }

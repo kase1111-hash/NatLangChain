@@ -18,13 +18,12 @@ This is NOT a gas system - fees are tips for prioritization, not requirements.
 """
 
 import hashlib
+import heapq
 import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Callable
-import heapq
-
+from typing import Any
 
 # =============================================================================
 # Constants
@@ -44,11 +43,11 @@ COMMUNITY_POOL_PERCENTAGE = 0.05  # 5% goes to community pool
 
 # Priority score weights
 PRIORITY_WEIGHTS = {
-    "fee_amount": 0.50,      # Fee is primary factor
-    "urgency_score": 0.20,   # Explicit urgency in contract
-    "age_factor": 0.15,      # Older contracts get priority
+    "fee_amount": 0.50,  # Fee is primary factor
+    "urgency_score": 0.20,  # Explicit urgency in contract
+    "age_factor": 0.15,  # Older contracts get priority
     "complexity_factor": 0.10,  # Simpler contracts slightly preferred
-    "community_interest": 0.05  # Community votes/interest
+    "community_interest": 0.05,  # Community votes/interest
 }
 
 # Fee patterns to extract from contracts
@@ -58,11 +57,9 @@ FEE_PATTERNS = [
     r"fee[:\s]+\$?([\d,]+(?:\.\d{2})?)",
     r"tip[:\s]+\$?([\d,]+(?:\.\d{2})?)",
     r"incentive[:\s]+\$?([\d,]+(?:\.\d{2})?)",
-
     # Currency-specific patterns
     r"([\d,]+(?:\.\d{2})?)\s*(?:USDC|USD|ETH|DAI)",
     r"\$\s*([\d,]+(?:\.\d{2})?)\s*(?:processing|fee|tip)?",
-
     # Natural language
     r"offering\s+\$?([\d,]+(?:\.\d{2})?)",
     r"will\s+pay\s+\$?([\d,]+(?:\.\d{2})?)\s+(?:for\s+)?processing",
@@ -73,30 +70,34 @@ FEE_PATTERNS = [
 # Enums
 # =============================================================================
 
+
 class ProcessingStatus(Enum):
     """Status of contract processing."""
-    QUEUED = "queued"                 # In queue, awaiting processing
-    CLAIMED = "claimed"               # Mediator claimed it
-    PROCESSING = "processing"         # Actively being processed
-    COMPLETED = "completed"           # Successfully processed
-    ABANDONED = "abandoned"           # Mediator abandoned
-    EXPIRED = "expired"               # Too old, removed from queue
+
+    QUEUED = "queued"  # In queue, awaiting processing
+    CLAIMED = "claimed"  # Mediator claimed it
+    PROCESSING = "processing"  # Actively being processed
+    COMPLETED = "completed"  # Successfully processed
+    ABANDONED = "abandoned"  # Mediator abandoned
+    EXPIRED = "expired"  # Too old, removed from queue
 
 
 class IncentiveType(Enum):
     """Types of incentives for processing."""
-    DIRECT_FEE = "direct_fee"         # Fee paid by contract submitter
+
+    DIRECT_FEE = "direct_fee"  # Fee paid by contract submitter
     COMMUNITY_SUBSIDY = "community_subsidy"  # From community pool
     REPUTATION_ONLY = "reputation_only"  # No monetary reward
-    BOUNTY = "bounty"                 # Special bounty for specific contracts
+    BOUNTY = "bounty"  # Special bounty for specific contracts
 
 
 class ProcessingReason(Enum):
     """Why a mediator chose to process."""
-    FEE_INCENTIVE = "fee_incentive"   # For the fee
-    REPUTATION = "reputation"         # Building reputation
+
+    FEE_INCENTIVE = "fee_incentive"  # For the fee
+    REPUTATION = "reputation"  # Building reputation
     COMMUNITY_SERVICE = "community_service"  # Altruistic
-    SPECIALTY = "specialty"           # In mediator's domain
+    SPECIALTY = "specialty"  # In mediator's domain
     QUEUE_CLEARING = "queue_clearing"  # Helping clear old items
 
 
@@ -104,13 +105,15 @@ class ProcessingReason(Enum):
 # Data Classes
 # =============================================================================
 
+
 @dataclass
 class FeeInfo:
     """Fee information extracted from a contract."""
+
     amount: float = 0.0
     currency: str = DEFAULT_FEE_CURRENCY
-    source: str = "not_specified"     # Where fee was found
-    is_explicit: bool = False         # Explicitly stated vs inferred
+    source: str = "not_specified"  # Where fee was found
+    is_explicit: bool = False  # Explicitly stated vs inferred
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize fee information to a dictionary."""
@@ -118,34 +121,36 @@ class FeeInfo:
             "amount": self.amount,
             "currency": self.currency,
             "source": self.source,
-            "is_explicit": self.is_explicit
+            "is_explicit": self.is_explicit,
         }
 
 
 @dataclass
 class ProcessingMetrics:
     """Metrics for a contract in the queue."""
-    fee_score: float = 0.0           # Normalized fee contribution
-    urgency_score: float = 0.0       # Urgency from 0-1
-    age_factor: float = 0.0          # Age-based boost
-    complexity_factor: float = 0.5   # Complexity penalty/bonus
+
+    fee_score: float = 0.0  # Normalized fee contribution
+    urgency_score: float = 0.0  # Urgency from 0-1
+    age_factor: float = 0.0  # Age-based boost
+    complexity_factor: float = 0.5  # Complexity penalty/bonus
     community_interest: float = 0.0  # Community votes
 
     @property
     def priority_score(self) -> float:
         """Calculate overall priority score."""
         return (
-            PRIORITY_WEIGHTS["fee_amount"] * self.fee_score +
-            PRIORITY_WEIGHTS["urgency_score"] * self.urgency_score +
-            PRIORITY_WEIGHTS["age_factor"] * self.age_factor +
-            PRIORITY_WEIGHTS["complexity_factor"] * self.complexity_factor +
-            PRIORITY_WEIGHTS["community_interest"] * self.community_interest
+            PRIORITY_WEIGHTS["fee_amount"] * self.fee_score
+            + PRIORITY_WEIGHTS["urgency_score"] * self.urgency_score
+            + PRIORITY_WEIGHTS["age_factor"] * self.age_factor
+            + PRIORITY_WEIGHTS["complexity_factor"] * self.complexity_factor
+            + PRIORITY_WEIGHTS["community_interest"] * self.community_interest
         )
 
 
 @dataclass
 class QueuedContract:
     """A contract in the processing queue."""
+
     contract_id: str
     content: str
     submitter_id: str
@@ -163,7 +168,7 @@ class QueuedContract:
 
     # Incentive tracking
     incentive_type: IncentiveType = IncentiveType.REPUTATION_ONLY
-    subsidy_amount: float = 0.0      # Community subsidy if any
+    subsidy_amount: float = 0.0  # Community subsidy if any
 
     def __lt__(self, other: "QueuedContract") -> bool:
         """For heap comparison - higher priority = lower number."""
@@ -180,13 +185,14 @@ class QueuedContract:
             "submitted_at": self.submitted_at.isoformat(),
             "claimed_by": self.claimed_by,
             "incentive_type": self.incentive_type.value,
-            "age_hours": (datetime.utcnow() - self.submitted_at).total_seconds() / 3600
+            "age_hours": (datetime.utcnow() - self.submitted_at).total_seconds() / 3600,
         }
 
 
 @dataclass
 class MediatorEarnings:
     """Track mediator earnings from processing."""
+
     mediator_id: str
     total_earned: float = 0.0
     fees_collected: float = 0.0
@@ -204,13 +210,14 @@ class MediatorEarnings:
             "subsidies_received": self.subsidies_received,
             "zero_fee_processed": self.zero_fee_processed,
             "reputation_bonuses": self.reputation_bonuses,
-            "contracts_processed": self.contracts_processed
+            "contracts_processed": self.contracts_processed,
         }
 
 
 @dataclass
 class CommunityPool:
     """Community pool for subsidizing zero-fee processing."""
+
     balance: float = 0.0
     total_contributions: float = 0.0
     total_disbursed: float = 0.0
@@ -231,12 +238,14 @@ class CommunityPool:
 
         self.balance -= amount
         self.total_disbursed += amount
-        self.subsidies_given.append({
-            "contract_id": contract_id,
-            "mediator_id": mediator_id,
-            "amount": amount,
-            "timestamp": datetime.utcnow().isoformat()
-        })
+        self.subsidies_given.append(
+            {
+                "contract_id": contract_id,
+                "mediator_id": mediator_id,
+                "amount": amount,
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+        )
         return True
 
     def to_dict(self) -> dict[str, Any]:
@@ -246,13 +255,14 @@ class CommunityPool:
             "total_contributions": self.total_contributions,
             "total_disbursed": self.total_disbursed,
             "currency": self.currency,
-            "recent_subsidies": self.subsidies_given[-10:]  # Last 10
+            "recent_subsidies": self.subsidies_given[-10:],  # Last 10
         }
 
 
 # =============================================================================
 # Fee Extraction
 # =============================================================================
+
 
 class FeeExtractor:
     """Extract fee information from contract content."""
@@ -282,17 +292,14 @@ class FeeExtractor:
                         amount=amount,
                         currency=currency,
                         source=pattern.pattern[:50],  # First 50 chars of pattern
-                        is_explicit=True
+                        is_explicit=True,
                     )
                 except (ValueError, IndexError):
                     continue
 
         # No fee found - this is a zero-fee contract
         return FeeInfo(
-            amount=0.0,
-            currency=DEFAULT_FEE_CURRENCY,
-            source="not_specified",
-            is_explicit=False
+            amount=0.0, currency=DEFAULT_FEE_CURRENCY, source="not_specified", is_explicit=False
         )
 
     def _detect_currency(self, content: str, position: int) -> str:
@@ -318,6 +325,7 @@ class FeeExtractor:
 # Priority Queue Manager
 # =============================================================================
 
+
 class VoluntaryProcessingQueue:
     """
     Manages the priority queue for voluntary contract processing.
@@ -333,7 +341,7 @@ class VoluntaryProcessingQueue:
         self,
         fee_currency: str = DEFAULT_FEE_CURRENCY,
         max_claim_duration_hours: int = 4,
-        queue_expiry_days: int = 30
+        queue_expiry_days: int = 30,
     ):
         self.fee_currency = fee_currency
         self.max_claim_duration = timedelta(hours=max_claim_duration_hours)
@@ -360,7 +368,7 @@ class VoluntaryProcessingQueue:
             "total_processed": 0,
             "zero_fee_processed": 0,
             "total_fees_collected": 0.0,
-            "average_wait_hours": 0.0
+            "average_wait_hours": 0.0,
         }
 
         # Event counter
@@ -382,7 +390,7 @@ class VoluntaryProcessingQueue:
         content: str,
         submitter_id: str,
         urgency: float = 0.0,
-        metadata: dict[str, Any] | None = None
+        metadata: dict[str, Any] | None = None,
     ) -> QueuedContract:
         """
         Submit a contract to the processing queue.
@@ -416,7 +424,7 @@ class VoluntaryProcessingQueue:
             submitter_id=submitter_id,
             fee=fee,
             metrics=metrics,
-            incentive_type=incentive_type
+            incentive_type=incentive_type,
         )
 
         # Add to queue
@@ -433,12 +441,7 @@ class VoluntaryProcessingQueue:
 
         return contract
 
-    def _calculate_metrics(
-        self,
-        content: str,
-        fee: FeeInfo,
-        urgency: float
-    ) -> ProcessingMetrics:
+    def _calculate_metrics(self, content: str, fee: FeeInfo, urgency: float) -> ProcessingMetrics:
         """Calculate processing metrics for a contract."""
         # Normalize fee (assume $1000 is "high")
         fee_score = min(1.0, fee.amount / 1000.0)
@@ -457,7 +460,7 @@ class VoluntaryProcessingQueue:
             urgency_score=min(1.0, max(0.0, urgency)),
             age_factor=0.0,  # Will be updated over time
             complexity_factor=complexity,
-            community_interest=0.0  # Can be updated by votes
+            community_interest=0.0,  # Can be updated by votes
         )
 
     def update_age_factors(self) -> int:
@@ -514,9 +517,7 @@ class VoluntaryProcessingQueue:
         return available
 
     def get_zero_fee_contracts(
-        self,
-        min_age_hours: float = 0.0,
-        limit: int = 20
+        self, min_age_hours: float = 0.0, limit: int = 20
     ) -> list[QueuedContract]:
         """
         Get zero-fee contracts for voluntary processing.
@@ -549,7 +550,7 @@ class VoluntaryProcessingQueue:
         self,
         contract_id: str,
         mediator_id: str,
-        reason: ProcessingReason = ProcessingReason.FEE_INCENTIVE
+        reason: ProcessingReason = ProcessingReason.FEE_INCENTIVE,
     ) -> tuple[bool, str]:
         """
         Mediator claims a contract for processing.
@@ -577,10 +578,7 @@ class VoluntaryProcessingQueue:
         return (True, f"Contract claimed by {mediator_id}")
 
     def complete_processing(
-        self,
-        contract_id: str,
-        mediator_id: str,
-        apply_community_subsidy: bool = False
+        self, contract_id: str, mediator_id: str, apply_community_subsidy: bool = False
     ) -> tuple[bool, dict[str, Any]]:
         """
         Mark contract as processed and distribute incentives.
@@ -598,7 +596,10 @@ class VoluntaryProcessingQueue:
             return (False, {"error": f"Contract {contract_id} not found"})
 
         if contract.claimed_by != mediator_id:
-            return (False, {"error": f"Contract claimed by {contract.claimed_by}, not {mediator_id}"})
+            return (
+                False,
+                {"error": f"Contract claimed by {contract.claimed_by}, not {mediator_id}"},
+            )
 
         if contract.status not in (ProcessingStatus.CLAIMED, ProcessingStatus.PROCESSING):
             return (False, {"error": f"Contract is {contract.status.value}"})
@@ -648,21 +649,20 @@ class VoluntaryProcessingQueue:
         avg = self._stats["average_wait_hours"]
         self._stats["average_wait_hours"] = (avg * (total - 1) + wait_hours) / total
 
-        return (True, {
-            "contract_id": contract_id,
-            "mediator_id": mediator_id,
-            "fee_earned": fee_amount * (1 - COMMUNITY_POOL_PERCENTAGE) if fee_amount > 0 else 0,
-            "subsidy_earned": subsidy_amount,
-            "reputation_bonus": reputation_bonus,
-            "is_zero_fee": fee_amount == 0,
-            "wait_hours": wait_hours
-        })
+        return (
+            True,
+            {
+                "contract_id": contract_id,
+                "mediator_id": mediator_id,
+                "fee_earned": fee_amount * (1 - COMMUNITY_POOL_PERCENTAGE) if fee_amount > 0 else 0,
+                "subsidy_earned": subsidy_amount,
+                "reputation_bonus": reputation_bonus,
+                "is_zero_fee": fee_amount == 0,
+                "wait_hours": wait_hours,
+            },
+        )
 
-    def abandon_contract(
-        self,
-        contract_id: str,
-        mediator_id: str
-    ) -> tuple[bool, str]:
+    def abandon_contract(self, contract_id: str, mediator_id: str) -> tuple[bool, str]:
         """
         Mediator abandons a claimed contract.
 
@@ -726,9 +726,7 @@ class VoluntaryProcessingQueue:
     def get_top_earners(self, limit: int = 10) -> list[dict[str, Any]]:
         """Get top earning mediators."""
         sorted_earnings = sorted(
-            self._earnings.values(),
-            key=lambda e: e.total_earned,
-            reverse=True
+            self._earnings.values(), key=lambda e: e.total_earned, reverse=True
         )
         return [e.to_dict() for e in sorted_earnings[:limit]]
 
@@ -743,15 +741,10 @@ class VoluntaryProcessingQueue:
             "success": True,
             "amount": amount,
             "funder": funder_id,
-            "new_balance": self.community_pool.balance
+            "new_balance": self.community_pool.balance,
         }
 
-    def add_bounty(
-        self,
-        contract_id: str,
-        amount: float,
-        funder_id: str
-    ) -> tuple[bool, str]:
+    def add_bounty(self, contract_id: str, amount: float, funder_id: str) -> tuple[bool, str]:
         """
         Add bounty to a specific contract.
 
@@ -813,13 +806,15 @@ class VoluntaryProcessingQueue:
             "claimed_processing": len(claimed),
             "zero_fee_waiting": len(zero_fee_queued),
             "paid_waiting": len(paid_queued),
-            "average_fee": sum(c.fee.amount for c in paid_queued) / len(paid_queued) if paid_queued else 0,
+            "average_fee": sum(c.fee.amount for c in paid_queued) / len(paid_queued)
+            if paid_queued
+            else 0,
             "total_submitted": self._stats["total_submitted"],
             "total_processed": self._stats["total_processed"],
             "zero_fee_processed": self._stats["zero_fee_processed"],
             "total_fees_collected": self._stats["total_fees_collected"],
             "average_wait_hours": self._stats["average_wait_hours"],
-            "community_pool_balance": self.community_pool.balance
+            "community_pool_balance": self.community_pool.balance,
         }
 
     def get_contract_status(self, contract_id: str) -> dict[str, Any] | None:
@@ -856,9 +851,10 @@ class VoluntaryProcessingQueue:
 # Integration with Mediator Reputation
 # =============================================================================
 
+
 def apply_zero_fee_reputation_bonus(
     mediator_id: str,
-    reputation_manager: Any  # MediatorReputationManager
+    reputation_manager: Any,  # MediatorReputationManager
 ) -> float | None:
     """
     Apply reputation bonus to mediator for processing zero-fee contract.
@@ -915,5 +911,5 @@ def get_fee_system_config() -> dict[str, Any]:
         "zero_fee_age_boost_hours": ZERO_FEE_AGE_BOOST_HOURS,
         "priority_weights": PRIORITY_WEIGHTS,
         "is_mandatory": False,
-        "design_principle": "Fees are tips for prioritization, not requirements. All valid contracts can be processed."
+        "design_principle": "Fees are tips for prioritization, not requirements. All valid contracts can be processed.",
     }

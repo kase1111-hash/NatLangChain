@@ -15,7 +15,6 @@ import type {
   ValidationResult,
   MineRequest,
   MineResponse,
-  Block,
   BlockResponse,
   LatestBlockResponse,
   EntriesByAuthorResponse,

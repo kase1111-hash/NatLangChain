@@ -27,13 +27,15 @@ import socket
 import threading
 import time
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 
 @dataclass
 class InstanceInfo:
     """Information about an API instance."""
+
     instance_id: str
     hostname: str
     port: int
@@ -104,6 +106,7 @@ class InstanceCoordinator:
         """Initialize Redis connection."""
         try:
             import redis
+
             self._redis = redis.from_url(self._redis_url)
         except ImportError:
             self._redis = None
@@ -181,21 +184,25 @@ class InstanceCoordinator:
     def _serialize_instance(self, info: InstanceInfo) -> str:
         """Serialize instance info to JSON."""
         import json
-        return json.dumps({
-            "instance_id": info.instance_id,
-            "hostname": info.hostname,
-            "port": info.port,
-            "started_at": info.started_at,
-            "last_heartbeat": info.last_heartbeat,
-            "metadata": info.metadata,
-            "is_leader": info.is_leader,
-        })
+
+        return json.dumps(
+            {
+                "instance_id": info.instance_id,
+                "hostname": info.hostname,
+                "port": info.port,
+                "started_at": info.started_at,
+                "last_heartbeat": info.last_heartbeat,
+                "metadata": info.metadata,
+                "is_leader": info.is_leader,
+            }
+        )
 
     def _deserialize_instance(self, data: bytes | str) -> InstanceInfo:
         """Deserialize instance info from JSON."""
         import json
+
         if isinstance(data, bytes):
-            data = data.decode('utf-8')
+            data = data.decode("utf-8")
         d = json.loads(data)
         return InstanceInfo(
             instance_id=d["instance_id"],
@@ -216,15 +223,17 @@ class InstanceCoordinator:
         """
         if not self._redis:
             # Single instance mode
-            return [InstanceInfo(
-                instance_id=self._instance_id,
-                hostname=self._hostname,
-                port=self._port,
-                started_at=self._started_at,
-                last_heartbeat=time.time(),
-                metadata=self._metadata,
-                is_leader=True,
-            )]
+            return [
+                InstanceInfo(
+                    instance_id=self._instance_id,
+                    hostname=self._hostname,
+                    port=self._port,
+                    started_at=self._started_at,
+                    last_heartbeat=time.time(),
+                    metadata=self._metadata,
+                    is_leader=True,
+                )
+            ]
 
         instances = []
         pattern = f"{self._key_prefix}*"
@@ -262,7 +271,7 @@ class InstanceCoordinator:
 
         leader = self._redis.get(self._leader_key)
         if leader:
-            return leader.decode('utf-8') == self._instance_id
+            return leader.decode("utf-8") == self._instance_id
         return False
 
     def _try_become_leader(self) -> bool:
@@ -284,7 +293,7 @@ class InstanceCoordinator:
 
         # If we're already leader, extend TTL
         leader = self._redis.get(self._leader_key)
-        if leader and leader.decode('utf-8') == self._instance_id:
+        if leader and leader.decode("utf-8") == self._instance_id:
             self._redis.expire(self._leader_key, ttl)
             return True
 
@@ -321,7 +330,7 @@ class InstanceCoordinator:
         if not leader_id:
             return None
 
-        leader_id = leader_id.decode('utf-8')
+        leader_id = leader_id.decode("utf-8")
         key = f"{self._key_prefix}{leader_id}"
         data = self._redis.get(key)
 

@@ -4,16 +4,16 @@ Tests for horizontal scaling infrastructure.
 
 import os
 import sys
-import time
 import threading
+import time
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 import pytest
 
-from scaling.locking import LocalLockManager, LockInfo
-from scaling.cache import LocalCache, CacheEntry
+from scaling.cache import CacheEntry, LocalCache
 from scaling.coordinator import InstanceCoordinator, InstanceInfo
+from scaling.locking import LocalLockManager, LockInfo
 
 
 class TestLocalLockManager:

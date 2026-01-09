@@ -29,15 +29,17 @@ class JurisdictionRole(Enum):
 
     A jurisdiction MUST NOT be granted semantic authority.
     """
-    ENFORCEMENT = "enforcement"      # Where remedies may be sought
-    INTERPRETIVE = "interpretive"    # Where courts may interpret facts (not semantics)
-    PROCEDURAL = "procedural"        # Governs process only
+
+    ENFORCEMENT = "enforcement"  # Where remedies may be sought
+    INTERPRETIVE = "interpretive"  # Where courts may interpret facts (not semantics)
+    PROCEDURAL = "procedural"  # Governs process only
 
 
 class LTAViolation(Enum):
     """
     Legal Translation Artifact violations per NCIP-006 Section 7.
     """
+
     INTRODUCES_OBLIGATION = "introduces_obligation"
     REMOVES_OBLIGATION = "removes_obligation"
     NARROWS_SCOPE = "narrows_scope"
@@ -52,29 +54,127 @@ class LTAViolation(Enum):
 
 class CourtRulingType(Enum):
     """Types of court rulings and their handling."""
-    ENFORCEMENT = "enforcement"        # Affects enforcement only (allowed)
-    SEMANTIC_OVERRIDE = "semantic"     # Attempts to redefine meaning (rejected)
-    PROCEDURAL = "procedural"          # Process-related (allowed)
-    VOID_CONTRACT = "void_contract"    # Voids the contract (allowed, halts execution)
+
+    ENFORCEMENT = "enforcement"  # Affects enforcement only (allowed)
+    SEMANTIC_OVERRIDE = "semantic"  # Attempts to redefine meaning (rejected)
+    PROCEDURAL = "procedural"  # Process-related (allowed)
+    VOID_CONTRACT = "void_contract"  # Voids the contract (allowed, halts execution)
 
 
 # ISO 3166-1 alpha-2 country codes (common subset)
 VALID_COUNTRY_CODES = {
-    "US", "CA", "GB", "DE", "FR", "IT", "ES", "PT", "NL", "BE",
-    "CH", "AT", "AU", "NZ", "JP", "KR", "CN", "HK", "SG", "IN",
-    "BR", "MX", "AR", "CL", "CO", "PE", "ZA", "AE", "SA", "IL",
-    "RU", "UA", "PL", "CZ", "SK", "HU", "RO", "BG", "GR", "TR",
-    "SE", "NO", "DK", "FI", "IE", "LU", "MY", "ID", "TH", "VN",
-    "PH", "TW", "EG", "NG", "KE", "MA", "GH"
+    "US",
+    "CA",
+    "GB",
+    "DE",
+    "FR",
+    "IT",
+    "ES",
+    "PT",
+    "NL",
+    "BE",
+    "CH",
+    "AT",
+    "AU",
+    "NZ",
+    "JP",
+    "KR",
+    "CN",
+    "HK",
+    "SG",
+    "IN",
+    "BR",
+    "MX",
+    "AR",
+    "CL",
+    "CO",
+    "PE",
+    "ZA",
+    "AE",
+    "SA",
+    "IL",
+    "RU",
+    "UA",
+    "PL",
+    "CZ",
+    "SK",
+    "HU",
+    "RO",
+    "BG",
+    "GR",
+    "TR",
+    "SE",
+    "NO",
+    "DK",
+    "FI",
+    "IE",
+    "LU",
+    "MY",
+    "ID",
+    "TH",
+    "VN",
+    "PH",
+    "TW",
+    "EG",
+    "NG",
+    "KE",
+    "MA",
+    "GH",
 }
 
 # US state codes for subdivision support
 US_STATE_CODES = {
-    "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA",
-    "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD",
-    "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ",
-    "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC",
-    "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY", "DC"
+    "AL",
+    "AK",
+    "AZ",
+    "AR",
+    "CA",
+    "CO",
+    "CT",
+    "DE",
+    "FL",
+    "GA",
+    "HI",
+    "ID",
+    "IL",
+    "IN",
+    "IA",
+    "KS",
+    "KY",
+    "LA",
+    "ME",
+    "MD",
+    "MA",
+    "MI",
+    "MN",
+    "MS",
+    "MO",
+    "MT",
+    "NE",
+    "NV",
+    "NH",
+    "NJ",
+    "NM",
+    "NY",
+    "NC",
+    "ND",
+    "OH",
+    "OK",
+    "OR",
+    "PA",
+    "RI",
+    "SC",
+    "SD",
+    "TN",
+    "TX",
+    "UT",
+    "VT",
+    "VA",
+    "WA",
+    "WV",
+    "WI",
+    "WY",
+    "DC",
 }
 
 
@@ -113,6 +213,7 @@ class JurisdictionDeclaration:
 
     Any Prose Contract with legal or economic impact MUST declare governing jurisdictions.
     """
+
     code: str  # ISO 3166-1 country code, optionally with subdivision (e.g., "US-CA")
     role: JurisdictionRole
     declared_at: datetime = field(default_factory=datetime.utcnow)
@@ -145,7 +246,7 @@ class JurisdictionDeclaration:
             "role": self.role.value,
             "country": self.country,
             "subdivision": self.subdivision,
-            "declared_at": self.declared_at.isoformat()
+            "declared_at": self.declared_at.isoformat(),
         }
 
 
@@ -160,6 +261,7 @@ class LegalTranslationArtifact:
     - Non-authoritative
     - Must reference canonical semantics
     """
+
     lta_id: str
     prose_contract_id: str
     target_jurisdiction: str  # ISO 3166-1 code
@@ -197,10 +299,10 @@ class LegalTranslationArtifact:
     def has_required_references(self) -> bool:
         """Check if LTA has all required references per Section 6.2."""
         return bool(
-            self.prose_contract_id and
-            self.registry_version and
-            self.temporal_fixity_timestamp and
-            self.semantic_authority_disclaimer
+            self.prose_contract_id
+            and self.registry_version
+            and self.temporal_fixity_timestamp
+            and self.semantic_authority_disclaimer
         )
 
     @property
@@ -228,6 +330,7 @@ class CourtRuling:
     - Meaning does not change
     - Only enforcement outcome is applied
     """
+
     ruling_id: str
     jurisdiction: str
     ruling_type: CourtRulingType
@@ -267,6 +370,7 @@ class JurisdictionConflict:
     - Most restrictive enforcement outcome applies
     - Meaning remains unchanged
     """
+
     conflict_id: str
     jurisdictions: list[str]
     prose_contract_id: str
@@ -287,6 +391,7 @@ class JurisdictionalBridge:
 
     Encapsulates all jurisdictional configuration for a Prose Contract.
     """
+
     prose_contract_id: str
     jurisdictions: list[JurisdictionDeclaration] = field(default_factory=list)
     ltas: dict[str, LegalTranslationArtifact] = field(default_factory=dict)
@@ -318,11 +423,7 @@ class JurisdictionalBridge:
         """Check if at least one jurisdiction is declared."""
         return len(self.jurisdictions) > 0
 
-    def add_jurisdiction(
-        self,
-        code: str,
-        role: JurisdictionRole
-    ) -> tuple[bool, str]:
+    def add_jurisdiction(self, code: str, role: JurisdictionRole) -> tuple[bool, str]:
         """Add a jurisdiction declaration."""
         try:
             decl = JurisdictionDeclaration(code=code, role=role)
@@ -337,12 +438,11 @@ class JurisdictionalBridge:
             "jurisdictional_bridge": {
                 "version": "1.0",
                 "governing_jurisdictions": [
-                    {"code": j.code, "role": j.role.value}
-                    for j in self.jurisdictions
+                    {"code": j.code, "role": j.role.value} for j in self.jurisdictions
                 ],
                 "semantic_authority": {
                     "source": self.semantic_authority_source,
-                    "allow_external_override": self.allow_external_semantic_override
+                    "allow_external_override": self.allow_external_semantic_override,
                 },
                 "legal_translation_artifacts": {
                     "allowed": self.ltas_allowed,
@@ -350,14 +450,14 @@ class JurisdictionalBridge:
                     "require_reference": [
                         "prose_contract_id",
                         "registry_version",
-                        "temporal_fixity"
-                    ]
+                        "temporal_fixity",
+                    ],
                 },
                 "validator_rules": {
                     "reject_semantic_override": True,
                     "max_allowed_drift": self.max_allowed_drift,
-                    "escalate_on_violation": self.escalate_on_violation
-                }
+                    "escalate_on_violation": self.escalate_on_violation,
+                },
             }
         }
 
@@ -401,8 +501,7 @@ class JurisdictionalManager:
         return self.bridges.get(prose_contract_id)
 
     def validate_jurisdiction_declaration(
-        self,
-        bridge: JurisdictionalBridge
+        self, bridge: JurisdictionalBridge
     ) -> tuple[bool, list[str]]:
         """
         Validate jurisdiction declaration per NCIP-006 Section 3.
@@ -423,8 +522,7 @@ class JurisdictionalManager:
         # Check for at least one enforcement jurisdiction
         if not bridge.enforcement_jurisdictions:
             warnings.append(
-                "Warning: No enforcement jurisdiction declared. "
-                "Remedies may not be available."
+                "Warning: No enforcement jurisdiction declared. Remedies may not be available."
             )
 
         return (True, warnings)
@@ -440,7 +538,7 @@ class JurisdictionalManager:
         legal_prose: str,
         registry_version: str,
         temporal_fixity_timestamp: datetime,
-        referenced_terms: list[str] | None = None
+        referenced_terms: list[str] | None = None,
     ) -> tuple[LegalTranslationArtifact | None, list[str]]:
         """
         Create a Legal Translation Artifact per NCIP-006 Section 6.
@@ -469,7 +567,7 @@ class JurisdictionalManager:
             legal_prose=legal_prose,
             registry_version=registry_version,
             temporal_fixity_timestamp=temporal_fixity_timestamp,
-            referenced_terms=referenced_terms or []
+            referenced_terms=referenced_terms or [],
         )
 
         # Store in bridge if exists
@@ -480,9 +578,7 @@ class JurisdictionalManager:
         return (lta, [])
 
     def validate_lta(
-        self,
-        lta: LegalTranslationArtifact,
-        original_prose: str
+        self, lta: LegalTranslationArtifact, original_prose: str
     ) -> tuple[bool, list[LTAViolation]]:
         """
         Validate an LTA per NCIP-006 Section 7.
@@ -510,7 +606,7 @@ class JurisdictionalManager:
             r"this\s+document\s+(?:is|shall\s+be)\s+(?:the\s+)?authoritative",
             r"supersedes?\s+(?:the\s+)?(?:original|prose\s+contract)",
             r"(?:has|have)\s+semantic\s+authority",
-            r"redefines?\s+(?:the\s+)?meaning"
+            r"redefines?\s+(?:the\s+)?meaning",
         ]
         legal_lower = lta.legal_prose.lower()
         for pattern in authority_patterns:
@@ -538,11 +634,7 @@ class JurisdictionalManager:
 
         return (len(violations) == 0, violations)
 
-    def _check_obligation_changes(
-        self,
-        original: str,
-        legal: str
-    ) -> list[LTAViolation]:
+    def _check_obligation_changes(self, original: str, legal: str) -> list[LTAViolation]:
         """Check for obligation changes between original and legal prose."""
         violations = []
 
@@ -592,8 +684,8 @@ class JurisdictionalManager:
         length_score = min(length_ratio / 3.0, 0.4)
 
         # Word overlap
-        orig_words = set(re.findall(r'\b\w+\b', original.lower()))
-        legal_words = set(re.findall(r'\b\w+\b', legal.lower()))
+        orig_words = set(re.findall(r"\b\w+\b", original.lower()))
+        legal_words = set(re.findall(r"\b\w+\b", legal.lower()))
 
         if orig_words:
             overlap = len(orig_words & legal_words) / len(orig_words)
@@ -602,8 +694,8 @@ class JurisdictionalManager:
             overlap_score = 0.4
 
         # Number preservation
-        orig_nums = set(re.findall(r'\b\d+\b', original))
-        legal_nums = set(re.findall(r'\b\d+\b', legal))
+        orig_nums = set(re.findall(r"\b\d+\b", original))
+        legal_nums = set(re.findall(r"\b\d+\b", legal))
         if orig_nums:
             num_overlap = len(orig_nums & legal_nums) / len(orig_nums)
             num_score = (1 - num_overlap) * 0.2
@@ -629,7 +721,7 @@ class JurisdictionalManager:
         jurisdiction: str,
         ruling_type: CourtRulingType,
         summary: str,
-        enforcement_outcome: str | None = None
+        enforcement_outcome: str | None = None,
     ) -> CourtRuling:
         """
         Handle a court ruling per NCIP-006 Section 8.
@@ -648,7 +740,7 @@ class JurisdictionalManager:
             ruling_date=datetime.utcnow(),
             summary=summary,
             prose_contract_id=prose_contract_id,
-            enforcement_outcome=enforcement_outcome
+            enforcement_outcome=enforcement_outcome,
         )
 
         # Handle based on type
@@ -673,11 +765,7 @@ class JurisdictionalManager:
     # -------------------------------------------------------------------------
 
     def handle_jurisdiction_conflict(
-        self,
-        prose_contract_id: str,
-        jurisdictions: list[str],
-        conflict_type: str,
-        description: str
+        self, prose_contract_id: str, jurisdictions: list[str], conflict_type: str, description: str
     ) -> JurisdictionConflict:
         """
         Handle cross-jurisdiction conflict per NCIP-006 Section 10.
@@ -695,7 +783,7 @@ class JurisdictionalManager:
             prose_contract_id=prose_contract_id,
             conflict_type=conflict_type,
             description=description,
-            semantic_lock_applied=True
+            semantic_lock_applied=True,
         )
 
         # Store in bridge
@@ -706,10 +794,7 @@ class JurisdictionalManager:
         return conflict
 
     def resolve_conflict(
-        self,
-        conflict: JurisdictionConflict,
-        most_restrictive_outcome: str,
-        resolution_notes: str
+        self, conflict: JurisdictionConflict, most_restrictive_outcome: str, resolution_notes: str
     ) -> bool:
         """Resolve a jurisdiction conflict with most restrictive outcome."""
         conflict.most_restrictive_outcome = most_restrictive_outcome
@@ -721,10 +806,7 @@ class JurisdictionalManager:
     # Validation & Reporting
     # -------------------------------------------------------------------------
 
-    def validator_check_jurisdiction(
-        self,
-        prose_contract_id: str
-    ) -> dict[str, Any]:
+    def validator_check_jurisdiction(self, prose_contract_id: str) -> dict[str, Any]:
         """
         Validator check for jurisdiction declaration.
 
@@ -737,7 +819,7 @@ class JurisdictionalManager:
                 "status": "error",
                 "message": f"No bridge found for {prose_contract_id}",
                 "drift_level": "D2",
-                "execution_paused": True
+                "execution_paused": True,
             }
 
         valid, warnings = self.validate_jurisdiction_declaration(bridge)
@@ -748,13 +830,11 @@ class JurisdictionalManager:
             "enforcement_jurisdictions": [j.code for j in bridge.enforcement_jurisdictions],
             "drift_level": "D0" if valid else "D2",
             "execution_paused": not valid,
-            "warnings": warnings
+            "warnings": warnings,
         }
 
     def validator_check_lta(
-        self,
-        lta: LegalTranslationArtifact,
-        original_prose: str
+        self, lta: LegalTranslationArtifact, original_prose: str
     ) -> dict[str, Any]:
         """Validator check for LTA compliance."""
         valid, violations = self.validate_lta(lta, original_prose)
@@ -766,14 +846,11 @@ class JurisdictionalManager:
             "drift_level": lta.drift_level.value if lta.drift_level else None,
             "has_required_references": lta.has_required_references,
             "violations": [v.value for v in violations],
-            "rejection_required": LTAViolation.EXCESSIVE_DRIFT in violations or
-                                   LTAViolation.CLAIMS_SEMANTIC_AUTHORITY in violations
+            "rejection_required": LTAViolation.EXCESSIVE_DRIFT in violations
+            or LTAViolation.CLAIMS_SEMANTIC_AUTHORITY in violations,
         }
 
-    def generate_bridge_spec(
-        self,
-        prose_contract_id: str
-    ) -> dict[str, Any]:
+    def generate_bridge_spec(self, prose_contract_id: str) -> dict[str, Any]:
         """Generate machine-readable jurisdiction bridge spec per Section 11."""
         bridge = self.get_bridge(prose_contract_id)
 
@@ -805,5 +882,5 @@ class JurisdictionalManager:
             "jurisdictions_used": jurisdictions_used,
             "supported_countries": len(VALID_COUNTRY_CODES),
             "semantic_authority": "natlangchain",
-            "external_override_allowed": False
+            "external_override_allowed": False,
         }

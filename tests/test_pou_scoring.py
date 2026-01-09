@@ -32,10 +32,7 @@ from pou_scoring import (
 # Sample PoU data for testing
 VALID_POU_DATA = {
     "contract_id": "test-contract-001",
-    "signer": {
-        "id": "did:natlang:alice123",
-        "role": "provider"
-    },
+    "signer": {"id": "did:natlang:alice123", "role": "provider"},
     "language": "en",
     "anchor_language": "en",
     "sections": {
@@ -45,21 +42,18 @@ VALID_POU_DATA = {
         "obligations": [
             "Provide 5TB usable storage",
             "Maintain ≥100MB/s sustained read throughput",
-            "Respond to retrieval proofs"
+            "Respond to retrieval proofs",
         ],
-        "rights": [
-            "Receive monthly payment",
-            "Earn performance multiplier if uptime targets met"
-        ],
+        "rights": ["Receive monthly payment", "Earn performance multiplier if uptime targets met"],
         "consequences": [
             "Reduced multiplier for downtime",
-            "Contract termination if sustained breach occurs"
+            "Contract termination if sustained breach occurs",
         ],
         "acceptance": {
             "statement": "I confirm that this reflects my understanding and I agree to these terms.",
-            "timestamp": "2025-12-24T18:40:00Z"
-        }
-    }
+            "timestamp": "2025-12-24T18:40:00Z",
+        },
+    },
 }
 
 SAMPLE_CONTRACT = """
@@ -144,10 +138,7 @@ class TestFinalScoreCalculation:
         """Final score should be the minimum of all dimensions"""
         scorer = PoUScorer()
         final, status = scorer.calculate_final_score(
-            coverage=0.95,
-            fidelity=0.92,
-            consistency=0.88,
-            completeness=0.91
+            coverage=0.95, fidelity=0.92, consistency=0.88, completeness=0.91
         )
         assert final == 0.88
         assert status == PoUStatus.MARGINAL
@@ -156,10 +147,7 @@ class TestFinalScoreCalculation:
         """All high scores should result in Verified"""
         scorer = PoUScorer()
         final, status = scorer.calculate_final_score(
-            coverage=0.95,
-            fidelity=0.92,
-            consistency=0.98,
-            completeness=0.91
+            coverage=0.95, fidelity=0.92, consistency=0.98, completeness=0.91
         )
         assert final == 0.91
         assert status == PoUStatus.VERIFIED
@@ -168,10 +156,7 @@ class TestFinalScoreCalculation:
         """One low dimension should cause overall failure"""
         scorer = PoUScorer()
         final, status = scorer.calculate_final_score(
-            coverage=0.45,
-            fidelity=0.92,
-            consistency=0.98,
-            completeness=0.91
+            coverage=0.45, fidelity=0.92, consistency=0.98, completeness=0.91
         )
         assert final == 0.45
         assert status == PoUStatus.FAILED
@@ -195,7 +180,7 @@ class TestPoUStructureValidation:
                 "obligations": ["Test obligation"],
                 "rights": ["Test right"],
                 "consequences": ["Test consequence"],
-                "acceptance": {"statement": "I accept"}
+                "acceptance": {"statement": "I accept"},
             }
         }
         is_valid, issues = scorer.validate_pou_structure(invalid_pou)
@@ -210,7 +195,7 @@ class TestPoUStructureValidation:
                 "summary": {"text": "I understand the contract terms"},
                 "rights": ["Test right"],
                 "consequences": ["Test consequence"],
-                "acceptance": {"statement": "I accept"}
+                "acceptance": {"statement": "I accept"},
             }
         }
         is_valid, issues = scorer.validate_pou_structure(invalid_pou)
@@ -226,7 +211,7 @@ class TestPoUStructureValidation:
                 "obligations": [],
                 "rights": ["Test right"],
                 "consequences": ["Test consequence"],
-                "acceptance": {"statement": "I accept"}
+                "acceptance": {"statement": "I accept"},
             }
         }
         is_valid, issues = scorer.validate_pou_structure(invalid_pou)
@@ -241,7 +226,7 @@ class TestPoUStructureValidation:
                 "summary": {"text": "I understand the contract terms"},
                 "obligations": ["Test obligation"],
                 "rights": ["Test right"],
-                "consequences": ["Test consequence"]
+                "consequences": ["Test consequence"],
             }
         }
         is_valid, issues = scorer.validate_pou_structure(invalid_pou)
@@ -257,7 +242,7 @@ class TestPoUStructureValidation:
                 "obligations": ["Test obligation"],
                 "rights": ["Test right"],
                 "consequences": ["Test consequence"],
-                "acceptance": {"statement": "I accept"}
+                "acceptance": {"statement": "I accept"},
             }
         }
         is_valid, issues = scorer.validate_pou_structure(short_pou)
@@ -272,8 +257,7 @@ class TestSemanticFingerprint:
         """Should generate valid fingerprint"""
         scorer = PoUScorer(registry_version="1.0")
         fingerprint = scorer.generate_fingerprint(
-            pou_content="Test PoU content",
-            contract_content="Test contract content"
+            pou_content="Test PoU content", contract_content="Test contract content"
         )
         assert fingerprint.method == "sha256-semantic-v1"
         assert fingerprint.hash.startswith("0x")
@@ -330,7 +314,7 @@ class TestDimensionScoring:
             "obligations": ["Always maintain service", "Never provide service on weekends"],
             "rights": [],
             "consequences": [],
-            "acceptance": {"statement": "I accept"}
+            "acceptance": {"statement": "I accept"},
         }
         result = scorer.score_consistency(contradicting_sections)
         assert result.score < 1.0
@@ -351,7 +335,7 @@ class TestDimensionScoring:
             "obligations": [],
             "rights": [],
             "consequences": [],
-            "acceptance": {}
+            "acceptance": {},
         }
         result = scorer.score_completeness(incomplete)
         assert result.score < 0.5
@@ -395,7 +379,7 @@ class TestPoUScoring:
                 "obligations": ["Fulfill my obligations"],
                 "rights": ["Receive my rights"],
                 "consequences": ["Accept consequences"],
-                "acceptance": {"statement": "I accept"}
+                "acceptance": {"statement": "I accept"},
             }
         }
         result = scorer.score_pou(minimal, SAMPLE_CONTRACT)
@@ -409,10 +393,7 @@ class TestValidatorResponse:
     def test_response_structure(self):
         """Validator response should have expected structure"""
         scorer = PoUScorer()
-        response = scorer.get_validator_response(
-            VALID_POU_DATA,
-            SAMPLE_CONTRACT
-        )
+        response = scorer.get_validator_response(VALID_POU_DATA, SAMPLE_CONTRACT)
         assert "status" in response
         assert "final_score" in response
         assert "dimension_scores" in response
@@ -422,10 +403,7 @@ class TestValidatorResponse:
     def test_response_includes_dimensions(self):
         """Response should include all dimension scores"""
         scorer = PoUScorer()
-        response = scorer.get_validator_response(
-            VALID_POU_DATA,
-            SAMPLE_CONTRACT
-        )
+        response = scorer.get_validator_response(VALID_POU_DATA, SAMPLE_CONTRACT)
         dimensions = response["dimension_scores"]
         assert "coverage" in dimensions
         assert "fidelity" in dimensions
@@ -474,7 +452,7 @@ class TestBindingPoURecord:
             status=PoUStatus.VERIFIED,
             dimension_details={},
             message="Verified",
-            binding_effect=True
+            binding_effect=True,
         )
         fingerprint = scorer.generate_fingerprint("content", "contract")
 
@@ -484,7 +462,7 @@ class TestBindingPoURecord:
             pou_data=VALID_POU_DATA,
             scores=scores,
             fingerprint=fingerprint,
-            bound_at="2025-12-24T00:00:00Z"
+            bound_at="2025-12-24T00:00:00Z",
         )
         assert record.waives_misunderstanding is True
         assert record.admissible_in_dispute is True
@@ -501,7 +479,7 @@ class TestBindingPoURecord:
             status=PoUStatus.INSUFFICIENT,
             dimension_details={},
             message="Insufficient",
-            binding_effect=False
+            binding_effect=False,
         )
         fingerprint = scorer.generate_fingerprint("content", "contract")
 
@@ -512,7 +490,7 @@ class TestBindingPoURecord:
                 pou_data=VALID_POU_DATA,
                 scores=scores,
                 fingerprint=fingerprint,
-                bound_at="2025-12-24T00:00:00Z"
+                bound_at="2025-12-24T00:00:00Z",
             )
             assert False, "Should have raised ValueError"
         except ValueError as e:
@@ -530,7 +508,7 @@ class TestBindingPoURecord:
             status=PoUStatus.VERIFIED,
             dimension_details={},
             message="Verified",
-            binding_effect=True
+            binding_effect=True,
         )
         fingerprint = scorer.generate_fingerprint("content", "contract")
 
@@ -540,7 +518,7 @@ class TestBindingPoURecord:
             pou_data=VALID_POU_DATA,
             scores=scores,
             fingerprint=fingerprint,
-            bound_at="2025-12-24T00:00:00Z"
+            bound_at="2025-12-24T00:00:00Z",
         )
 
         d = record.to_dict()
@@ -578,9 +556,14 @@ class TestPoUMessages:
 
     def test_all_statuses_have_messages(self):
         """All PoU statuses should have defined messages"""
-        for status in [PoUStatus.VERIFIED, PoUStatus.MARGINAL,
-                       PoUStatus.INSUFFICIENT, PoUStatus.FAILED,
-                       PoUStatus.INVALID, PoUStatus.ERROR]:
+        for status in [
+            PoUStatus.VERIFIED,
+            PoUStatus.MARGINAL,
+            PoUStatus.INSUFFICIENT,
+            PoUStatus.FAILED,
+            PoUStatus.INVALID,
+            PoUStatus.ERROR,
+        ]:
             assert status in POU_MESSAGES
             assert len(POU_MESSAGES[status]) > 0
 
@@ -590,13 +573,16 @@ class TestPoUThresholds:
 
     def test_thresholds_are_contiguous(self):
         """Threshold ranges should be contiguous"""
-        statuses = [PoUStatus.FAILED, PoUStatus.INSUFFICIENT,
-                    PoUStatus.MARGINAL, PoUStatus.VERIFIED]
+        statuses = [
+            PoUStatus.FAILED,
+            PoUStatus.INSUFFICIENT,
+            PoUStatus.MARGINAL,
+            PoUStatus.VERIFIED,
+        ]
         for i in range(len(statuses) - 1):
             current = POU_THRESHOLDS[statuses[i]]
             next_level = POU_THRESHOLDS[statuses[i + 1]]
-            assert current[1] == next_level[0], \
-                f"Gap between {statuses[i]} and {statuses[i + 1]}"
+            assert current[1] == next_level[0], f"Gap between {statuses[i]} and {statuses[i + 1]}"
 
     def test_thresholds_start_at_zero(self):
         """Failed threshold should start at 0.0"""
@@ -620,7 +606,7 @@ def run_tests():
         TestBindingPoURecord,
         TestConvenienceFunctions,
         TestPoUMessages,
-        TestPoUThresholds
+        TestPoUThresholds,
     ]
 
     total_tests = 0
@@ -645,7 +631,7 @@ def run_tests():
                 failed_tests.append((f"{test_class.__name__}.{method_name}", str(e)))
                 print(f"  ✗ {test_class.__name__}.{method_name}: {type(e).__name__}: {e}")
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Tests: {passed_tests}/{total_tests} passed")
 
     if failed_tests:

@@ -15,24 +15,23 @@ import time
 import pytest
 
 # Add src to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from block_compression import (
+    DEFAULT_COMPRESSION_LEVEL,
+    GZIP_MAGIC,
+    MIN_COMPRESS_SIZE,
     BlockCompressor,
+    CompressionLevel,
     CompressionResult,
     CompressionStats,
-    CompressionLevel,
     StreamingCompressor,
+    benchmark_compression,
     compress_block_data,
+    create_compressor_from_env,
     decompress_block_data,
     estimate_compression_ratio,
-    benchmark_compression,
-    create_compressor_from_env,
-    GZIP_MAGIC,
-    DEFAULT_COMPRESSION_LEVEL,
-    MIN_COMPRESS_SIZE,
 )
-
 
 # =============================================================================
 # Sample Data for Testing
@@ -82,9 +81,11 @@ SAMPLE_BLOCK = {
 }
 
 SAMPLE_BLOCKS = [
-    {**SAMPLE_BLOCK, "index": i, "entries": [
-        {**SAMPLE_BLOCK["entries"][0], "content": SAMPLE_PROSE * (i + 1)}
-    ]}
+    {
+        **SAMPLE_BLOCK,
+        "index": i,
+        "entries": [{**SAMPLE_BLOCK["entries"][0], "content": SAMPLE_PROSE * (i + 1)}],
+    }
     for i in range(5)
 ]
 
@@ -92,6 +93,7 @@ SAMPLE_BLOCKS = [
 # =============================================================================
 # BlockCompressor Tests
 # =============================================================================
+
 
 class TestBlockCompressor:
     """Tests for BlockCompressor class."""
@@ -105,11 +107,7 @@ class TestBlockCompressor:
 
     def test_initialization_custom(self):
         """Test custom initialization."""
-        compressor = BlockCompressor(
-            compression_level=9,
-            min_size=1024,
-            enabled=False
-        )
+        compressor = BlockCompressor(compression_level=9, min_size=1024, enabled=False)
         assert compressor.compression_level == 9
         assert compressor.min_size == 1024
         assert compressor.enabled is False
@@ -143,7 +141,7 @@ class TestBlockCompressor:
     def test_compress_bytes(self):
         """Test compressing bytes."""
         compressor = BlockCompressor()
-        data = SAMPLE_PROSE.encode('utf-8')
+        data = SAMPLE_PROSE.encode("utf-8")
         result = compressor.compress(data)
 
         assert result.was_compressed is True
@@ -174,7 +172,7 @@ class TestBlockCompressor:
 
         # Decompress
         decompressed, elapsed = compressor.decompress(result.data)
-        assert decompressed.decode('utf-8') == original
+        assert decompressed.decode("utf-8") == original
         assert elapsed >= 0
 
     def test_decompress_uncompressed(self):
@@ -303,6 +301,7 @@ class TestBlockCompressor:
 # CompressionResult Tests
 # =============================================================================
 
+
 class TestCompressionResult:
     """Tests for CompressionResult class."""
 
@@ -314,7 +313,7 @@ class TestCompressionResult:
             compressed_size=300,
             compression_ratio=0.7,
             time_ms=1.5,
-            was_compressed=True
+            was_compressed=True,
         )
 
         assert result.space_saved == 700
@@ -327,7 +326,7 @@ class TestCompressionResult:
             compressed_size=300,
             compression_ratio=0.7,
             time_ms=1.5,
-            was_compressed=True
+            was_compressed=True,
         )
 
         d = result.to_dict()
@@ -340,6 +339,7 @@ class TestCompressionResult:
 # =============================================================================
 # CompressionStats Tests
 # =============================================================================
+
 
 class TestCompressionStats:
     """Tests for CompressionStats class."""
@@ -363,6 +363,7 @@ class TestCompressionStats:
 # =============================================================================
 # Utility Function Tests
 # =============================================================================
+
 
 class TestUtilityFunctions:
     """Tests for utility functions."""
@@ -405,15 +406,18 @@ class TestUtilityFunctions:
 # Environment Configuration Tests
 # =============================================================================
 
+
 class TestEnvironmentConfiguration:
     """Tests for environment-based configuration."""
 
     def test_create_compressor_from_env_defaults(self):
         """Test creating compressor from environment with defaults."""
         # Clear relevant env vars
-        for key in ['NATLANGCHAIN_COMPRESSION_ENABLED',
-                    'NATLANGCHAIN_COMPRESSION_LEVEL',
-                    'NATLANGCHAIN_COMPRESSION_MIN_SIZE']:
+        for key in [
+            "NATLANGCHAIN_COMPRESSION_ENABLED",
+            "NATLANGCHAIN_COMPRESSION_LEVEL",
+            "NATLANGCHAIN_COMPRESSION_MIN_SIZE",
+        ]:
             os.environ.pop(key, None)
 
         compressor = create_compressor_from_env()
@@ -423,9 +427,9 @@ class TestEnvironmentConfiguration:
 
     def test_create_compressor_from_env_custom(self):
         """Test creating compressor from custom environment."""
-        os.environ['NATLANGCHAIN_COMPRESSION_ENABLED'] = 'false'
-        os.environ['NATLANGCHAIN_COMPRESSION_LEVEL'] = '9'
-        os.environ['NATLANGCHAIN_COMPRESSION_MIN_SIZE'] = '2048'
+        os.environ["NATLANGCHAIN_COMPRESSION_ENABLED"] = "false"
+        os.environ["NATLANGCHAIN_COMPRESSION_LEVEL"] = "9"
+        os.environ["NATLANGCHAIN_COMPRESSION_MIN_SIZE"] = "2048"
 
         try:
             compressor = create_compressor_from_env()
@@ -435,15 +439,18 @@ class TestEnvironmentConfiguration:
             assert compressor.min_size == 2048
         finally:
             # Clean up
-            for key in ['NATLANGCHAIN_COMPRESSION_ENABLED',
-                        'NATLANGCHAIN_COMPRESSION_LEVEL',
-                        'NATLANGCHAIN_COMPRESSION_MIN_SIZE']:
+            for key in [
+                "NATLANGCHAIN_COMPRESSION_ENABLED",
+                "NATLANGCHAIN_COMPRESSION_LEVEL",
+                "NATLANGCHAIN_COMPRESSION_MIN_SIZE",
+            ]:
                 os.environ.pop(key, None)
 
 
 # =============================================================================
 # Streaming Compressor Tests
 # =============================================================================
+
 
 class TestStreamingCompressor:
     """Tests for StreamingCompressor class."""
@@ -467,6 +474,7 @@ class TestStreamingCompressor:
 # Benchmark Tests
 # =============================================================================
 
+
 class TestBenchmark:
     """Tests for benchmarking functionality."""
 
@@ -489,13 +497,14 @@ class TestBenchmark:
 # P2P Integration Tests
 # =============================================================================
 
+
 class TestP2PIntegration:
     """Tests for P2P network integration."""
 
     def test_p2p_network_has_compression(self):
         """Test that P2P network initializes compression."""
         try:
-            from p2p_network import P2PNetwork, HAS_BLOCK_COMPRESSION
+            from p2p_network import HAS_BLOCK_COMPRESSION, P2PNetwork
 
             if not HAS_BLOCK_COMPRESSION:
                 pytest.skip("Block compression not available in P2P network")
@@ -510,7 +519,7 @@ class TestP2PIntegration:
     def test_p2p_compress_payload(self):
         """Test P2P network payload compression."""
         try:
-            from p2p_network import P2PNetwork, HAS_BLOCK_COMPRESSION
+            from p2p_network import HAS_BLOCK_COMPRESSION, P2PNetwork
 
             if not HAS_BLOCK_COMPRESSION:
                 pytest.skip("Block compression not available")
@@ -527,7 +536,7 @@ class TestP2PIntegration:
     def test_p2p_compression_stats(self):
         """Test P2P network compression statistics."""
         try:
-            from p2p_network import P2PNetwork, HAS_BLOCK_COMPRESSION
+            from p2p_network import HAS_BLOCK_COMPRESSION, P2PNetwork
 
             if not HAS_BLOCK_COMPRESSION:
                 pytest.skip("Block compression not available")
@@ -547,6 +556,7 @@ class TestP2PIntegration:
 # Storage Integration Tests
 # =============================================================================
 
+
 class TestStorageIntegration:
     """Tests for storage integration with compression."""
 
@@ -561,16 +571,14 @@ class TestStorageIntegration:
             file_path = os.path.join(tmpdir, "test_chain.json")
 
             storage = JSONFileStorage(
-                file_path=file_path,
-                compression_enabled=True,
-                compression_level=6
+                file_path=file_path, compression_enabled=True, compression_level=6
             )
 
             # Save data
             storage.save_chain({"blocks": SAMPLE_BLOCKS})
 
             # Verify file is compressed
-            with open(file_path, 'rb') as f:
+            with open(file_path, "rb") as f:
                 header = f.read(2)
             assert header == GZIP_MAGIC, "Saved file should be gzip compressed"
 
@@ -593,15 +601,12 @@ class TestStorageIntegration:
         with tempfile.TemporaryDirectory() as tmpdir:
             file_path = os.path.join(tmpdir, "test_chain.json")
 
-            storage = JSONFileStorage(
-                file_path=file_path,
-                compression_enabled=False
-            )
+            storage = JSONFileStorage(file_path=file_path, compression_enabled=False)
 
             storage.save_chain(SAMPLE_BLOCK)
 
             # Verify file is NOT compressed
-            with open(file_path, 'rb') as f:
+            with open(file_path, "rb") as f:
                 header = f.read(2)
             assert header != GZIP_MAGIC
 
@@ -620,14 +625,11 @@ class TestStorageIntegration:
             file_path = os.path.join(tmpdir, "test_chain.json")
 
             # Write uncompressed file directly
-            with open(file_path, 'w') as f:
+            with open(file_path, "w") as f:
                 json.dump(SAMPLE_BLOCK, f)
 
             # Load with compression-enabled storage
-            storage = JSONFileStorage(
-                file_path=file_path,
-                compression_enabled=True
-            )
+            storage = JSONFileStorage(file_path=file_path, compression_enabled=True)
 
             loaded = storage.load_chain()
             assert loaded == SAMPLE_BLOCK
@@ -642,10 +644,7 @@ class TestStorageIntegration:
         with tempfile.TemporaryDirectory() as tmpdir:
             file_path = os.path.join(tmpdir, "test_chain.json")
 
-            storage = JSONFileStorage(
-                file_path=file_path,
-                compression_enabled=True
-            )
+            storage = JSONFileStorage(file_path=file_path, compression_enabled=True)
 
             # Perform save operations
             storage.save_chain({"blocks": SAMPLE_BLOCKS})
@@ -662,6 +661,7 @@ class TestStorageIntegration:
 # Compression Ratio Measurement
 # =============================================================================
 
+
 class TestCompressionRatios:
     """Tests that measure actual compression ratios for reporting."""
 
@@ -670,7 +670,7 @@ class TestCompressionRatios:
         compressor = BlockCompressor()
         result = compressor.compress(SAMPLE_PROSE)
 
-        print(f"\nProse compression ratio: {result.compression_ratio*100:.1f}%")
+        print(f"\nProse compression ratio: {result.compression_ratio * 100:.1f}%")
         print(f"  Original: {result.original_size:,} bytes")
         print(f"  Compressed: {result.compressed_size:,} bytes")
         print(f"  Saved: {result.space_saved:,} bytes")
@@ -683,7 +683,7 @@ class TestCompressionRatios:
         compressor = BlockCompressor()
         result = compressor.compress(SAMPLE_BLOCK)
 
-        print(f"\nBlock compression ratio: {result.compression_ratio*100:.1f}%")
+        print(f"\nBlock compression ratio: {result.compression_ratio * 100:.1f}%")
         print(f"  Original: {result.original_size:,} bytes")
         print(f"  Compressed: {result.compressed_size:,} bytes")
 
@@ -695,7 +695,7 @@ class TestCompressionRatios:
         compressor = BlockCompressor()
         result = compressor.compress_blocks(SAMPLE_BLOCKS)
 
-        print(f"\nMultiple blocks compression ratio: {result.compression_ratio*100:.1f}%")
+        print(f"\nMultiple blocks compression ratio: {result.compression_ratio * 100:.1f}%")
         print(f"  Original: {result.original_size:,} bytes")
         print(f"  Compressed: {result.compressed_size:,} bytes")
         print(f"  Blocks: {len(SAMPLE_BLOCKS)}")
@@ -715,8 +715,10 @@ class TestCompressionRatios:
             compressor = BlockCompressor(compression_level=level)
             result = compressor.compress(data)
 
-            print(f"{level:<8} {result.compression_ratio*100:>6.1f}%   "
-                  f"{result.compressed_size:>8,}   {result.time_ms:>6.2f}ms")
+            print(
+                f"{level:<8} {result.compression_ratio * 100:>6.1f}%   "
+                f"{result.compressed_size:>8,}   {result.time_ms:>6.2f}ms"
+            )
 
         # All levels should compress
         assert result.compression_ratio > 0.5

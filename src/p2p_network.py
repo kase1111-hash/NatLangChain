@@ -45,23 +45,22 @@ class SafeLogFormatter(logging.Formatter):
         # Sanitize the message to prevent log injection
         if isinstance(record.msg, str):
             # Replace newlines and carriage returns that could create fake log entries
-            record.msg = record.msg.replace('\n', '\\n').replace('\r', '\\r')
+            record.msg = record.msg.replace("\n", "\\n").replace("\r", "\\r")
             # Remove ANSI escape sequences that could manipulate terminal output
             import re
-            record.msg = re.sub(r'\x1b\[[0-9;]*[a-zA-Z]', '', record.msg)
+
+            record.msg = re.sub(r"\x1b\[[0-9;]*[a-zA-Z]", "", record.msg)
         return super().format(record)
 
 
 # Set up logging with safe formatter
 _log_handler = logging.StreamHandler()
-_log_handler.setFormatter(SafeLogFormatter(
-    fmt='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
-))
-logging.basicConfig(
-    level=logging.INFO,
-    handlers=[_log_handler]
+_log_handler.setFormatter(
+    SafeLogFormatter(
+        fmt="%(asctime)s - %(name)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
+    )
 )
+logging.basicConfig(level=logging.INFO, handlers=[_log_handler])
 logger = logging.getLogger(__name__)
 
 # Try to import requests
@@ -69,6 +68,7 @@ try:
     import requests
     from requests.adapters import HTTPAdapter
     from urllib3.util.retry import Retry
+
     HAS_REQUESTS = True
 except ImportError:
     HAS_REQUESTS = False
@@ -78,14 +78,15 @@ except ImportError:
 try:
     from . import nat_traversal
     from .nat_traversal import (
-        NATTraversalManager,
-        NATType,
         CandidateType,
         ICECandidate,
+        NATTraversalManager,
+        NATType,
         TURNServer,
         create_nat_manager_from_env,
         load_nat_config_from_env,
     )
+
     HAS_NAT_TRAVERSAL = True
 except ImportError:
     HAS_NAT_TRAVERSAL = False
@@ -96,12 +97,13 @@ except ImportError:
 # Import gossip protocol module
 try:
     from .gossip_protocol import (
-        GossipProtocol,
         GossipMessageType,
+        GossipProtocol,
         MessagePriority,
-        get_message_priority,
         calculate_optimal_fanout,
+        get_message_priority,
     )
+
     HAS_GOSSIP_PROTOCOL = True
 except ImportError:
     HAS_GOSSIP_PROTOCOL = False
@@ -111,14 +113,15 @@ except ImportError:
 # Import block compression module
 try:
     from .block_compression import (
-        BlockCompressor,
-        CompressionResult,
-        create_compressor_from_env,
-        compress_block_data,
-        decompress_block_data,
         HEADER_ACCEPT_ENCODING,
         HEADER_CONTENT_ENCODING,
+        BlockCompressor,
+        CompressionResult,
+        compress_block_data,
+        create_compressor_from_env,
+        decompress_block_data,
     )
+
     HAS_BLOCK_COMPRESSION = True
 except ImportError:
     HAS_BLOCK_COMPRESSION = False
@@ -214,8 +217,10 @@ SUSPICIOUS_BEHAVIOR_WEIGHT = {
 # Enums
 # =============================================================================
 
+
 class PeerStatus(Enum):
     """Peer connection status."""
+
     UNKNOWN = "unknown"
     CONNECTING = "connecting"
     CONNECTED = "connected"
@@ -226,6 +231,7 @@ class PeerStatus(Enum):
 
 class NodeRole(Enum):
     """Node roles in the network."""
+
     FULL_NODE = "full_node"  # Stores full chain, validates, mines
     LIGHT_NODE = "light_node"  # Stores headers only
     MEDIATOR = "mediator"  # 3rd party miner/mediator
@@ -234,6 +240,7 @@ class NodeRole(Enum):
 
 class BroadcastType(Enum):
     """Types of broadcasts."""
+
     NEW_ENTRY = "new_entry"
     NEW_BLOCK = "new_block"
     SETTLEMENT = "settlement"
@@ -243,6 +250,7 @@ class BroadcastType(Enum):
 
 class ConsensusMode(Enum):
     """Consensus modes (from mediator-node)."""
+
     PERMISSIONLESS = "permissionless"  # Proof-of-Alignment + reputation
     DPOS = "dpos"  # Delegated Proof of Stake
     POA = "poa"  # Proof of Authority
@@ -253,9 +261,11 @@ class ConsensusMode(Enum):
 # Data Classes
 # =============================================================================
 
+
 @dataclass
 class PeerInfo:
     """Information about a peer node."""
+
     peer_id: str
     endpoint: str
     role: NodeRole = NodeRole.FULL_NODE
@@ -281,11 +291,11 @@ class PeerInfo:
             "latency_ms": self.latency_ms,
             "reputation": self.reputation,
             "version": self.version,
-            "capabilities": list(self.capabilities)
+            "capabilities": list(self.capabilities),
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> 'PeerInfo':
+    def from_dict(cls, data: dict[str, Any]) -> "PeerInfo":
         """Deserialize peer info from a dictionary received from network or storage."""
         return cls(
             peer_id=data["peer_id"],
@@ -298,13 +308,14 @@ class PeerInfo:
             latency_ms=data.get("latency_ms", 0.0),
             reputation=data.get("reputation", 1.0),
             version=data.get("version", "unknown"),
-            capabilities=set(data.get("capabilities", []))
+            capabilities=set(data.get("capabilities", [])),
         )
 
 
 @dataclass
 class BroadcastMessage:
     """Message to broadcast to peers."""
+
     message_id: str
     broadcast_type: BroadcastType
     payload: dict[str, Any]
@@ -322,11 +333,11 @@ class BroadcastMessage:
             "origin_node": self.origin_node,
             "timestamp": self.timestamp.isoformat(),
             "ttl": self.ttl,
-            "signature": self.signature
+            "signature": self.signature,
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> 'BroadcastMessage':
+    def from_dict(cls, data: dict[str, Any]) -> "BroadcastMessage":
         """Deserialize broadcast message from a dictionary received from the network."""
         return cls(
             message_id=data["message_id"],
@@ -335,13 +346,14 @@ class BroadcastMessage:
             origin_node=data["origin_node"],
             timestamp=datetime.fromisoformat(data["timestamp"]),
             ttl=data.get("ttl", 0),
-            signature=data.get("signature")
+            signature=data.get("signature"),
         )
 
 
 @dataclass
 class SyncState:
     """Chain synchronization state."""
+
     is_syncing: bool = False
     sync_target_height: int = 0
     sync_current_height: int = 0
@@ -355,6 +367,7 @@ class SyncState:
 # Security Classes - P2P Attack Hardening
 # =============================================================================
 
+
 class PeerRateLimiter:
     """
     Rate limiter to prevent DoS/flooding attacks.
@@ -362,7 +375,9 @@ class PeerRateLimiter:
     Tracks message rates per peer and enforces limits.
     """
 
-    def __init__(self, max_per_minute: int = MAX_MESSAGES_PER_MINUTE, window: int = RATE_LIMIT_WINDOW):
+    def __init__(
+        self, max_per_minute: int = MAX_MESSAGES_PER_MINUTE, window: int = RATE_LIMIT_WINDOW
+    ):
         self.max_per_minute = max_per_minute
         self.window = window
         self.peer_counts: dict[str, list[float]] = {}  # peer_id -> list of timestamps
@@ -384,13 +399,14 @@ class PeerRateLimiter:
                 self.peer_counts[peer_id] = []
 
             # Remove old timestamps
-            self.peer_counts[peer_id] = [
-                ts for ts in self.peer_counts[peer_id] if ts > cutoff
-            ]
+            self.peer_counts[peer_id] = [ts for ts in self.peer_counts[peer_id] if ts > cutoff]
 
             # Check limit
             if len(self.peer_counts[peer_id]) >= self.max_per_minute:
-                return False, f"Rate limit exceeded: {len(self.peer_counts[peer_id])}/{self.max_per_minute} per minute"
+                return (
+                    False,
+                    f"Rate limit exceeded: {len(self.peer_counts[peer_id])}/{self.max_per_minute} per minute",
+                )
 
             # Record this request
             self.peer_counts[peer_id].append(now)
@@ -411,9 +427,7 @@ class PeerRateLimiter:
             now = time.time()
             cutoff = now - self.window
             for peer_id in list(self.peer_counts.keys()):
-                self.peer_counts[peer_id] = [
-                    ts for ts in self.peer_counts[peer_id] if ts > cutoff
-                ]
+                self.peer_counts[peer_id] = [ts for ts in self.peer_counts[peer_id] if ts > cutoff]
                 if not self.peer_counts[peer_id]:
                     del self.peer_counts[peer_id]
 
@@ -430,7 +444,7 @@ class MessageValidator:
     """
 
     def __init__(self, secret_key: str, require_signatures: bool = REQUIRE_SIGNATURES):
-        self.secret_key = secret_key.encode('utf-8') if isinstance(secret_key, str) else secret_key
+        self.secret_key = secret_key.encode("utf-8") if isinstance(secret_key, str) else secret_key
         self.require_signatures = require_signatures
         self.seen_nonces: dict[str, float] = {}  # nonce -> timestamp
         self._lock = threading.Lock()
@@ -438,14 +452,13 @@ class MessageValidator:
     def compute_signature(self, message_data: dict[str, Any]) -> str:
         """Compute HMAC signature for a message."""
         # Create canonical string from message (exclude signature field)
-        sign_data = {k: v for k, v in message_data.items() if k != 'signature'}
+        sign_data = {k: v for k, v in message_data.items() if k != "signature"}
         sign_string = json.dumps(sign_data, sort_keys=True)
 
         import hmac
+
         signature = hmac.new(
-            self.secret_key,
-            sign_string.encode('utf-8'),
-            hashlib.sha256
+            self.secret_key, sign_string.encode("utf-8"), hashlib.sha256
         ).hexdigest()
 
         return signature
@@ -460,13 +473,14 @@ class MessageValidator:
         if not self.require_signatures:
             return True, "Signatures not required"
 
-        provided_sig = message_data.get('signature')
+        provided_sig = message_data.get("signature")
         if not provided_sig:
             return False, "Missing signature"
 
         expected_sig = self.compute_signature(message_data)
 
         import hmac as hmac_module
+
         if not hmac_module.compare_digest(provided_sig, expected_sig):
             return False, "Invalid signature"
 
@@ -521,12 +535,11 @@ class MessageValidator:
     def _cleanup_nonces(self):
         """Remove old nonces to prevent memory growth."""
         cutoff = time.time() - MESSAGE_MAX_AGE
-        self.seen_nonces = {
-            nonce: ts for nonce, ts in self.seen_nonces.items()
-            if ts > cutoff
-        }
+        self.seen_nonces = {nonce: ts for nonce, ts in self.seen_nonces.items() if ts > cutoff}
 
-    def validate_payload_size(self, payload: Any, max_size: int = MAX_PAYLOAD_SIZE) -> tuple[bool, str]:
+    def validate_payload_size(
+        self, payload: Any, max_size: int = MAX_PAYLOAD_SIZE
+    ) -> tuple[bool, str]:
         """
         Validate payload size.
 
@@ -535,7 +548,7 @@ class MessageValidator:
         """
         try:
             payload_str = json.dumps(payload)
-            size = len(payload_str.encode('utf-8'))
+            size = len(payload_str.encode("utf-8"))
 
             if size > max_size:
                 return False, f"Payload too large: {size} bytes (max {max_size})"
@@ -552,7 +565,7 @@ class MessageValidator:
             Tuple of (valid, reason)
         """
         # Check required fields
-        required = ['message_id', 'broadcast_type', 'payload', 'origin_node', 'timestamp']
+        required = ["message_id", "broadcast_type", "payload", "origin_node", "timestamp"]
         for field in required:
             if field not in message_data:
                 return False, f"Missing required field: {field}"
@@ -563,17 +576,17 @@ class MessageValidator:
             return False, reason
 
         # Validate timestamp
-        valid, reason = self.validate_timestamp(message_data['timestamp'])
+        valid, reason = self.validate_timestamp(message_data["timestamp"])
         if not valid:
             return False, reason
 
         # Check replay
-        valid, reason = self.check_replay(message_data['message_id'])
+        valid, reason = self.check_replay(message_data["message_id"])
         if not valid:
             return False, reason
 
         # Validate payload size
-        valid, reason = self.validate_payload_size(message_data['payload'])
+        valid, reason = self.validate_payload_size(message_data["payload"])
         if not valid:
             return False, reason
 
@@ -596,13 +609,13 @@ class BlockValidator:
 
     def validate_block_structure(self, block_data: dict[str, Any]) -> tuple[bool, str]:
         """Validate block has required structure."""
-        required = ['index', 'hash', 'previous_hash', 'timestamp', 'entries']
+        required = ["index", "hash", "previous_hash", "timestamp", "entries"]
         for field in required:
             if field not in block_data:
                 return False, f"Block missing required field: {field}"
 
         # Check entries count
-        entries = block_data.get('entries', [])
+        entries = block_data.get("entries", [])
         if len(entries) > MAX_ENTRIES_PER_BLOCK:
             return False, f"Too many entries: {len(entries)} (max {MAX_ENTRIES_PER_BLOCK})"
 
@@ -612,7 +625,7 @@ class BlockValidator:
         """Validate block size limits."""
         try:
             block_str = json.dumps(block_data)
-            size = len(block_str.encode('utf-8'))
+            size = len(block_str.encode("utf-8"))
 
             if size > MAX_BLOCK_SIZE:
                 return False, f"Block too large: {size} bytes (max {MAX_BLOCK_SIZE})"
@@ -623,15 +636,18 @@ class BlockValidator:
 
     def validate_block_hash(self, block_data: dict[str, Any]) -> tuple[bool, str]:
         """Validate block hash is correct."""
-        claimed_hash = block_data.get('hash', '')
+        claimed_hash = block_data.get("hash", "")
 
         # Recompute hash (simplified - actual implementation depends on blockchain.py)
-        hash_input = json.dumps({
-            'index': block_data.get('index'),
-            'previous_hash': block_data.get('previous_hash'),
-            'timestamp': block_data.get('timestamp'),
-            'entries': block_data.get('entries', [])
-        }, sort_keys=True)
+        hash_input = json.dumps(
+            {
+                "index": block_data.get("index"),
+                "previous_hash": block_data.get("previous_hash"),
+                "timestamp": block_data.get("timestamp"),
+                "entries": block_data.get("entries", []),
+            },
+            sort_keys=True,
+        )
 
         hashlib.sha256(hash_input.encode()).hexdigest()
 
@@ -642,35 +658,42 @@ class BlockValidator:
 
         return True, "OK"  # Hash format valid, detailed check left to blockchain
 
-    def validate_chain_link(self, block_data: dict[str, Any], previous_block: dict[str, Any] | None) -> tuple[bool, str]:
+    def validate_chain_link(
+        self, block_data: dict[str, Any], previous_block: dict[str, Any] | None
+    ) -> tuple[bool, str]:
         """Validate block links correctly to previous block."""
         if previous_block is None:
             # Genesis block
-            if block_data.get('index', 0) != 0:
+            if block_data.get("index", 0) != 0:
                 return False, "Non-genesis block without previous block"
             return True, "OK"
 
         # Check index continuity
-        if block_data.get('index', 0) != previous_block.get('index', 0) + 1:
-            return False, f"Block index discontinuity: {block_data.get('index')} should be {previous_block.get('index', 0) + 1}"
+        if block_data.get("index", 0) != previous_block.get("index", 0) + 1:
+            return (
+                False,
+                f"Block index discontinuity: {block_data.get('index')} should be {previous_block.get('index', 0) + 1}",
+            )
 
         # Check hash chain
-        if block_data.get('previous_hash', '') != previous_block.get('hash', ''):
+        if block_data.get("previous_hash", "") != previous_block.get("hash", ""):
             return False, "Block previous_hash doesn't match previous block hash"
 
         return True, "OK"
 
-    def validate_block_timestamp(self, block_data: dict[str, Any], previous_block: dict[str, Any] | None = None) -> tuple[bool, str]:
+    def validate_block_timestamp(
+        self, block_data: dict[str, Any], previous_block: dict[str, Any] | None = None
+    ) -> tuple[bool, str]:
         """Validate block timestamp."""
         try:
-            block_time = block_data.get('timestamp', '')
+            block_time = block_data.get("timestamp", "")
             if isinstance(block_time, str):
-                block_time = datetime.fromisoformat(block_time.replace('Z', '+00:00'))
+                block_time = datetime.fromisoformat(block_time.replace("Z", "+00:00"))
 
             now = datetime.utcnow()
 
             # Check not too far in future
-            if hasattr(block_time, 'timestamp'):
+            if hasattr(block_time, "timestamp"):
                 age = (now - block_time).total_seconds()
             else:
                 age = 0
@@ -680,9 +703,9 @@ class BlockValidator:
 
             # Check not before previous block (if provided)
             if previous_block:
-                prev_time = previous_block.get('timestamp', '')
+                prev_time = previous_block.get("timestamp", "")
                 if isinstance(prev_time, str):
-                    prev_time = datetime.fromisoformat(prev_time.replace('Z', '+00:00'))
+                    prev_time = datetime.fromisoformat(prev_time.replace("Z", "+00:00"))
                 # Block should be after previous
                 # (Simplified check - actual may need more nuance)
 
@@ -692,7 +715,7 @@ class BlockValidator:
 
     def validate_entry(self, entry_data: dict[str, Any]) -> tuple[bool, str]:
         """Validate an individual entry."""
-        required = ['content', 'author', 'timestamp']
+        required = ["content", "author", "timestamp"]
         for field in required:
             if field not in entry_data:
                 return False, f"Entry missing required field: {field}"
@@ -700,7 +723,7 @@ class BlockValidator:
         # Check entry size
         try:
             entry_str = json.dumps(entry_data)
-            size = len(entry_str.encode('utf-8'))
+            size = len(entry_str.encode("utf-8"))
             if size > MAX_ENTRY_SIZE:
                 return False, f"Entry too large: {size} bytes (max {MAX_ENTRY_SIZE})"
         except (json.JSONDecodeError, TypeError, UnicodeEncodeError) as e:
@@ -709,7 +732,9 @@ class BlockValidator:
 
         return True, "OK"
 
-    def validate_block(self, block_data: dict[str, Any], previous_block: dict[str, Any] | None = None) -> tuple[bool, str]:
+    def validate_block(
+        self, block_data: dict[str, Any], previous_block: dict[str, Any] | None = None
+    ) -> tuple[bool, str]:
         """Full block validation."""
         # Structure check
         valid, reason = self.validate_block_structure(block_data)
@@ -737,7 +762,7 @@ class BlockValidator:
             return False, reason
 
         # Validate each entry
-        for entry in block_data.get('entries', []):
+        for entry in block_data.get("entries", []):
             valid, reason = self.validate_entry(entry)
             if not valid:
                 return False, f"Invalid entry: {reason}"
@@ -757,7 +782,9 @@ class PeerSecurityManager:
     """
 
     def __init__(self):
-        self.violations: dict[str, list[tuple[str, float, float]]] = {}  # peer_id -> [(type, weight, timestamp)]
+        self.violations: dict[
+            str, list[tuple[str, float, float]]
+        ] = {}  # peer_id -> [(type, weight, timestamp)]
         self.banned_until: dict[str, datetime] = {}  # peer_id -> unban time
         self.peer_ips: dict[str, str] = {}  # peer_id -> IP address
         self._lock = threading.Lock()
@@ -766,20 +793,21 @@ class PeerSecurityManager:
         """Extract IP address from endpoint URL."""
         try:
             from urllib.parse import urlparse
+
             parsed = urlparse(endpoint)
-            host = parsed.hostname or ''
+            host = parsed.hostname or ""
             # Handle localhost
-            if host in ('localhost', '127.0.0.1', '::1'):
-                return '127.0.0.1'
+            if host in ("localhost", "127.0.0.1", "::1"):
+                return "127.0.0.1"
             return host
         except (ValueError, AttributeError) as e:
             logger.debug(f"IP extraction failed for endpoint: {type(e).__name__}")
-            return 'unknown'
+            return "unknown"
 
     def get_ip_prefix(self, ip: str, prefix_len: int = 16) -> str:
         """Get IP prefix for diversity checking (/16 by default)."""
         try:
-            parts = ip.split('.')
+            parts = ip.split(".")
             if len(parts) == 4 and prefix_len == 16:
                 return f"{parts[0]}.{parts[1]}"
             return ip
@@ -787,7 +815,9 @@ class PeerSecurityManager:
             logger.debug(f"IP prefix extraction failed: {type(e).__name__}")
             return ip
 
-    def check_peer_allowed(self, peer_id: str, endpoint: str, current_peers: dict[str, Any]) -> tuple[bool, str]:
+    def check_peer_allowed(
+        self, peer_id: str, endpoint: str, current_peers: dict[str, Any]
+    ) -> tuple[bool, str]:
         """
         Check if a new peer should be allowed.
 
@@ -809,19 +839,28 @@ class PeerSecurityManager:
 
             # Check IP-based limits
             ip = self.extract_ip(endpoint)
-            ip_count = sum(1 for pid, ep in self.peer_ips.items()
-                          if self.extract_ip(ep) == ip and pid in current_peers)
+            ip_count = sum(
+                1
+                for pid, ep in self.peer_ips.items()
+                if self.extract_ip(ep) == ip and pid in current_peers
+            )
 
             if ip_count >= MAX_PEERS_PER_IP:
                 return False, f"Too many peers from IP {ip}: {ip_count}/{MAX_PEERS_PER_IP}"
 
             # Check subnet diversity (eclipse protection)
             prefix = self.get_ip_prefix(ip)
-            prefix_count = sum(1 for pid, ep in self.peer_ips.items()
-                              if self.get_ip_prefix(self.extract_ip(ep)) == prefix and pid in current_peers)
+            prefix_count = sum(
+                1
+                for pid, ep in self.peer_ips.items()
+                if self.get_ip_prefix(self.extract_ip(ep)) == prefix and pid in current_peers
+            )
 
             if prefix_count >= MAX_PEERS_SAME_PREFIX:
-                return False, f"Too many peers from subnet {prefix}.x.x: {prefix_count}/{MAX_PEERS_SAME_PREFIX}"
+                return (
+                    False,
+                    f"Too many peers from subnet {prefix}.x.x: {prefix_count}/{MAX_PEERS_SAME_PREFIX}",
+                )
 
             # Track this peer's IP
             self.peer_ips[peer_id] = endpoint
@@ -857,7 +896,9 @@ class PeerSecurityManager:
 
             self.violations[peer_id] = recent_violations
 
-            logger.warning(f"Peer {peer_id} violation: {violation_type} (score: {total_score:.1f}/{VIOLATION_THRESHOLD})")
+            logger.warning(
+                f"Peer {peer_id} violation: {violation_type} (score: {total_score:.1f}/{VIOLATION_THRESHOLD})"
+            )
 
             if total_score >= VIOLATION_THRESHOLD:
                 return True, f"Violation threshold exceeded: {total_score:.1f}"
@@ -901,14 +942,17 @@ class PeerSecurityManager:
         # Count unique IP prefixes
         prefixes = set()
         for _peer_id, peer in peers.items():
-            if hasattr(peer, 'endpoint'):
+            if hasattr(peer, "endpoint"):
                 ip = self.extract_ip(peer.endpoint)
             else:
-                ip = self.extract_ip(str(peer.get('endpoint', '')))
+                ip = self.extract_ip(str(peer.get("endpoint", "")))
             prefixes.add(self.get_ip_prefix(ip))
 
         if len(prefixes) < MIN_PEER_DIVERSITY:
-            return False, f"Low peer diversity: only {len(prefixes)} unique subnets (min {MIN_PEER_DIVERSITY})"
+            return (
+                False,
+                f"Low peer diversity: only {len(prefixes)} unique subnets (min {MIN_PEER_DIVERSITY})",
+            )
 
         return True, "OK"
 
@@ -916,6 +960,7 @@ class PeerSecurityManager:
 # =============================================================================
 # P2P Network Manager
 # =============================================================================
+
 
 class P2PNetwork:
     """
@@ -936,7 +981,7 @@ class P2PNetwork:
         consensus_mode: ConsensusMode = ConsensusMode.PERMISSIONLESS,
         bootstrap_peers: list[str] | None = None,
         secret_key: str | None = None,
-        enable_nat_traversal: bool = True
+        enable_nat_traversal: bool = True,
     ):
         """
         Initialize P2P network manager.
@@ -998,7 +1043,7 @@ class P2PNetwork:
             "peers_banned": 0,
             "nat_traversal_attempts": 0,
             "stun_successes": 0,
-            "turn_fallbacks": 0
+            "turn_fallbacks": 0,
         }
 
         # Security components
@@ -1026,7 +1071,9 @@ class P2PNetwork:
             self._init_compression()
 
         logger.info(f"P2P Network initialized: node_id={self.node_id}, role={role.value}")
-        logger.info(f"Security hardening enabled: rate_limit={MAX_MESSAGES_PER_MINUTE}/min, max_peers={MAX_PEERS}")
+        logger.info(
+            f"Security hardening enabled: rate_limit={MAX_MESSAGES_PER_MINUTE}/min, max_peers={MAX_PEERS}"
+        )
         if self.nat_manager:
             logger.info("NAT traversal enabled with STUN/TURN support")
         if self.gossip_protocol:
@@ -1040,17 +1087,19 @@ class P2PNetwork:
         retry_strategy = Retry(
             total=MAX_RETRIES,
             backoff_factor=RETRY_BACKOFF,
-            status_forcelist=[429, 500, 502, 503, 504]
+            status_forcelist=[429, 500, 502, 503, 504],
         )
         adapter = HTTPAdapter(max_retries=retry_strategy)
         self.session.mount("http://", adapter)
         self.session.mount("https://", adapter)
-        self.session.headers.update({
-            "Content-Type": "application/json",
-            "X-Node-ID": self.node_id,
-            "X-Node-Role": self.role.value,
-            "Accept-Encoding": "gzip, deflate"  # Request compressed responses
-        })
+        self.session.headers.update(
+            {
+                "Content-Type": "application/json",
+                "X-Node-ID": self.node_id,
+                "X-Node-Role": self.role.value,
+                "Accept-Encoding": "gzip, deflate",  # Request compressed responses
+            }
+        )
 
     def _init_nat_traversal(self):
         """Initialize NAT traversal components."""
@@ -1168,15 +1217,14 @@ class P2PNetwork:
         try:
             # Import NATType enum from nat_traversal module
             from .nat_traversal import NATType as NATTypeEnum
+
             peer_type = NATTypeEnum(peer_nat_type)
             return self.nat_manager.can_traverse(peer_type)
         except (ValueError, ImportError):
             return True  # Unknown type, try direct
 
     def _connect_with_nat_traversal(
-        self,
-        endpoint: str,
-        peer_nat_info: dict[str, Any] | None = None
+        self, endpoint: str, peer_nat_info: dict[str, Any] | None = None
     ) -> tuple[bool, str]:
         """
         Attempt connection with NAT traversal fallback.
@@ -1198,8 +1246,7 @@ class P2PNetwork:
         # Strategy 1: Direct connection
         try:
             response = self.session.get(
-                f"{endpoint}/api/{P2P_API_VERSION}/health",
-                timeout=PEER_TIMEOUT
+                f"{endpoint}/api/{P2P_API_VERSION}/health", timeout=PEER_TIMEOUT
             )
             if response.ok:
                 logger.debug(f"Direct connection to {endpoint} succeeded")
@@ -1217,8 +1264,7 @@ class P2PNetwork:
             external_endpoint = f"http://{peer_external['ip']}:{DEFAULT_API_PORT}"
             try:
                 response = self.session.get(
-                    f"{external_endpoint}/api/{P2P_API_VERSION}/health",
-                    timeout=PEER_TIMEOUT
+                    f"{external_endpoint}/api/{P2P_API_VERSION}/health", timeout=PEER_TIMEOUT
                 )
                 if response.ok:
                     self.stats["stun_successes"] += 1
@@ -1233,8 +1279,7 @@ class P2PNetwork:
             candidate_endpoint = f"http://{candidate['address']}:{DEFAULT_API_PORT}"
             try:
                 response = self.session.get(
-                    f"{candidate_endpoint}/api/{P2P_API_VERSION}/health",
-                    timeout=PEER_TIMEOUT
+                    f"{candidate_endpoint}/api/{P2P_API_VERSION}/health", timeout=PEER_TIMEOUT
                 )
                 if response.ok:
                     ctype = candidate.get("type", "unknown")
@@ -1243,7 +1288,9 @@ class P2PNetwork:
                         logger.info(f"TURN relay connection to {candidate_endpoint} succeeded")
                     else:
                         self.stats["stun_successes"] += 1
-                        logger.info(f"Candidate ({ctype}) connection to {candidate_endpoint} succeeded")
+                        logger.info(
+                            f"Candidate ({ctype}) connection to {candidate_endpoint} succeeded"
+                        )
                     return True, candidate_endpoint
             except Exception:
                 continue
@@ -1264,7 +1311,7 @@ class P2PNetwork:
             self.gossip_protocol = GossipProtocol(
                 node_id=self.node_id,
                 send_callback=self._gossip_send_callback,
-                on_message_callback=self._gossip_message_callback
+                on_message_callback=self._gossip_message_callback,
             )
             self._gossip_enabled = True
             logger.info("Gossip protocol initialized")
@@ -1282,7 +1329,7 @@ class P2PNetwork:
             response = self.session.post(
                 f"{peer.endpoint}/api/{P2P_API_VERSION}/gossip",
                 json=message,
-                timeout=BROADCAST_TIMEOUT
+                timeout=BROADCAST_TIMEOUT,
             )
             if response.ok:
                 peer.last_seen = datetime.utcnow()
@@ -1370,7 +1417,8 @@ class P2PNetwork:
         if not self._compression_enabled or not self.block_compressor:
             # Return uncompressed JSON
             import json
-            json_bytes = json.dumps(data, separators=(',', ':')).encode('utf-8')
+
+            json_bytes = json.dumps(data, separators=(",", ":")).encode("utf-8")
             return json_bytes, {"Content-Type": "application/json"}
 
         result = self.block_compressor.compress(data)
@@ -1388,9 +1436,9 @@ class P2PNetwork:
         Returns:
             Decompressed JSON data
         """
-        content_encoding = response.headers.get('Content-Encoding', '')
+        content_encoding = response.headers.get("Content-Encoding", "")
 
-        if 'gzip' in content_encoding and self.block_compressor:
+        if "gzip" in content_encoding and self.block_compressor:
             try:
                 data, _ = self.block_compressor.decompress_json(response.content)
                 return data
@@ -1427,10 +1475,7 @@ class P2PNetwork:
             self.connect_to_peer(peer_endpoint)
 
         # Start health check thread
-        self._health_check_thread = threading.Thread(
-            target=self._health_check_loop,
-            daemon=True
-        )
+        self._health_check_thread = threading.Thread(target=self._health_check_loop, daemon=True)
         self._health_check_thread.start()
 
         logger.info(f"P2P network started with {len(self.peers)} peers")
@@ -1483,8 +1528,7 @@ class P2PNetwork:
         """Remove expired message IDs."""
         now = datetime.utcnow()
         expired = [
-            msg_id for msg_id, ts in self.seen_messages.items()
-            if now - ts > self.message_expiry
+            msg_id for msg_id, ts in self.seen_messages.items() if now - ts > self.message_expiry
         ]
         for msg_id in expired:
             del self.seen_messages[msg_id]
@@ -1494,9 +1538,7 @@ class P2PNetwork:
     # =========================================================================
 
     def connect_to_peer(
-        self,
-        endpoint: str,
-        peer_nat_info: dict[str, Any] | None = None
+        self, endpoint: str, peer_nat_info: dict[str, Any] | None = None
     ) -> tuple[bool, PeerInfo | None]:
         """
         Connect to a peer node with security validation and NAT traversal.
@@ -1536,8 +1578,7 @@ class P2PNetwork:
             # Request peer info from the successful endpoint
             start_time = time.time()
             response = self.session.get(
-                f"{actual_endpoint}/api/{P2P_API_VERSION}/node/info",
-                timeout=PEER_TIMEOUT
+                f"{actual_endpoint}/api/{P2P_API_VERSION}/node/info", timeout=PEER_TIMEOUT
             )
             latency = (time.time() - start_time) * 1000
 
@@ -1579,7 +1620,7 @@ class P2PNetwork:
                     last_seen=datetime.utcnow(),
                     latency_ms=latency,
                     version=data.get("version", "unknown"),
-                    capabilities=capabilities
+                    capabilities=capabilities,
                 )
 
                 self.peers[peer_info.peer_id] = peer_info
@@ -1622,7 +1663,7 @@ class P2PNetwork:
                 "chain_height": self._get_chain_height(),
                 "chain_tip_hash": self._get_chain_tip_hash(),
                 "version": "1.0.0",
-                "capabilities": ["entries", "blocks", "sync"]
+                "capabilities": ["entries", "blocks", "sync"],
             }
 
             # Include NAT traversal info for assisted connectivity
@@ -1633,7 +1674,7 @@ class P2PNetwork:
             self.session.post(
                 f"{peer.endpoint}/api/{P2P_API_VERSION}/peers/register",
                 json=registration_data,
-                timeout=PEER_TIMEOUT
+                timeout=PEER_TIMEOUT,
             )
         except Exception as e:
             logger.warning(f"Failed to register with peer {peer.peer_id}: {e}")
@@ -1642,8 +1683,7 @@ class P2PNetwork:
         """Ping a peer to check if it's alive."""
         try:
             response = self.session.get(
-                f"{peer.endpoint}/api/{P2P_API_VERSION}/health",
-                timeout=PEER_TIMEOUT
+                f"{peer.endpoint}/api/{P2P_API_VERSION}/health", timeout=PEER_TIMEOUT
             )
             if response.ok:
                 peer.status = PeerStatus.CONNECTED
@@ -1676,15 +1716,13 @@ class P2PNetwork:
 
     def get_connected_peers(self) -> list[PeerInfo]:
         """Get list of connected peers."""
-        return [
-            p for p in self.peers.values()
-            if p.status == PeerStatus.CONNECTED
-        ]
+        return [p for p in self.peers.values() if p.status == PeerStatus.CONNECTED]
 
     def get_mediator_peers(self) -> list[PeerInfo]:
         """Get list of connected mediator nodes."""
         return [
-            p for p in self.peers.values()
+            p
+            for p in self.peers.values()
             if p.role == NodeRole.MEDIATOR and p.status == PeerStatus.CONNECTED
         ]
 
@@ -1713,11 +1751,9 @@ class P2PNetwork:
                 "broadcast_type": BroadcastType.NEW_ENTRY.value,
                 "payload": entry_data,
                 "origin_node": self.node_id,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.utcnow().isoformat(),
             }
-            return self.gossip_protocol.gossip(
-                message_id, gossip_payload, MessagePriority.NORMAL
-            )
+            return self.gossip_protocol.gossip(message_id, gossip_payload, MessagePriority.NORMAL)
 
         # Fallback to basic flooding
         message = BroadcastMessage(
@@ -1725,7 +1761,7 @@ class P2PNetwork:
             broadcast_type=BroadcastType.NEW_ENTRY,
             payload=entry_data,
             origin_node=self.node_id,
-            ttl=BROADCAST_FANOUT
+            ttl=BROADCAST_FANOUT,
         )
         return self._broadcast(message)
 
@@ -1750,11 +1786,9 @@ class P2PNetwork:
                 "broadcast_type": BroadcastType.NEW_BLOCK.value,
                 "payload": block_data,
                 "origin_node": self.node_id,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.utcnow().isoformat(),
             }
-            return self.gossip_protocol.gossip(
-                message_id, gossip_payload, MessagePriority.CRITICAL
-            )
+            return self.gossip_protocol.gossip(message_id, gossip_payload, MessagePriority.CRITICAL)
 
         # Fallback to basic flooding
         message = BroadcastMessage(
@@ -1762,7 +1796,7 @@ class P2PNetwork:
             broadcast_type=BroadcastType.NEW_BLOCK,
             payload=block_data,
             origin_node=self.node_id,
-            ttl=BROADCAST_FANOUT
+            ttl=BROADCAST_FANOUT,
         )
         return self._broadcast(message)
 
@@ -1786,11 +1820,9 @@ class P2PNetwork:
                 "broadcast_type": BroadcastType.SETTLEMENT.value,
                 "payload": settlement_data,
                 "origin_node": self.node_id,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.utcnow().isoformat(),
             }
-            return self.gossip_protocol.gossip(
-                message_id, gossip_payload, MessagePriority.HIGH
-            )
+            return self.gossip_protocol.gossip(message_id, gossip_payload, MessagePriority.HIGH)
 
         # Fallback to basic flooding
         message = BroadcastMessage(
@@ -1798,7 +1830,7 @@ class P2PNetwork:
             broadcast_type=BroadcastType.SETTLEMENT,
             payload=settlement_data,
             origin_node=self.node_id,
-            ttl=BROADCAST_FANOUT
+            ttl=BROADCAST_FANOUT,
         )
         return self._broadcast(message)
 
@@ -1828,7 +1860,7 @@ class P2PNetwork:
                 response = self.session.post(
                     f"{peer.endpoint}/api/{P2P_API_VERSION}/broadcast",
                     json=message.to_dict(),
-                    timeout=BROADCAST_TIMEOUT
+                    timeout=BROADCAST_TIMEOUT,
                 )
                 if response.ok:
                     success_count += 1
@@ -1839,10 +1871,14 @@ class P2PNetwork:
         self.stats["broadcasts_sent"] += 1
         self.stats["messages_sent"] += success_count
 
-        logger.info(f"Broadcast {message.broadcast_type.value} to {success_count}/{len(peers)} peers")
+        logger.info(
+            f"Broadcast {message.broadcast_type.value} to {success_count}/{len(peers)} peers"
+        )
         return success_count
 
-    def handle_broadcast(self, message_data: dict[str, Any], sender_id: str | None = None) -> tuple[bool, str]:
+    def handle_broadcast(
+        self, message_data: dict[str, Any], sender_id: str | None = None
+    ) -> tuple[bool, str]:
         """
         Handle an incoming broadcast message with security validation.
 
@@ -1853,7 +1889,7 @@ class P2PNetwork:
         Returns:
             Tuple of (success, reason)
         """
-        origin_node = message_data.get('origin_node', sender_id or 'unknown')
+        origin_node = message_data.get("origin_node", sender_id or "unknown")
 
         # Security Check 1: Rate limiting
         allowed, reason = self.rate_limiter.check_rate_limit(origin_node)
@@ -1932,8 +1968,7 @@ class P2PNetwork:
         # Update peer reputation positively
         if origin_node in self.peers:
             self.peers[origin_node].reputation = min(
-                1.0,
-                self.peers[origin_node].reputation + REPUTATION_RECOVERY_RATE
+                1.0, self.peers[origin_node].reputation + REPUTATION_RECOVERY_RATE
             )
 
         # Forward if TTL > 0
@@ -1952,8 +1987,7 @@ class P2PNetwork:
         # Update peer reputation
         if peer_id in self.peers:
             self.peers[peer_id].reputation = max(
-                0.0,
-                self.peers[peer_id].reputation - REPUTATION_DECAY_RATE
+                0.0, self.peers[peer_id].reputation - REPUTATION_DECAY_RATE
             )
 
             # Check if reputation too low
@@ -1970,6 +2004,7 @@ class P2PNetwork:
         peers = self.get_connected_peers()
         # Select random subset for forwarding
         import random
+
         forward_peers = random.sample(peers, min(BROADCAST_FANOUT, len(peers)))
 
         for peer in forward_peers:
@@ -1977,7 +2012,7 @@ class P2PNetwork:
                 self.session.post(
                     f"{peer.endpoint}/api/{P2P_API_VERSION}/broadcast",
                     json=message.to_dict(),
-                    timeout=BROADCAST_TIMEOUT
+                    timeout=BROADCAST_TIMEOUT,
                 )
             except (requests.RequestException, OSError, ValueError) as e:
                 logger.debug(f"Forward broadcast to {peer.peer_id} failed: {type(e).__name__}")
@@ -2066,7 +2101,7 @@ class P2PNetwork:
                 response = self.session.get(
                     f"{peer.endpoint}/api/{P2P_API_VERSION}/blocks",
                     params={"start": current, "end": batch_end},
-                    timeout=SYNC_TIMEOUT
+                    timeout=SYNC_TIMEOUT,
                 )
 
                 if not response.ok:
@@ -2112,36 +2147,40 @@ class P2PNetwork:
         # Get pending entries
         for entry in chain_info.get("pending_entries", []):
             if entry.get("metadata", {}).get("is_contract"):
-                intents.append({
-                    "intent_id": hashlib.sha256(
-                        json.dumps(entry, sort_keys=True).encode()
-                    ).hexdigest()[:16],
-                    "content": entry.get("content"),
-                    "author": entry.get("author"),
-                    "intent": entry.get("intent"),
-                    "metadata": entry.get("metadata"),
-                    "timestamp": entry.get("timestamp"),
-                    "status": "pending"
-                })
+                intents.append(
+                    {
+                        "intent_id": hashlib.sha256(
+                            json.dumps(entry, sort_keys=True).encode()
+                        ).hexdigest()[:16],
+                        "content": entry.get("content"),
+                        "author": entry.get("author"),
+                        "intent": entry.get("intent"),
+                        "metadata": entry.get("metadata"),
+                        "timestamp": entry.get("timestamp"),
+                        "status": "pending",
+                    }
+                )
 
         # Also include open contracts from chain
         for block in chain_info.get("chain", []):
             for entry in block.get("entries", []):
                 metadata = entry.get("metadata", {})
                 if metadata.get("is_contract") and metadata.get("status") == "open":
-                    intents.append({
-                        "intent_id": hashlib.sha256(
-                            json.dumps(entry, sort_keys=True).encode()
-                        ).hexdigest()[:16],
-                        "block_index": block.get("index"),
-                        "block_hash": block.get("hash"),
-                        "content": entry.get("content"),
-                        "author": entry.get("author"),
-                        "intent": entry.get("intent"),
-                        "metadata": metadata,
-                        "timestamp": entry.get("timestamp"),
-                        "status": "open"
-                    })
+                    intents.append(
+                        {
+                            "intent_id": hashlib.sha256(
+                                json.dumps(entry, sort_keys=True).encode()
+                            ).hexdigest()[:16],
+                            "block_index": block.get("index"),
+                            "block_hash": block.get("hash"),
+                            "content": entry.get("content"),
+                            "author": entry.get("author"),
+                            "intent": entry.get("intent"),
+                            "metadata": metadata,
+                            "timestamp": entry.get("timestamp"),
+                            "status": "open",
+                        }
+                    )
 
         return intents
 
@@ -2175,8 +2214,8 @@ class P2PNetwork:
                 "model_hash": settlement.get("model_hash"),
                 "consensus_mode": settlement.get("consensus_mode", "permissionless"),
                 "acceptance_window_hours": settlement.get("acceptance_window", 72),
-                "status": "proposed"
-            }
+                "status": "proposed",
+            },
         }
 
         # Broadcast to network
@@ -2185,7 +2224,7 @@ class P2PNetwork:
         return True, {
             "settlement_id": secrets.token_hex(8),
             "status": "proposed",
-            "broadcast_count": broadcast_count
+            "broadcast_count": broadcast_count,
         }
 
     # =========================================================================
@@ -2208,7 +2247,7 @@ class P2PNetwork:
         self,
         get_chain_info: Callable[[], dict[str, Any]],
         get_blocks: Callable[[int, int], list[dict[str, Any]]],
-        add_block: Callable[[dict[str, Any]], bool]
+        add_block: Callable[[dict[str, Any]], bool],
     ):
         """Set callbacks for chain data access."""
         self._get_chain_info = get_chain_info
@@ -2248,7 +2287,7 @@ class P2PNetwork:
             "version": "1.0.0",
             "capabilities": capabilities,
             "consensus_mode": self.consensus_mode.value,
-            "peer_count": len(self.get_connected_peers())
+            "peer_count": len(self.get_connected_peers()),
         }
 
         # Include NAT traversal information for assisted connectivity
@@ -2267,9 +2306,11 @@ class P2PNetwork:
             "mediator_count": len(self.get_mediator_peers()),
             "sync_state": {
                 "is_syncing": self.sync_state.is_syncing,
-                "last_sync": self.sync_state.last_sync.isoformat() if self.sync_state.last_sync else None
+                "last_sync": self.sync_state.last_sync.isoformat()
+                if self.sync_state.last_sync
+                else None,
             },
-            "stats": self.stats
+            "stats": self.stats,
         }
 
         # Add NAT traversal status
@@ -2280,10 +2321,12 @@ class P2PNetwork:
                 "nat_type": nat_info.nat_type.value if nat_info else "unknown",
                 "external_address": {
                     "ip": nat_info.external_ip if nat_info else None,
-                    "port": nat_info.external_port if nat_info else None
-                } if nat_info else None,
+                    "port": nat_info.external_port if nat_info else None,
+                }
+                if nat_info
+                else None,
                 "candidates_count": len(self.nat_manager.get_candidates()),
-                "relay_available": self.nat_manager.get_relay_address() is not None
+                "relay_available": self.nat_manager.get_relay_address() is not None,
             }
         else:
             stats_data["nat_traversal"] = {"enabled": False}
@@ -2294,13 +2337,13 @@ class P2PNetwork:
             stats_data["gossip_protocol"] = {
                 "enabled": True,
                 "protocol": "plumtree",
-                **gossip_stats
+                **gossip_stats,
             }
         else:
             stats_data["gossip_protocol"] = {
                 "enabled": False,
                 "protocol": "basic_flooding",
-                "fanout": BROADCAST_FANOUT
+                "fanout": BROADCAST_FANOUT,
             }
 
         # Add block compression statistics
@@ -2309,7 +2352,7 @@ class P2PNetwork:
             stats_data["compression"] = {
                 "enabled": True,
                 "level": self.block_compressor.compression_level,
-                **compression_stats
+                **compression_stats,
             }
         else:
             stats_data["compression"] = {"enabled": False}
@@ -2336,7 +2379,7 @@ def init_p2p_network(
     role: NodeRole = NodeRole.FULL_NODE,
     consensus_mode: ConsensusMode = ConsensusMode.PERMISSIONLESS,
     bootstrap_peers: list[str] | None = None,
-    enable_nat_traversal: bool | None = None
+    enable_nat_traversal: bool | None = None,
 ) -> P2PNetwork:
     """Initialize and return the global P2P network instance."""
     global _p2p_network
@@ -2357,7 +2400,7 @@ def init_p2p_network(
         role=role,
         consensus_mode=consensus_mode,
         bootstrap_peers=bootstrap_peers,
-        enable_nat_traversal=enable_nat_traversal
+        enable_nat_traversal=enable_nat_traversal,
     )
 
     return _p2p_network

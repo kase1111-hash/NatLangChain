@@ -27,7 +27,6 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any
-from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 
@@ -101,8 +100,10 @@ ICE_PRIORITY_RELAY = 0
 # Enums
 # =============================================================================
 
+
 class NATType(Enum):
     """NAT type classification based on RFC 3489."""
+
     UNKNOWN = "unknown"
     OPEN = "open"  # No NAT, public IP
     FULL_CONE = "full_cone"  # Endpoint-Independent Mapping, EIF
@@ -114,6 +115,7 @@ class NATType(Enum):
 
 class CandidateType(Enum):
     """ICE candidate types (RFC 8445)."""
+
     HOST = "host"  # Local network interface
     SERVER_REFLEXIVE = "srflx"  # STUN-derived public address
     PEER_REFLEXIVE = "prflx"  # Discovered from peer
@@ -126,6 +128,7 @@ class NATConnectionState(Enum):
     Note: This is different from ConnectionState in mobile_deployment.py
     which tracks device connectivity (online/offline/syncing).
     """
+
     NEW = "new"
     CHECKING = "checking"
     CONNECTED = "connected"
@@ -138,9 +141,11 @@ class NATConnectionState(Enum):
 # Data Classes
 # =============================================================================
 
+
 @dataclass
 class STUNServer:
     """STUN server configuration."""
+
     host: str
     port: int = 3478
     transport: str = "udp"
@@ -163,6 +168,7 @@ class STUNServer:
 @dataclass
 class TURNServer:
     """TURN server configuration."""
+
     host: str
     port: int = 3478
     username: str = ""
@@ -192,18 +198,13 @@ class TURNServer:
         host = parts[0]
         port = int(parts[1]) if len(parts) > 1 else 3478
 
-        return cls(
-            host=host,
-            port=port,
-            username=username,
-            password=password,
-            transport=transport
-        )
+        return cls(host=host, port=port, username=username, password=password, transport=transport)
 
 
 @dataclass
 class ICECandidate:
     """ICE candidate for connectivity checking."""
+
     foundation: str
     component: int
     transport: str
@@ -236,7 +237,7 @@ class ICECandidate:
             priority=int(parts[3]),
             address=parts[4],
             port=int(parts[5]),
-            candidate_type=CandidateType(parts[7])
+            candidate_type=CandidateType(parts[7]),
         )
 
         # Parse optional raddr/rport
@@ -259,19 +260,22 @@ class ICECandidate:
             "port": self.port,
             "type": self.candidate_type.value,
             "related_address": self.related_address,
-            "related_port": self.related_port
+            "related_port": self.related_port,
         }
 
 
 @dataclass
 class NATInfo:
     """Information about detected NAT configuration."""
+
     nat_type: NATType
     external_ip: str | None = None
     external_port: int | None = None
     internal_ip: str | None = None
     internal_port: int | None = None
-    mapping_behavior: str | None = None  # endpoint-independent, address-dependent, address+port-dependent
+    mapping_behavior: str | None = (
+        None  # endpoint-independent, address-dependent, address+port-dependent
+    )
     filtering_behavior: str | None = None  # same categories as mapping
     detected_at: datetime = field(default_factory=datetime.utcnow)
     stun_server_used: str | None = None
@@ -287,13 +291,14 @@ class NATInfo:
             "mapping_behavior": self.mapping_behavior,
             "filtering_behavior": self.filtering_behavior,
             "detected_at": self.detected_at.isoformat(),
-            "stun_server_used": self.stun_server_used
+            "stun_server_used": self.stun_server_used,
         }
 
 
 @dataclass
 class TURNAllocation:
     """TURN server allocation state."""
+
     relay_address: str
     relay_port: int
     server: TURNServer
@@ -321,6 +326,7 @@ class TURNAllocation:
 # STUN Protocol Implementation
 # =============================================================================
 
+
 class STUNClient:
     """
     STUN (Session Traversal Utilities for NAT) client implementation.
@@ -336,9 +342,7 @@ class STUNClient:
         Args:
             servers: List of STUN server URIs (default: Google's public servers)
         """
-        self.servers = [
-            STUNServer.from_uri(s) for s in (servers or DEFAULT_STUN_SERVERS)
-        ]
+        self.servers = [STUNServer.from_uri(s) for s in (servers or DEFAULT_STUN_SERVERS)]
         self._socket: socket.socket | None = None
         self._transaction_id: bytes | None = None
 
@@ -355,7 +359,7 @@ class STUNClient:
             ">HHI",
             STUN_BINDING_REQUEST,
             0,  # No attributes yet
-            STUN_MAGIC_COOKIE
+            STUN_MAGIC_COOKIE,
         )
 
         return header + self._transaction_id
@@ -391,18 +395,18 @@ class STUNClient:
             if offset + 4 > len(data):
                 break
 
-            attr_type, attr_len = struct.unpack(">HH", data[offset:offset + 4])
+            attr_type, attr_len = struct.unpack(">HH", data[offset : offset + 4])
             offset += 4
 
             if attr_type == STUN_ATTR_XOR_MAPPED_ADDRESS:
                 # XOR-MAPPED-ADDRESS (preferred)
                 if attr_len >= 8:
                     family = data[offset + 1]
-                    xor_port = struct.unpack(">H", data[offset + 2:offset + 4])[0]
+                    xor_port = struct.unpack(">H", data[offset + 2 : offset + 4])[0]
                     port = xor_port ^ (STUN_MAGIC_COOKIE >> 16)
 
                     if family == 0x01:  # IPv4
-                        xor_addr = struct.unpack(">I", data[offset + 4:offset + 8])[0]
+                        xor_addr = struct.unpack(">I", data[offset + 4 : offset + 8])[0]
                         addr_int = xor_addr ^ STUN_MAGIC_COOKIE
                         ip = socket.inet_ntoa(struct.pack(">I", addr_int))
                         return ip, port
@@ -411,10 +415,10 @@ class STUNClient:
                 # MAPPED-ADDRESS (fallback)
                 if attr_len >= 8:
                     family = data[offset + 1]
-                    port = struct.unpack(">H", data[offset + 2:offset + 4])[0]
+                    port = struct.unpack(">H", data[offset + 2 : offset + 4])[0]
 
                     if family == 0x01:  # IPv4
-                        ip = socket.inet_ntoa(data[offset + 4:offset + 8])
+                        ip = socket.inet_ntoa(data[offset + 4 : offset + 8])
                         return ip, port
 
             # Move to next attribute (with padding to 4-byte boundary)
@@ -425,10 +429,7 @@ class STUNClient:
         return None
 
     def get_mapped_address(
-        self,
-        server: STUNServer | None = None,
-        local_port: int = 0,
-        timeout: float = STUN_TIMEOUT
+        self, server: STUNServer | None = None, local_port: int = 0, timeout: float = STUN_TIMEOUT
     ) -> tuple[str, int] | None:
         """
         Query STUN server for mapped (public) address.
@@ -461,7 +462,7 @@ class STUNClient:
                         if result:
                             sock.close()
                             return result
-                    except socket.timeout:
+                    except TimeoutError:
                         sock.sendto(request, (srv.host, srv.port))
 
                 sock.close()
@@ -487,6 +488,7 @@ class STUNClient:
 # =============================================================================
 # NAT Type Detection
 # =============================================================================
+
 
 class NATDetector:
     """
@@ -546,10 +548,7 @@ class NATDetector:
 
         if result1 is None:
             # No response - UDP might be blocked
-            info = NATInfo(
-                nat_type=NATType.BLOCKED,
-                internal_ip=local_ip
-            )
+            info = NATInfo(nat_type=NATType.BLOCKED, internal_ip=local_ip)
             self._cached_info = info
             self._cache_expiry = datetime.utcnow() + self._cache_duration
             return info
@@ -563,7 +562,7 @@ class NATDetector:
                 external_ip=external_ip,
                 external_port=external_port,
                 internal_ip=local_ip,
-                stun_server_used=f"{self.stun_client.servers[0].host}:{self.stun_client.servers[0].port}"
+                stun_server_used=f"{self.stun_client.servers[0].host}:{self.stun_client.servers[0].port}",
             )
             self._cached_info = info
             self._cache_expiry = datetime.utcnow() + self._cache_duration
@@ -579,12 +578,10 @@ class NATDetector:
                 sock.close()
 
                 result2 = self.stun_client.get_mapped_address(
-                    server=self.stun_client.servers[0],
-                    local_port=local_port
+                    server=self.stun_client.servers[0], local_port=local_port
                 )
                 result3 = self.stun_client.get_mapped_address(
-                    server=self.stun_client.servers[1],
-                    local_port=local_port
+                    server=self.stun_client.servers[1], local_port=local_port
                 )
 
                 if result2 and result3:
@@ -616,13 +613,15 @@ class NATDetector:
             external_port=external_port,
             internal_ip=local_ip,
             mapping_behavior=mapping,
-            stun_server_used=f"{self.stun_client.servers[0].host}:{self.stun_client.servers[0].port}"
+            stun_server_used=f"{self.stun_client.servers[0].host}:{self.stun_client.servers[0].port}",
         )
 
         self._cached_info = info
         self._cache_expiry = datetime.utcnow() + self._cache_duration
 
-        logger.info(f"NAT type detected: {nat_type.value} (external: {external_ip}:{external_port})")
+        logger.info(
+            f"NAT type detected: {nat_type.value} (external: {external_ip}:{external_port})"
+        )
         return info
 
     def get_external_address(self) -> tuple[str, int] | None:
@@ -641,6 +640,7 @@ class NATDetector:
 # =============================================================================
 # TURN Client Implementation
 # =============================================================================
+
 
 class TURNClient:
     """
@@ -720,24 +720,18 @@ class TURNClient:
             attrs += nonce_attr
 
         # Build header
-        header = struct.pack(
-            ">HHI",
-            TURN_ALLOCATE_REQUEST,
-            len(attrs),
-            STUN_MAGIC_COOKIE
-        )
+        header = struct.pack(">HHI", TURN_ALLOCATE_REQUEST, len(attrs), STUN_MAGIC_COOKIE)
 
         message = header + self._transaction_id + attrs
 
         # Add MESSAGE-INTEGRITY if authenticated
         if nonce and realm and self.server.username:
             # Update length to include MESSAGE-INTEGRITY (24 bytes)
-            message = struct.pack(
-                ">HHI",
-                TURN_ALLOCATE_REQUEST,
-                len(attrs) + 24,
-                STUN_MAGIC_COOKIE
-            ) + self._transaction_id + attrs
+            message = (
+                struct.pack(">HHI", TURN_ALLOCATE_REQUEST, len(attrs) + 24, STUN_MAGIC_COOKIE)
+                + self._transaction_id
+                + attrs
+            )
 
             key = self._get_long_term_key()
             integrity = self._compute_message_integrity(message, key)
@@ -767,13 +761,13 @@ class TURNClient:
             # Parse error response for nonce/realm
             offset = 20
             while offset + 4 <= len(data):
-                attr_type, attr_len = struct.unpack(">HH", data[offset:offset + 4])
+                attr_type, attr_len = struct.unpack(">HH", data[offset : offset + 4])
                 offset += 4
 
                 if attr_type == TURN_ATTR_REALM:
-                    result["realm"] = data[offset:offset + attr_len].rstrip(b"\x00").decode()
+                    result["realm"] = data[offset : offset + attr_len].rstrip(b"\x00").decode()
                 elif attr_type == TURN_ATTR_NONCE:
-                    result["nonce"] = data[offset:offset + attr_len].rstrip(b"\x00").decode()
+                    result["nonce"] = data[offset : offset + attr_len].rstrip(b"\x00").decode()
                 elif attr_type == STUN_ATTR_ERROR_CODE:
                     if attr_len >= 4:
                         error_class = data[offset + 2] & 0x07
@@ -793,17 +787,17 @@ class TURNClient:
         # Parse success response
         offset = 20
         while offset + 4 <= len(data):
-            attr_type, attr_len = struct.unpack(">HH", data[offset:offset + 4])
+            attr_type, attr_len = struct.unpack(">HH", data[offset : offset + 4])
             offset += 4
 
             if attr_type == TURN_ATTR_XOR_RELAYED_ADDRESS:
                 if attr_len >= 8:
                     family = data[offset + 1]
-                    xor_port = struct.unpack(">H", data[offset + 2:offset + 4])[0]
+                    xor_port = struct.unpack(">H", data[offset + 2 : offset + 4])[0]
                     port = xor_port ^ (STUN_MAGIC_COOKIE >> 16)
 
                     if family == 0x01:  # IPv4
-                        xor_addr = struct.unpack(">I", data[offset + 4:offset + 8])[0]
+                        xor_addr = struct.unpack(">I", data[offset + 4 : offset + 8])[0]
                         addr_int = xor_addr ^ STUN_MAGIC_COOKIE
                         ip = socket.inet_ntoa(struct.pack(">I", addr_int))
                         result["relay_address"] = ip
@@ -811,7 +805,7 @@ class TURNClient:
 
             elif attr_type == TURN_ATTR_LIFETIME:
                 if attr_len >= 4:
-                    result["lifetime"] = struct.unpack(">I", data[offset:offset + 4])[0]
+                    result["lifetime"] = struct.unpack(">I", data[offset : offset + 4])[0]
 
             padded_len = attr_len
             if padded_len % 4 != 0:
@@ -859,7 +853,7 @@ class TURNClient:
                     lifetime=lifetime,
                     expires_at=datetime.utcnow() + timedelta(seconds=lifetime),
                     nonce=result.get("nonce", ""),
-                    realm=result.get("realm", "")
+                    realm=result.get("realm", ""),
                 )
 
                 logger.info(
@@ -906,12 +900,7 @@ class TURNClient:
         # LIFETIME attribute
         lifetime_attr = struct.pack(">HHI", TURN_ATTR_LIFETIME, 4, TURN_ALLOCATION_LIFETIME)
 
-        header = struct.pack(
-            ">HHI",
-            TURN_REFRESH_REQUEST,
-            len(lifetime_attr),
-            STUN_MAGIC_COOKIE
-        )
+        header = struct.pack(">HHI", TURN_REFRESH_REQUEST, len(lifetime_attr), STUN_MAGIC_COOKIE)
 
         request = header + self._transaction_id + lifetime_attr
 
@@ -943,10 +932,7 @@ class TURNClient:
                 lifetime_attr = struct.pack(">HHI", TURN_ATTR_LIFETIME, 4, 0)
 
                 header = struct.pack(
-                    ">HHI",
-                    TURN_REFRESH_REQUEST,
-                    len(lifetime_attr),
-                    STUN_MAGIC_COOKIE
+                    ">HHI", TURN_REFRESH_REQUEST, len(lifetime_attr), STUN_MAGIC_COOKIE
                 )
 
                 request = header + self._transaction_id + lifetime_attr
@@ -977,6 +963,7 @@ class TURNClient:
 # ICE Candidate Gathering
 # =============================================================================
 
+
 class CandidateGatherer:
     """
     Gathers ICE candidates for connectivity establishment.
@@ -986,9 +973,7 @@ class CandidateGatherer:
     """
 
     def __init__(
-        self,
-        stun_servers: list[str] | None = None,
-        turn_servers: list[TURNServer] | None = None
+        self, stun_servers: list[str] | None = None, turn_servers: list[TURNServer] | None = None
     ):
         """
         Initialize candidate gatherer.
@@ -1004,10 +989,7 @@ class CandidateGatherer:
         self._lock = threading.Lock()
 
     def _calculate_priority(
-        self,
-        candidate_type: CandidateType,
-        local_preference: int = 65535,
-        component: int = 1
+        self, candidate_type: CandidateType, local_preference: int = 65535, component: int = 1
     ) -> int:
         """
         Calculate ICE candidate priority per RFC 8445.
@@ -1053,9 +1035,7 @@ class CandidateGatherer:
         return addresses if addresses else [("127.0.0.1", 0)]
 
     def gather_candidates(
-        self,
-        component: int = 1,
-        gather_relay: bool = True
+        self, component: int = 1, gather_relay: bool = True
     ) -> list[ICECandidate]:
         """
         Gather all ICE candidates.
@@ -1078,13 +1058,11 @@ class CandidateGatherer:
                 component=component,
                 transport="udp",
                 priority=self._calculate_priority(
-                    CandidateType.HOST,
-                    local_preference=65535 - idx,
-                    component=component
+                    CandidateType.HOST, local_preference=65535 - idx, component=component
                 ),
                 address=ip,
                 port=0,  # Will be assigned when socket is created
-                candidate_type=CandidateType.HOST
+                candidate_type=CandidateType.HOST,
             )
             candidates.append(candidate)
 
@@ -1099,14 +1077,13 @@ class CandidateGatherer:
                     component=component,
                     transport="udp",
                     priority=self._calculate_priority(
-                        CandidateType.SERVER_REFLEXIVE,
-                        component=component
+                        CandidateType.SERVER_REFLEXIVE, component=component
                     ),
                     address=external_ip,
                     port=external_port,
                     candidate_type=CandidateType.SERVER_REFLEXIVE,
                     related_address=local_addresses[0][0] if local_addresses else None,
-                    related_port=0
+                    related_port=0,
                 )
                 candidates.append(candidate)
 
@@ -1123,15 +1100,13 @@ class CandidateGatherer:
                         component=component,
                         transport="udp",
                         priority=self._calculate_priority(
-                            CandidateType.RELAY,
-                            local_preference=65535 - idx,
-                            component=component
+                            CandidateType.RELAY, local_preference=65535 - idx, component=component
                         ),
                         address=allocation.relay_address,
                         port=allocation.relay_port,
                         candidate_type=CandidateType.RELAY,
                         related_address=turn_server.host,
-                        related_port=turn_server.port
+                        related_port=turn_server.port,
                     )
                     candidates.append(candidate)
 
@@ -1163,6 +1138,7 @@ class CandidateGatherer:
 # Connection Manager
 # =============================================================================
 
+
 class NATTraversalManager:
     """
     High-level NAT traversal manager for P2P connections.
@@ -1177,7 +1153,7 @@ class NATTraversalManager:
         self,
         stun_servers: list[str] | None = None,
         turn_servers: list[TURNServer] | None = None,
-        enable_relay: bool = True
+        enable_relay: bool = True,
     ):
         """
         Initialize NAT traversal manager.
@@ -1194,8 +1170,7 @@ class NATTraversalManager:
         self.nat_detector = NATDetector(self.stun_servers)
         self.stun_client = STUNClient(self.stun_servers)
         self.candidate_gatherer = CandidateGatherer(
-            stun_servers=self.stun_servers,
-            turn_servers=self.turn_servers if enable_relay else None
+            stun_servers=self.stun_servers, turn_servers=self.turn_servers if enable_relay else None
         )
 
         self._nat_info: NATInfo | None = None
@@ -1316,11 +1291,11 @@ class NATTraversalManager:
             "nat_type": self._nat_info.nat_type.value if self._nat_info else "unknown",
             "external_address": {
                 "ip": self._nat_info.external_ip if self._nat_info else None,
-                "port": self._nat_info.external_port if self._nat_info else None
+                "port": self._nat_info.external_port if self._nat_info else None,
             },
             "candidates": [c.to_dict() for c in self._candidates],
             "supports_relay": self.enable_relay and len(self.turn_servers) > 0,
-            "state": self._state.value
+            "state": self._state.value,
         }
 
     def cleanup(self):
@@ -1332,6 +1307,7 @@ class NATTraversalManager:
 # =============================================================================
 # Configuration Helper
 # =============================================================================
+
 
 def load_nat_config_from_env() -> dict[str, Any]:
     """
@@ -1352,7 +1328,7 @@ def load_nat_config_from_env() -> dict[str, Any]:
         "enabled": os.getenv("NATLANGCHAIN_NAT_ENABLED", "true").lower() == "true",
         "relay_enabled": os.getenv("NATLANGCHAIN_NAT_RELAY_ENABLED", "true").lower() == "true",
         "stun_servers": [],
-        "turn_servers": []
+        "turn_servers": [],
     }
 
     # Parse STUN servers
@@ -1372,9 +1348,7 @@ def load_nat_config_from_env() -> dict[str, Any]:
             turn_uri = turn_uri.strip()
             if turn_uri:
                 server = TURNServer.from_uri(
-                    turn_uri,
-                    username=turn_username,
-                    password=turn_password
+                    turn_uri, username=turn_username, password=turn_password
                 )
                 config["turn_servers"].append(server)
 
@@ -1397,7 +1371,7 @@ def create_nat_manager_from_env() -> NATTraversalManager | None:
     manager = NATTraversalManager(
         stun_servers=config["stun_servers"],
         turn_servers=config["turn_servers"],
-        enable_relay=config["relay_enabled"]
+        enable_relay=config["relay_enabled"],
     )
 
     logger.info(

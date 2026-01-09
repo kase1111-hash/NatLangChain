@@ -8,7 +8,7 @@ import sys
 import unittest
 from unittest.mock import MagicMock, patch
 
-sys.path.insert(0, 'src')
+sys.path.insert(0, "src")
 
 
 class TestPromptInjectionPatterns(unittest.TestCase):
@@ -16,6 +16,7 @@ class TestPromptInjectionPatterns(unittest.TestCase):
 
     def setUp(self):
         from agent_security import PromptInjectionDetector
+
         self.detector = PromptInjectionDetector()
 
     def test_dan_mode_variants(self):
@@ -109,6 +110,7 @@ class TestSensitiveDataPatterns(unittest.TestCase):
 
     def setUp(self):
         from boundary_daemon import BoundaryDaemon
+
         self.daemon = BoundaryDaemon()
 
     def test_api_key_detection(self):
@@ -121,11 +123,9 @@ class TestSensitiveDataPatterns(unittest.TestCase):
             "sk-live-abcdefghijklmnop",
         ]
         for key in api_keys:
-            result = self.daemon.authorize_request({
-                "source": "test",
-                "destination": "external",
-                "payload": {"data": key}
-            })
+            result = self.daemon.authorize_request(
+                {"source": "test", "destination": "external", "payload": {"data": key}}
+            )
             self.assertFalse(result["authorized"], f"Failed to block: {key}")
 
     def test_password_detection(self):
@@ -136,11 +136,9 @@ class TestSensitiveDataPatterns(unittest.TestCase):
             "pwd=abc123xyz",
         ]
         for pwd in passwords:
-            result = self.daemon.authorize_request({
-                "source": "test",
-                "destination": "external",
-                "payload": {"data": pwd}
-            })
+            result = self.daemon.authorize_request(
+                {"source": "test", "destination": "external", "payload": {"data": pwd}}
+            )
             self.assertFalse(result["authorized"], f"Failed to block password: {pwd}")
 
     def test_private_key_detection(self):
@@ -152,11 +150,9 @@ class TestSensitiveDataPatterns(unittest.TestCase):
             "private_key=abc123",
         ]
         for key in private_keys:
-            result = self.daemon.authorize_request({
-                "source": "test",
-                "destination": "external",
-                "payload": {"data": key}
-            })
+            result = self.daemon.authorize_request(
+                {"source": "test", "destination": "external", "payload": {"data": key}}
+            )
             self.assertFalse(result["authorized"], f"Failed to block private key: {key}")
 
     def test_credit_card_detection(self):
@@ -164,14 +160,12 @@ class TestSensitiveDataPatterns(unittest.TestCase):
         cards = [
             "4111111111111111",  # Visa test
             "5500000000000004",  # Mastercard test
-            "340000000000009",   # Amex test
+            "340000000000009",  # Amex test
         ]
         for card in cards:
-            result = self.daemon.authorize_request({
-                "source": "test",
-                "destination": "external",
-                "payload": {"card": card}
-            })
+            result = self.daemon.authorize_request(
+                {"source": "test", "destination": "external", "payload": {"card": card}}
+            )
             self.assertFalse(result["authorized"], f"Failed to block card: {card}")
 
     def test_ssn_detection(self):
@@ -182,11 +176,9 @@ class TestSensitiveDataPatterns(unittest.TestCase):
             "123456789",
         ]
         for ssn in ssns:
-            result = self.daemon.authorize_request({
-                "source": "test",
-                "destination": "external",
-                "payload": {"ssn": ssn}
-            })
+            result = self.daemon.authorize_request(
+                {"source": "test", "destination": "external", "payload": {"ssn": ssn}}
+            )
             self.assertFalse(result["authorized"], f"Failed to block SSN: {ssn}")
 
     def test_aws_credentials(self):
@@ -197,11 +189,9 @@ class TestSensitiveDataPatterns(unittest.TestCase):
             "aws_secret_access_key=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
         ]
         for cred in aws_creds:
-            result = self.daemon.authorize_request({
-                "source": "test",
-                "destination": "external",
-                "payload": {"cred": cred}
-            })
+            result = self.daemon.authorize_request(
+                {"source": "test", "destination": "external", "payload": {"cred": cred}}
+            )
             self.assertFalse(result["authorized"], f"Failed to block AWS cred: {cred}")
 
     def test_database_connection_strings(self):
@@ -213,11 +203,9 @@ class TestSensitiveDataPatterns(unittest.TestCase):
             "redis://user:pass@host:6379",
         ]
         for conn in conn_strings:
-            result = self.daemon.authorize_request({
-                "source": "test",
-                "destination": "external",
-                "payload": {"conn": conn}
-            })
+            result = self.daemon.authorize_request(
+                {"source": "test", "destination": "external", "payload": {"conn": conn}}
+            )
             self.assertFalse(result["authorized"], f"Failed to block connection string: {conn}")
 
     def test_safe_data_allowed(self):
@@ -230,12 +218,14 @@ class TestSensitiveDataPatterns(unittest.TestCase):
             "Email: user@example.com",
         ]
         for data in safe_data:
-            result = self.daemon.authorize_request({
-                "source": "test",
-                "destination": "natlangchain",
-                "payload": {"data": data},
-                "data_classification": "public"
-            })
+            result = self.daemon.authorize_request(
+                {
+                    "source": "test",
+                    "destination": "natlangchain",
+                    "payload": {"data": data},
+                    "data_classification": "public",
+                }
+            )
             self.assertTrue(result["authorized"], f"Blocked safe data: {data}")
 
 
@@ -256,11 +246,8 @@ class TestBoundaryModeTransitions(unittest.TestCase):
         mock_enforcement.network = MagicMock()
         mock_enforcement.usb = MagicMock()
 
-        with patch('boundary_modes.SecurityEnforcementManager', return_value=mock_enforcement):
-            self.manager = BoundaryModeManager(
-                initial_mode=BoundaryMode.OPEN,
-                cooldown_period=0
-            )
+        with patch("boundary_modes.SecurityEnforcementManager", return_value=mock_enforcement):
+            self.manager = BoundaryModeManager(initial_mode=BoundaryMode.OPEN, cooldown_period=0)
             self.manager._enforcement = mock_enforcement
 
     def test_all_mode_transitions_escalating(self):
@@ -312,21 +299,28 @@ class TestBoundaryModeTransitions(unittest.TestCase):
 
             if "network" in expected:
                 self.assertEqual(
-                    config.network_allowed, expected["network"],
-                    f"Wrong network setting for {mode}"
+                    config.network_allowed, expected["network"], f"Wrong network setting for {mode}"
                 )
             if "vpn_only" in expected:
                 self.assertEqual(
-                    config.vpn_only, expected["vpn_only"],
-                    f"Wrong VPN setting for {mode}"
+                    config.vpn_only, expected["vpn_only"], f"Wrong VPN setting for {mode}"
                 )
 
     def test_memory_class_access_per_mode(self):
         """Test memory class access restrictions per mode."""
         mode_memory = {
             self.BoundaryMode.OPEN: [self.MemoryClass.PUBLIC, self.MemoryClass.INTERNAL],
-            self.BoundaryMode.RESTRICTED: [self.MemoryClass.PUBLIC, self.MemoryClass.INTERNAL, self.MemoryClass.SENSITIVE],
-            self.BoundaryMode.TRUSTED: [self.MemoryClass.PUBLIC, self.MemoryClass.INTERNAL, self.MemoryClass.SENSITIVE, self.MemoryClass.CONFIDENTIAL],
+            self.BoundaryMode.RESTRICTED: [
+                self.MemoryClass.PUBLIC,
+                self.MemoryClass.INTERNAL,
+                self.MemoryClass.SENSITIVE,
+            ],
+            self.BoundaryMode.TRUSTED: [
+                self.MemoryClass.PUBLIC,
+                self.MemoryClass.INTERNAL,
+                self.MemoryClass.SENSITIVE,
+                self.MemoryClass.CONFIDENTIAL,
+            ],
             self.BoundaryMode.LOCKDOWN: [],  # No memory access
         }
 
@@ -336,10 +330,7 @@ class TestBoundaryModeTransitions(unittest.TestCase):
             for mem_class in self.MemoryClass:
                 expected = mem_class in allowed_classes
                 actual = self.manager.is_memory_class_allowed(mem_class)
-                self.assertEqual(
-                    actual, expected,
-                    f"Wrong memory access for {mem_class} in {mode}"
-                )
+                self.assertEqual(actual, expected, f"Wrong memory access for {mem_class} in {mode}")
 
 
 class TestTripwireSystem(unittest.TestCase):
@@ -357,19 +348,16 @@ class TestTripwireSystem(unittest.TestCase):
         mock_enforcement.network = MagicMock()
         mock_enforcement.usb = MagicMock()
 
-        with patch('boundary_modes.SecurityEnforcementManager', return_value=mock_enforcement):
+        with patch("boundary_modes.SecurityEnforcementManager", return_value=mock_enforcement):
             self.manager = BoundaryModeManager(
-                initial_mode=BoundaryMode.AIRGAP,
-                enable_tripwires=True,
-                cooldown_period=0
+                initial_mode=BoundaryMode.AIRGAP, enable_tripwires=True, cooldown_period=0
             )
             self.manager._enforcement = mock_enforcement
 
     def test_network_activity_in_airgap_triggers_lockdown(self):
         """Test that network activity in AIRGAP triggers LOCKDOWN."""
         triggered = self.manager.trigger_tripwire(
-            self.TripwireType.NETWORK_ACTIVITY_IN_AIRGAP,
-            "Detected outbound connection"
+            self.TripwireType.NETWORK_ACTIVITY_IN_AIRGAP, "Detected outbound connection"
         )
         self.assertTrue(triggered)
         self.assertEqual(self.manager.current_mode, self.BoundaryMode.LOCKDOWN)
@@ -379,8 +367,7 @@ class TestTripwireSystem(unittest.TestCase):
         self.manager.set_mode(self.BoundaryMode.RESTRICTED, "Reset", force=True)
 
         triggered = self.manager.trigger_tripwire(
-            self.TripwireType.DATA_EXFILTRATION_ATTEMPT,
-            "Sensitive data being sent externally"
+            self.TripwireType.DATA_EXFILTRATION_ATTEMPT, "Sensitive data being sent externally"
         )
         self.assertTrue(triggered)
         self.assertEqual(self.manager.current_mode, self.BoundaryMode.LOCKDOWN)
@@ -390,8 +377,7 @@ class TestTripwireSystem(unittest.TestCase):
         self.manager.set_mode(self.BoundaryMode.RESTRICTED, "Reset", force=True)
 
         triggered = self.manager.trigger_tripwire(
-            self.TripwireType.INTEGRITY_CHECK_FAILED,
-            "Audit log tampered"
+            self.TripwireType.INTEGRITY_CHECK_FAILED, "Audit log tampered"
         )
         self.assertTrue(triggered)
         self.assertEqual(self.manager.current_mode, self.BoundaryMode.LOCKDOWN)
@@ -403,30 +389,27 @@ class TestTripwireSystem(unittest.TestCase):
         # Prompt injection has threshold of 3
         for i in range(2):
             triggered = self.manager.trigger_tripwire(
-                self.TripwireType.PROMPT_INJECTION_DETECTED,
-                f"Attempt {i+1}"
+                self.TripwireType.PROMPT_INJECTION_DETECTED, f"Attempt {i + 1}"
             )
-            self.assertFalse(triggered, f"Should not trigger on attempt {i+1}")
+            self.assertFalse(triggered, f"Should not trigger on attempt {i + 1}")
 
         # Third should trigger
         triggered = self.manager.trigger_tripwire(
-            self.TripwireType.PROMPT_INJECTION_DETECTED,
-            "Attempt 3"
+            self.TripwireType.PROMPT_INJECTION_DETECTED, "Attempt 3"
         )
         self.assertTrue(triggered, "Should trigger on third attempt")
 
     def test_disabled_tripwires(self):
         """Test that disabled tripwires don't trigger."""
-        with patch('boundary_modes.SecurityEnforcementManager', return_value=MagicMock()):
+        with patch("boundary_modes.SecurityEnforcementManager", return_value=MagicMock()):
             manager = self.BoundaryModeManager(
                 initial_mode=self.BoundaryMode.AIRGAP,
                 enable_tripwires=False,  # Disabled
-                cooldown_period=0
+                cooldown_period=0,
             )
 
         triggered = manager.trigger_tripwire(
-            self.TripwireType.DATA_EXFILTRATION_ATTEMPT,
-            "Should not trigger"
+            self.TripwireType.DATA_EXFILTRATION_ATTEMPT, "Should not trigger"
         )
         self.assertFalse(triggered)
 
@@ -436,6 +419,7 @@ class TestToolOutputSanitization(unittest.TestCase):
 
     def setUp(self):
         from agent_security import ToolOutputSanitizer
+
         self.ToolOutputSanitizer = ToolOutputSanitizer
         self.sanitizer = ToolOutputSanitizer()
 
@@ -483,6 +467,7 @@ class TestRAGPoisoningDetection(unittest.TestCase):
 
     def setUp(self):
         from agent_security import RAGPoisoningDetector
+
         self.detector = RAGPoisoningDetector()
 
     def test_hidden_instructions_detected(self):
@@ -525,6 +510,7 @@ class TestResponseGuardrails(unittest.TestCase):
 
     def setUp(self):
         from agent_security import ResponseGuardrails
+
         self.guardrails = ResponseGuardrails()
 
     def test_system_prompt_leak_detected(self):
@@ -574,10 +560,9 @@ class TestHumanOverrideCeremony(unittest.TestCase):
         mock_enforcement.network = MagicMock()
         mock_enforcement.usb = MagicMock()
 
-        with patch('boundary_modes.SecurityEnforcementManager', return_value=mock_enforcement):
+        with patch("boundary_modes.SecurityEnforcementManager", return_value=mock_enforcement):
             self.manager = BoundaryModeManager(
-                initial_mode=BoundaryMode.LOCKDOWN,
-                cooldown_period=0
+                initial_mode=BoundaryMode.LOCKDOWN, cooldown_period=0
             )
             self.manager._enforcement = mock_enforcement
 
@@ -589,17 +574,16 @@ class TestHumanOverrideCeremony(unittest.TestCase):
             requested_by="test",
             to_mode=self.BoundaryMode.OPEN,
             reason="Test",
-            validity_minutes=0  # Already expired
+            validity_minutes=0,  # Already expired
         )
 
         # Wait a tiny bit to ensure expiry
         import time
+
         time.sleep(0.01)
 
         transition = self.manager.confirm_override(
-            request.request_id,
-            request.confirmation_code,
-            "admin"
+            request.request_id, request.confirmation_code, "admin"
         )
         self.assertFalse(transition.success)
         self.assertIn("expired", transition.error.lower())
@@ -607,26 +591,17 @@ class TestHumanOverrideCeremony(unittest.TestCase):
     def test_wrong_confirmation_code_rejected(self):
         """Test that wrong confirmation codes are rejected."""
         request = self.manager.request_override(
-            requested_by="test",
-            to_mode=self.BoundaryMode.OPEN,
-            reason="Test",
-            validity_minutes=5
+            requested_by="test", to_mode=self.BoundaryMode.OPEN, reason="Test", validity_minutes=5
         )
 
-        transition = self.manager.confirm_override(
-            request.request_id,
-            "wrong_code_12345",
-            "admin"
-        )
+        transition = self.manager.confirm_override(request.request_id, "wrong_code_12345", "admin")
         self.assertFalse(transition.success)
         self.assertIn("invalid", transition.error.lower())
 
     def test_nonexistent_request_rejected(self):
         """Test that nonexistent request IDs are rejected."""
         transition = self.manager.confirm_override(
-            "OVERRIDE-nonexistent-12345",
-            "somecode",
-            "admin"
+            "OVERRIDE-nonexistent-12345", "somecode", "admin"
         )
         self.assertFalse(transition.success)
         self.assertIn("not found", transition.error.lower())
@@ -637,13 +612,11 @@ class TestHumanOverrideCeremony(unittest.TestCase):
             requested_by="test",
             to_mode=self.BoundaryMode.OPEN,
             reason="Maintenance",
-            validity_minutes=5
+            validity_minutes=5,
         )
 
         transition = self.manager.confirm_override(
-            request.request_id,
-            request.confirmation_code,
-            "admin"
+            request.request_id, request.confirmation_code, "admin"
         )
         self.assertTrue(transition.success)
         self.assertEqual(self.manager.current_mode, self.BoundaryMode.OPEN)
@@ -654,6 +627,7 @@ class TestAgentAttestation(unittest.TestCase):
 
     def setUp(self):
         from agent_security import AgentAttestationManager
+
         self.manager = AgentAttestationManager()
 
     def test_attestation_with_all_capabilities(self):
@@ -661,9 +635,7 @@ class TestAgentAttestation(unittest.TestCase):
         capabilities = ["read", "write", "execute", "admin", "network"]
 
         attestation = self.manager.issue_attestation(
-            agent_id="agent-full",
-            capabilities=capabilities,
-            validity_hours=24
+            agent_id="agent-full", capabilities=capabilities, validity_hours=24
         )
 
         # Verify all capabilities
@@ -678,10 +650,7 @@ class TestAgentAttestation(unittest.TestCase):
 
     def test_tampered_agent_id_rejected(self):
         """Test that tampered agent ID is rejected."""
-        attestation = self.manager.issue_attestation(
-            agent_id="agent-1",
-            capabilities=["read"]
-        )
+        attestation = self.manager.issue_attestation(agent_id="agent-1", capabilities=["read"])
 
         # Tamper with agent ID
         attestation.agent_id = "agent-hacked"
@@ -695,9 +664,7 @@ class TestAgentAttestation(unittest.TestCase):
         from datetime import datetime, timedelta
 
         attestation = self.manager.issue_attestation(
-            agent_id="agent-1",
-            capabilities=["read"],
-            validity_hours=1
+            agent_id="agent-1", capabilities=["read"], validity_hours=1
         )
 
         # Tamper with expiry (extend it)
@@ -711,8 +678,7 @@ class TestAgentAttestation(unittest.TestCase):
     def test_revoked_attestation(self):
         """Test that revoked attestations are handled."""
         attestation = self.manager.issue_attestation(
-            agent_id="agent-to-revoke",
-            capabilities=["read"]
+            agent_id="agent-to-revoke", capabilities=["read"]
         )
 
         # Verify it works
@@ -734,6 +700,7 @@ class TestSIEMEventFormats(unittest.TestCase):
 
     def setUp(self):
         from boundary_siem import SIEMEvent, SIEMEventCategory, SIEMSeverity
+
         self.SIEMEvent = SIEMEvent
         self.SIEMEventCategory = SIEMEventCategory
         self.SIEMSeverity = SIEMSeverity
@@ -746,7 +713,7 @@ class TestSIEMEventFormats(unittest.TestCase):
                 action="test",
                 outcome="success",
                 severity=self.SIEMSeverity.INFORMATIONAL,
-                message=f"Test event for {category.value}"
+                message=f"Test event for {category.value}",
             )
 
             json_data = event.to_json()
@@ -769,7 +736,7 @@ class TestSIEMEventFormats(unittest.TestCase):
             target={"resource": "/api/secret", "ip": "10.0.0.1"},
             request={"method": "POST", "url": "/api/secret"},
             response={"status": 403},
-            metadata={"rule": "block_sensitive", "confidence": 0.95}
+            metadata={"rule": "block_sensitive", "confidence": 0.95},
         )
 
         json_data = event.to_json()
@@ -784,5 +751,5 @@ class TestSIEMEventFormats(unittest.TestCase):
         self.assertIn("suser=attacker", cef)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main(verbosity=2)

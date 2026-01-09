@@ -34,17 +34,17 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 # Add src to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 # Import core modules
-from blockchain import NatLangChain, NaturalLanguageEntry, Block
-
+from blockchain import Block, NatLangChain, NaturalLanguageEntry
 
 # =============================================================================
 # Test Configuration and Fixtures
 # =============================================================================
 
 # Use fixtures from conftest.py: fresh_blockchain, flask_app, flask_client, test_auth_headers
+
 
 # Aliases for backward compatibility within this file
 @pytest.fixture
@@ -74,6 +74,7 @@ def unique_id():
 # Pipeline 1: Entry Lifecycle Pipeline
 # =============================================================================
 
+
 class TestEntryLifecyclePipeline:
     """
     End-to-end tests for the complete entry lifecycle:
@@ -86,15 +87,11 @@ class TestEntryLifecyclePipeline:
             "content": f"Alice agrees to deliver software by Q4 {unique_id()}",
             "author": "alice_test",
             "intent": "Software delivery commitment",
-            "metadata": {"project": "test-project"}
+            "metadata": {"project": "test-project"},
         }
 
         # Step 1: Create entry
-        response = client.post(
-            "/entry",
-            data=json.dumps(entry_data),
-            headers=auth_headers
-        )
+        response = client.post("/entry", data=json.dumps(entry_data), headers=auth_headers)
         assert response.status_code in [200, 201], f"Entry creation failed: {response.data}"
         result = response.get_json()
         assert result.get("status") in ["success", "pending"]
@@ -115,13 +112,9 @@ class TestEntryLifecyclePipeline:
             entry_data = {
                 "content": f"Test entry {i} for lifecycle test {test_id}",
                 "author": f"author_{i}",
-                "intent": f"Test intent {i}"
+                "intent": f"Test intent {i}",
             }
-            response = client.post(
-                "/entry",
-                data=json.dumps(entry_data),
-                headers=auth_headers
-            )
+            response = client.post("/entry", data=json.dumps(entry_data), headers=auth_headers)
             assert response.status_code in [200, 201], f"Entry creation failed: {response.data}"
             result = response.get_json()
             entries.append(result)
@@ -137,11 +130,7 @@ class TestEntryLifecyclePipeline:
 
         # Step 3: Mine pending entries into a block
         mine_data = {"difficulty": 1}  # Low difficulty for tests
-        mine_response = client.post(
-            "/mine",
-            data=json.dumps(mine_data),
-            headers=auth_headers
-        )
+        mine_response = client.post("/mine", data=json.dumps(mine_data), headers=auth_headers)
         # 400 means no pending entries (entries may have been auto-mined or rejected)
         if mine_response.status_code == 400:
             # Check if entries were auto-mined
@@ -155,7 +144,11 @@ class TestEntryLifecyclePipeline:
 
         assert mine_response.status_code in [200, 201], f"Mining failed: {mine_response.data}"
         mine_result = mine_response.get_json()
-        assert "block" in mine_result or "index" in mine_result or mine_result.get("status") == "success"
+        assert (
+            "block" in mine_result
+            or "index" in mine_result
+            or mine_result.get("status") == "success"
+        )
 
         # Step 4: Verify chain now contains the mined block
         chain_response = client.get("/chain", headers=auth_headers)
@@ -173,14 +166,10 @@ class TestEntryLifecyclePipeline:
             "content": f"Auto-mined entry {unique_id()}",
             "author": "auto_test",
             "intent": "Test auto-mining",
-            "auto_mine": True
+            "auto_mine": True,
         }
 
-        response = client.post(
-            "/entry",
-            data=json.dumps(entry_data),
-            headers=auth_headers
-        )
+        response = client.post("/entry", data=json.dumps(entry_data), headers=auth_headers)
         assert response.status_code in [200, 201]
         result = response.get_json()
 
@@ -195,14 +184,10 @@ class TestEntryLifecyclePipeline:
             "content": f"Entry requiring validation {unique_id()}",
             "author": "validator_test",
             "intent": "Test validation flow",
-            "validate": True
+            "validate": True,
         }
 
-        response = client.post(
-            "/entry",
-            data=json.dumps(entry_data),
-            headers=auth_headers
-        )
+        response = client.post("/entry", data=json.dumps(entry_data), headers=auth_headers)
         assert response.status_code in [200, 201]
         result = response.get_json()
 
@@ -219,7 +204,7 @@ class TestEntryLifecyclePipeline:
                 entry_data = {
                     "content": f"Block {block_num} Entry {i} - {unique_id()}",
                     "author": f"author_{block_num}_{i}",
-                    "intent": f"Test block {block_num}"
+                    "intent": f"Test block {block_num}",
                 }
                 client.post("/entry", data=json.dumps(entry_data), headers=auth_headers)
 
@@ -241,7 +226,7 @@ class TestEntryLifecyclePipeline:
             entry_data = {
                 "content": f"Query test entry {i}",
                 "author": author_name,
-                "intent": "Query test"
+                "intent": "Query test",
             }
             client.post("/entry", data=json.dumps(entry_data), headers=auth_headers)
 
@@ -249,10 +234,7 @@ class TestEntryLifecyclePipeline:
         client.post("/mine", headers=auth_headers)
 
         # Query by author
-        query_response = client.get(
-            f"/entries?author={author_name}",
-            headers=auth_headers
-        )
+        query_response = client.get(f"/entries?author={author_name}", headers=auth_headers)
         if query_response.status_code == 200:
             query_data = query_response.get_json()
             entries = query_data.get("entries", [])
@@ -268,13 +250,9 @@ class TestEntryLifecyclePipeline:
             entry_data = {
                 "content": f"Rate limit test {i}",
                 "author": "rate_tester",
-                "intent": "Test rate limiting"
+                "intent": "Test rate limiting",
             }
-            response = client.post(
-                "/entry",
-                data=json.dumps(entry_data),
-                headers=auth_headers
-            )
+            response = client.post("/entry", data=json.dumps(entry_data), headers=auth_headers)
             if response.status_code == 429:
                 rate_limited = True
                 break
@@ -289,6 +267,7 @@ class TestEntryLifecyclePipeline:
 # Pipeline 2: Contract Pipeline
 # =============================================================================
 
+
 class TestContractPipeline:
     """
     End-to-end tests for the contract lifecycle:
@@ -300,13 +279,11 @@ class TestContractPipeline:
         # Step 1: Parse contract
         parse_data = {
             "content": f"I offer to sell my vintage guitar for $5000. "
-                      f"Buyer must inspect within 7 days. {unique_id()}"
+            f"Buyer must inspect within 7 days. {unique_id()}"
         }
 
         parse_response = client.post(
-            "/contract/parse",
-            data=json.dumps(parse_data),
-            headers=auth_headers
+            "/contract/parse", data=json.dumps(parse_data), headers=auth_headers
         )
         # May be 503 if contract features not available, 404 if endpoint not registered
         if parse_response.status_code in [503, 404]:
@@ -321,13 +298,11 @@ class TestContractPipeline:
             "content": parse_data["content"],
             "author": f"seller_{unique_id()}",
             "intent": "Sell vintage guitar",
-            "contract_type": "offer"
+            "contract_type": "offer",
         }
 
         post_response = client.post(
-            "/contract/post",
-            data=json.dumps(post_data),
-            headers=auth_headers
+            "/contract/post", data=json.dumps(post_data), headers=auth_headers
         )
         if post_response.status_code in [503, 404]:
             pytest.skip("Contract features not available")
@@ -341,16 +316,14 @@ class TestContractPipeline:
         # Step 1: Post an OFFER
         offer_data = {
             "content": f"Offering Python development services, 40 hours available. "
-                      f"Rate: $100/hour. Expertise in ML and web. Test {test_id}",
+            f"Rate: $100/hour. Expertise in ML and web. Test {test_id}",
             "author": "developer_alice",
             "intent": "Offer development services",
-            "contract_type": "offer"
+            "contract_type": "offer",
         }
 
         offer_response = client.post(
-            "/contract/post",
-            data=json.dumps(offer_data),
-            headers=auth_headers
+            "/contract/post", data=json.dumps(offer_data), headers=auth_headers
         )
         if offer_response.status_code == 503:
             pytest.skip("Contract features not available")
@@ -358,29 +331,23 @@ class TestContractPipeline:
         # Step 2: Post a SEEK
         seek_data = {
             "content": f"Looking for Python developer with ML experience. "
-                      f"Budget $4000, need 40 hours of work. Test {test_id}",
+            f"Budget $4000, need 40 hours of work. Test {test_id}",
             "author": "client_bob",
             "intent": "Find development services",
-            "contract_type": "seek"
+            "contract_type": "seek",
         }
 
         seek_response = client.post(
-            "/contract/post",
-            data=json.dumps(seek_data),
-            headers=auth_headers
+            "/contract/post", data=json.dumps(seek_data), headers=auth_headers
         )
         if seek_response.status_code == 503:
             pytest.skip("Contract features not available")
 
         # Step 3: Try to match contracts
-        match_data = {
-            "miner_id": f"test_miner_{test_id}"
-        }
+        match_data = {"miner_id": f"test_miner_{test_id}"}
 
         match_response = client.post(
-            "/contract/match",
-            data=json.dumps(match_data),
-            headers=auth_headers
+            "/contract/match", data=json.dumps(match_data), headers=auth_headers
         )
         if match_response.status_code == 503:
             pytest.skip("Contract features not available")
@@ -402,7 +369,7 @@ class TestContractPipeline:
                 "content": f"Test {ctype} contract {i} - {unique_id()}",
                 "author": f"author_{ctype}",
                 "intent": f"Test {ctype}",
-                "contract_type": ctype
+                "contract_type": ctype,
             }
             post_resp = client.post("/contract/post", data=json.dumps(data), headers=auth_headers)
             if post_resp.status_code in [503, 404]:
@@ -438,13 +405,11 @@ class TestContractPipeline:
             "author": "consultant",
             "intent": "Offer consulting",
             "contract_type": "offer",
-            "auto_mine": True
+            "auto_mine": True,
         }
 
         post_response = client.post(
-            "/contract/post",
-            data=json.dumps(original),
-            headers=auth_headers
+            "/contract/post", data=json.dumps(original), headers=auth_headers
         )
         if post_response.status_code == 503:
             pytest.skip("Contract features not available")
@@ -463,13 +428,11 @@ class TestContractPipeline:
             "to_entry": 0,
             "response_content": f"Interested in your consulting services. Available budget: $5000. {test_id}",
             "author": "potential_client",
-            "response_type": "counter"
+            "response_type": "counter",
         }
 
         respond_response = client.post(
-            "/contract/respond",
-            data=json.dumps(response_data),
-            headers=auth_headers
+            "/contract/respond", data=json.dumps(response_data), headers=auth_headers
         )
         # May fail if entry doesn't exist or isn't a contract
         if respond_response.status_code in [200, 201]:
@@ -480,6 +443,7 @@ class TestContractPipeline:
 # =============================================================================
 # Pipeline 3: Dispute Resolution Pipeline
 # =============================================================================
+
 
 class TestDisputeResolutionPipeline:
     """
@@ -496,7 +460,7 @@ class TestDisputeResolutionPipeline:
             "content": f"Original agreement between parties. {test_id}",
             "author": "party_a",
             "intent": "Create agreement",
-            "auto_mine": True
+            "auto_mine": True,
         }
         client.post("/entry", data=json.dumps(entry_data), headers=auth_headers)
 
@@ -506,13 +470,11 @@ class TestDisputeResolutionPipeline:
             "respondent": "party_a",
             "contested_refs": [{"block": 1, "entry": 0}],
             "description": f"Party A failed to deliver as promised. {test_id}",
-            "escalation_path": "mediator_node"
+            "escalation_path": "mediator_node",
         }
 
         dispute_response = client.post(
-            "/dispute/file",
-            data=json.dumps(dispute_data),
-            headers=auth_headers
+            "/dispute/file", data=json.dumps(dispute_data), headers=auth_headers
         )
 
         # Dispute filing may require specific setup
@@ -529,7 +491,7 @@ class TestDisputeResolutionPipeline:
             "content": f"Contract for evidence test. {test_id}",
             "author": "contractor",
             "intent": "Agreement",
-            "auto_mine": True
+            "auto_mine": True,
         }
         client.post("/entry", data=json.dumps(entry_data), headers=auth_headers)
 
@@ -537,12 +499,10 @@ class TestDisputeResolutionPipeline:
             "claimant": "client",
             "respondent": "contractor",
             "contested_refs": [{"block": 1, "entry": 0}],
-            "description": f"Breach of contract. {test_id}"
+            "description": f"Breach of contract. {test_id}",
         }
         dispute_response = client.post(
-            "/dispute/file",
-            data=json.dumps(dispute_data),
-            headers=auth_headers
+            "/dispute/file", data=json.dumps(dispute_data), headers=auth_headers
         )
 
         if dispute_response.status_code not in [200, 201]:
@@ -553,13 +513,11 @@ class TestDisputeResolutionPipeline:
             "dispute_hash": dispute_response.get_json().get("dispute", {}).get("hash", "test_hash"),
             "evidence_type": "document",
             "content": f"Email showing contractor acknowledged delay. {test_id}",
-            "submitter": "client"
+            "submitter": "client",
         }
 
         evidence_response = client.post(
-            "/dispute/evidence",
-            data=json.dumps(evidence_data),
-            headers=auth_headers
+            "/dispute/evidence", data=json.dumps(evidence_data), headers=auth_headers
         )
 
         if evidence_response.status_code in [200, 201]:
@@ -572,13 +530,11 @@ class TestDisputeResolutionPipeline:
         escalate_data = {
             "dispute_id": f"test_dispute_{unique_id()}",
             "reason": "Mediation timeout exceeded",
-            "escalation_type": "fork"
+            "escalation_type": "fork",
         }
 
         response = client.post(
-            "/dispute/escalate",
-            data=json.dumps(escalate_data),
-            headers=auth_headers
+            "/dispute/escalate", data=json.dumps(escalate_data), headers=auth_headers
         )
 
         # Escalation may require specific dispute state
@@ -595,7 +551,7 @@ class TestDisputeResolutionPipeline:
             "content": f"Service agreement for resolution test. {test_id}",
             "author": "provider",
             "intent": "Service agreement",
-            "auto_mine": True
+            "auto_mine": True,
         }
         client.post("/entry", data=json.dumps(entry_data), headers=auth_headers)
 
@@ -604,7 +560,7 @@ class TestDisputeResolutionPipeline:
             "claimant": "customer",
             "respondent": "provider",
             "contested_refs": [{"block": 1, "entry": 0}],
-            "description": f"Service not delivered as promised. {test_id}"
+            "description": f"Service not delivered as promised. {test_id}",
         }
         client.post("/dispute/file", data=json.dumps(dispute_data), headers=auth_headers)
 
@@ -612,17 +568,12 @@ class TestDisputeResolutionPipeline:
         resolution_data = {
             "dispute_id": f"test_dispute_{test_id}",
             "resolution_type": "settlement",
-            "terms": {
-                "refund_amount": 500,
-                "additional_service": True
-            },
-            "resolver": "mediator_node"
+            "terms": {"refund_amount": 500, "additional_service": True},
+            "resolver": "mediator_node",
         }
 
         resolution_response = client.post(
-            "/dispute/resolve",
-            data=json.dumps(resolution_data),
-            headers=auth_headers
+            "/dispute/resolve", data=json.dumps(resolution_data), headers=auth_headers
         )
 
         if resolution_response.status_code in [200, 201]:
@@ -633,6 +584,7 @@ class TestDisputeResolutionPipeline:
 # =============================================================================
 # Pipeline 4: Search and Drift Detection Pipeline
 # =============================================================================
+
 
 class TestSearchAndDriftPipeline:
     """
@@ -650,14 +602,14 @@ class TestSearchAndDriftPipeline:
             ("Machine learning model deployment", "ML infrastructure"),
             ("Natural language processing pipeline", "NLP development"),
             ("Database optimization techniques", "Performance tuning"),
-            ("Blockchain consensus mechanisms", "Distributed systems")
+            ("Blockchain consensus mechanisms", "Distributed systems"),
         ]
 
         for content, intent in topics:
             entry_data = {
                 "content": f"{content} - {test_id}",
                 "author": "researcher",
-                "intent": intent
+                "intent": intent,
             }
             client.post("/entry", data=json.dumps(entry_data), headers=auth_headers)
 
@@ -665,15 +617,10 @@ class TestSearchAndDriftPipeline:
         client.post("/mine", headers=auth_headers)
 
         # Search for ML-related content
-        search_data = {
-            "query": "machine learning deployment",
-            "limit": 10
-        }
+        search_data = {"query": "machine learning deployment", "limit": 10}
 
         search_response = client.post(
-            "/search/semantic",
-            data=json.dumps(search_data),
-            headers=auth_headers
+            "/search/semantic", data=json.dumps(search_data), headers=auth_headers
         )
 
         if search_response.status_code == 503:
@@ -692,7 +639,7 @@ class TestSearchAndDriftPipeline:
             "content": f"Agreement to deliver Python web application with Django. {test_id}",
             "author": "developer",
             "intent": "Web application development",
-            "auto_mine": True
+            "auto_mine": True,
         }
         client.post("/entry", data=json.dumps(original), headers=auth_headers)
 
@@ -700,13 +647,11 @@ class TestSearchAndDriftPipeline:
         drift_data = {
             "original_content": original["content"],
             "current_content": f"Delivered mobile app with React Native instead. {test_id}",
-            "original_intent": original["intent"]
+            "original_intent": original["intent"],
         }
 
         drift_response = client.post(
-            "/drift/check",
-            data=json.dumps(drift_data),
-            headers=auth_headers
+            "/drift/check", data=json.dumps(drift_data), headers=auth_headers
         )
 
         if drift_response.status_code == 503:
@@ -726,29 +671,24 @@ class TestSearchAndDriftPipeline:
         similar_entries = [
             f"Technical consulting for system design review. {test_id}",
             f"Architecture assessment and recommendations. {test_id}",
-            f"Software design consultation services. {test_id}"
+            f"Software design consultation services. {test_id}",
         ]
 
         for content in [base_content] + similar_entries:
             entry_data = {
                 "content": content,
                 "author": "consultant",
-                "intent": "Technical consulting"
+                "intent": "Technical consulting",
             }
             client.post("/entry", data=json.dumps(entry_data), headers=auth_headers)
 
         client.post("/mine", headers=auth_headers)
 
         # Find similar entries
-        similar_data = {
-            "content": base_content,
-            "limit": 5
-        }
+        similar_data = {"content": base_content, "limit": 5}
 
         similar_response = client.post(
-            "/search/similar",
-            data=json.dumps(similar_data),
-            headers=auth_headers
+            "/search/similar", data=json.dumps(similar_data), headers=auth_headers
         )
 
         if similar_response.status_code == 200:
@@ -759,6 +699,7 @@ class TestSearchAndDriftPipeline:
 # =============================================================================
 # Pipeline 5: Economic Protection Pipeline
 # =============================================================================
+
 
 class TestEconomicProtectionPipeline:
     """
@@ -777,13 +718,11 @@ class TestEconomicProtectionPipeline:
             "respondent": f"party_b_{test_id}",
             "contract_ref": {"block": 1, "entry": 0},
             "stake_amount": 100,
-            "reason": "Prevent frivolous disputes"
+            "reason": "Prevent frivolous disputes",
         }
 
         stake_response = client.post(
-            "/harassment/breach-dispute",
-            data=json.dumps(stake_data),
-            headers=auth_headers
+            "/harassment/breach-dispute", data=json.dumps(stake_data), headers=auth_headers
         )
 
         if stake_response.status_code == 503:
@@ -801,13 +740,11 @@ class TestEconomicProtectionPipeline:
             "burner": f"user_{test_id}",
             "amount": 10,
             "reason": "VOLUNTARY_SIGNAL",
-            "epitaph": f"Contributing to network health. {test_id}"
+            "epitaph": f"Contributing to network health. {test_id}",
         }
 
         burn_response = client.post(
-            "/burn/voluntary",
-            data=json.dumps(burn_data),
-            headers=auth_headers
+            "/burn/voluntary", data=json.dumps(burn_data), headers=auth_headers
         )
 
         if burn_response.status_code == 503:
@@ -828,6 +765,7 @@ class TestEconomicProtectionPipeline:
 # Pipeline 6: Authentication and Security Pipeline
 # =============================================================================
 
+
 class TestAuthenticationSecurityPipeline:
     """
     End-to-end tests for authentication and security:
@@ -844,12 +782,8 @@ class TestAuthenticationSecurityPipeline:
         # Request to protected endpoint without key
         protected_response = client.post(
             "/entry",
-            data=json.dumps({
-                "content": "Test entry",
-                "author": "test",
-                "intent": "Test"
-            }),
-            headers={"Content-Type": "application/json"}
+            data=json.dumps({"content": "Test entry", "author": "test", "intent": "Test"}),
+            headers={"Content-Type": "application/json"},
         )
         # May be 401 or may work depending on config
         assert protected_response.status_code in [200, 201, 401, 403]
@@ -864,15 +798,10 @@ class TestAuthenticationSecurityPipeline:
             assert "mode" in mode_data or "current_mode" in mode_data
 
         # Try input checking
-        check_data = {
-            "input": "Normal input text for testing",
-            "context": "entry_creation"
-        }
+        check_data = {"input": "Normal input text for testing", "context": "entry_creation"}
 
         check_response = client.post(
-            "/boundary/check",
-            data=json.dumps(check_data),
-            headers=auth_headers
+            "/boundary/check", data=json.dumps(check_data), headers=auth_headers
         )
 
         if check_response.status_code == 200:
@@ -885,21 +814,18 @@ class TestAuthenticationSecurityPipeline:
         suspicious_data = {
             "content": "Normal content <script>alert('test')</script>",
             "author": "test_user",
-            "intent": "Test sanitization"
+            "intent": "Test sanitization",
         }
 
-        response = client.post(
-            "/entry",
-            data=json.dumps(suspicious_data),
-            headers=auth_headers
-        )
+        response = client.post("/entry", data=json.dumps(suspicious_data), headers=auth_headers)
 
         # System should either:
         # 1. Accept the content (blockchain stores raw content - display layer sanitizes)
         # 2. Reject the content (boundary protection rejects dangerous input)
         # 3. Sanitize the content (remove/escape script tags)
-        assert response.status_code in [200, 201, 400, 403], \
+        assert response.status_code in [200, 201, 400, 403], (
             f"Unexpected status for suspicious content: {response.status_code}"
+        )
 
         if response.status_code in [200, 201]:
             result = response.get_json()
@@ -910,6 +836,7 @@ class TestAuthenticationSecurityPipeline:
 # =============================================================================
 # Pipeline 7: Help and Chat Pipeline
 # =============================================================================
+
 
 class TestHelpAndChatPipeline:
     """
@@ -949,13 +876,11 @@ class TestHelpAndChatPipeline:
         # Send message
         message_data = {
             "message": "How do I create a contract entry?",
-            "context": {"current_page": "contracts"}
+            "context": {"current_page": "contracts"},
         }
 
         message_response = client.post(
-            "/chat/message",
-            data=json.dumps(message_data),
-            headers=auth_headers
+            "/chat/message", data=json.dumps(message_data), headers=auth_headers
         )
 
         if message_response.status_code == 503:
@@ -976,6 +901,7 @@ class TestHelpAndChatPipeline:
 # Pipeline 8: Mobile and Offline Pipeline
 # =============================================================================
 
+
 class TestMobileOfflinePipeline:
     """
     End-to-end tests for mobile and offline functionality:
@@ -990,13 +916,11 @@ class TestMobileOfflinePipeline:
             "device_id": f"device_{test_id}",
             "device_type": "mobile",
             "platform": "ios",
-            "capabilities": ["offline", "biometric"]
+            "capabilities": ["offline", "biometric"],
         }
 
         register_response = client.post(
-            "/mobile/device/register",
-            data=json.dumps(device_data),
-            headers=auth_headers
+            "/mobile/device/register", data=json.dumps(device_data), headers=auth_headers
         )
 
         if register_response.status_code == 503:
@@ -1017,14 +941,12 @@ class TestMobileOfflinePipeline:
             "data": {
                 "content": f"Offline entry {test_id}",
                 "author": "offline_user",
-                "intent": "Offline test"
-            }
+                "intent": "Offline test",
+            },
         }
 
         queue_response = client.post(
-            "/offline/queue/add",
-            data=json.dumps(queue_data),
-            headers=auth_headers
+            "/offline/queue/add", data=json.dumps(queue_data), headers=auth_headers
         )
 
         if queue_response.status_code == 503:
@@ -1035,14 +957,10 @@ class TestMobileOfflinePipeline:
             assert "queued" in result or "status" in result
 
         # Try sync
-        sync_data = {
-            "device_id": f"device_{test_id}"
-        }
+        sync_data = {"device_id": f"device_{test_id}"}
 
         sync_response = client.post(
-            "/offline/sync",
-            data=json.dumps(sync_data),
-            headers=auth_headers
+            "/offline/sync", data=json.dumps(sync_data), headers=auth_headers
         )
 
         if sync_response.status_code == 200:
@@ -1053,6 +971,7 @@ class TestMobileOfflinePipeline:
 # =============================================================================
 # Pipeline 9: Metrics and Monitoring Pipeline
 # =============================================================================
+
 
 class TestMetricsMonitoringPipeline:
     """
@@ -1067,7 +986,7 @@ class TestMetricsMonitoringPipeline:
             entry_data = {
                 "content": f"Metrics test entry {i}",
                 "author": "metrics_test",
-                "intent": "Test metrics collection"
+                "intent": "Test metrics collection",
             }
             client.post("/entry", data=json.dumps(entry_data), headers=auth_headers)
 
@@ -1075,7 +994,7 @@ class TestMetricsMonitoringPipeline:
         metrics_response = client.get("/metrics")
 
         if metrics_response.status_code == 200:
-            metrics_text = metrics_response.data.decode('utf-8')
+            metrics_text = metrics_response.data.decode("utf-8")
             # Should contain some metrics
             assert "TYPE" in metrics_text or len(metrics_text) > 0
 
@@ -1099,6 +1018,7 @@ class TestMetricsMonitoringPipeline:
 # Integration Test: Full Workflow
 # =============================================================================
 
+
 class TestFullWorkflowIntegration:
     """
     Integration test combining multiple pipelines in realistic scenarios.
@@ -1120,18 +1040,14 @@ class TestFullWorkflowIntegration:
         # Step 1: Party A posts offer
         offer = {
             "content": f"Offering web development services. React/Node expertise. "
-                      f"Available 20 hours/week. Rate: $80/hour. Ref: {test_id}",
+            f"Available 20 hours/week. Rate: $80/hour. Ref: {test_id}",
             "author": f"developer_{test_id}",
             "intent": "Offer development services",
             "contract_type": "offer",
-            "auto_mine": True
+            "auto_mine": True,
         }
 
-        offer_response = client.post(
-            "/contract/post",
-            data=json.dumps(offer),
-            headers=auth_headers
-        )
+        offer_response = client.post("/contract/post", data=json.dumps(offer), headers=auth_headers)
 
         if offer_response.status_code in [503, 404]:
             pytest.skip("Contract features not available")
@@ -1141,27 +1057,21 @@ class TestFullWorkflowIntegration:
         # Step 2: Party B posts seek
         seek = {
             "content": f"Looking for React developer. Need MVP built. "
-                      f"Budget $1500-2000. Timeline: 3 weeks. Ref: {test_id}",
+            f"Budget $1500-2000. Timeline: 3 weeks. Ref: {test_id}",
             "author": f"startup_{test_id}",
             "intent": "Find development services",
             "contract_type": "seek",
-            "auto_mine": True
+            "auto_mine": True,
         }
 
-        seek_response = client.post(
-            "/contract/post",
-            data=json.dumps(seek),
-            headers=auth_headers
-        )
+        seek_response = client.post("/contract/post", data=json.dumps(seek), headers=auth_headers)
 
         assert seek_response.status_code in [200, 201]
 
         # Step 3: Check for matches
         match_data = {"miner_id": f"matcher_{test_id}"}
         match_response = client.post(
-            "/contract/match",
-            data=json.dumps(match_data),
-            headers=auth_headers
+            "/contract/match", data=json.dumps(match_data), headers=auth_headers
         )
 
         if match_response.status_code == 200:
@@ -1198,17 +1108,13 @@ class TestFullWorkflowIntegration:
         # Step 1: Create agreement
         agreement = {
             "content": f"Party A agrees to deliver project by Jan 31. "
-                      f"Party B agrees to pay $5000 upon delivery. Ref: {test_id}",
+            f"Party B agrees to pay $5000 upon delivery. Ref: {test_id}",
             "author": f"party_a_{test_id}",
             "intent": "Project delivery agreement",
-            "auto_mine": True
+            "auto_mine": True,
         }
 
-        entry_response = client.post(
-            "/entry",
-            data=json.dumps(agreement),
-            headers=auth_headers
-        )
+        entry_response = client.post("/entry", data=json.dumps(agreement), headers=auth_headers)
         assert entry_response.status_code in [200, 201]
 
         # Get block reference
@@ -1223,13 +1129,11 @@ class TestFullWorkflowIntegration:
             "respondent": f"party_a_{test_id}",
             "contested_refs": [{"block": latest_block_idx, "entry": 0}],
             "description": f"Project not delivered by deadline. Ref: {test_id}",
-            "escalation_path": "mediator_node"
+            "escalation_path": "mediator_node",
         }
 
         dispute_response = client.post(
-            "/dispute/file",
-            data=json.dumps(dispute),
-            headers=auth_headers
+            "/dispute/file", data=json.dumps(dispute), headers=auth_headers
         )
 
         # Dispute filing might not be available or might fail due to setup
@@ -1244,29 +1148,22 @@ class TestFullWorkflowIntegration:
             "dispute_hash": dispute_hash,
             "evidence_type": "communication",
             "content": f"Email from Party A on Jan 28 stating delay expected. Ref: {test_id}",
-            "submitter": f"party_b_{test_id}"
+            "submitter": f"party_b_{test_id}",
         }
 
         evidence_response = client.post(
-            "/dispute/evidence",
-            data=json.dumps(evidence),
-            headers=auth_headers
+            "/dispute/evidence", data=json.dumps(evidence), headers=auth_headers
         )
 
         # Step 4: Attempt resolution
         resolution = {
             "dispute_id": dispute_hash,
             "resolution_type": "settlement",
-            "terms": {
-                "partial_payment": 2500,
-                "extended_deadline": "Feb 15"
-            }
+            "terms": {"partial_payment": 2500, "extended_deadline": "Feb 15"},
         }
 
         resolution_response = client.post(
-            "/dispute/resolve",
-            data=json.dumps(resolution),
-            headers=auth_headers
+            "/dispute/resolve", data=json.dumps(resolution), headers=auth_headers
         )
 
         # Log results for debugging
@@ -1278,6 +1175,7 @@ class TestFullWorkflowIntegration:
 # =============================================================================
 # Unit Tests for Core Blockchain Logic
 # =============================================================================
+
 
 class TestBlockchainCoreLogic:
     """
@@ -1294,9 +1192,7 @@ class TestBlockchainCoreLogic:
     def test_entry_addition_to_pending(self, blockchain):
         """Test: Entries are added to pending queue."""
         entry = NaturalLanguageEntry(
-            content="Test entry content",
-            author="test_author",
-            intent="Test intent"
+            content="Test entry content", author="test_author", intent="Test intent"
         )
 
         result = blockchain.add_entry(entry)
@@ -1309,9 +1205,7 @@ class TestBlockchainCoreLogic:
         # Add entries
         for i in range(3):
             entry = NaturalLanguageEntry(
-                content=f"Mining test entry {i}",
-                author=f"author_{i}",
-                intent=f"Intent {i}"
+                content=f"Mining test entry {i}", author=f"author_{i}", intent=f"Intent {i}"
             )
             blockchain.add_entry(entry)
 
@@ -1328,9 +1222,7 @@ class TestBlockchainCoreLogic:
         """Test: Chain validation detects valid chain."""
         # Add and mine some entries
         entry = NaturalLanguageEntry(
-            content="Validation test entry",
-            author="validator",
-            intent="Test validation"
+            content="Validation test entry", author="validator", intent="Test validation"
         )
         blockchain.add_entry(entry)
         blockchain.mine_pending_entries()
@@ -1343,9 +1235,7 @@ class TestBlockchainCoreLogic:
         """Test: Chain validation detects tampering."""
         # Add and mine an entry
         entry = NaturalLanguageEntry(
-            content="Tamper test entry",
-            author="tester",
-            intent="Test tampering detection"
+            content="Tamper test entry", author="tester", intent="Test tampering detection"
         )
         blockchain.add_entry(entry)
         blockchain.mine_pending_entries()
@@ -1366,15 +1256,13 @@ class TestBlockchainCoreLogic:
     def test_duplicate_entry_prevention(self, blockchain):
         """Test: Duplicate entries within time window are prevented."""
         entry1 = NaturalLanguageEntry(
-            content="Unique entry content",
-            author="author",
-            intent="Test deduplication"
+            content="Unique entry content", author="author", intent="Test deduplication"
         )
 
         entry2 = NaturalLanguageEntry(
             content="Unique entry content",  # Same content
             author="author",
-            intent="Test deduplication"
+            intent="Test deduplication",
         )
 
         result1 = blockchain.add_entry(entry1)
@@ -1389,17 +1277,13 @@ class TestBlockchainCoreLogic:
 
     def test_entry_metadata_handling(self, blockchain):
         """Test: Entry metadata is preserved through mining."""
-        metadata = {
-            "project_id": "test-123",
-            "priority": "high",
-            "tags": ["urgent", "contract"]
-        }
+        metadata = {"project_id": "test-123", "priority": "high", "tags": ["urgent", "contract"]}
 
         entry = NaturalLanguageEntry(
             content="Entry with metadata",
             author="metadata_test",
             intent="Test metadata preservation",
-            metadata=metadata
+            metadata=metadata,
         )
 
         blockchain.add_entry(entry)
@@ -1415,6 +1299,7 @@ class TestBlockchainCoreLogic:
 # Performance and Load Tests
 # =============================================================================
 
+
 class TestPerformanceAndLoad:
     """
     Performance and load tests for the blockchain system.
@@ -1429,14 +1314,10 @@ class TestPerformanceAndLoad:
             entry_data = {
                 "content": f"Bulk entry {i} - Performance test",
                 "author": f"bulk_author_{i % 5}",
-                "intent": f"Bulk test {i}"
+                "intent": f"Bulk test {i}",
             }
 
-            response = client.post(
-                "/entry",
-                data=json.dumps(entry_data),
-                headers=auth_headers
-            )
+            response = client.post("/entry", data=json.dumps(entry_data), headers=auth_headers)
 
             if response.status_code in [200, 201]:
                 entries_created += 1
@@ -1459,7 +1340,7 @@ class TestPerformanceAndLoad:
             entry = NaturalLanguageEntry(
                 content=f"Concurrent mining test {i}",
                 author="concurrent_test",
-                intent="Test concurrent safety"
+                intent="Test concurrent safety",
             )
             blockchain.add_entry(entry)
 

@@ -10,9 +10,8 @@ unlike most blockchain projects that lack formal governance specs.
 """
 
 from dataclasses import dataclass, field
-from typing import Any
 from pathlib import Path
-import os
+from typing import Any
 
 # =============================================================================
 # Constants
@@ -25,38 +24,38 @@ NCIP_CATEGORIES = {
     "foundation": {
         "title": "Foundation & Terminology",
         "description": "Core concepts, terms, and semantic governance",
-        "ncips": ["NCIP-000", "NCIP-001"]
+        "ncips": ["NCIP-000", "NCIP-001"],
     },
     "semantic_integrity": {
         "title": "Semantic Integrity",
         "description": "Drift detection, thresholds, and multilingual support",
-        "ncips": ["NCIP-002", "NCIP-003", "NCIP-004"]
+        "ncips": ["NCIP-002", "NCIP-003", "NCIP-004"],
     },
     "dispute_resolution": {
         "title": "Dispute Resolution",
         "description": "Escalation, locking, appeals, and precedent",
-        "ncips": ["NCIP-005", "NCIP-008"]
+        "ncips": ["NCIP-005", "NCIP-008"],
     },
     "trust_reputation": {
         "title": "Trust & Reputation",
         "description": "Validator scoring, mediator dynamics, and coupling",
-        "ncips": ["NCIP-007", "NCIP-010", "NCIP-011"]
+        "ncips": ["NCIP-007", "NCIP-010", "NCIP-011"],
     },
     "jurisdiction_compliance": {
         "title": "Jurisdiction & Compliance",
         "description": "Legal bridging and regulatory interfaces",
-        "ncips": ["NCIP-006", "NCIP-009"]
+        "ncips": ["NCIP-006", "NCIP-009"],
     },
     "human_experience": {
         "title": "Human Experience",
         "description": "UX, cognitive load, and emergency handling",
-        "ncips": ["NCIP-012", "NCIP-013"]
+        "ncips": ["NCIP-012", "NCIP-013"],
     },
     "protocol_evolution": {
         "title": "Protocol Evolution",
         "description": "Amendments, sunset clauses, and historical semantics",
-        "ncips": ["NCIP-014", "NCIP-015"]
-    }
+        "ncips": ["NCIP-014", "NCIP-015"],
+    },
 }
 
 
@@ -64,9 +63,11 @@ NCIP_CATEGORIES = {
 # NCIP Registry
 # =============================================================================
 
+
 @dataclass
 class NCIPEntry:
     """A single NCIP entry."""
+
     id: str
     title: str
     summary: str
@@ -86,7 +87,7 @@ class NCIPEntry:
             "category": self.category,
             "key_concepts": self.key_concepts,
             "related": self.related,
-            "doc_file": self.doc_file
+            "doc_file": self.doc_file,
         }
 
 
@@ -99,7 +100,7 @@ NCIP_REGISTRY: dict[str, NCIPEntry] = {
         category="foundation",
         key_concepts=["Canonical Terms", "Semantic Authority", "Term Evolution"],
         related=["NCIP-001"],
-        doc_file="NCIP-000.md"
+        doc_file="NCIP-000.md",
     ),
     "NCIP-001": NCIPEntry(
         id="NCIP-001",
@@ -108,7 +109,7 @@ NCIP_REGISTRY: dict[str, NCIPEntry] = {
         category="foundation",
         key_concepts=["Entry", "Intent", "Agreement", "Ratification", "Settlement", "Mediator"],
         related=["NCIP-000", "NCIP-002"],
-        doc_file="NCIP-001.md"
+        doc_file="NCIP-001.md",
     ),
     "NCIP-002": NCIPEntry(
         id="NCIP-002",
@@ -117,7 +118,7 @@ NCIP_REGISTRY: dict[str, NCIPEntry] = {
         category="semantic_integrity",
         key_concepts=["Drift Score", "D0-D4 Bands", "Validator Response", "Semantic Break"],
         related=["NCIP-003", "NCIP-007"],
-        doc_file="NCIP-002.md"
+        doc_file="NCIP-002.md",
     ),
     "NCIP-003": NCIPEntry(
         id="NCIP-003",
@@ -126,7 +127,7 @@ NCIP_REGISTRY: dict[str, NCIPEntry] = {
         category="semantic_integrity",
         key_concepts=["Cross-Language Drift", "Translation Integrity", "Semantic Equivalence"],
         related=["NCIP-002", "NCIP-004"],
-        doc_file="NCIP-003.md"
+        doc_file="NCIP-003.md",
     ),
     "NCIP-004": NCIPEntry(
         id="NCIP-004",
@@ -135,7 +136,7 @@ NCIP_REGISTRY: dict[str, NCIPEntry] = {
         category="semantic_integrity",
         key_concepts=["Paraphrase Generation", "Understanding Score", "Semantic Verification"],
         related=["NCIP-002", "NCIP-012"],
-        doc_file="NCIP-004.md"
+        doc_file="NCIP-004.md",
     ),
     "NCIP-005": NCIPEntry(
         id="NCIP-005",
@@ -144,7 +145,7 @@ NCIP_REGISTRY: dict[str, NCIPEntry] = {
         category="dispute_resolution",
         key_concepts=["Cooling Period", "Semantic Lock", "Escalation Path", "Dispute Initiation"],
         related=["NCIP-008", "NCIP-013"],
-        doc_file="NCIP-005.md"
+        doc_file="NCIP-005.md",
     ),
     "NCIP-006": NCIPEntry(
         id="NCIP-006",
@@ -153,7 +154,7 @@ NCIP_REGISTRY: dict[str, NCIPEntry] = {
         category="jurisdiction_compliance",
         key_concepts=["Jurisdiction Selection", "Legal Bridge", "Arbitration Interface"],
         related=["NCIP-009"],
-        doc_file="NCIP-006.md"
+        doc_file="NCIP-006.md",
     ),
     "NCIP-007": NCIPEntry(
         id="NCIP-007",
@@ -162,7 +163,7 @@ NCIP_REGISTRY: dict[str, NCIPEntry] = {
         category="trust_reputation",
         key_concepts=["Trust Score", "Validator Weight", "Historical Accuracy", "Appeal Survival"],
         related=["NCIP-010", "NCIP-011"],
-        doc_file="NCIP-007.md"
+        doc_file="NCIP-007.md",
     ),
     "NCIP-008": NCIPEntry(
         id="NCIP-008",
@@ -171,16 +172,21 @@ NCIP_REGISTRY: dict[str, NCIPEntry] = {
         category="dispute_resolution",
         key_concepts=["Appeal Process", "Precedent Recording", "Case Law", "Semantic Precedent"],
         related=["NCIP-005", "NCIP-007"],
-        doc_file="NCIP-008.md"
+        doc_file="NCIP-008.md",
     ),
     "NCIP-009": NCIPEntry(
         id="NCIP-009",
         title="Regulatory Interface Modules & Compliance Proofs",
         summary="Defines how NatLangChain interfaces with regulatory requirements (KYC, AML, GDPR, etc.). Compliance modules can be attached without changing core protocol.",
         category="jurisdiction_compliance",
-        key_concepts=["Compliance Module", "Regulatory Interface", "Audit Trail", "Privacy Preservation"],
+        key_concepts=[
+            "Compliance Module",
+            "Regulatory Interface",
+            "Audit Trail",
+            "Privacy Preservation",
+        ],
         related=["NCIP-006"],
-        doc_file="NCIP-009.md"
+        doc_file="NCIP-009.md",
     ),
     "NCIP-010": NCIPEntry(
         id="NCIP-010",
@@ -189,16 +195,21 @@ NCIP_REGISTRY: dict[str, NCIPEntry] = {
         category="trust_reputation",
         key_concepts=["Mediator Bond", "Slashing", "Reputation Score", "Market Selection"],
         related=["NCIP-007", "NCIP-011"],
-        doc_file="NCIP-010.md"
+        doc_file="NCIP-010.md",
     ),
     "NCIP-011": NCIPEntry(
         id="NCIP-011",
         title="Validator–Mediator Interaction & Weight Coupling",
         summary="Validators measure meaning, mediators surface alignment. This NCIP ensures neither can substitute for the other. Authority is orthogonal, not hierarchical.",
         category="trust_reputation",
-        key_concepts=["Role Separation", "Influence Gate", "Weight Coupling", "Collusion Resistance"],
+        key_concepts=[
+            "Role Separation",
+            "Influence Gate",
+            "Weight Coupling",
+            "Collusion Resistance",
+        ],
         related=["NCIP-007", "NCIP-010"],
-        doc_file="NCIP-011.md"
+        doc_file="NCIP-011.md",
     ),
     "NCIP-012": NCIPEntry(
         id="NCIP-012",
@@ -207,16 +218,21 @@ NCIP_REGISTRY: dict[str, NCIPEntry] = {
         category="human_experience",
         key_concepts=["Cognitive Load", "Plain Language", "Reading Time", "Comprehension Check"],
         related=["NCIP-004", "NCIP-013"],
-        doc_file="NCIP-012.md"
+        doc_file="NCIP-012.md",
     ),
     "NCIP-013": NCIPEntry(
         id="NCIP-013",
         title="Emergency Overrides, Force Majeure & Semantic Fallbacks",
         summary="Handles exceptional circumstances: natural disasters, system failures, or unforeseen events. Defines how agreements can be suspended or modified under force majeure.",
         category="human_experience",
-        key_concepts=["Force Majeure", "Emergency Override", "Semantic Fallback", "Circuit Breaker"],
+        key_concepts=[
+            "Force Majeure",
+            "Emergency Override",
+            "Semantic Fallback",
+            "Circuit Breaker",
+        ],
         related=["NCIP-005", "NCIP-012"],
-        doc_file="NCIP-013.md"
+        doc_file="NCIP-013.md",
     ),
     "NCIP-014": NCIPEntry(
         id="NCIP-014",
@@ -225,7 +241,7 @@ NCIP_REGISTRY: dict[str, NCIPEntry] = {
         category="protocol_evolution",
         key_concepts=["Amendment Process", "Supermajority", "Discussion Period", "Ratification"],
         related=["NCIP-015"],
-        doc_file="NCIP-014.md"
+        doc_file="NCIP-014.md",
     ),
     "NCIP-015": NCIPEntry(
         id="NCIP-015",
@@ -234,7 +250,7 @@ NCIP_REGISTRY: dict[str, NCIPEntry] = {
         category="protocol_evolution",
         key_concepts=["Sunset Clause", "Archival", "Historical Context", "Temporal Interpretation"],
         related=["NCIP-014"],
-        doc_file="NCIP-015.md"
+        doc_file="NCIP-015.md",
     ),
 }
 
@@ -243,9 +259,11 @@ NCIP_REGISTRY: dict[str, NCIPEntry] = {
 # Mediator Protocol Specs
 # =============================================================================
 
+
 @dataclass
 class MPSpec:
     """Mediator Protocol specification."""
+
     id: str
     title: str
     summary: str
@@ -259,7 +277,7 @@ class MPSpec:
             "title": self.title,
             "summary": self.summary,
             "key_features": self.key_features,
-            "doc_file": self.doc_file
+            "doc_file": self.doc_file,
         }
 
 
@@ -269,28 +287,33 @@ MP_REGISTRY: dict[str, MPSpec] = {
         title="Proof-of-Effort Receipts",
         summary="Defines how work is recorded and verified. Effort receipts prove that parties fulfilled their obligations, creating an audit trail for dispute resolution.",
         key_features=["Effort Recording", "Receipt Verification", "Audit Trail"],
-        doc_file="MP-02-spec.md"
+        doc_file="MP-02-spec.md",
     ),
     "MP-03": MPSpec(
         id="MP-03",
         title="Dispute & Escalation",
         summary="Comprehensive dispute handling protocol. Evidence freezing, clarification phase, escalation declarations, and transfer of record to external authorities.",
-        key_features=["Evidence Freezing", "Clarification Phase", "Escalation Path", "Record Transfer"],
-        doc_file="MP-03-spec.md"
+        key_features=[
+            "Evidence Freezing",
+            "Clarification Phase",
+            "Escalation Path",
+            "Record Transfer",
+        ],
+        doc_file="MP-03-spec.md",
     ),
     "MP-04": MPSpec(
         id="MP-04",
         title="Licensing & Delegation",
         summary="How rights and authority can be delegated. Defines licensing terms, delegation chains, and revocation procedures.",
         key_features=["License Types", "Delegation Chains", "Revocation", "Authority Limits"],
-        doc_file="MP-04-spec.md"
+        doc_file="MP-04-spec.md",
     ),
     "MP-05": MPSpec(
         id="MP-05",
         title="Settlement & Capitalization",
         summary="Final resolution of agreements. Defines how economic value is distributed, finality is declared, and settlements become binding.",
         key_features=["Economic Finality", "Settlement Declaration", "Value Distribution"],
-        doc_file="MP-05-spec.md"
+        doc_file="MP-05-spec.md",
     ),
 }
 
@@ -303,63 +326,63 @@ CORE_CONCEPTS: dict[str, dict[str, str]] = {
     "entry": {
         "term": "Entry",
         "definition": "A discrete, timestamped record containing prose, metadata, and signatures. The fundamental unit of the NatLangChain ledger.",
-        "example": "Alice's intent to provide consulting services, recorded at 2025-01-15 10:30 UTC."
+        "example": "Alice's intent to provide consulting services, recorded at 2025-01-15 10:30 UTC.",
     },
     "intent": {
         "term": "Intent",
         "definition": "A human-authored expression of desired outcome or commitment. The primary semantic input to the system.",
-        "example": "'I agree to deliver the software by March 1st for $10,000.'"
+        "example": "'I agree to deliver the software by March 1st for $10,000.'",
     },
     "agreement": {
         "term": "Agreement",
         "definition": "Mutually ratified intents establishing shared understanding and obligations between parties.",
-        "example": "A consulting contract where both parties have confirmed understanding via PoU."
+        "example": "A consulting contract where both parties have confirmed understanding via PoU.",
     },
     "ratification": {
         "term": "Ratification",
         "definition": "An explicit act of consent confirming understanding and acceptance. Must be human-initiated.",
-        "example": "Alice clicks 'I Accept' after paraphrasing the agreement to prove understanding."
+        "example": "Alice clicks 'I Accept' after paraphrasing the agreement to prove understanding.",
     },
     "semantic_drift": {
         "term": "Semantic Drift",
         "definition": "Divergence between original meaning and subsequent interpretation. Measured 0-100%.",
-        "example": "A contract about 'cloud storage' may drift as technology evolves."
+        "example": "A contract about 'cloud storage' may drift as technology evolves.",
     },
     "proof_of_understanding": {
         "term": "Proof of Understanding (PoU)",
         "definition": "Evidence that a party comprehends an agreement's meaning, not just its text. Semantic, not cryptographic.",
-        "example": "Party generates their own paraphrase that captures the same obligations."
+        "example": "Party generates their own paraphrase that captures the same obligations.",
     },
     "semantic_lock": {
         "term": "Semantic Lock",
         "definition": "A binding freeze of interpretive meaning at a specific time, against which disputes are evaluated.",
-        "example": "When a dispute is raised, meaning is locked at T0 to prevent reinterpretation."
+        "example": "When a dispute is raised, meaning is locked at T0 to prevent reinterpretation.",
     },
     "cooling_period": {
         "term": "Cooling Period",
         "definition": "Mandatory delay (24-72h) preventing immediate escalation, allowing clarification or settlement.",
-        "example": "After filing a dispute, parties have 48 hours to attempt direct resolution."
+        "example": "After filing a dispute, parties have 48 hours to attempt direct resolution.",
     },
     "mediator": {
         "term": "Mediator",
         "definition": "Entity that helps surface alignment between parties. MAY clarify positions but MUST NOT render judgments.",
-        "example": "An AI-assisted mediator helps parties identify where their intents diverge."
+        "example": "An AI-assisted mediator helps parties identify where their intents diverge.",
     },
     "validator": {
         "term": "Validator",
         "definition": "Entity that measures semantic validity and drift. Does NOT propose terms or negotiate outcomes.",
-        "example": "A validator scores a proposed interpretation as 85% aligned with original intent."
+        "example": "A validator scores a proposed interpretation as 85% aligned with original intent.",
     },
     "temporal_fixity": {
         "term": "Temporal Fixity",
         "definition": "Binding of meaning to a specific point in time (T0). Interpretations evaluated against contemporaneous context.",
-        "example": "A 2020 contract about 'AI' is interpreted using 2020's understanding of AI."
+        "example": "A 2020 contract about 'AI' is interpreted using 2020's understanding of AI.",
     },
     "settlement": {
         "term": "Settlement",
         "definition": "Final resolution resulting in binding obligations, compensation, or closure. Declared by humans.",
-        "example": "Parties agree Bob pays Alice $5,000 in full satisfaction of the contract."
-    }
+        "example": "Parties agree Bob pays Alice $5,000 in full satisfaction of the contract.",
+    },
 }
 
 
@@ -374,33 +397,33 @@ DESIGN_PHILOSOPHY = {
         {
             "name": "Human-Centered Recording",
             "summary": "The blockchain provides immutability. Humans provide judgment.",
-            "detail": "Unlike deterministic smart contracts, NatLangChain doesn't pretend to 'compute' the right answer. It preserves evidence for humans to decide."
+            "detail": "Unlike deterministic smart contracts, NatLangChain doesn't pretend to 'compute' the right answer. It preserves evidence for humans to decide.",
         },
         {
             "name": "Semantic, Not Syntactic",
             "summary": "Meaning matters, not exact text matching.",
-            "detail": "Two statements can use different words but mean the same thing. The protocol understands semantics, not just strings."
+            "detail": "Two statements can use different words but mean the same thing. The protocol understands semantics, not just strings.",
         },
         {
             "name": "Multiple Valid Interpretations",
             "summary": "Disagreement is valuable information.",
-            "detail": "When multiple LLMs interpret a contract differently, that reveals ambiguity humans should resolve."
+            "detail": "When multiple LLMs interpret a contract differently, that reveals ambiguity humans should resolve.",
         },
         {
             "name": "The Refusal Doctrine",
             "summary": "What we explicitly refuse to automate.",
-            "detail": "Consent, Agreement, Authority, Value Finality, Dispute Resolution, and Moral Judgment are NEVER automated. Humans decide."
+            "detail": "Consent, Agreement, Authority, Value Finality, Dispute Resolution, and Moral Judgment are NEVER automated. Humans decide.",
         },
         {
             "name": "Temporal Context",
             "summary": "Meaning is bound to time.",
-            "detail": "A contract's meaning is interpreted using the context from when it was created, not when it's disputed."
+            "detail": "A contract's meaning is interpreted using the context from when it was created, not when it's disputed.",
         },
         {
             "name": "Decentralized Validation",
             "summary": "Multiple LLM providers prevent centralization.",
-            "detail": "Claude, GPT, Gemini, Grok, and local models (Ollama, llama.cpp) all participate in validation."
-        }
+            "detail": "Claude, GPT, Gemini, Grok, and local models (Ollama, llama.cpp) all participate in validation.",
+        },
     ],
     "refusal_doctrine": {
         "will_not_automate": [
@@ -409,7 +432,7 @@ DESIGN_PHILOSOPHY = {
             "Authority - Only humans can grant or delegate power",
             "Value Finality - Only humans can declare economic closure",
             "Dispute Resolution - Only humans can judge right and wrong",
-            "Moral Judgment - No automated ethics enforcement"
+            "Moral Judgment - No automated ethics enforcement",
         ],
         "will_automate": [
             "Possibility Expansion - Surfacing interpretations",
@@ -417,15 +440,16 @@ DESIGN_PHILOSOPHY = {
             "Evidence Collection - Immutable timestamped records",
             "Provenance - Who said what, when",
             "Risk Surfacing - Identifying ambiguity",
-            "Mediation Support - Structured negotiation aids"
-        ]
-    }
+            "Mediation Support - Structured negotiation aids",
+        ],
+    },
 }
 
 
 # =============================================================================
 # Help System API
 # =============================================================================
+
 
 class GovernanceHelpSystem:
     """
@@ -474,7 +498,7 @@ class GovernanceHelpSystem:
             result[cat_id] = {
                 "title": cat_info["title"],
                 "description": cat_info["description"],
-                "ncips": ncips
+                "ncips": ncips,
             }
         return result
 
@@ -517,40 +541,49 @@ class GovernanceHelpSystem:
 
         # Search NCIPs
         for ncip in self.ncip_registry.values():
-            if (query_lower in ncip.title.lower() or
-                query_lower in ncip.summary.lower() or
-                any(query_lower in kc.lower() for kc in ncip.key_concepts)):
-                results.append({
-                    "type": "ncip",
-                    "id": ncip.id,
-                    "title": ncip.title,
-                    "summary": ncip.summary,
-                    "relevance": "high" if query_lower in ncip.title.lower() else "medium"
-                })
+            if (
+                query_lower in ncip.title.lower()
+                or query_lower in ncip.summary.lower()
+                or any(query_lower in kc.lower() for kc in ncip.key_concepts)
+            ):
+                results.append(
+                    {
+                        "type": "ncip",
+                        "id": ncip.id,
+                        "title": ncip.title,
+                        "summary": ncip.summary,
+                        "relevance": "high" if query_lower in ncip.title.lower() else "medium",
+                    }
+                )
 
         # Search MPs
         for mp in self.mp_registry.values():
-            if (query_lower in mp.title.lower() or
-                query_lower in mp.summary.lower()):
-                results.append({
-                    "type": "mp",
-                    "id": mp.id,
-                    "title": mp.title,
-                    "summary": mp.summary,
-                    "relevance": "high" if query_lower in mp.title.lower() else "medium"
-                })
+            if query_lower in mp.title.lower() or query_lower in mp.summary.lower():
+                results.append(
+                    {
+                        "type": "mp",
+                        "id": mp.id,
+                        "title": mp.title,
+                        "summary": mp.summary,
+                        "relevance": "high" if query_lower in mp.title.lower() else "medium",
+                    }
+                )
 
         # Search concepts
         for concept_id, concept in self.core_concepts.items():
-            if (query_lower in concept["term"].lower() or
-                query_lower in concept["definition"].lower()):
-                results.append({
-                    "type": "concept",
-                    "id": concept_id,
-                    "title": concept["term"],
-                    "summary": concept["definition"],
-                    "relevance": "high" if query_lower in concept["term"].lower() else "medium"
-                })
+            if (
+                query_lower in concept["term"].lower()
+                or query_lower in concept["definition"].lower()
+            ):
+                results.append(
+                    {
+                        "type": "concept",
+                        "id": concept_id,
+                        "title": concept["term"],
+                        "summary": concept["definition"],
+                        "relevance": "high" if query_lower in concept["term"].lower() else "medium",
+                    }
+                )
 
         # Sort by relevance
         results.sort(key=lambda x: 0 if x["relevance"] == "high" else 1)
@@ -565,30 +598,27 @@ class GovernanceHelpSystem:
                 "ncip_count": len(self.ncip_registry),
                 "mp_count": len(self.mp_registry),
                 "concept_count": len(self.core_concepts),
-                "category_count": len(self.categories)
+                "category_count": len(self.categories),
             },
             "highlights": [
                 {
                     "title": "15 NCIPs",
-                    "description": "NatLangChain Improvement Proposals define protocol governance"
+                    "description": "NatLangChain Improvement Proposals define protocol governance",
                 },
                 {
                     "title": "4 Mediator Protocols",
-                    "description": "Specifications for mediation, disputes, and settlement"
+                    "description": "Specifications for mediation, disputes, and settlement",
                 },
-                {
-                    "title": "Human-Centered",
-                    "description": "Automation assists, humans decide"
-                },
+                {"title": "Human-Centered", "description": "Automation assists, humans decide"},
                 {
                     "title": "Semantic Validation",
-                    "description": "Multi-LLM consensus for meaning, not just syntax"
-                }
+                    "description": "Multi-LLM consensus for meaning, not just syntax",
+                },
             ],
             "categories": [
                 {"id": cat_id, **cat_info, "ncip_count": len(cat_info["ncips"])}
                 for cat_id, cat_info in self.categories.items()
-            ]
+            ],
         }
 
 

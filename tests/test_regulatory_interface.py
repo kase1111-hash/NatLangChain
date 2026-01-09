@@ -17,7 +17,7 @@ import os
 import sys
 from datetime import datetime
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from regulatory_interface import (
     ComplianceClaimType,
@@ -67,10 +67,7 @@ class TestRIMManagement:
         rim = manager.register_rim(
             regime=RegulatoryRegime.PCI_DSS,
             description="Payment Card Industry Data Security Standard",
-            supported_claims=[
-                ComplianceClaimType.ACCESS_CONTROL,
-                ComplianceClaimType.AUDIT_TRAIL
-            ]
+            supported_claims=[ComplianceClaimType.ACCESS_CONTROL, ComplianceClaimType.AUDIT_TRAIL],
         )
 
         assert rim is not None
@@ -126,10 +123,7 @@ class TestComplianceProofGeneration:
             regime=RegulatoryRegime.SEC_17A_4,
             claims=[ComplianceClaimType.IMMUTABILITY, ComplianceClaimType.RETENTION],
             entry_ids=["ENTRY-001", "ENTRY-002"],
-            entry_hashes={
-                "ENTRY-001": "abc123def456",
-                "ENTRY-002": "789xyz012abc"
-            }
+            entry_hashes={"ENTRY-001": "abc123def456", "ENTRY-002": "789xyz012abc"},
         )
 
         assert proof is not None
@@ -145,7 +139,7 @@ class TestComplianceProofGeneration:
             regime=RegulatoryRegime.SEC_17A_4,
             claims=[ComplianceClaimType.IMMUTABILITY],
             entry_ids=["ENTRY-001"],
-            entry_hashes={"ENTRY-001": "abc123"}
+            entry_hashes={"ENTRY-001": "abc123"},
         )
 
         assert len(proof.artifacts) > 0
@@ -161,7 +155,7 @@ class TestComplianceProofGeneration:
             claims=[ComplianceClaimType.CONSENT],
             entry_ids=["ENTRY-001"],
             entry_hashes={"ENTRY-001": "abc123"},
-            pou_hashes=["pou_hash_1", "pou_hash_2"]
+            pou_hashes=["pou_hash_1", "pou_hash_2"],
         )
 
         artifact_types = [a.artifact_type for a in proof.artifacts]
@@ -176,7 +170,7 @@ class TestComplianceProofGeneration:
             regime=RegulatoryRegime.SEC_17A_4,
             claims=[ComplianceClaimType.PRIVACY],
             entry_ids=["ENTRY-001"],
-            entry_hashes={"ENTRY-001": "abc123"}
+            entry_hashes={"ENTRY-001": "abc123"},
         )
 
         assert proof is None
@@ -194,7 +188,7 @@ class TestProofConstraints:
             regime=RegulatoryRegime.SEC_17A_4,
             claims=[ComplianceClaimType.IMMUTABILITY],
             entry_ids=["ENTRY-001"],
-            entry_hashes={"ENTRY-001": "abc123"}
+            entry_hashes={"ENTRY-001": "abc123"},
         )
 
         assert proof.is_minimal() is True
@@ -207,7 +201,7 @@ class TestProofConstraints:
             regime=RegulatoryRegime.SEC_17A_4,
             claims=[ComplianceClaimType.IMMUTABILITY],
             entry_ids=["ENTRY-001"],
-            entry_hashes={"ENTRY-001": "abc123"}
+            entry_hashes={"ENTRY-001": "abc123"},
         )
 
         assert proof.is_purpose_bound() is True
@@ -222,7 +216,7 @@ class TestProofConstraints:
             regime=RegulatoryRegime.SEC_17A_4,
             claims=[ComplianceClaimType.IMMUTABILITY],
             entry_ids=["ENTRY-001"],
-            entry_hashes={"ENTRY-001": "abc123"}
+            entry_hashes={"ENTRY-001": "abc123"},
         )
 
         assert proof.is_non_semantic() is True
@@ -242,7 +236,7 @@ class TestZeroKnowledgeProofs:
             regime=RegulatoryRegime.GDPR,
             claims=[ComplianceClaimType.PRIVACY],
             entry_ids=["ENTRY-001"],
-            entry_hashes={"ENTRY-001": "abc123"}
+            entry_hashes={"ENTRY-001": "abc123"},
         )
 
         assert len(proof.zk_proofs) > 0
@@ -256,7 +250,7 @@ class TestZeroKnowledgeProofs:
             regime=RegulatoryRegime.GDPR,
             claims=[ComplianceClaimType.PRIVACY],
             entry_ids=["ENTRY-001"],
-            entry_hashes={"ENTRY-001": "abc123"}
+            entry_hashes={"ENTRY-001": "abc123"},
         )
 
         zk_proof = proof.zk_proofs[0]
@@ -273,7 +267,7 @@ class TestZeroKnowledgeProofs:
             regime=RegulatoryRegime.GDPR,
             claims=[ComplianceClaimType.PRIVACY],
             entry_ids=["ENTRY-001"],
-            entry_hashes={"ENTRY-001": "abc123"}
+            entry_hashes={"ENTRY-001": "abc123"},
         )
 
         zk_proof = proof.zk_proofs[0]
@@ -302,10 +296,7 @@ class TestWORMCertificates:
             regime=RegulatoryRegime.SEC_17A_4,
             claims=[ComplianceClaimType.RETENTION],
             entry_ids=["ENTRY-001", "ENTRY-002"],
-            entry_hashes={
-                "ENTRY-001": "abc123",
-                "ENTRY-002": "def456"
-            }
+            entry_hashes={"ENTRY-001": "abc123", "ENTRY-002": "def456"},
         )
 
         assert proof.worm_certificate is not None
@@ -319,7 +310,7 @@ class TestWORMCertificates:
             regime=RegulatoryRegime.SEC_17A_4,
             claims=[ComplianceClaimType.RETENTION],
             entry_ids=["ENTRY-001"],
-            entry_hashes={"ENTRY-001": "abc123"}
+            entry_hashes={"ENTRY-001": "abc123"},
         )
 
         # SEC 17a-4 requires 7 years
@@ -333,7 +324,7 @@ class TestWORMCertificates:
             regime=RegulatoryRegime.SEC_17A_4,
             claims=[ComplianceClaimType.RETENTION],
             entry_ids=["ENTRY-001"],
-            entry_hashes={"ENTRY-001": "abc123"}
+            entry_hashes={"ENTRY-001": "abc123"},
         )
 
         assert proof.worm_certificate.is_within_retention is True
@@ -351,7 +342,7 @@ class TestAccessLogging:
             accessor_id="USER-001",
             access_type="read",
             authorized=True,
-            authorization_proof="AUTH-001"
+            authorization_proof="AUTH-001",
         )
 
         assert log_entry is not None
@@ -371,7 +362,7 @@ class TestAccessLogging:
             regime=RegulatoryRegime.GDPR,
             claims=[ComplianceClaimType.ACCESS_CONTROL],
             entry_ids=["ENTRY-001"],
-            entry_hashes={"ENTRY-001": "abc123"}
+            entry_hashes={"ENTRY-001": "abc123"},
         )
 
         artifact_types = [a.artifact_type for a in proof.artifacts]
@@ -389,7 +380,7 @@ class TestProofVerification:
             regime=RegulatoryRegime.SEC_17A_4,
             claims=[ComplianceClaimType.IMMUTABILITY],
             entry_ids=["ENTRY-001"],
-            entry_hashes={"ENTRY-001": "abc123"}
+            entry_hashes={"ENTRY-001": "abc123"},
         )
 
         result = manager.verify_compliance_proof(proof.proof_id, "VALIDATOR-001")
@@ -406,7 +397,7 @@ class TestProofVerification:
             regime=RegulatoryRegime.SEC_17A_4,
             claims=[ComplianceClaimType.IMMUTABILITY],
             entry_ids=["ENTRY-001"],
-            entry_hashes={"ENTRY-001": "abc123"}
+            entry_hashes={"ENTRY-001": "abc123"},
         )
 
         manager.verify_compliance_proof(proof.proof_id, "VALIDATOR-001")
@@ -422,13 +413,11 @@ class TestProofVerification:
             regime=RegulatoryRegime.SEC_17A_4,
             claims=[ComplianceClaimType.IMMUTABILITY],
             entry_ids=["ENTRY-001"],
-            entry_hashes={"ENTRY-001": "abc123"}
+            entry_hashes={"ENTRY-001": "abc123"},
         )
 
         result = manager.reject_overbroad_proof(
-            proof.proof_id,
-            "Scope exceeds necessary coverage",
-            "VALIDATOR-001"
+            proof.proof_id, "Scope exceeds necessary coverage", "VALIDATOR-001"
         )
 
         assert result["status"] == "rejected"
@@ -446,9 +435,7 @@ class TestAbuseResistance:
         many_entries = [f"ENTRY-{i:04d}" for i in range(150)]
 
         result = manager.check_abuse_patterns(
-            requester_id="REQUESTER-001",
-            regime=RegulatoryRegime.SEC_17A_4,
-            entry_ids=many_entries
+            requester_id="REQUESTER-001", regime=RegulatoryRegime.SEC_17A_4, entry_ids=many_entries
         )
 
         assert len(result["warnings"]) > 0
@@ -461,7 +448,7 @@ class TestAbuseResistance:
         result = manager.check_abuse_patterns(
             requester_id="REQUESTER-001",
             regime=RegulatoryRegime.SEC_17A_4,
-            entry_ids=["ENTRY-001", "ENTRY-002"]
+            entry_ids=["ENTRY-001", "ENTRY-002"],
         )
 
         assert result["allow"] is True
@@ -479,7 +466,7 @@ class TestSemanticLeakagePrevention:
             regime=RegulatoryRegime.SEC_17A_4,
             claims=[ComplianceClaimType.IMMUTABILITY],
             entry_ids=["ENTRY-001"],
-            entry_hashes={"ENTRY-001": "abc123def456789012345678901234567890"}
+            entry_hashes={"ENTRY-001": "abc123def456789012345678901234567890"},
         )
 
         result = manager.prevent_semantic_leakage(proof.proof_id)
@@ -500,7 +487,7 @@ class TestProofExpiration:
             claims=[ComplianceClaimType.IMMUTABILITY],
             entry_ids=["ENTRY-001"],
             entry_hashes={"ENTRY-001": "abc123"},
-            validity_days=30
+            validity_days=30,
         )
 
         assert proof.expires_at is not None
@@ -516,7 +503,7 @@ class TestProofExpiration:
             regime=RegulatoryRegime.SEC_17A_4,
             claims=[ComplianceClaimType.IMMUTABILITY],
             entry_ids=["ENTRY-001"],
-            entry_hashes={"ENTRY-001": "abc123"}
+            entry_hashes={"ENTRY-001": "abc123"},
         )
 
         result = manager.check_proof_expiration(proof.proof_id)
@@ -532,7 +519,7 @@ class TestProofExpiration:
             regime=RegulatoryRegime.SEC_17A_4,
             claims=[ComplianceClaimType.IMMUTABILITY],
             entry_ids=["ENTRY-001"],
-            entry_hashes={"ENTRY-001": "abc123"}
+            entry_hashes={"ENTRY-001": "abc123"},
         )
 
         result = manager.revoke_proof(proof.proof_id, "No longer valid")
@@ -552,7 +539,7 @@ class TestProofPackage:
             regime=RegulatoryRegime.SEC_17A_4,
             claims=[ComplianceClaimType.IMMUTABILITY, ComplianceClaimType.AUTHORSHIP],
             entry_ids=["ENTRY-001"],
-            entry_hashes={"ENTRY-001": "abc123"}
+            entry_hashes={"ENTRY-001": "abc123"},
         )
 
         package = proof.to_package()
@@ -572,7 +559,7 @@ class TestProofPackage:
             claims=[ComplianceClaimType.PRIVACY],
             entry_ids=["ENTRY-001"],
             entry_hashes={"ENTRY-001": "abc123"},
-            disclosure_scope=DisclosureScope.REGULATOR_ONLY
+            disclosure_scope=DisclosureScope.REGULATOR_ONLY,
         )
 
         package = proof.to_package()
@@ -600,7 +587,7 @@ class TestDisclosureScopes:
             claims=[ComplianceClaimType.IMMUTABILITY],
             entry_ids=["ENTRY-001"],
             entry_hashes={"ENTRY-001": "abc123"},
-            disclosure_scope=DisclosureScope.AUDITOR_ONLY
+            disclosure_scope=DisclosureScope.AUDITOR_ONLY,
         )
 
         assert proof.disclosure_scope == DisclosureScope.AUDITOR_ONLY
@@ -617,7 +604,7 @@ class TestReporting:
             regime=RegulatoryRegime.SEC_17A_4,
             claims=[ComplianceClaimType.IMMUTABILITY],
             entry_ids=["ENTRY-001"],
-            entry_hashes={"ENTRY-001": "abc123"}
+            entry_hashes={"ENTRY-001": "abc123"},
         )
 
         summary = manager.get_status_summary()
@@ -635,7 +622,7 @@ class TestReporting:
             regime=RegulatoryRegime.SEC_17A_4,
             claims=[ComplianceClaimType.IMMUTABILITY],
             entry_ids=["ENTRY-001"],
-            entry_hashes={"ENTRY-001": "abc123"}
+            entry_hashes={"ENTRY-001": "abc123"},
         )
 
         report = manager.generate_compliance_report(RegulatoryRegime.SEC_17A_4)
@@ -653,14 +640,14 @@ class TestReporting:
             regime=RegulatoryRegime.SEC_17A_4,
             claims=[ComplianceClaimType.IMMUTABILITY],
             entry_ids=["ENTRY-001"],
-            entry_hashes={"ENTRY-001": "abc123"}
+            entry_hashes={"ENTRY-001": "abc123"},
         )
 
         manager.generate_compliance_proof(
             regime=RegulatoryRegime.GDPR,
             claims=[ComplianceClaimType.PRIVACY],
             entry_ids=["ENTRY-002"],
-            entry_hashes={"ENTRY-002": "def456"}
+            entry_hashes={"ENTRY-002": "def456"},
         )
 
         sec_proofs = manager.get_proofs_by_regime(RegulatoryRegime.SEC_17A_4)
@@ -682,7 +669,7 @@ class TestCorePrinciple:
             regime=RegulatoryRegime.SEC_17A_4,
             claims=[ComplianceClaimType.IMMUTABILITY],
             entry_ids=["ENTRY-001"],
-            entry_hashes={"ENTRY-001": "abc123"}
+            entry_hashes={"ENTRY-001": "abc123"},
         )
 
         # All artifacts should be hashes
@@ -697,7 +684,7 @@ class TestCorePrinciple:
             regime=RegulatoryRegime.SEC_17A_4,
             claims=[ComplianceClaimType.IMMUTABILITY],
             entry_ids=["ENTRY-001"],
-            entry_hashes={"ENTRY-001": "abc123"}
+            entry_hashes={"ENTRY-001": "abc123"},
         )
 
         # Proof should not contain any prose or semantic content
@@ -721,7 +708,7 @@ class TestFinalGuarantee:
             regime=RegulatoryRegime.SEC_17A_4,
             claims=[ComplianceClaimType.IMMUTABILITY, ComplianceClaimType.RETENTION],
             entry_ids=["ENTRY-001"],
-            entry_hashes={"ENTRY-001": "abc123def456"}
+            entry_hashes={"ENTRY-001": "abc123def456"},
         )
 
         # Verify proof

@@ -67,26 +67,44 @@ DEFAULT_SANITIZE_MODE = SANITIZE_MODE_STRIP
 # Asset tracking constants for double-spending prevention
 # Keywords that indicate asset transfer intent
 TRANSFER_INTENT_KEYWORDS = {
-    "transfer", "transfers", "transferring", "transferred",
-    "sell", "sells", "selling", "sold",
-    "give", "gives", "giving", "gave",
-    "assign", "assigns", "assigning", "assigned",
-    "convey", "conveys", "conveying", "conveyed",
-    "grant", "grants", "granting", "granted",
+    "transfer",
+    "transfers",
+    "transferring",
+    "transferred",
+    "sell",
+    "sells",
+    "selling",
+    "sold",
+    "give",
+    "gives",
+    "giving",
+    "gave",
+    "assign",
+    "assigns",
+    "assigning",
+    "assigned",
+    "convey",
+    "conveys",
+    "conveying",
+    "conveyed",
+    "grant",
+    "grants",
+    "granting",
+    "granted",
 }
 
 # Entry quality defaults (addresses chain bloat)
 DEFAULT_MAX_ENTRY_SIZE = 10000  # ~2500 words, sufficient for detailed contracts
-DEFAULT_MIN_ENTRY_SIZE = 20    # Minimum meaningful content
+DEFAULT_MIN_ENTRY_SIZE = 20  # Minimum meaningful content
 DEFAULT_QUALITY_STRICT_MODE = False  # If True, warnings become rejections
 
 # Derivative tracking constants
 # Types of derivation relationships
-DERIVATIVE_TYPE_AMENDMENT = "amendment"      # Modifies terms of parent
-DERIVATIVE_TYPE_EXTENSION = "extension"      # Adds to parent without modifying
-DERIVATIVE_TYPE_RESPONSE = "response"        # Response to parent entry
-DERIVATIVE_TYPE_REVISION = "revision"        # Supersedes parent entirely
-DERIVATIVE_TYPE_REFERENCE = "reference"      # Simply references parent
+DERIVATIVE_TYPE_AMENDMENT = "amendment"  # Modifies terms of parent
+DERIVATIVE_TYPE_EXTENSION = "extension"  # Adds to parent without modifying
+DERIVATIVE_TYPE_RESPONSE = "response"  # Response to parent entry
+DERIVATIVE_TYPE_REVISION = "revision"  # Supersedes parent entirely
+DERIVATIVE_TYPE_REFERENCE = "reference"  # Simply references parent
 DERIVATIVE_TYPE_FULFILLMENT = "fulfillment"  # Fulfills/completes parent intent
 
 VALID_DERIVATIVE_TYPES = {
@@ -107,6 +125,7 @@ try:
         check_entry_quality,
         format_quality_feedback,
     )
+
     ENTRY_QUALITY_AVAILABLE = True
 except ImportError:
     ENTRY_QUALITY_AVAILABLE = False
@@ -145,7 +164,7 @@ class AssetRegistry:
         if asset_id in self._ownership:
             return {
                 "success": False,
-                "message": f"Asset '{asset_id}' already registered to {self._ownership[asset_id]}"
+                "message": f"Asset '{asset_id}' already registered to {self._ownership[asset_id]}",
             }
 
         self._ownership[asset_id] = owner
@@ -153,7 +172,7 @@ class AssetRegistry:
             "success": True,
             "message": f"Asset '{asset_id}' registered to {owner}",
             "asset_id": asset_id,
-            "owner": owner
+            "owner": owner,
         }
 
     def get_owner(self, asset_id: str) -> str | None:
@@ -165,11 +184,7 @@ class AssetRegistry:
         return asset_id in self._ownership
 
     def reserve_for_transfer(
-        self,
-        asset_id: str,
-        from_owner: str,
-        to_recipient: str,
-        fingerprint: str
+        self, asset_id: str, from_owner: str, to_recipient: str, fingerprint: str
     ) -> dict[str, Any]:
         """
         Reserve an asset for pending transfer.
@@ -192,7 +207,7 @@ class AssetRegistry:
                 "success": False,
                 "reason": "already_pending",
                 "message": f"Asset '{asset_id}' already has pending transfer to {existing['to']}",
-                "existing_transfer": existing
+                "existing_transfer": existing,
             }
 
         # Check ownership - if asset is registered, only owner can transfer
@@ -201,7 +216,7 @@ class AssetRegistry:
                 return {
                     "success": False,
                     "reason": "not_owner",
-                    "message": f"Author '{from_owner}' is not the owner of asset '{asset_id}' (owner: {self._ownership[asset_id]})"
+                    "message": f"Author '{from_owner}' is not the owner of asset '{asset_id}' (owner: {self._ownership[asset_id]})",
                 }
         else:
             # Asset not registered - auto-register to the author claiming ownership
@@ -212,13 +227,13 @@ class AssetRegistry:
             "from": from_owner,
             "to": to_recipient,
             "fingerprint": fingerprint,
-            "timestamp": time.time()
+            "timestamp": time.time(),
         }
 
         return {
             "success": True,
             "message": f"Asset '{asset_id}' reserved for transfer from {from_owner} to {to_recipient}",
-            "asset_id": asset_id
+            "asset_id": asset_id,
         }
 
     def complete_transfer(self, asset_id: str, fingerprint: str) -> dict[str, Any]:
@@ -233,19 +248,13 @@ class AssetRegistry:
             Dict with completion result
         """
         if asset_id not in self._pending_transfers:
-            return {
-                "success": False,
-                "message": f"No pending transfer for asset '{asset_id}'"
-            }
+            return {"success": False, "message": f"No pending transfer for asset '{asset_id}'"}
 
         pending = self._pending_transfers[asset_id]
 
         # Verify fingerprint matches
         if pending["fingerprint"] != fingerprint:
-            return {
-                "success": False,
-                "message": f"Fingerprint mismatch for asset '{asset_id}'"
-            }
+            return {"success": False, "message": f"Fingerprint mismatch for asset '{asset_id}'"}
 
         # Complete the transfer
         old_owner = pending["from"]
@@ -253,13 +262,15 @@ class AssetRegistry:
         self._ownership[asset_id] = new_owner
 
         # Record in history
-        self._transfer_history.append({
-            "asset_id": asset_id,
-            "from": old_owner,
-            "to": new_owner,
-            "timestamp": time.time(),
-            "fingerprint": fingerprint
-        })
+        self._transfer_history.append(
+            {
+                "asset_id": asset_id,
+                "from": old_owner,
+                "to": new_owner,
+                "timestamp": time.time(),
+                "fingerprint": fingerprint,
+            }
+        )
 
         # Remove from pending
         del self._pending_transfers[asset_id]
@@ -269,7 +280,7 @@ class AssetRegistry:
             "message": f"Transfer complete: '{asset_id}' now owned by {new_owner}",
             "asset_id": asset_id,
             "old_owner": old_owner,
-            "new_owner": new_owner
+            "new_owner": new_owner,
         }
 
     def cancel_transfer(self, asset_id: str) -> dict[str, Any]:
@@ -283,16 +294,10 @@ class AssetRegistry:
             Dict with cancellation result
         """
         if asset_id not in self._pending_transfers:
-            return {
-                "success": False,
-                "message": f"No pending transfer for asset '{asset_id}'"
-            }
+            return {"success": False, "message": f"No pending transfer for asset '{asset_id}'"}
 
         del self._pending_transfers[asset_id]
-        return {
-            "success": True,
-            "message": f"Transfer cancelled for asset '{asset_id}'"
-        }
+        return {"success": True, "message": f"Transfer cancelled for asset '{asset_id}'"}
 
     def has_pending_transfer(self, asset_id: str) -> bool:
         """Check if asset has a pending transfer."""
@@ -305,29 +310,25 @@ class AssetRegistry:
     def get_assets_by_owner(self, owner: str) -> list[str]:
         """Get all assets owned by a specific owner."""
         return [
-            asset_id for asset_id, asset_owner in self._ownership.items()
-            if asset_owner == owner
+            asset_id for asset_id, asset_owner in self._ownership.items() if asset_owner == owner
         ]
 
     def get_transfer_history(self, asset_id: str | None = None) -> list[dict[str, Any]]:
         """Get transfer history, optionally filtered by asset."""
         if asset_id is None:
             return self._transfer_history.copy()
-        return [
-            t for t in self._transfer_history
-            if t["asset_id"] == asset_id
-        ]
+        return [t for t in self._transfer_history if t["asset_id"] == asset_id]
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize the registry."""
         return {
             "ownership": self._ownership.copy(),
             "pending_transfers": {k: v.copy() for k, v in self._pending_transfers.items()},
-            "transfer_history": [t.copy() for t in self._transfer_history]
+            "transfer_history": [t.copy() for t in self._transfer_history],
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> 'AssetRegistry':
+    def from_dict(cls, data: dict[str, Any]) -> "AssetRegistry":
         """Deserialize the registry."""
         registry = cls()
         registry._ownership = data.get("ownership", {})
@@ -378,7 +379,7 @@ class DerivativeRegistry:
         child_entry: int,
         parent_refs: list[dict[str, Any]],
         derivative_type: str,
-        child_metadata: dict[str, Any] | None = None
+        child_metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
         Register a derivative relationship between entries.
@@ -401,7 +402,7 @@ class DerivativeRegistry:
                 "success": False,
                 "reason": "invalid_derivative_type",
                 "message": f"Invalid derivative type: {derivative_type}",
-                "valid_types": list(VALID_DERIVATIVE_TYPES)
+                "valid_types": list(VALID_DERIVATIVE_TYPES),
             }
 
         child_key = self._make_ref_key(child_block, child_entry)
@@ -421,7 +422,7 @@ class DerivativeRegistry:
             parent_entry_data = {
                 "block_index": parent_block,
                 "entry_index": parent_entry,
-                "relationship": relationship
+                "relationship": relationship,
             }
             parent_entries.append(parent_entry_data)
 
@@ -434,7 +435,7 @@ class DerivativeRegistry:
                 "entry_index": child_entry,
                 "derivative_type": derivative_type,
                 "relationship": relationship,
-                "registered_at": time.time()
+                "registered_at": time.time(),
             }
             self._derivatives[parent_key].append(child_entry_data)
 
@@ -450,15 +451,11 @@ class DerivativeRegistry:
             "message": f"Registered derivative at {child_key}",
             "child_ref": {"block_index": child_block, "entry_index": child_entry},
             "parent_count": len(parent_entries),
-            "derivative_type": derivative_type
+            "derivative_type": derivative_type,
         }
 
     def get_derivatives(
-        self,
-        block_index: int,
-        entry_index: int,
-        recursive: bool = False,
-        max_depth: int = 10
+        self, block_index: int, entry_index: int, recursive: bool = False, max_depth: int = 10
     ) -> list[dict[str, Any]]:
         """
         Get all direct derivatives of an entry.
@@ -490,20 +487,13 @@ class DerivativeRegistry:
             for child in children:
                 child_with_depth = {**child, "depth": depth}
                 result.append(child_with_depth)
-                child_key = self._make_ref_key(
-                    child["block_index"],
-                    child["entry_index"]
-                )
+                child_key = self._make_ref_key(child["block_index"], child["entry_index"])
                 traverse(child_key, depth + 1)
 
         traverse(key, 1)
         return result
 
-    def get_parents(
-        self,
-        block_index: int,
-        entry_index: int
-    ) -> list[dict[str, Any]]:
+    def get_parents(self, block_index: int, entry_index: int) -> list[dict[str, Any]]:
         """
         Get the direct parent entries of a derivative.
 
@@ -518,10 +508,7 @@ class DerivativeRegistry:
         return self._parents.get(key, []).copy()
 
     def get_lineage(
-        self,
-        block_index: int,
-        entry_index: int,
-        max_depth: int = 10
+        self, block_index: int, entry_index: int, max_depth: int = 10
     ) -> list[dict[str, Any]]:
         """
         Get the full ancestry/lineage of an entry.
@@ -549,10 +536,7 @@ class DerivativeRegistry:
             for parent in parents:
                 parent_with_depth = {**parent, "depth": depth}
                 result.append(parent_with_depth)
-                parent_key = self._make_ref_key(
-                    parent["block_index"],
-                    parent["entry_index"]
-                )
+                parent_key = self._make_ref_key(parent["block_index"], parent["entry_index"])
                 traverse(parent_key, depth + 1)
 
         key = self._make_ref_key(block_index, entry_index)
@@ -560,10 +544,7 @@ class DerivativeRegistry:
         return result
 
     def get_roots(
-        self,
-        block_index: int,
-        entry_index: int,
-        max_depth: int = 10
+        self, block_index: int, entry_index: int, max_depth: int = 10
     ) -> list[dict[str, Any]]:
         """
         Get the root entries (entries with no parents) in the lineage.
@@ -584,23 +565,16 @@ class DerivativeRegistry:
 
         roots = []
         for ancestor in lineage:
-            ancestor_key = self._make_ref_key(
-                ancestor["block_index"],
-                ancestor["entry_index"]
-            )
+            ancestor_key = self._make_ref_key(ancestor["block_index"], ancestor["entry_index"])
             if not self._parents.get(ancestor_key):
-                roots.append({
-                    "block_index": ancestor["block_index"],
-                    "entry_index": ancestor["entry_index"]
-                })
+                roots.append(
+                    {"block_index": ancestor["block_index"], "entry_index": ancestor["entry_index"]}
+                )
 
         return roots if roots else [{"block_index": block_index, "entry_index": entry_index}]
 
     def get_derivation_tree(
-        self,
-        block_index: int,
-        entry_index: int,
-        max_depth: int = 10
+        self, block_index: int, entry_index: int, max_depth: int = 10
     ) -> dict[str, Any]:
         """
         Get the complete derivation tree for an entry.
@@ -616,15 +590,14 @@ class DerivativeRegistry:
             Dict containing the full derivation tree
         """
         return {
-            "entry": {
-                "block_index": block_index,
-                "entry_index": entry_index
-            },
+            "entry": {"block_index": block_index, "entry_index": entry_index},
             "parents": self.get_parents(block_index, entry_index),
             "lineage": self.get_lineage(block_index, entry_index, max_depth),
             "roots": self.get_roots(block_index, entry_index, max_depth),
             "derivatives": self.get_derivatives(block_index, entry_index, recursive=False),
-            "all_descendants": self.get_derivatives(block_index, entry_index, recursive=True, max_depth=max_depth)
+            "all_descendants": self.get_derivatives(
+                block_index, entry_index, recursive=True, max_depth=max_depth
+            ),
         }
 
     def has_derivatives(self, block_index: int, entry_index: int) -> bool:
@@ -642,11 +615,11 @@ class DerivativeRegistry:
         return {
             "derivatives": {k: v.copy() for k, v in self._derivatives.items()},
             "parents": {k: v.copy() for k, v in self._parents.items()},
-            "entry_cache": {k: v.copy() for k, v in self._entry_cache.items()}
+            "entry_cache": {k: v.copy() for k, v in self._entry_cache.items()},
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> 'DerivativeRegistry':
+    def from_dict(cls, data: dict[str, Any]) -> "DerivativeRegistry":
         """Deserialize the registry."""
         registry = cls()
         registry._derivatives = data.get("derivatives", {})
@@ -668,7 +641,7 @@ class EntryRateLimiter:
         self,
         window_seconds: int = DEFAULT_RATE_LIMIT_WINDOW_SECONDS,
         max_per_author: int = DEFAULT_MAX_ENTRIES_PER_AUTHOR,
-        max_global: int = DEFAULT_MAX_GLOBAL_ENTRIES
+        max_global: int = DEFAULT_MAX_GLOBAL_ENTRIES,
     ):
         """
         Initialize rate limiter.
@@ -708,7 +681,7 @@ class EntryRateLimiter:
                 "message": f"Global rate limit exceeded ({self.max_global} entries per {self.window_seconds}s)",
                 "current_count": len(self._global_submissions),
                 "limit": self.max_global,
-                "retry_after": self._get_retry_after(self._global_submissions, current_time)
+                "retry_after": self._get_retry_after(self._global_submissions, current_time),
             }
 
         # Check per-author limit
@@ -721,7 +694,7 @@ class EntryRateLimiter:
                 "author": author,
                 "current_count": len(author_subs),
                 "limit": self.max_per_author,
-                "retry_after": self._get_retry_after(author_subs, current_time)
+                "retry_after": self._get_retry_after(author_subs, current_time),
             }
 
         return {"allowed": True}
@@ -745,18 +718,14 @@ class EntryRateLimiter:
         # Clean author submissions
         for author in list(self._author_submissions.keys()):
             self._author_submissions[author] = [
-                ts for ts in self._author_submissions[author]
-                if ts > cutoff
+                ts for ts in self._author_submissions[author] if ts > cutoff
             ]
             # Remove empty author entries
             if not self._author_submissions[author]:
                 del self._author_submissions[author]
 
         # Clean global submissions
-        self._global_submissions = [
-            ts for ts in self._global_submissions
-            if ts > cutoff
-        ]
+        self._global_submissions = [ts for ts in self._global_submissions if ts > cutoff]
 
     def _get_retry_after(self, timestamps: list[float], current_time: float) -> float:
         """Calculate seconds until oldest entry expires from window."""
@@ -773,11 +742,10 @@ class EntryRateLimiter:
             "global_count": len(self._global_submissions),
             "global_limit": self.max_global,
             "author_counts": {
-                author: len(subs)
-                for author, subs in self._author_submissions.items()
+                author: len(subs) for author, subs in self._author_submissions.items()
             },
             "author_limit": self.max_per_author,
-            "window_seconds": self.window_seconds
+            "window_seconds": self.window_seconds,
         }
 
 
@@ -806,9 +774,19 @@ class MockValidator:
 
     # Common ambiguous terms that should trigger NEEDS_CLARIFICATION
     AMBIGUOUS_TERMS = [
-        "soon", "later", "reasonable", "appropriate", "satisfactory",
-        "acceptable", "approximately", "some", "various", "etc",
-        "as needed", "when possible", "in due time"
+        "soon",
+        "later",
+        "reasonable",
+        "appropriate",
+        "satisfactory",
+        "acceptable",
+        "approximately",
+        "some",
+        "various",
+        "etc",
+        "as needed",
+        "when possible",
+        "in due time",
     ]
 
     # Adversarial patterns that should trigger INVALID
@@ -830,40 +808,140 @@ class MockValidator:
     # If content contains an action from one category, intent should match that category
     ACTION_CATEGORIES = {
         "restriction": {
-            "banned", "ban", "banning", "blocked", "block", "blocking",
-            "suspended", "suspend", "suspending", "terminated", "terminate",
-            "revoked", "revoke", "revoking", "denied", "deny", "denying",
-            "prohibited", "prohibit", "forbid", "forbidden", "expelled",
-            "removed", "remove", "removing", "deleted", "delete", "deleting",
+            "banned",
+            "ban",
+            "banning",
+            "blocked",
+            "block",
+            "blocking",
+            "suspended",
+            "suspend",
+            "suspending",
+            "terminated",
+            "terminate",
+            "revoked",
+            "revoke",
+            "revoking",
+            "denied",
+            "deny",
+            "denying",
+            "prohibited",
+            "prohibit",
+            "forbid",
+            "forbidden",
+            "expelled",
+            "removed",
+            "remove",
+            "removing",
+            "deleted",
+            "delete",
+            "deleting",
         },
         "modification": {
-            "updated", "update", "updating", "edited", "edit", "editing",
-            "changed", "change", "changing", "modified", "modify", "modifying",
-            "revised", "revise", "revising", "amended", "amend", "amending",
+            "updated",
+            "update",
+            "updating",
+            "edited",
+            "edit",
+            "editing",
+            "changed",
+            "change",
+            "changing",
+            "modified",
+            "modify",
+            "modifying",
+            "revised",
+            "revise",
+            "revising",
+            "amended",
+            "amend",
+            "amending",
         },
         "creation": {
-            "created", "create", "creating", "added", "add", "adding",
-            "registered", "register", "registering", "established", "establish",
-            "initiated", "initiate", "initiating", "opened", "open", "opening",
+            "created",
+            "create",
+            "creating",
+            "added",
+            "add",
+            "adding",
+            "registered",
+            "register",
+            "registering",
+            "established",
+            "establish",
+            "initiated",
+            "initiate",
+            "initiating",
+            "opened",
+            "open",
+            "opening",
         },
         "financial": {
-            "paid", "pay", "paying", "transferred", "transfer", "transferring",
-            "deposited", "deposit", "depositing", "withdrew", "withdraw",
-            "refunded", "refund", "refunding", "charged", "charge", "charging",
+            "paid",
+            "pay",
+            "paying",
+            "transferred",
+            "transfer",
+            "transferring",
+            "deposited",
+            "deposit",
+            "depositing",
+            "withdrew",
+            "withdraw",
+            "refunded",
+            "refund",
+            "refunding",
+            "charged",
+            "charge",
+            "charging",
         },
         "agreement": {
-            "agreed", "agree", "agreeing", "accepted", "accept", "accepting",
-            "approved", "approve", "approving", "confirmed", "confirm",
-            "signed", "sign", "signing", "consented", "consent", "consenting",
+            "agreed",
+            "agree",
+            "agreeing",
+            "accepted",
+            "accept",
+            "accepting",
+            "approved",
+            "approve",
+            "approving",
+            "confirmed",
+            "confirm",
+            "signed",
+            "sign",
+            "signing",
+            "consented",
+            "consent",
+            "consenting",
         },
     }
 
     # Intent keywords that map to action categories
     INTENT_CATEGORY_KEYWORDS = {
-        "restriction": {"ban", "block", "suspend", "terminate", "revoke", "deny", "prohibit", "remove", "delete", "moderation"},
+        "restriction": {
+            "ban",
+            "block",
+            "suspend",
+            "terminate",
+            "revoke",
+            "deny",
+            "prohibit",
+            "remove",
+            "delete",
+            "moderation",
+        },
         "modification": {"update", "edit", "change", "modify", "revise", "amend", "profile"},
         "creation": {"create", "add", "register", "establish", "initiate", "open", "new"},
-        "financial": {"pay", "transfer", "deposit", "withdraw", "refund", "charge", "payment", "transaction"},
+        "financial": {
+            "pay",
+            "transfer",
+            "deposit",
+            "withdraw",
+            "refund",
+            "charge",
+            "payment",
+            "transaction",
+        },
         "agreement": {"agree", "accept", "approve", "confirm", "sign", "consent", "contract"},
     }
 
@@ -911,7 +989,7 @@ class MockValidator:
                     "content_actions": content_actions,
                     "content_categories": list(content_categories),
                     "intent_categories": [],
-                    "reason": f"Content contains drastic action(s) {content_actions} but intent '{intent}' doesn't indicate this"
+                    "reason": f"Content contains drastic action(s) {content_actions} but intent '{intent}' doesn't indicate this",
                 }
             return None
 
@@ -922,7 +1000,7 @@ class MockValidator:
                 "content_actions": content_actions,
                 "content_categories": list(content_categories),
                 "intent_categories": list(intent_categories),
-                "reason": f"Content action category {list(content_categories)} doesn't match intent category {list(intent_categories)}"
+                "reason": f"Content action category {list(content_categories)} doesn't match intent category {list(intent_categories)}",
             }
 
         return None
@@ -935,7 +1013,7 @@ class MockValidator:
         reasoning: str,
         ambiguities: list[str] | None = None,
         adversarial_indicators: list[str] | None = None,
-        action_mismatch: dict | None = None
+        action_mismatch: dict | None = None,
     ) -> dict[str, Any]:
         """Build a standardized validation response."""
         validation = {
@@ -944,7 +1022,7 @@ class MockValidator:
             "ambiguities": ambiguities or [],
             "adversarial_indicators": adversarial_indicators or [],
             "decision": decision,
-            "reasoning": reasoning
+            "reasoning": reasoning,
         }
         if action_mismatch:
             validation["action_mismatch"] = action_mismatch
@@ -966,12 +1044,7 @@ class MockValidator:
         overlap = intent_keywords & content_keywords
         return len(overlap) > 0 or len(intent_keywords) == 0
 
-    def validate_entry(
-        self,
-        content: str,
-        intent: str,
-        author: str
-    ) -> dict[str, Any]:
+    def validate_entry(self, content: str, intent: str, author: str) -> dict[str, Any]:
         """
         Perform mock validation with basic heuristic checks.
 
@@ -992,7 +1065,7 @@ class MockValidator:
                 intent_match=False,
                 decision=VALIDATION_INVALID,
                 reasoning=f"Detected adversarial patterns: {adversarial}",
-                adversarial_indicators=adversarial
+                adversarial_indicators=adversarial,
             )
 
         # Check for action category mismatch
@@ -1003,7 +1076,7 @@ class MockValidator:
                 intent_match=False,
                 decision=VALIDATION_INVALID,
                 reasoning=action_mismatch["reason"],
-                action_mismatch=action_mismatch
+                action_mismatch=action_mismatch,
             )
 
         # Check for ambiguous terms
@@ -1016,7 +1089,7 @@ class MockValidator:
                 intent_match=intent_match,
                 decision=VALIDATION_NEEDS_CLARIFICATION,
                 reasoning=f"Contains ambiguous terms: {ambiguities}",
-                ambiguities=ambiguities
+                ambiguities=ambiguities,
             )
 
         if not intent_match:
@@ -1024,7 +1097,7 @@ class MockValidator:
                 paraphrase="[MOCK] Entry content does not match stated intent",
                 intent_match=False,
                 decision=VALIDATION_INVALID,
-                reasoning="Intent does not match content keywords"
+                reasoning="Intent does not match content keywords",
             )
 
         # All checks passed
@@ -1032,7 +1105,7 @@ class MockValidator:
             paraphrase=f"[MOCK] The author {author} states: {content[:100]}...",
             intent_match=True,
             decision=VALIDATION_VALID,
-            reasoning="Entry passes basic validation checks"
+            reasoning="Entry passes basic validation checks",
         )
 
 
@@ -1053,7 +1126,7 @@ class NaturalLanguageEntry:
         intent: str,
         metadata: dict[str, Any] | None = None,
         parent_refs: list[dict[str, Any]] | None = None,
-        derivative_type: str | None = None
+        derivative_type: str | None = None,
     ):
         """
         Create a natural language entry.
@@ -1094,7 +1167,7 @@ class NaturalLanguageEntry:
             "metadata": self.metadata,
             "timestamp": self.timestamp,
             "validation_status": self.validation_status,
-            "validation_paraphrases": self.validation_paraphrases
+            "validation_paraphrases": self.validation_paraphrases,
         }
 
         # Include derivative fields if present
@@ -1106,7 +1179,7 @@ class NaturalLanguageEntry:
         return result
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> 'NaturalLanguageEntry':
+    def from_dict(cls, data: dict[str, Any]) -> "NaturalLanguageEntry":
         """Create entry from dictionary."""
         entry = cls(
             content=data["content"],
@@ -1114,7 +1187,7 @@ class NaturalLanguageEntry:
             intent=data["intent"],
             metadata=data.get("metadata", {}),
             parent_refs=data.get("parent_refs", []),
-            derivative_type=data.get("derivative_type")
+            derivative_type=data.get("derivative_type"),
         )
         entry.timestamp = data.get("timestamp", entry.timestamp)
         entry.validation_status = data.get("validation_status", "pending")
@@ -1129,11 +1202,7 @@ class Block:
     """
 
     def __init__(
-        self,
-        index: int,
-        entries: list[NaturalLanguageEntry],
-        previous_hash: str,
-        nonce: int = 0
+        self, index: int, entries: list[NaturalLanguageEntry], previous_hash: str, nonce: int = 0
     ):
         """
         Create a new block.
@@ -1161,7 +1230,7 @@ class Block:
             "timestamp": self.timestamp,
             "entries": [entry.to_dict() for entry in self.entries],
             "previous_hash": self.previous_hash,
-            "nonce": self.nonce
+            "nonce": self.nonce,
         }
         block_string = json.dumps(block_data, sort_keys=True)
         return hashlib.sha256(block_string.encode()).hexdigest()
@@ -1174,18 +1243,18 @@ class Block:
             "entries": [entry.to_dict() for entry in self.entries],
             "previous_hash": self.previous_hash,
             "nonce": self.nonce,
-            "hash": self.hash
+            "hash": self.hash,
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> 'Block':
+    def from_dict(cls, data: dict[str, Any]) -> "Block":
         """Create block from dictionary."""
         entries = [NaturalLanguageEntry.from_dict(e) for e in data["entries"]]
         block = cls(
             index=data["index"],
             entries=entries,
             previous_hash=data["previous_hash"],
-            nonce=data.get("nonce", 0)
+            nonce=data.get("nonce", 0),
         )
         block.timestamp = data["timestamp"]
         block.hash = data.get("hash", block.calculate_hash())
@@ -1222,7 +1291,7 @@ class NatLangChain:
         min_entry_size: int = DEFAULT_MIN_ENTRY_SIZE,
         quality_strict_mode: bool = DEFAULT_QUALITY_STRICT_MODE,
         enable_derivative_tracking: bool = True,
-        derivative_registry: DerivativeRegistry | None = None
+        derivative_registry: DerivativeRegistry | None = None,
     ):
         """
         Initialize the blockchain with genesis block.
@@ -1294,13 +1363,10 @@ class NatLangChain:
 
         # Initialize optional components
         self._rate_limiter = self._init_rate_limiter(
-            enable_rate_limiting, rate_limit_window,
-            max_entries_per_author, max_global_entries
+            enable_rate_limiting, rate_limit_window, max_entries_per_author, max_global_entries
         )
         self.enable_asset_tracking = enable_asset_tracking
-        self._asset_registry = self._init_asset_registry(
-            enable_asset_tracking, asset_registry
-        )
+        self._asset_registry = self._init_asset_registry(enable_asset_tracking, asset_registry)
         self.enable_quality_checks = enable_quality_checks
         self.max_entry_size = max_entry_size
         self.min_entry_size = min_entry_size
@@ -1318,25 +1384,17 @@ class NatLangChain:
         self.create_genesis_block()
 
     def _init_rate_limiter(
-        self,
-        enabled: bool,
-        window_seconds: int,
-        max_per_author: int,
-        max_global: int
+        self, enabled: bool, window_seconds: int, max_per_author: int, max_global: int
     ) -> EntryRateLimiter | None:
         """Initialize rate limiter for anti-flooding protection."""
         if not enabled:
             return None
         return EntryRateLimiter(
-            window_seconds=window_seconds,
-            max_per_author=max_per_author,
-            max_global=max_global
+            window_seconds=window_seconds, max_per_author=max_per_author, max_global=max_global
         )
 
     def _init_asset_registry(
-        self,
-        enabled: bool,
-        registry: AssetRegistry | None
+        self, enabled: bool, registry: AssetRegistry | None
     ) -> AssetRegistry | None:
         """Initialize asset registry for double-transfer prevention."""
         if registry:
@@ -1344,25 +1402,15 @@ class NatLangChain:
         return AssetRegistry() if enabled else None
 
     def _init_quality_analyzer(
-        self,
-        enabled: bool,
-        max_size: int,
-        min_size: int,
-        strict_mode: bool
+        self, enabled: bool, max_size: int, min_size: int, strict_mode: bool
     ) -> Any | None:
         """Initialize quality analyzer for chain bloat prevention."""
         if not enabled or not ENTRY_QUALITY_AVAILABLE:
             return None
-        return EntryQualityAnalyzer(
-            max_size=max_size,
-            min_size=min_size,
-            strict_mode=strict_mode
-        )
+        return EntryQualityAnalyzer(max_size=max_size, min_size=min_size, strict_mode=strict_mode)
 
     def _init_derivative_registry(
-        self,
-        enabled: bool,
-        registry: DerivativeRegistry | None
+        self, enabled: bool, registry: DerivativeRegistry | None
     ) -> DerivativeRegistry | None:
         """Initialize derivative registry for intent evolution tracking."""
         if registry:
@@ -1373,20 +1421,16 @@ class NatLangChain:
         """Create the first block in the chain."""
         genesis_entry = NaturalLanguageEntry(
             content="This is the genesis block of the NatLangChain, a distributed ledger "
-                   "paradigm where natural language prose is the primary substrate for "
-                   "immutable entries. This chain enables linguistic consensus, validation, "
-                   "and execution, preserving intent and enhancing auditability.",
+            "paradigm where natural language prose is the primary substrate for "
+            "immutable entries. This chain enables linguistic consensus, validation, "
+            "and execution, preserving intent and enhancing auditability.",
             author="system",
             intent="Initialize the NatLangChain",
-            metadata={"type": "genesis"}
+            metadata={"type": "genesis"},
         )
         genesis_entry.validation_status = "validated"
 
-        genesis_block = Block(
-            index=0,
-            entries=[genesis_entry],
-            previous_hash="0"
-        )
+        genesis_block = Block(index=0, entries=[genesis_entry], previous_hash="0")
         self.chain.append(genesis_block)
 
     def get_latest_block(self) -> Block:
@@ -1394,9 +1438,7 @@ class NatLangChain:
         return self.chain[-1]
 
     def add_entry(
-        self,
-        entry: NaturalLanguageEntry,
-        skip_validation: bool = False
+        self, entry: NaturalLanguageEntry, skip_validation: bool = False
     ) -> dict[str, Any]:
         """
         Add a new natural language entry to pending entries.
@@ -1418,10 +1460,10 @@ class NatLangChain:
             Dict with entry information and validation result
         """
         # Run validation pipeline - early return on any rejection
-        if (rejection := self._get_rate_limit_rejection(entry)):
+        if rejection := self._get_rate_limit_rejection(entry):
             return rejection
 
-        if (rejection := self._get_timestamp_rejection(entry)):
+        if rejection := self._get_timestamp_rejection(entry):
             return rejection
 
         metadata_rejection, metadata_warning = self._get_metadata_rejection(entry)
@@ -1432,14 +1474,14 @@ class NatLangChain:
         if quality_rejection:
             return quality_rejection
 
-        if (rejection := self._get_duplicate_rejection(entry)):
+        if rejection := self._get_duplicate_rejection(entry):
             return rejection
 
         asset_rejection, asset_transfer_info = self._get_asset_transfer_rejection(entry)
         if asset_rejection:
             return asset_rejection
 
-        if (rejection := self._get_validation_rejection(entry, skip_validation)):
+        if rejection := self._get_validation_rejection(entry, skip_validation):
             return rejection
 
         # All checks passed - finalize and return success
@@ -1468,7 +1510,7 @@ class NatLangChain:
                 return {
                     "is_duplicate": True,
                     "fingerprint": fingerprint,
-                    "original_timestamp": original_time
+                    "original_timestamp": original_time,
                 }
 
             time_diff = current_time - original_time
@@ -1477,16 +1519,14 @@ class NatLangChain:
                     "is_duplicate": True,
                     "fingerprint": fingerprint,
                     "original_timestamp": original_time,
-                    "time_since_original": time_diff
+                    "time_since_original": time_diff,
                 }
 
         # Also check mined blocks for duplicates
         for block in self.chain:
             for existing_entry in block.entries:
                 existing_fp = compute_entry_fingerprint(
-                    existing_entry.content,
-                    existing_entry.author,
-                    existing_entry.intent
+                    existing_entry.content, existing_entry.author, existing_entry.intent
                 )
                 if existing_fp == fingerprint:
                     return {
@@ -1494,22 +1534,16 @@ class NatLangChain:
                         "fingerprint": fingerprint,
                         "original_timestamp": block.timestamp,
                         "source": "mined_block",
-                        "block_index": block.index
+                        "block_index": block.index,
                     }
 
         # Also check pending entries
         for pending_entry in self.pending_entries:
             pending_fp = compute_entry_fingerprint(
-                pending_entry.content,
-                pending_entry.author,
-                pending_entry.intent
+                pending_entry.content, pending_entry.author, pending_entry.intent
             )
             if pending_fp == fingerprint:
-                return {
-                    "is_duplicate": True,
-                    "fingerprint": fingerprint,
-                    "source": "pending_queue"
-                }
+                return {"is_duplicate": True, "fingerprint": fingerprint, "source": "pending_queue"}
 
         return {"is_duplicate": False, "fingerprint": fingerprint}
 
@@ -1520,7 +1554,8 @@ class NatLangChain:
 
         current_time = time.time()
         expired = [
-            fp for fp, ts in self._entry_fingerprints.items()
+            fp
+            for fp, ts in self._entry_fingerprints.items()
             if current_time - ts > self.dedup_window_seconds
         ]
         for fp in expired:
@@ -1549,7 +1584,7 @@ class NatLangChain:
                 "is_valid": False,
                 "reason": "invalid_format",
                 "message": f"Invalid timestamp format: {entry.timestamp}",
-                "error": str(e)
+                "error": str(e),
             }
 
         # Calculate time difference in seconds
@@ -1564,7 +1599,7 @@ class NatLangChain:
                 "entry_time": entry.timestamp,
                 "current_time": current_time.isoformat(),
                 "drift_seconds": time_diff,
-                "max_allowed": self.max_timestamp_drift
+                "max_allowed": self.max_timestamp_drift,
             }
 
         # Check if timestamp is too far in the future (clock skew or manipulation)
@@ -1576,13 +1611,10 @@ class NatLangChain:
                 "entry_time": entry.timestamp,
                 "current_time": current_time.isoformat(),
                 "drift_seconds": abs(time_diff),
-                "max_allowed": self.max_future_drift
+                "max_allowed": self.max_future_drift,
             }
 
-        return {
-            "is_valid": True,
-            "drift_seconds": time_diff
-        }
+        return {"is_valid": True, "drift_seconds": time_diff}
 
     def _sanitize_metadata(self, entry: NaturalLanguageEntry) -> dict[str, Any]:
         """
@@ -1608,7 +1640,12 @@ class NatLangChain:
         found_forbidden = []
         for field in entry.metadata:
             # Check exact match
-            if field in self.forbidden_metadata_fields or field.lower() in {f.lower() for f in self.forbidden_metadata_fields} or field.startswith("__") or field.startswith("_system"):
+            if (
+                field in self.forbidden_metadata_fields
+                or field.lower() in {f.lower() for f in self.forbidden_metadata_fields}
+                or field.startswith("__")
+                or field.startswith("_system")
+            ):
                 found_forbidden.append(field)
 
         if not found_forbidden:
@@ -1621,7 +1658,7 @@ class NatLangChain:
                 "stripped_fields": [],
                 "rejected": True,
                 "forbidden_fields": found_forbidden,
-                "message": f"Entry rejected: forbidden metadata fields found: {found_forbidden}"
+                "message": f"Entry rejected: forbidden metadata fields found: {found_forbidden}",
             }
 
         # Strip mode or Warn mode - remove the forbidden fields
@@ -1634,15 +1671,11 @@ class NatLangChain:
                 "stripped_fields": found_forbidden,
                 "rejected": False,
                 "warning": True,
-                "message": f"Warning: removed forbidden metadata fields: {found_forbidden}"
+                "message": f"Warning: removed forbidden metadata fields: {found_forbidden}",
             }
 
         # Strip mode - silently removed
-        return {
-            "is_clean": True,
-            "stripped_fields": found_forbidden,
-            "rejected": False
-        }
+        return {"is_clean": True, "stripped_fields": found_forbidden, "rejected": False}
 
     def _detect_asset_transfer(self, entry: NaturalLanguageEntry) -> dict[str, Any]:
         """
@@ -1663,7 +1696,7 @@ class NatLangChain:
             "is_transfer": False,
             "asset_id": None,
             "from_owner": entry.author,
-            "to_recipient": None
+            "to_recipient": None,
         }
 
         # Check for explicit asset_id in metadata
@@ -1728,7 +1761,7 @@ class NatLangChain:
             asset_id=asset_id,
             from_owner=from_owner,
             to_recipient=to_recipient,
-            fingerprint=fingerprint
+            fingerprint=fingerprint,
         )
 
         if not reserve_result["success"]:
@@ -1738,7 +1771,7 @@ class NatLangChain:
                 "asset_id": asset_id,
                 "reason": reserve_result.get("reason", "transfer_failed"),
                 "message": reserve_result["message"],
-                "existing_transfer": reserve_result.get("existing_transfer")
+                "existing_transfer": reserve_result.get("existing_transfer"),
             }
 
         return {
@@ -1747,7 +1780,7 @@ class NatLangChain:
             "asset_id": asset_id,
             "from_owner": from_owner,
             "to_recipient": to_recipient,
-            "fingerprint": fingerprint
+            "fingerprint": fingerprint,
         }
 
     def _validate_entry(self, entry: NaturalLanguageEntry) -> dict[str, Any]:
@@ -1764,26 +1797,23 @@ class NatLangChain:
             # Try to create a validator if not provided
             try:
                 from validator import ProofOfUnderstanding
+
                 self.validator = ProofOfUnderstanding()
             except (ImportError, ValueError) as e:
                 return {
                     "status": "error",
-                    "error": f"No validator configured and could not create one: {e}"
+                    "error": f"No validator configured and could not create one: {e}",
                 }
 
         return self.validator.validate_entry(
-            content=entry.content,
-            intent=entry.intent,
-            author=entry.author
+            content=entry.content, intent=entry.intent, author=entry.author
         )
 
     # =========================================================================
     # Entry Validation Helpers (extracted from add_entry for clarity)
     # =========================================================================
 
-    def _get_rate_limit_rejection(
-        self, entry: NaturalLanguageEntry
-    ) -> dict[str, Any] | None:
+    def _get_rate_limit_rejection(self, entry: NaturalLanguageEntry) -> dict[str, Any] | None:
         """Check rate limits and return rejection response if exceeded."""
         if self._rate_limiter is None:
             return None
@@ -1795,13 +1825,11 @@ class NatLangChain:
                 "reason": "rate_limit",
                 "rate_limit_type": rate_check["reason"],
                 "retry_after": rate_check.get("retry_after", 0),
-                "entry": entry.to_dict()
+                "entry": entry.to_dict(),
             }
         return None
 
-    def _get_timestamp_rejection(
-        self, entry: NaturalLanguageEntry
-    ) -> dict[str, Any] | None:
+    def _get_timestamp_rejection(self, entry: NaturalLanguageEntry) -> dict[str, Any] | None:
         """Check timestamp validity and return rejection response if invalid."""
         if not self.enable_timestamp_validation:
             return None
@@ -1812,7 +1840,7 @@ class NatLangChain:
                 "message": ts_check["message"],
                 "reason": "invalid_timestamp",
                 "timestamp_issue": ts_check["reason"],
-                "entry": entry.to_dict()
+                "entry": entry.to_dict(),
             }
         return None
 
@@ -1829,14 +1857,14 @@ class NatLangChain:
                 "message": sanitize_result["message"],
                 "reason": "forbidden_metadata",
                 "forbidden_fields": sanitize_result.get("forbidden_fields", []),
-                "entry": entry.to_dict()
+                "entry": entry.to_dict(),
             }
             return rejection, None
         warning = None
         if sanitize_result.get("warning"):
             warning = {
                 "stripped_fields": sanitize_result["stripped_fields"],
-                "message": sanitize_result["message"]
+                "message": sanitize_result["message"],
             }
         return None, warning
 
@@ -1849,8 +1877,12 @@ class NatLangChain:
 
         quality_result = self._quality_analyzer.analyze(entry.content, entry.intent)
         quality_issues = [
-            {"issue": i.issue.value, "severity": i.severity,
-             "message": i.message, "suggestion": i.suggestion}
+            {
+                "issue": i.issue.value,
+                "severity": i.severity,
+                "message": i.message,
+                "suggestion": i.suggestion,
+            }
             for i in quality_result.issues
         ]
 
@@ -1862,7 +1894,7 @@ class NatLangChain:
                 "quality_score": quality_result.score,
                 "quality_issues": quality_issues,
                 "quality_metrics": quality_result.metrics,
-                "entry": entry.to_dict()
+                "entry": entry.to_dict(),
             }, None
 
         if quality_result.decision == QualityDecision.NEEDS_REVISION:
@@ -1873,7 +1905,7 @@ class NatLangChain:
                 "quality_score": quality_result.score,
                 "quality_issues": quality_issues,
                 "quality_metrics": quality_result.metrics,
-                "entry": entry.to_dict()
+                "entry": entry.to_dict(),
             }, None
 
         # Track quality info for successful entries
@@ -1889,9 +1921,7 @@ class NatLangChain:
             }
         return None, quality_info
 
-    def _get_duplicate_rejection(
-        self, entry: NaturalLanguageEntry
-    ) -> dict[str, Any] | None:
+    def _get_duplicate_rejection(self, entry: NaturalLanguageEntry) -> dict[str, Any] | None:
         """Check for duplicates and return rejection response if found."""
         if not self.enable_deduplication:
             return None
@@ -1903,7 +1933,7 @@ class NatLangChain:
                 "reason": "duplicate",
                 "original_timestamp": duplicate_check["original_timestamp"],
                 "fingerprint": duplicate_check["fingerprint"],
-                "entry": entry.to_dict()
+                "entry": entry.to_dict(),
             }
         return None
 
@@ -1921,7 +1951,7 @@ class NatLangChain:
                 "reason": "double_transfer",
                 "asset_id": asset_check.get("asset_id"),
                 "existing_transfer": asset_check.get("existing_transfer"),
-                "entry": entry.to_dict()
+                "entry": entry.to_dict(),
             }, None
         transfer_info = asset_check if asset_check.get("is_transfer") else None
         return None, transfer_info
@@ -1940,7 +1970,7 @@ class NatLangChain:
                 "status": "rejected",
                 "message": "Validation failed with error",
                 "error": validation_result.get("error", "Unknown validation error"),
-                "entry": entry.to_dict()
+                "entry": entry.to_dict(),
             }
 
         decision = validation_result.get("validation", {}).get("decision", "ERROR")
@@ -1951,7 +1981,7 @@ class NatLangChain:
                 "message": f"Entry rejected: validation decision was {decision}",
                 "validation_decision": decision,
                 "validation_details": validation_result.get("validation", {}),
-                "entry": entry.to_dict()
+                "entry": entry.to_dict(),
             }
 
         # Entry passed validation - update status and store paraphrase
@@ -1968,14 +1998,12 @@ class NatLangChain:
         skip_validation: bool,
         metadata_warning: dict | None,
         asset_transfer_info: dict | None,
-        quality_info: dict | None
+        quality_info: dict | None,
     ) -> dict[str, Any]:
         """Finalize entry addition and build success response."""
         # Register entry fingerprint for deduplication
         if self.enable_deduplication:
-            fingerprint = compute_entry_fingerprint(
-                entry.content, entry.author, entry.intent
-            )
+            fingerprint = compute_entry_fingerprint(entry.content, entry.author, entry.intent)
             self._entry_fingerprints[fingerprint] = time.time()
             self._cleanup_expired_fingerprints()
 
@@ -1989,7 +2017,7 @@ class NatLangChain:
             "status": "pending",
             "message": "Entry added to pending queue",
             "validated": self.require_validation and not skip_validation,
-            "entry": entry.to_dict()
+            "entry": entry.to_dict(),
         }
 
         if metadata_warning:
@@ -1998,7 +2026,7 @@ class NatLangChain:
             response["asset_transfer"] = {
                 "asset_id": asset_transfer_info["asset_id"],
                 "from": asset_transfer_info["from_owner"],
-                "to": asset_transfer_info["to_recipient"]
+                "to": asset_transfer_info["to_recipient"],
             }
         if quality_info:
             response["quality_suggestions"] = quality_info
@@ -2022,7 +2050,7 @@ class NatLangChain:
         new_block = Block(
             index=len(self.chain),
             entries=self.pending_entries.copy(),
-            previous_hash=self.get_latest_block().hash
+            previous_hash=self.get_latest_block().hash,
         )
 
         # Simple proof of work
@@ -2042,8 +2070,7 @@ class NatLangChain:
                         entry.content, entry.author, entry.intent
                     )
                     self._asset_registry.complete_transfer(
-                        asset_id=transfer_info["asset_id"],
-                        fingerprint=fingerprint
+                        asset_id=transfer_info["asset_id"], fingerprint=fingerprint
                     )
 
         # Register derivative relationships for mined entries
@@ -2059,8 +2086,8 @@ class NatLangChain:
                         child_metadata={
                             "author": entry.author,
                             "intent": entry.intent,
-                            "timestamp": entry.timestamp
-                        }
+                            "timestamp": entry.timestamp,
+                        },
                     )
 
         self.pending_entries = []
@@ -2102,11 +2129,13 @@ class NatLangChain:
         for block in self.chain:
             for entry in block.entries:
                 if entry.author == author:
-                    entries.append({
-                        "block_index": block.index,
-                        "block_hash": block.hash,
-                        "entry": entry.to_dict()
-                    })
+                    entries.append(
+                        {
+                            "block_index": block.index,
+                            "block_hash": block.hash,
+                            "entry": entry.to_dict(),
+                        }
+                    )
         return entries
 
     def get_entries_by_intent(self, intent_keyword: str) -> list[dict[str, Any]]:
@@ -2123,11 +2152,13 @@ class NatLangChain:
         for block in self.chain:
             for entry in block.entries:
                 if intent_keyword.lower() in entry.intent.lower():
-                    entries.append({
-                        "block_index": block.index,
-                        "block_hash": block.hash,
-                        "entry": entry.to_dict()
-                    })
+                    entries.append(
+                        {
+                            "block_index": block.index,
+                            "block_hash": block.hash,
+                            "entry": entry.to_dict(),
+                        }
+                    )
         return entries
 
     # =========================================================================
@@ -2140,7 +2171,7 @@ class NatLangChain:
         entry_index: int,
         recursive: bool = False,
         max_depth: int = 10,
-        include_entries: bool = False
+        include_entries: bool = False,
     ) -> dict[str, Any]:
         """
         Get all derivatives of a specific entry.
@@ -2156,10 +2187,7 @@ class NatLangChain:
             Dict with derivative information
         """
         if not self.enable_derivative_tracking or not self._derivative_registry:
-            return {
-                "error": "Derivative tracking not enabled",
-                "derivatives": []
-            }
+            return {"error": "Derivative tracking not enabled", "derivatives": []}
 
         derivatives = self._derivative_registry.get_derivatives(
             block_index, entry_index, recursive=recursive, max_depth=max_depth
@@ -2176,15 +2204,11 @@ class NatLangChain:
             "parent": {"block_index": block_index, "entry_index": entry_index},
             "derivative_count": len(derivatives),
             "recursive": recursive,
-            "derivatives": derivatives
+            "derivatives": derivatives,
         }
 
     def get_lineage(
-        self,
-        block_index: int,
-        entry_index: int,
-        max_depth: int = 10,
-        include_entries: bool = False
+        self, block_index: int, entry_index: int, max_depth: int = 10, include_entries: bool = False
     ) -> dict[str, Any]:
         """
         Get the full ancestry/lineage of an entry.
@@ -2199,17 +2223,12 @@ class NatLangChain:
             Dict with lineage information
         """
         if not self.enable_derivative_tracking or not self._derivative_registry:
-            return {
-                "error": "Derivative tracking not enabled",
-                "lineage": []
-            }
+            return {"error": "Derivative tracking not enabled", "lineage": []}
 
         lineage = self._derivative_registry.get_lineage(
             block_index, entry_index, max_depth=max_depth
         )
-        roots = self._derivative_registry.get_roots(
-            block_index, entry_index, max_depth=max_depth
-        )
+        roots = self._derivative_registry.get_roots(block_index, entry_index, max_depth=max_depth)
 
         # Optionally include full entry data
         if include_entries:
@@ -2226,15 +2245,11 @@ class NatLangChain:
             "entry": {"block_index": block_index, "entry_index": entry_index},
             "ancestor_count": len(lineage),
             "lineage": lineage,
-            "roots": roots
+            "roots": roots,
         }
 
     def get_derivation_tree(
-        self,
-        block_index: int,
-        entry_index: int,
-        max_depth: int = 10,
-        include_entries: bool = False
+        self, block_index: int, entry_index: int, max_depth: int = 10, include_entries: bool = False
     ) -> dict[str, Any]:
         """
         Get the complete derivation tree for an entry.
@@ -2251,10 +2266,7 @@ class NatLangChain:
             Dict containing the full derivation tree
         """
         if not self.enable_derivative_tracking or not self._derivative_registry:
-            return {
-                "error": "Derivative tracking not enabled",
-                "tree": {}
-            }
+            return {"error": "Derivative tracking not enabled", "tree": {}}
 
         tree = self._derivative_registry.get_derivation_tree(
             block_index, entry_index, max_depth=max_depth
@@ -2275,7 +2287,9 @@ class NatLangChain:
 
             # Include entry data for lineage
             for ancestor in tree.get("lineage", []):
-                ancestor_entry = self._get_entry_at(ancestor["block_index"], ancestor["entry_index"])
+                ancestor_entry = self._get_entry_at(
+                    ancestor["block_index"], ancestor["entry_index"]
+                )
                 if ancestor_entry:
                     ancestor["entry"] = ancestor_entry.to_dict()
 
@@ -2293,11 +2307,7 @@ class NatLangChain:
 
         return tree
 
-    def _get_entry_at(
-        self,
-        block_index: int,
-        entry_index: int
-    ) -> NaturalLanguageEntry | None:
+    def _get_entry_at(self, block_index: int, entry_index: int) -> NaturalLanguageEntry | None:
         """Get an entry at a specific block and entry index."""
         if block_index < 0 or block_index >= len(self.chain):
             return None
@@ -2354,7 +2364,7 @@ class NatLangChain:
         """Export the entire chain as dictionary."""
         result = {
             "chain": [block.to_dict() for block in self.chain],
-            "pending_entries": [entry.to_dict() for entry in self.pending_entries]
+            "pending_entries": [entry.to_dict() for entry in self.pending_entries],
         }
 
         # Include derivative registry if enabled
@@ -2384,8 +2394,8 @@ class NatLangChain:
         enable_asset_tracking: bool = True,
         asset_registry: AssetRegistry | None = None,
         enable_derivative_tracking: bool = True,
-        derivative_registry: DerivativeRegistry | None = None
-    ) -> 'NatLangChain':
+        derivative_registry: DerivativeRegistry | None = None,
+    ) -> "NatLangChain":
         """
         Import chain from dictionary.
 
@@ -2414,8 +2424,7 @@ class NatLangChain:
         chain = cls.__new__(cls)
         chain.chain = [Block.from_dict(b) for b in data["chain"]]
         chain.pending_entries = [
-            NaturalLanguageEntry.from_dict(e)
-            for e in data.get("pending_entries", [])
+            NaturalLanguageEntry.from_dict(e) for e in data.get("pending_entries", [])
         ]
         chain.require_validation = require_validation
         chain.validator = validator
@@ -2425,11 +2434,15 @@ class NatLangChain:
         chain.dedup_window_seconds = dedup_window_seconds
         chain._entry_fingerprints = {}
         chain.enable_rate_limiting = enable_rate_limiting
-        chain._rate_limiter = EntryRateLimiter(
-            window_seconds=rate_limit_window,
-            max_per_author=max_entries_per_author,
-            max_global=max_global_entries
-        ) if enable_rate_limiting else None
+        chain._rate_limiter = (
+            EntryRateLimiter(
+                window_seconds=rate_limit_window,
+                max_per_author=max_entries_per_author,
+                max_global=max_global_entries,
+            )
+            if enable_rate_limiting
+            else None
+        )
         chain.enable_timestamp_validation = enable_timestamp_validation
         chain.max_timestamp_drift = max_timestamp_drift
         chain.max_future_drift = max_future_drift
@@ -2437,8 +2450,10 @@ class NatLangChain:
         chain.metadata_sanitize_mode = metadata_sanitize_mode
         chain.forbidden_metadata_fields = forbidden_metadata_fields or FORBIDDEN_METADATA_FIELDS
         chain.enable_asset_tracking = enable_asset_tracking
-        chain._asset_registry = asset_registry if asset_registry else (
-            AssetRegistry() if enable_asset_tracking else None
+        chain._asset_registry = (
+            asset_registry
+            if asset_registry
+            else (AssetRegistry() if enable_asset_tracking else None)
         )
 
         # Initialize derivative tracking
@@ -2446,10 +2461,10 @@ class NatLangChain:
         if derivative_registry:
             chain._derivative_registry = derivative_registry
         elif "derivative_registry" in data and enable_derivative_tracking:
-            chain._derivative_registry = DerivativeRegistry.from_dict(
-                data["derivative_registry"]
-            )
+            chain._derivative_registry = DerivativeRegistry.from_dict(data["derivative_registry"])
         else:
-            chain._derivative_registry = DerivativeRegistry() if enable_derivative_tracking else None
+            chain._derivative_registry = (
+                DerivativeRegistry() if enable_derivative_tracking else None
+            )
 
         return chain

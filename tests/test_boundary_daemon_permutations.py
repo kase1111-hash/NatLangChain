@@ -23,7 +23,7 @@ import time
 from dataclasses import dataclass
 from typing import Any
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from blockchain import NatLangChain, NaturalLanguageEntry
 from boundary_daemon import (
@@ -112,6 +112,7 @@ ALL_PAYLOADS = SAFE_PAYLOADS + SENSITIVE_PAYLOADS
 @dataclass
 class PermutationResult:
     """Result of a single permutation test."""
+
     source: Any
     destination: Any
     classification: Any
@@ -135,11 +136,7 @@ class PermutationTestSuite:
         self.start_time = None
 
     def _create_request(
-        self,
-        source: Any,
-        destination: Any,
-        payload: Any,
-        classification: Any
+        self, source: Any, destination: Any, payload: Any, classification: Any
     ) -> dict[str, Any]:
         """Create a test request with given parameters."""
         request = {
@@ -167,7 +164,7 @@ class PermutationTestSuite:
         destination: Any,
         payload: Any,
         classification: Any,
-        payload_type: str
+        payload_type: str,
     ) -> PermutationResult:
         """Test a single input permutation."""
         request = self._create_request(source, destination, payload, classification)
@@ -179,15 +176,9 @@ class PermutationTestSuite:
             elapsed_ms = (time.time() - start) * 1000
 
             # Check for valid response structure
-            has_response = (
-                isinstance(result, dict) and
-                "authorized" in result
-            )
+            has_response = isinstance(result, dict) and "authorized" in result
 
-            has_violation = (
-                not result.get("authorized", True) and
-                "violation" in result
-            )
+            has_violation = not result.get("authorized", True) and "violation" in result
 
             return PermutationResult(
                 source=source,
@@ -198,7 +189,7 @@ class PermutationTestSuite:
                 authorized=result.get("authorized", False),
                 has_response=has_response,
                 has_violation=has_violation,
-                response_time_ms=elapsed_ms
+                response_time_ms=elapsed_ms,
             )
 
         except Exception as e:
@@ -213,7 +204,7 @@ class PermutationTestSuite:
                 has_response=False,
                 has_violation=False,
                 error=str(e),
-                response_time_ms=elapsed_ms
+                response_time_ms=elapsed_ms,
             )
 
     def test_all_source_destination_classification_combinations(self) -> dict[str, Any]:
@@ -225,7 +216,9 @@ class PermutationTestSuite:
         print("Testing Source × Destination × Classification Combinations")
         print("=" * 60)
 
-        total_combinations = len(SOURCES) * len(DESTINATIONS) * len(CLASSIFICATIONS) * len(ENFORCEMENT_MODES)
+        total_combinations = (
+            len(SOURCES) * len(DESTINATIONS) * len(CLASSIFICATIONS) * len(ENFORCEMENT_MODES)
+        )
         print(f"Total combinations to test: {total_combinations}")
 
         tested = 0
@@ -240,8 +233,7 @@ class PermutationTestSuite:
                     for classification in CLASSIFICATIONS:
                         # Test with safe payload
                         result = self._test_single_permutation(
-                            daemon, source, destination,
-                            "Safe test content", classification, "safe"
+                            daemon, source, destination, "Safe test content", classification, "safe"
                         )
                         self.results.append(result)
                         tested += 1
@@ -251,27 +243,33 @@ class PermutationTestSuite:
                         else:
                             failed += 1
                             if result.error:
-                                self.errors.append({
+                                self.errors.append(
+                                    {
+                                        "source": source,
+                                        "destination": destination,
+                                        "classification": classification,
+                                        "mode": mode.value,
+                                        "error": result.error,
+                                    }
+                                )
+
+                        # Check for soft lock (> 5 seconds)
+                        if result.response_time_ms > 5000:
+                            self.soft_locks.append(
+                                {
                                     "source": source,
                                     "destination": destination,
                                     "classification": classification,
                                     "mode": mode.value,
-                                    "error": result.error
-                                })
-
-                        # Check for soft lock (> 5 seconds)
-                        if result.response_time_ms > 5000:
-                            self.soft_locks.append({
-                                "source": source,
-                                "destination": destination,
-                                "classification": classification,
-                                "mode": mode.value,
-                                "time_ms": result.response_time_ms
-                            })
+                                    "time_ms": result.response_time_ms,
+                                }
+                            )
 
                         # Progress update every 100 tests
                         if tested % 100 == 0:
-                            print(f"  Progress: {tested}/{total_combinations} ({100*tested//total_combinations}%)")
+                            print(
+                                f"  Progress: {tested}/{total_combinations} ({100 * tested // total_combinations}%)"
+                            )
 
         print(f"\nResults: {passed}/{tested} passed, {failed} failed")
         return {
@@ -279,7 +277,7 @@ class PermutationTestSuite:
             "passed": passed,
             "failed": failed,
             "soft_locks": len(self.soft_locks),
-            "errors": len(self.errors)
+            "errors": len(self.errors),
         }
 
     def test_all_payload_types(self) -> dict[str, Any]:
@@ -298,8 +296,7 @@ class PermutationTestSuite:
         print("\nTesting safe payloads...")
         for payload in SAFE_PAYLOADS:
             result = self._test_single_permutation(
-                daemon, "agent_os", "natlangchain",
-                payload, "public", "safe"
+                daemon, "agent_os", "natlangchain", payload, "public", "safe"
             )
             tested += 1
 
@@ -308,18 +305,15 @@ class PermutationTestSuite:
                     safe_allowed += 1
                 else:
                     # Safe payload blocked - check if it's a valid block reason
-                    issues.append({
-                        "type": "safe_blocked",
-                        "payload": str(payload)[:50],
-                        "result": result
-                    })
+                    issues.append(
+                        {"type": "safe_blocked", "payload": str(payload)[:50], "result": result}
+                    )
 
         # Test sensitive payloads - should be blocked
         print("Testing sensitive payloads...")
         for payload in SENSITIVE_PAYLOADS:
             result = self._test_single_permutation(
-                daemon, "agent_os", "external_api",
-                payload, "public", "sensitive"
+                daemon, "agent_os", "external_api", payload, "public", "sensitive"
             )
             tested += 1
 
@@ -327,11 +321,13 @@ class PermutationTestSuite:
                 if not result.authorized:
                     sensitive_blocked += 1
                 else:
-                    issues.append({
-                        "type": "sensitive_allowed",
-                        "payload": str(payload)[:50],
-                        "result": result
-                    })
+                    issues.append(
+                        {
+                            "type": "sensitive_allowed",
+                            "payload": str(payload)[:50],
+                            "result": result,
+                        }
+                    )
 
         print("\nResults:")
         print(f"  Safe payloads allowed: {safe_allowed}/{len(SAFE_PAYLOADS)}")
@@ -342,7 +338,7 @@ class PermutationTestSuite:
             "tested": tested,
             "safe_allowed": safe_allowed,
             "sensitive_blocked": sensitive_blocked,
-            "issues": issues
+            "issues": issues,
         }
 
     def test_enforcement_mode_transitions(self) -> dict[str, Any]:
@@ -362,31 +358,37 @@ class PermutationTestSuite:
 
             # Make some requests
             for _ in range(5):
-                daemon.authorize_request({
-                    "source": "agent",
-                    "destination": "natlangchain",
-                    "payload": {"content": "test"},
-                    "data_classification": "public"
-                })
+                daemon.authorize_request(
+                    {
+                        "source": "agent",
+                        "destination": "natlangchain",
+                        "payload": {"content": "test"},
+                        "data_classification": "public",
+                    }
+                )
 
             # Change mode
             daemon.enforcement_mode = to_mode
 
             # Make more requests - should not cause issues
             for _ in range(5):
-                result = daemon.authorize_request({
-                    "source": "agent",
-                    "destination": "natlangchain",
-                    "payload": {"content": "test after transition"},
-                    "data_classification": "public"
-                })
+                result = daemon.authorize_request(
+                    {
+                        "source": "agent",
+                        "destination": "natlangchain",
+                        "payload": {"content": "test after transition"},
+                        "data_classification": "public",
+                    }
+                )
 
                 if "authorized" not in result:
-                    issues.append({
-                        "from": from_mode.value,
-                        "to": to_mode.value,
-                        "issue": "Missing authorized field after transition"
-                    })
+                    issues.append(
+                        {
+                            "from": from_mode.value,
+                            "to": to_mode.value,
+                            "issue": "Missing authorized field after transition",
+                        }
+                    )
 
             print(f"  {from_mode.value} → {to_mode.value}: OK")
 
@@ -423,20 +425,26 @@ class PermutationTestSuite:
                     payload = random.choice([None, "", {}, {"": ""}])
                     classification = random.choice([None, "", "invalid"])
 
-                result = daemon.authorize_request({
-                    "source": random.choice(SOURCES),
-                    "destination": random.choice(DESTINATIONS),
-                    "payload": {"content": payload} if not isinstance(payload, dict) else payload,
-                    "data_classification": classification
-                })
+                result = daemon.authorize_request(
+                    {
+                        "source": random.choice(SOURCES),
+                        "destination": random.choice(DESTINATIONS),
+                        "payload": {"content": payload}
+                        if not isinstance(payload, dict)
+                        else payload,
+                        "data_classification": classification,
+                    }
+                )
 
                 # Verify response is valid
                 if not isinstance(result, dict) or "authorized" not in result:
-                    issues.append({
-                        "chain_length": chain_length,
-                        "operation": i,
-                        "issue": "Invalid response structure"
-                    })
+                    issues.append(
+                        {
+                            "chain_length": chain_length,
+                            "operation": i,
+                            "issue": "Invalid response structure",
+                        }
+                    )
 
             # Verify state consistency after chain
             audit_log = daemon.get_audit_log(limit=chain_length + 10)
@@ -444,25 +452,23 @@ class PermutationTestSuite:
 
             # Should have logged something
             if len(audit_log) == 0:
-                issues.append({
-                    "chain_length": chain_length,
-                    "issue": "No audit log entries after chain"
-                })
+                issues.append(
+                    {"chain_length": chain_length, "issue": "No audit log entries after chain"}
+                )
 
             # Verify counters are consistent (audit log should match chain length)
             expected_audit = chain_length
             if len(audit_log) != expected_audit:
-                issues.append({
-                    "chain_length": chain_length,
-                    "issue": f"Audit count mismatch: {len(audit_log)} vs {expected_audit}"
-                })
+                issues.append(
+                    {
+                        "chain_length": chain_length,
+                        "issue": f"Audit count mismatch: {len(audit_log)} vs {expected_audit}",
+                    }
+                )
 
             print(f"    Completed: {len(audit_log)} audit entries, {len(violations)} violations")
 
-        return {
-            "chains_tested": len(chain_lengths),
-            "issues": issues
-        }
+        return {"chains_tested": len(chain_lengths), "issues": issues}
 
     def test_state_consistency(self) -> dict[str, Any]:
         """
@@ -490,12 +496,14 @@ class PermutationTestSuite:
         ]
 
         for source, dest, payload, classification, expect_violation in operations:
-            daemon.authorize_request({
-                "source": source,
-                "destination": dest,
-                "payload": {"content": payload},
-                "data_classification": classification
-            })
+            daemon.authorize_request(
+                {
+                    "source": source,
+                    "destination": dest,
+                    "payload": {"content": payload},
+                    "data_classification": classification,
+                }
+            )
 
             expected_audit_count += 1
             if expect_violation:
@@ -506,24 +514,27 @@ class PermutationTestSuite:
             actual_violations = len(daemon.get_violations())
 
             if actual_audit != expected_audit_count:
-                issues.append({
-                    "operation": payload,
-                    "issue": f"Audit count: {actual_audit} vs expected {expected_audit_count}"
-                })
+                issues.append(
+                    {
+                        "operation": payload,
+                        "issue": f"Audit count: {actual_audit} vs expected {expected_audit_count}",
+                    }
+                )
 
             if actual_violations != expected_violation_count:
-                issues.append({
-                    "operation": payload,
-                    "issue": f"Violation count: {actual_violations} vs expected {expected_violation_count}"
-                })
+                issues.append(
+                    {
+                        "operation": payload,
+                        "issue": f"Violation count: {actual_violations} vs expected {expected_violation_count}",
+                    }
+                )
 
-        print(f"  Final state: {expected_audit_count} audits, {expected_violation_count} violations")
+        print(
+            f"  Final state: {expected_audit_count} audits, {expected_violation_count} violations"
+        )
         print(f"  State consistency: {'PASS' if len(issues) == 0 else 'FAIL'}")
 
-        return {
-            "operations": len(operations),
-            "issues": issues
-        }
+        return {"operations": len(operations), "issues": issues}
 
     def test_blockchain_integration_chains(self) -> dict[str, Any]:
         """
@@ -555,19 +566,19 @@ class PermutationTestSuite:
         for op in operations:
             try:
                 if op["type"] == "post":
-                    result = daemon.authorize_request({
-                        "source": "agent_os",
-                        "destination": "natlangchain",
-                        "payload": {"content": op["content"]},
-                        "data_classification": "public"
-                    })
+                    result = daemon.authorize_request(
+                        {
+                            "source": "agent_os",
+                            "destination": "natlangchain",
+                            "payload": {"content": op["content"]},
+                            "data_classification": "public",
+                        }
+                    )
 
                     if result["authorized"]:
                         if op["expect"] == "allow":
                             entry = NaturalLanguageEntry(
-                                content=op["content"],
-                                author="agent_os",
-                                intent="Test entry"
+                                content=op["content"], author="agent_os", intent="Test entry"
                             )
                             chain.add_entry(entry)
                             entries_added += 1
@@ -593,7 +604,7 @@ class PermutationTestSuite:
                             content=entry_data["content"],
                             author=entry_data["author"],
                             intent=entry_data["intent"],
-                            metadata=entry_data["metadata"]
+                            metadata=entry_data["metadata"],
                         )
                         chain.add_entry(entry)
                         entries_added += 1
@@ -616,7 +627,7 @@ class PermutationTestSuite:
             "entries_added": entries_added,
             "violations_recorded": violations_recorded,
             "chain_valid": chain.validate_chain(),
-            "issues": issues
+            "issues": issues,
         }
 
     def test_fuzzing(self, iterations: int = 1000) -> dict[str, Any]:
@@ -633,7 +644,7 @@ class PermutationTestSuite:
 
         # Fuzz generators
         def random_string(length: int = 10) -> str:
-            return ''.join(random.choices(string.printable, k=length))
+            return "".join(random.choices(string.printable, k=length))
 
         def random_nested_dict(depth: int = 3) -> dict:
             if depth <= 0:
@@ -660,12 +671,16 @@ class PermutationTestSuite:
                 payload_gen = random.choice(fuzz_payloads)
                 payload = payload_gen()
 
-                result = daemon.authorize_request({
-                    "source": random.choice([*SOURCES, random_string(10)]),
-                    "destination": random.choice([*DESTINATIONS, random_string(10)]),
-                    "payload": {"content": payload} if not isinstance(payload, dict) else payload,
-                    "data_classification": random.choice([*CLASSIFICATIONS, random_string(5)])
-                })
+                result = daemon.authorize_request(
+                    {
+                        "source": random.choice([*SOURCES, random_string(10)]),
+                        "destination": random.choice([*DESTINATIONS, random_string(10)]),
+                        "payload": {"content": payload}
+                        if not isinstance(payload, dict)
+                        else payload,
+                        "data_classification": random.choice([*CLASSIFICATIONS, random_string(5)]),
+                    }
+                )
 
                 # Must always return valid response
                 if not isinstance(result, dict):
@@ -684,11 +699,7 @@ class PermutationTestSuite:
         print(f"  Issues: {len(issues)}")
         print(f"  Crashes: {len(crashes)}")
 
-        return {
-            "iterations": iterations,
-            "issues": issues,
-            "crashes": crashes
-        }
+        return {"iterations": iterations, "issues": issues, "crashes": crashes}
 
     def test_policy_permutations(self) -> dict[str, Any]:
         """
@@ -709,30 +720,34 @@ class PermutationTestSuite:
                 policy_id=f"POLICY-SIZE-{size}",
                 owner="test",
                 agent_id="test_agent",
-                max_payload_size=size
+                max_payload_size=size,
             )
             daemon.register_policy(policy)
 
             # Test at boundary
-            result = daemon.authorize_request({
-                "source": "test_agent",
-                "destination": "natlangchain",
-                "payload": {"content": "x" * (size - 50)},  # Just under limit
-                "policy_id": policy.policy_id,
-                "data_classification": "public"
-            })
+            result = daemon.authorize_request(
+                {
+                    "source": "test_agent",
+                    "destination": "natlangchain",
+                    "payload": {"content": "x" * (size - 50)},  # Just under limit
+                    "policy_id": policy.policy_id,
+                    "data_classification": "public",
+                }
+            )
 
             if not result.get("authorized"):
                 issues.append({"size": size, "issue": "Blocked under limit"})
 
             # Test over boundary
-            result = daemon.authorize_request({
-                "source": "test_agent",
-                "destination": "natlangchain",
-                "payload": {"content": "x" * (size + 100)},  # Over limit
-                "policy_id": policy.policy_id,
-                "data_classification": "public"
-            })
+            result = daemon.authorize_request(
+                {
+                    "source": "test_agent",
+                    "destination": "natlangchain",
+                    "payload": {"content": "x" * (size + 100)},  # Over limit
+                    "policy_id": policy.policy_id,
+                    "data_classification": "public",
+                }
+            )
 
             if result.get("authorized"):
                 issues.append({"size": size, "issue": "Allowed over limit"})
@@ -750,19 +765,21 @@ class PermutationTestSuite:
                 policy_id="POLICY-PATTERN",
                 owner="test",
                 agent_id="test_agent",
-                custom_blocked_patterns=[pattern]
+                custom_blocked_patterns=[pattern],
             )
             daemon.register_policy(policy)
 
             # Should block matching content
             test_content = "Working on project-123 today"
-            result = daemon.authorize_request({
-                "source": "test_agent",
-                "destination": "external",
-                "payload": {"content": test_content},
-                "policy_id": policy.policy_id,
-                "data_classification": "public"
-            })
+            result = daemon.authorize_request(
+                {
+                    "source": "test_agent",
+                    "destination": "external",
+                    "payload": {"content": test_content},
+                    "policy_id": policy.policy_id,
+                    "data_classification": "public",
+                }
+            )
 
             # First pattern should match and block
             if pattern == r"project-\d+" and result.get("authorized"):
@@ -842,7 +859,7 @@ class PermutationTestSuite:
             "total_issues": total_issues,
             "soft_locks": total_soft_locks,
             "errors": total_errors,
-            "details": results
+            "details": results,
         }
 
 

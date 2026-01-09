@@ -14,14 +14,14 @@ This test:
 4. Reports detailed TPS metrics
 """
 
-import os
 import json
-import time
+import os
 import random
+import time
 from datetime import datetime
-from locust import HttpUser, task, constant_throughput, events, LoadTestShape
-from locust.runners import MasterRunner
 
+from locust import HttpUser, LoadTestShape, constant_throughput, events, task
+from locust.runners import MasterRunner
 
 API_KEY = os.getenv("NATLANGCHAIN_API_KEY", "test-api-key")
 HEADERS = {
@@ -75,13 +75,13 @@ class SteppedLoadShape(LoadTestShape):
     """
 
     stages = [
-        {"duration": 60, "users": 10, "spawn_rate": 5},    # 1 min @ 10 users
-        {"duration": 120, "users": 25, "spawn_rate": 5},   # 2 min @ 25 users
+        {"duration": 60, "users": 10, "spawn_rate": 5},  # 1 min @ 10 users
+        {"duration": 120, "users": 25, "spawn_rate": 5},  # 2 min @ 25 users
         {"duration": 180, "users": 50, "spawn_rate": 10},  # 3 min @ 50 users
-        {"duration": 240, "users": 100, "spawn_rate": 20}, # 4 min @ 100 users
-        {"duration": 300, "users": 150, "spawn_rate": 25}, # 5 min @ 150 users
-        {"duration": 360, "users": 200, "spawn_rate": 25}, # 6 min @ 200 users
-        {"duration": 420, "users": 100, "spawn_rate": 25}, # 7 min @ 100 users (cooldown)
+        {"duration": 240, "users": 100, "spawn_rate": 20},  # 4 min @ 100 users
+        {"duration": 300, "users": 150, "spawn_rate": 25},  # 5 min @ 150 users
+        {"duration": 360, "users": 200, "spawn_rate": 25},  # 6 min @ 200 users
+        {"duration": 420, "users": 100, "spawn_rate": 25},  # 7 min @ 100 users (cooldown)
     ]
 
     def tick(self):
@@ -108,14 +108,26 @@ def on_init(environment, **kwargs):
 
 
 @events.request.add_listener
-def on_request(request_type, name, response_time, response_length, response, context, exception, start_time=None, **kwargs):
+def on_request(
+    request_type,
+    name,
+    response_time,
+    response_length,
+    response,
+    context,
+    exception,
+    start_time=None,
+    **kwargs,
+):
     """Track each request for TPS calculation."""
     if name == "TPS Entry":
-        tps_samples.append({
-            "timestamp": time.time(),
-            "response_time": response_time,
-            "success": exception is None,
-        })
+        tps_samples.append(
+            {
+                "timestamp": time.time(),
+                "response_time": response_time,
+                "success": exception is None,
+            }
+        )
 
 
 @events.test_stop.add_listener
@@ -133,7 +145,7 @@ def on_test_stop(environment, **kwargs):
         successful = sum(1 for s in tps_samples if s["success"])
         actual_tps = successful / duration if duration > 0 else 0
 
-        print(f"\nTHROUGHPUT:")
+        print("\nTHROUGHPUT:")
         print(f"  Total Transactions: {len(tps_samples)}")
         print(f"  Successful Transactions: {successful}")
         print(f"  Duration: {duration:.2f} seconds")
@@ -141,7 +153,7 @@ def on_test_stop(environment, **kwargs):
         print(f"  Reported RPS: {stats.total_rps:.2f}")
 
         # Time-window analysis
-        print(f"\nTIME-WINDOW ANALYSIS:")
+        print("\nTIME-WINDOW ANALYSIS:")
         window_size = 10  # seconds
         windows = {}
         for sample in tps_samples:
@@ -156,21 +168,23 @@ def on_test_stop(environment, **kwargs):
         for window, data in sorted(windows.items()):
             window_tps = data["success"] / window_size
             max_tps = max(max_tps, window_tps)
-            print(f"  Window {window * window_size}-{(window + 1) * window_size}s: {window_tps:.2f} TPS")
+            print(
+                f"  Window {window * window_size}-{(window + 1) * window_size}s: {window_tps:.2f} TPS"
+            )
 
         print(f"\n  Peak TPS (10s window): {max_tps:.2f}")
 
-    print(f"\nLATENCY:")
+    print("\nLATENCY:")
     print(f"  Average: {stats.avg_response_time:.2f}ms")
     print(f"  P50: {stats.get_response_time_percentile(0.5):.2f}ms")
     print(f"  P95: {stats.get_response_time_percentile(0.95):.2f}ms")
     print(f"  P99: {stats.get_response_time_percentile(0.99):.2f}ms")
 
-    print(f"\nRELIABILITY:")
+    print("\nRELIABILITY:")
     print(f"  Success Rate: {(1 - stats.fail_ratio) * 100:.2f}%")
     print(f"  Failed Requests: {stats.num_failures}")
 
-    print(f"\nCOMPARISON:")
+    print("\nCOMPARISON:")
     tps = stats.total_rps
     print(f"  vs Target (500 TPS): {(tps / 500 * 100):.1f}%")
     print(f"  vs Stretch (1000 TPS): {(tps / 1000 * 100):.1f}%")
@@ -184,7 +198,9 @@ def on_test_stop(environment, **kwargs):
         "test": "tps-benchmark",
         "transactions": {
             "total": len(tps_samples) if tps_samples else stats.num_requests,
-            "successful": sum(1 for s in tps_samples if s["success"]) if tps_samples else stats.num_requests - stats.num_failures,
+            "successful": sum(1 for s in tps_samples if s["success"])
+            if tps_samples
+            else stats.num_requests - stats.num_failures,
             "failed": stats.num_failures,
         },
         "throughput": {

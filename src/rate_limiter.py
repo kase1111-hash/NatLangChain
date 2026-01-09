@@ -42,6 +42,7 @@ logger = logging.getLogger(__name__)
 
 class RateLimitBackend(Enum):
     """Supported rate limit storage backends."""
+
     MEMORY = "memory"
     REDIS = "redis"
 
@@ -141,10 +142,7 @@ class MemoryRateLimitStore(RateLimitStore):
 
         with self._lock:
             if key not in self._store:
-                self._store[key] = {
-                    "count": 0,
-                    "window_start": current_time
-                }
+                self._store[key] = {"count": 0, "window_start": current_time}
 
             data = self._store[key]
             window_start = data["window_start"]
@@ -179,8 +177,7 @@ class MemoryRateLimitStore(RateLimitStore):
 
         with self._lock:
             expired_keys = [
-                k for k, v in self._store.items()
-                if v["window_start"] < expired_threshold
+                k for k, v in self._store.items() if v["window_start"] < expired_threshold
             ]
             for k in expired_keys:
                 del self._store[k]
@@ -201,6 +198,7 @@ class RedisRateLimitStore(RateLimitStore):
         if self._client is None:
             try:
                 import redis
+
                 self._client = redis.from_url(
                     self.url,
                     socket_timeout=self.timeout,
@@ -346,10 +344,7 @@ class RateLimiter:
         return self._primary_store
 
     def check_limit(
-        self,
-        identifier: str,
-        limit: int | None = None,
-        window: int | None = None
+        self, identifier: str, limit: int | None = None, window: int | None = None
     ) -> RateLimitResult:
         """
         Check if the identifier has exceeded its rate limit.
@@ -397,9 +392,7 @@ class RateLimiter:
             )
 
     def check_limit_multi(
-        self,
-        identifiers: list[str],
-        limits: dict[str, int] | None = None
+        self, identifiers: list[str], limits: dict[str, int] | None = None
     ) -> dict[str, RateLimitResult]:
         """
         Check multiple rate limits at once.
@@ -459,23 +452,15 @@ class RateLimiter:
 
     def is_healthy(self) -> dict[str, Any]:
         """Check health of rate limiter stores."""
-        primary_available = (
-            self._primary_store.is_available()
-            if self._primary_store else False
-        )
-        fallback_available = (
-            self._fallback_store.is_available()
-            if self._fallback_store else False
-        )
+        primary_available = self._primary_store.is_available() if self._primary_store else False
+        fallback_available = self._fallback_store.is_available() if self._fallback_store else False
 
         return {
             "backend": self.config.backend,
             "primary_available": primary_available,
             "fallback_available": fallback_available,
             "effective_backend": (
-                "primary" if primary_available
-                else "fallback" if fallback_available
-                else "none"
+                "primary" if primary_available else "fallback" if fallback_available else "none"
             ),
         }
 

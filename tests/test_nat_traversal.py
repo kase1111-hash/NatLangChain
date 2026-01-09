@@ -11,35 +11,35 @@ import time
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 import pytest
 
 from nat_traversal import (
-    # Enums
-    NATType,
-    CandidateType,
-    NATConnectionState,
-    # Data classes
-    STUNServer,
-    TURNServer,
-    ICECandidate,
-    NATInfo,
-    TURNAllocation,
-    # Protocol constants
-    STUN_MAGIC_COOKIE,
+    STUN_ATTR_XOR_MAPPED_ADDRESS,
     STUN_BINDING_REQUEST,
     STUN_BINDING_RESPONSE,
-    STUN_ATTR_XOR_MAPPED_ADDRESS,
+    # Protocol constants
+    STUN_MAGIC_COOKIE,
+    CandidateGatherer,
+    CandidateType,
+    ICECandidate,
+    NATConnectionState,
+    NATDetector,
+    NATInfo,
+    NATTraversalManager,
+    # Enums
+    NATType,
     # Classes
     STUNClient,
-    NATDetector,
+    # Data classes
+    STUNServer,
+    TURNAllocation,
     TURNClient,
-    CandidateGatherer,
-    NATTraversalManager,
+    TURNServer,
+    create_nat_manager_from_env,
     # Helper functions
     load_nat_config_from_env,
-    create_nat_manager_from_env,
 )
 
 
@@ -70,11 +70,7 @@ class TestTURNServer:
 
     def test_from_uri_basic(self):
         """Test parsing basic TURN URI."""
-        server = TURNServer.from_uri(
-            "turn:turn.example.com:3478",
-            username="user",
-            password="pass"
-        )
+        server = TURNServer.from_uri("turn:turn.example.com:3478", username="user", password="pass")
         assert server.host == "turn.example.com"
         assert server.port == 3478
         assert server.username == "user"
@@ -108,7 +104,7 @@ class TestICECandidate:
             priority=126 * (2**24) + 65535 * (2**8) + 255,
             address="192.168.1.100",
             port=5000,
-            candidate_type=CandidateType.HOST
+            candidate_type=CandidateType.HOST,
         )
 
         sdp = candidate.to_sdp()
@@ -128,7 +124,7 @@ class TestICECandidate:
             port=50000,
             candidate_type=CandidateType.SERVER_REFLEXIVE,
             related_address="192.168.1.100",
-            related_port=5000
+            related_port=5000,
         )
 
         sdp = candidate.to_sdp()
@@ -145,7 +141,7 @@ class TestICECandidate:
             priority=1000,
             address="10.0.0.1",
             port=3478,
-            candidate_type=CandidateType.RELAY
+            candidate_type=CandidateType.RELAY,
         )
 
         data = candidate.to_dict()
@@ -164,7 +160,7 @@ class TestNATInfo:
             external_ip="203.0.113.50",
             external_port=50000,
             internal_ip="192.168.1.100",
-            stun_server_used="stun.example.com:3478"
+            stun_server_used="stun.example.com:3478",
         )
 
         data = info.to_dict()
@@ -183,7 +179,7 @@ class TestTURNAllocation:
             relay_address="10.0.0.1",
             relay_port=49152,
             server=TURNServer(host="turn.example.com", port=3478),
-            expires_at=datetime.utcnow() + timedelta(seconds=300)
+            expires_at=datetime.utcnow() + timedelta(seconds=300),
         )
         assert not allocation.is_expired()
 
@@ -197,7 +193,7 @@ class TestTURNAllocation:
             relay_address="10.0.0.1",
             relay_port=49152,
             server=TURNServer(host="turn.example.com", port=3478),
-            expires_at=datetime.utcnow() + timedelta(seconds=600)
+            expires_at=datetime.utcnow() + timedelta(seconds=600),
         )
         # Plenty of time left
         assert not allocation.needs_refresh()
@@ -235,7 +231,7 @@ class TestSTUNClient:
     def test_parse_binding_response_valid(self):
         """Test parsing valid STUN binding response."""
         client = STUNClient()
-        client._transaction_id = b'\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c'
+        client._transaction_id = b"\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c"
 
         # Build a mock response with XOR-MAPPED-ADDRESS
         # Header: type=0x0101, len=12, magic=0x2112A442
@@ -265,23 +261,23 @@ class TestSTUNClient:
     def test_parse_binding_response_wrong_transaction(self):
         """Test rejection of response with wrong transaction ID."""
         client = STUNClient()
-        client._transaction_id = b'\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c'
+        client._transaction_id = b"\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c"
 
         # Build response with different transaction ID
         header = struct.pack(">HHI", STUN_BINDING_RESPONSE, 0, STUN_MAGIC_COOKIE)
-        wrong_tid = b'\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff'
+        wrong_tid = b"\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff"
 
         response = header + wrong_tid
 
         result = client._parse_binding_response(response)
         assert result is None
 
-    @patch('socket.socket')
+    @patch("socket.socket")
     def test_get_mapped_address_timeout(self, mock_socket_class):
         """Test handling of STUN request timeout."""
         mock_socket = MagicMock()
         mock_socket_class.return_value = mock_socket
-        mock_socket.recvfrom.side_effect = socket.timeout()
+        mock_socket.recvfrom.side_effect = TimeoutError()
 
         client = STUNClient(servers=["stun.example.com:3478"])
         result = client.get_mapped_address(timeout=0.1)
@@ -292,7 +288,7 @@ class TestSTUNClient:
 class TestNATDetector:
     """Tests for NAT type detection."""
 
-    @patch.object(STUNClient, 'get_mapped_address')
+    @patch.object(STUNClient, "get_mapped_address")
     def test_detect_nat_type_blocked(self, mock_get_mapped):
         """Test detection of blocked UDP."""
         mock_get_mapped.return_value = None
@@ -302,8 +298,8 @@ class TestNATDetector:
 
         assert info.nat_type == NATType.BLOCKED
 
-    @patch.object(STUNClient, 'get_mapped_address')
-    @patch.object(NATDetector, '_get_local_ip')
+    @patch.object(STUNClient, "get_mapped_address")
+    @patch.object(NATDetector, "_get_local_ip")
     def test_detect_nat_type_open(self, mock_local_ip, mock_get_mapped):
         """Test detection of open/no NAT."""
         mock_local_ip.return_value = "203.0.113.50"
@@ -315,8 +311,8 @@ class TestNATDetector:
         assert info.nat_type == NATType.OPEN
         assert info.external_ip == "203.0.113.50"
 
-    @patch.object(STUNClient, 'get_mapped_address')
-    @patch.object(NATDetector, '_get_local_ip')
+    @patch.object(STUNClient, "get_mapped_address")
+    @patch.object(NATDetector, "_get_local_ip")
     def test_detect_nat_type_behind_nat(self, mock_local_ip, mock_get_mapped):
         """Test detection of NAT (different internal/external IP)."""
         mock_local_ip.return_value = "192.168.1.100"
@@ -334,11 +330,7 @@ class TestNATDetector:
         detector = NATDetector()
 
         # Manually set cached info
-        cached_info = NATInfo(
-            nat_type=NATType.FULL_CONE,
-            external_ip="1.2.3.4",
-            external_port=5000
-        )
+        cached_info = NATInfo(nat_type=NATType.FULL_CONE, external_ip="1.2.3.4", external_port=5000)
         detector._cached_info = cached_info
         detector._cache_expiry = datetime.utcnow() + timedelta(minutes=10)
 
@@ -362,8 +354,8 @@ class TestCandidateGatherer:
         assert host_priority > srflx_priority
         assert srflx_priority > relay_priority
 
-    @patch.object(CandidateGatherer, '_get_local_addresses')
-    @patch.object(STUNClient, 'get_mapped_address')
+    @patch.object(CandidateGatherer, "_get_local_addresses")
+    @patch.object(STUNClient, "get_mapped_address")
     def test_gather_host_candidates(self, mock_stun, mock_local):
         """Test gathering of host candidates."""
         mock_local.return_value = [("192.168.1.100", 0)]
@@ -377,8 +369,8 @@ class TestCandidateGatherer:
         assert len(host_candidates) >= 1
         assert host_candidates[0].address == "192.168.1.100"
 
-    @patch.object(CandidateGatherer, '_get_local_addresses')
-    @patch.object(STUNClient, 'get_mapped_address')
+    @patch.object(CandidateGatherer, "_get_local_addresses")
+    @patch.object(STUNClient, "get_mapped_address")
     def test_gather_srflx_candidates(self, mock_stun, mock_local):
         """Test gathering of server-reflexive candidates."""
         mock_local.return_value = [("192.168.1.100", 0)]
@@ -387,7 +379,9 @@ class TestCandidateGatherer:
         gatherer = CandidateGatherer()
         candidates = gatherer.gather_candidates(gather_relay=False)
 
-        srflx_candidates = [c for c in candidates if c.candidate_type == CandidateType.SERVER_REFLEXIVE]
+        srflx_candidates = [
+            c for c in candidates if c.candidate_type == CandidateType.SERVER_REFLEXIVE
+        ]
         assert len(srflx_candidates) == 1
         assert srflx_candidates[0].address == "203.0.113.50"
 
@@ -443,9 +437,7 @@ class TestNATTraversalManager:
         """Test connection info export."""
         manager = NATTraversalManager()
         manager._nat_info = NATInfo(
-            nat_type=NATType.FULL_CONE,
-            external_ip="203.0.113.50",
-            external_port=50000
+            nat_type=NATType.FULL_CONE, external_ip="203.0.113.50", external_port=50000
         )
         manager._candidates = [
             ICECandidate("h0", 1, "udp", 1000, "192.168.1.100", 5000, CandidateType.HOST)

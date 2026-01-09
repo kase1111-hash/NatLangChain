@@ -13,15 +13,17 @@ from typing import Any
 
 class ForkStatus(Enum):
     """Fork lifecycle states."""
+
     PENDING_BURN = "pending_burn"  # Awaiting Observance Burn
-    ACTIVE = "active"              # Solver window open
-    RESOLVED = "resolved"          # Both parties ratified
-    TIMEOUT = "timeout"            # Solver window expired
-    CANCELLED = "cancelled"        # Fork cancelled
+    ACTIVE = "active"  # Solver window open
+    RESOLVED = "resolved"  # Both parties ratified
+    TIMEOUT = "timeout"  # Solver window expired
+    CANCELLED = "cancelled"  # Fork cancelled
 
 
 class TriggerReason(Enum):
     """Valid escalation fork trigger reasons."""
+
     FAILED_RATIFICATION = "failed_ratification"
     REFUSAL_TO_MEDIATE = "refusal_to_mediate"
     MEDIATION_TIMEOUT = "timeout"
@@ -72,7 +74,7 @@ class EscalationForkManager:
         original_mediator: str,
         original_pool: float,
         burn_tx_hash: str,
-        evidence_of_failure: dict[str, Any] | None = None
+        evidence_of_failure: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
         Trigger an Escalation Fork after Observance Burn is verified.
@@ -100,7 +102,9 @@ class EscalationForkManager:
             "fork_id": fork_id,
             "dispute_id": dispute_id,
             "status": ForkStatus.ACTIVE.value,
-            "trigger_reason": trigger_reason.value if isinstance(trigger_reason, TriggerReason) else trigger_reason,
+            "trigger_reason": trigger_reason.value
+            if isinstance(trigger_reason, TriggerReason)
+            else trigger_reason,
             "triggering_party": triggering_party,
             "original_mediator": original_mediator,
             "original_pool": original_pool,
@@ -113,7 +117,7 @@ class EscalationForkManager:
             "created_at": datetime.utcnow().isoformat(),
             "resolved_at": None,
             "winning_proposal": None,
-            "distribution": None
+            "distribution": None,
         }
 
         self.forks[fork_id] = fork_data
@@ -128,7 +132,7 @@ class EscalationForkManager:
         data = {
             "dispute_id": dispute_id,
             "triggering_party": triggering_party,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         }
         hash_input = json.dumps(data, sort_keys=True)
         return f"FORK-{hashlib.sha256(hash_input.encode()).hexdigest()[:12].upper()}"
@@ -139,7 +143,7 @@ class EscalationForkManager:
         solver: str,
         proposal_content: str,
         addresses_concerns: list[str],
-        supporting_evidence: list[str] | None = None
+        supporting_evidence: list[str] | None = None,
     ) -> tuple[bool, dict[str, Any]]:
         """
         Submit a resolution proposal to an active fork.
@@ -170,7 +174,9 @@ class EscalationForkManager:
         # Validate minimum word count
         word_count = len(proposal_content.split())
         if word_count < self.MIN_PROPOSAL_WORDS:
-            return False, {"error": f"Proposal must be at least {self.MIN_PROPOSAL_WORDS} words (got {word_count})"}
+            return False, {
+                "error": f"Proposal must be at least {self.MIN_PROPOSAL_WORDS} words (got {word_count})"
+            }
 
         # Count iterations for this solver
         existing_proposals = [p for p in self.proposals[fork_id] if p["solver"] == solver]
@@ -190,7 +196,7 @@ class EscalationForkManager:
             "submitted_at": datetime.utcnow().isoformat(),
             "ratifications": {},
             "vetoed": False,
-            "veto_reason": None
+            "veto_reason": None,
         }
 
         self.proposals[fork_id].append(proposal_data)
@@ -203,7 +209,7 @@ class EscalationForkManager:
         proposal_id: str,
         ratifying_party: str,
         satisfaction_rating: int,
-        comments: str | None = None
+        comments: str | None = None,
     ) -> tuple[bool, dict[str, Any]]:
         """
         Ratify a proposal (both parties must ratify for resolution).
@@ -244,7 +250,7 @@ class EscalationForkManager:
             "accepted": True,
             "satisfaction_rating": satisfaction_rating,
             "comments": comments,
-            "ratified_at": datetime.utcnow().isoformat()
+            "ratified_at": datetime.utcnow().isoformat(),
         }
 
         # Check if both parties have ratified
@@ -256,13 +262,11 @@ class EscalationForkManager:
             "status": "ratification_recorded",
             "proposal_id": proposal_id,
             "ratifying_party": ratifying_party,
-            "awaiting_ratification_from": "other party"
+            "awaiting_ratification_from": "other party",
         }
 
     def _resolve_fork(
-        self,
-        fork_id: str,
-        winning_proposal: dict[str, Any]
+        self, fork_id: str, winning_proposal: dict[str, Any]
     ) -> tuple[bool, dict[str, Any]]:
         """Resolve the fork after dual ratification."""
         fork = self.forks[fork_id]
@@ -281,13 +285,11 @@ class EscalationForkManager:
             "winning_proposal": winning_proposal["proposal_id"],
             "solver": winning_proposal["solver"],
             "bounty_distributed": True,
-            "distribution": distribution
+            "distribution": distribution,
         }
 
     def _calculate_distribution(
-        self,
-        fork_id: str,
-        winning_proposal: dict[str, Any]
+        self, fork_id: str, winning_proposal: dict[str, Any]
     ) -> dict[str, float]:
         """
         Calculate effort-based bounty distribution.
@@ -323,7 +325,9 @@ class EscalationForkManager:
             iteration_score = min(proposal["iteration"] / 10, 1.0) * self.EFFORT_WEIGHT_ITERATIONS
 
             # Alignment score from ratifications
-            ratings = [r.get("satisfaction_rating", 50) for r in proposal.get("ratifications", {}).values()]
+            ratings = [
+                r.get("satisfaction_rating", 50) for r in proposal.get("ratifications", {}).values()
+            ]
             avg_rating = sum(ratings) / len(ratings) if ratings else 50
             alignment_score = (avg_rating / 100) * self.EFFORT_WEIGHT_ALIGNMENT
 
@@ -353,7 +357,7 @@ class EscalationForkManager:
         proposal_id: str,
         vetoing_party: str,
         veto_reason: str,
-        evidence_refs: list[str] | None = None
+        evidence_refs: list[str] | None = None,
     ) -> tuple[bool, dict[str, Any]]:
         """
         Veto a proposal with documented reasoning.
@@ -382,12 +386,16 @@ class EscalationForkManager:
 
         current_vetoes = self.vetoes[fork_id].get(vetoing_party, 0)
         if current_vetoes >= self.MAX_VETOES_PER_PARTY:
-            return False, {"error": f"Maximum vetoes ({self.MAX_VETOES_PER_PARTY}) reached for this party"}
+            return False, {
+                "error": f"Maximum vetoes ({self.MAX_VETOES_PER_PARTY}) reached for this party"
+            }
 
         # Validate veto reason word count
         word_count = len(veto_reason.split())
         if word_count < self.MIN_VETO_REASON_WORDS:
-            return False, {"error": f"Veto reason must be at least {self.MIN_VETO_REASON_WORDS} words (got {word_count})"}
+            return False, {
+                "error": f"Veto reason must be at least {self.MIN_VETO_REASON_WORDS} words (got {word_count})"
+            }
 
         # Find and veto the proposal
         for proposal in self.proposals[fork_id]:
@@ -404,7 +412,7 @@ class EscalationForkManager:
                     "status": "vetoed",
                     "proposal_id": proposal_id,
                     "vetoing_party": vetoing_party,
-                    "remaining_vetoes": self.MAX_VETOES_PER_PARTY - current_vetoes - 1
+                    "remaining_vetoes": self.MAX_VETOES_PER_PARTY - current_vetoes - 1,
                 }
 
         return False, {"error": "Proposal not found"}
@@ -439,7 +447,7 @@ class EscalationForkManager:
         fork["distribution"] = {
             "party_a_refund": round(refund_amount / 2, 2),
             "party_b_refund": round(refund_amount / 2, 2),
-            "observance_burn": round(burn_amount, 2)
+            "observance_burn": round(burn_amount, 2),
         }
 
         return True, {
@@ -447,7 +455,7 @@ class EscalationForkManager:
             "status": "timeout",
             "bounty_pool": bounty_pool,
             "distribution": fork["distribution"],
-            "timeout_reason": "No ratified proposal within solver window"
+            "timeout_reason": "No ratified proposal within solver window",
         }
 
     def get_fork_status(self, fork_id: str) -> dict[str, Any] | None:
@@ -459,13 +467,9 @@ class EscalationForkManager:
         fork["proposals"] = self.proposals.get(fork_id, [])
         fork["total_proposals"] = len(fork["proposals"])
         fork["ratified_proposals"] = sum(
-            1 for p in fork["proposals"]
-            if len(p.get("ratifications", {})) >= 2
+            1 for p in fork["proposals"] if len(p.get("ratifications", {})) >= 2
         )
-        fork["vetoed_proposals"] = sum(
-            1 for p in fork["proposals"]
-            if p.get("vetoed")
-        )
+        fork["vetoed_proposals"] = sum(1 for p in fork["proposals"] if p.get("vetoed"))
 
         # Check for timeout
         if fork["status"] == ForkStatus.ACTIVE.value:
@@ -484,74 +488,81 @@ class EscalationForkManager:
         trail = []
 
         # Fork creation
-        trail.append({
-            "audit_type": "fork_action",
-            "fork_id": fork_id,
-            "action": "fork_created",
-            "actor": fork["triggering_party"],
-            "timestamp": fork["created_at"],
-            "details": {
-                "trigger_reason": fork["trigger_reason"],
-                "original_pool": fork["original_pool"],
-                "bounty_pool": fork["bounty_pool"]
+        trail.append(
+            {
+                "audit_type": "fork_action",
+                "fork_id": fork_id,
+                "action": "fork_created",
+                "actor": fork["triggering_party"],
+                "timestamp": fork["created_at"],
+                "details": {
+                    "trigger_reason": fork["trigger_reason"],
+                    "original_pool": fork["original_pool"],
+                    "bounty_pool": fork["bounty_pool"],
+                },
             }
-        })
+        )
 
         # Proposals
         for proposal in self.proposals.get(fork_id, []):
-            trail.append({
-                "audit_type": "fork_action",
-                "fork_id": fork_id,
-                "action": "proposal_submitted",
-                "actor": proposal["solver"],
-                "timestamp": proposal["submitted_at"],
-                "details": {
-                    "proposal_id": proposal["proposal_id"],
-                    "word_count": proposal["word_count"],
-                    "iteration": proposal["iteration"]
+            trail.append(
+                {
+                    "audit_type": "fork_action",
+                    "fork_id": fork_id,
+                    "action": "proposal_submitted",
+                    "actor": proposal["solver"],
+                    "timestamp": proposal["submitted_at"],
+                    "details": {
+                        "proposal_id": proposal["proposal_id"],
+                        "word_count": proposal["word_count"],
+                        "iteration": proposal["iteration"],
+                    },
                 }
-            })
+            )
 
             # Ratifications
             for party, ratification in proposal.get("ratifications", {}).items():
-                trail.append({
-                    "audit_type": "fork_action",
-                    "fork_id": fork_id,
-                    "action": "proposal_ratified",
-                    "actor": party,
-                    "timestamp": ratification["ratified_at"],
-                    "details": {
-                        "proposal_id": proposal["proposal_id"],
-                        "satisfaction_rating": ratification["satisfaction_rating"]
+                trail.append(
+                    {
+                        "audit_type": "fork_action",
+                        "fork_id": fork_id,
+                        "action": "proposal_ratified",
+                        "actor": party,
+                        "timestamp": ratification["ratified_at"],
+                        "details": {
+                            "proposal_id": proposal["proposal_id"],
+                            "satisfaction_rating": ratification["satisfaction_rating"],
+                        },
                     }
-                })
+                )
 
             # Veto
             if proposal.get("vetoed"):
-                trail.append({
-                    "audit_type": "fork_action",
-                    "fork_id": fork_id,
-                    "action": "proposal_vetoed",
-                    "actor": proposal.get("vetoed_by"),
-                    "timestamp": proposal.get("vetoed_at"),
-                    "details": {
-                        "proposal_id": proposal["proposal_id"]
+                trail.append(
+                    {
+                        "audit_type": "fork_action",
+                        "fork_id": fork_id,
+                        "action": "proposal_vetoed",
+                        "actor": proposal.get("vetoed_by"),
+                        "timestamp": proposal.get("vetoed_at"),
+                        "details": {"proposal_id": proposal["proposal_id"]},
                     }
-                })
+                )
 
         # Resolution
         if fork.get("resolved_at"):
-            trail.append({
-                "audit_type": "fork_action",
-                "fork_id": fork_id,
-                "action": "fork_resolved" if fork["status"] == ForkStatus.RESOLVED.value else "fork_timeout",
-                "actor": "system",
-                "timestamp": fork["resolved_at"],
-                "details": {
-                    "status": fork["status"],
-                    "distribution": fork.get("distribution")
+            trail.append(
+                {
+                    "audit_type": "fork_action",
+                    "fork_id": fork_id,
+                    "action": "fork_resolved"
+                    if fork["status"] == ForkStatus.RESOLVED.value
+                    else "fork_timeout",
+                    "actor": "system",
+                    "timestamp": fork["resolved_at"],
+                    "details": {"status": fork["status"], "distribution": fork.get("distribution")},
                 }
-            })
+            )
 
         # Sort by timestamp
         trail.sort(key=lambda x: x["timestamp"])
@@ -559,7 +570,9 @@ class EscalationForkManager:
         # Add hashes for integrity
         prev_hash = "0" * 64
         for entry in trail:
-            entry_content = json.dumps({k: v for k, v in entry.items() if k != "action_hash"}, sort_keys=True)
+            entry_content = json.dumps(
+                {k: v for k, v in entry.items() if k != "action_hash"}, sort_keys=True
+            )
             entry["previous_action_hash"] = prev_hash
             entry["action_hash"] = hashlib.sha256((prev_hash + entry_content).encode()).hexdigest()
             prev_hash = entry["action_hash"]

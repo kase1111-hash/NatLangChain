@@ -2,35 +2,34 @@
 Tests for monitoring and metrics infrastructure.
 """
 
+import json
+import logging
 import os
 import sys
-import json
-import time
-import logging
 import threading
+import time
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 import pytest
 
 # Skip all tests if monitoring dependencies are not available
 try:
-    from monitoring.metrics import MetricsCollector, metrics as global_metrics
     from monitoring.logging import (
-        get_logger,
-        configure_logging,
-        set_request_context,
-        clear_request_context,
-        get_request_context,
         JSONFormatter,
         LoggingContext,
+        clear_request_context,
+        configure_logging,
+        get_logger,
+        get_request_context,
+        set_request_context,
     )
+    from monitoring.metrics import MetricsCollector, metrics as global_metrics
+
     MONITORING_AVAILABLE = True
 except ImportError as e:
     MONITORING_AVAILABLE = False
-    pytestmark = pytest.mark.skip(
-        reason=f"monitoring module not available (flask required): {e}"
-    )
+    pytestmark = pytest.mark.skip(reason=f"monitoring module not available (flask required): {e}")
 
 
 class TestMetricsCollector:
@@ -240,6 +239,7 @@ class TestStructuredLogging:
             raise ValueError("Test error")
         except ValueError:
             import sys
+
             exc_info = sys.exc_info()
 
         record = logging.LogRecord(

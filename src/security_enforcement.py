@@ -18,27 +18,26 @@ import hashlib
 import json
 import os
 import platform
-import signal
-import struct
 import subprocess
-import sys
 import threading
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 # Optional imports for advanced sandboxing
 try:
     import prctl
+
     PRCTL_AVAILABLE = True
 except ImportError:
     PRCTL_AVAILABLE = False
 
 try:
     import ctypes
+
     CTYPES_AVAILABLE = True
 except ImportError:
     CTYPES_AVAILABLE = False
@@ -46,13 +45,12 @@ except ImportError:
 # Import for input validation
 import ipaddress
 import re
-import shlex
 from contextlib import contextmanager
-
 
 # =============================================================================
 # Custom Exceptions
 # =============================================================================
+
 
 class SecurityEnforcementError(Exception):
     """
@@ -72,6 +70,7 @@ class SecurityEnforcementError(Exception):
 # Input Validation Functions (SECURITY FIX)
 # =============================================================================
 
+
 def validate_ip_address(ip: str) -> tuple[bool, str | None]:
     """
     Validate an IP address to prevent command injection.
@@ -86,8 +85,27 @@ def validate_ip_address(ip: str) -> tuple[bool, str | None]:
     ip = ip.strip()
 
     # Check for dangerous characters that could enable command injection
-    dangerous_chars = [';', '|', '&', '$', '`', '(', ')', '{', '}', '[', ']',
-                       '<', '>', '!', '\n', '\r', '\\', '"', "'"]
+    dangerous_chars = [
+        ";",
+        "|",
+        "&",
+        "$",
+        "`",
+        "(",
+        ")",
+        "{",
+        "}",
+        "[",
+        "]",
+        "<",
+        ">",
+        "!",
+        "\n",
+        "\r",
+        "\\",
+        '"',
+        "'",
+    ]
     for char in dangerous_chars:
         if char in ip:
             return False, f"Invalid character in IP address: {char}"
@@ -137,7 +155,7 @@ def validate_interface_name(interface: str) -> tuple[bool, str | None]:
         return False, "Interface name is required"
 
     # Interface names should be alphanumeric with limited special chars
-    if not re.match(r'^[a-zA-Z0-9_-]{1,15}$', interface):
+    if not re.match(r"^[a-zA-Z0-9_-]{1,15}$", interface):
         return False, f"Invalid interface name: {interface}"
 
     return True, None
@@ -154,12 +172,13 @@ def sanitize_log_prefix(prefix: str) -> str:
         return "NATLANG"
 
     # Only allow alphanumeric and underscore
-    sanitized = re.sub(r'[^a-zA-Z0-9_]', '', prefix)
+    sanitized = re.sub(r"[^a-zA-Z0-9_]", "", prefix)
     return sanitized[:20] if sanitized else "NATLANG"
 
 
 class EnforcementCapability(Enum):
     """Available enforcement capabilities on this system."""
+
     IPTABLES = "iptables"
     NFTABLES = "nftables"
     SECCOMP = "seccomp"
@@ -173,6 +192,7 @@ class EnforcementCapability(Enum):
 @dataclass
 class EnforcementResult:
     """Result of an enforcement action."""
+
     success: bool
     action: str
     details: dict[str, Any] = field(default_factory=dict)
@@ -194,7 +214,7 @@ class SystemCapabilityDetector:
             return True
         # Check cgroup for docker
         try:
-            with open("/proc/1/cgroup", "r") as f:
+            with open("/proc/1/cgroup") as f:
                 return "docker" in f.read() or "containerd" in f.read()
         except (FileNotFoundError, PermissionError):
             pass
@@ -206,7 +226,7 @@ class SystemCapabilityDetector:
         """Check if the process has a specific Linux capability."""
         try:
             # Read effective capabilities from /proc
-            with open("/proc/self/status", "r") as f:
+            with open("/proc/self/status") as f:
                 for line in f:
                     if line.startswith("CapEff:"):
                         cap_hex = int(line.split(":")[1].strip(), 16)
@@ -228,29 +248,39 @@ class SystemCapabilityDetector:
         iptables_available = SystemCapabilityDetector._check_command("iptables --version")
         if in_docker:
             # In Docker, also need NET_ADMIN capability
-            iptables_available = iptables_available and SystemCapabilityDetector.has_capability("NET_ADMIN")
+            iptables_available = iptables_available and SystemCapabilityDetector.has_capability(
+                "NET_ADMIN"
+            )
         capabilities[EnforcementCapability.IPTABLES] = iptables_available
 
         # Check for nftables
         nftables_available = SystemCapabilityDetector._check_command("nft --version")
         if in_docker:
-            nftables_available = nftables_available and SystemCapabilityDetector.has_capability("NET_ADMIN")
+            nftables_available = nftables_available and SystemCapabilityDetector.has_capability(
+                "NET_ADMIN"
+            )
         capabilities[EnforcementCapability.NFTABLES] = nftables_available
 
         # Check for seccomp (Linux only)
         capabilities[EnforcementCapability.SECCOMP] = SystemCapabilityDetector._check_seccomp()
 
         # Check for namespaces (limited usefulness in Docker - already in namespace)
-        capabilities[EnforcementCapability.NAMESPACES] = SystemCapabilityDetector._check_namespaces() and not in_docker
+        capabilities[EnforcementCapability.NAMESPACES] = (
+            SystemCapabilityDetector._check_namespaces() and not in_docker
+        )
 
         # Check for cgroups
         capabilities[EnforcementCapability.CGROUPS] = os.path.exists("/sys/fs/cgroup")
 
         # Check for udev (NOT available in Docker - no host udev access)
-        capabilities[EnforcementCapability.UDEV] = os.path.exists("/etc/udev/rules.d") and not in_docker
+        capabilities[EnforcementCapability.UDEV] = (
+            os.path.exists("/etc/udev/rules.d") and not in_docker
+        )
 
         # Check for AppArmor
-        capabilities[EnforcementCapability.APPARMOR] = os.path.exists("/sys/kernel/security/apparmor")
+        capabilities[EnforcementCapability.APPARMOR] = os.path.exists(
+            "/sys/kernel/security/apparmor"
+        )
 
         # Check for SELinux
         capabilities[EnforcementCapability.SELINUX] = os.path.exists("/sys/fs/selinux")
@@ -267,7 +297,7 @@ class SystemCapabilityDetector:
             "has_net_admin": SystemCapabilityDetector.has_capability("NET_ADMIN"),
             "has_sys_admin": SystemCapabilityDetector.has_capability("SYS_ADMIN"),
             "is_root": os.geteuid() == 0 if hasattr(os, "geteuid") else False,
-            "limitations": SystemCapabilityDetector._get_limitations(in_docker)
+            "limitations": SystemCapabilityDetector._get_limitations(in_docker),
         }
 
     @staticmethod
@@ -289,11 +319,7 @@ class SystemCapabilityDetector:
     def _check_command(cmd: str) -> bool:
         """Check if a command is available."""
         try:
-            subprocess.run(
-                cmd.split(),
-                capture_output=True,
-                timeout=5
-            )
+            subprocess.run(cmd.split(), capture_output=True, timeout=5)
             return True
         except (subprocess.SubprocessError, FileNotFoundError):
             return False
@@ -305,7 +331,7 @@ class SystemCapabilityDetector:
             return False
         try:
             # Check for seccomp in kernel config
-            with open("/proc/sys/kernel/seccomp/actions_avail", "r") as f:
+            with open("/proc/sys/kernel/seccomp/actions_avail") as f:
                 return len(f.read().strip()) > 0
         except (FileNotFoundError, PermissionError):
             # Try alternative detection
@@ -320,7 +346,7 @@ class SystemCapabilityDetector:
             "/proc/self/ns/net",
             "/proc/self/ns/pid",
             "/proc/self/ns/mnt",
-            "/proc/self/ns/user"
+            "/proc/self/ns/user",
         ]
         return all(os.path.exists(f) for f in namespace_files)
 
@@ -352,7 +378,7 @@ class NetworkEnforcement:
             return EnforcementResult(
                 success=False,
                 action="block_all_outbound",
-                error="No firewall tool available (need iptables or nftables)"
+                error="No firewall tool available (need iptables or nftables)",
             )
 
         try:
@@ -361,12 +387,49 @@ class NetworkEnforcement:
                 # Note: nftables semicolons are passed directly in args (no shell escaping needed)
                 cmds = [
                     ["nft", "add", "table", "inet", "natlangchain_block"],
-                    ["nft", "add", "chain", "inet", "natlangchain_block", "output",
-                     "{", "type", "filter", "hook", "output", "priority", "0", ";", "policy", "drop", ";", "}"],
-                    ["nft", "add", "rule", "inet", "natlangchain_block", "output",
-                     "ct", "state", "established,related", "accept"],
-                    ["nft", "add", "rule", "inet", "natlangchain_block", "output",
-                     "oif", "lo", "accept"],
+                    [
+                        "nft",
+                        "add",
+                        "chain",
+                        "inet",
+                        "natlangchain_block",
+                        "output",
+                        "{",
+                        "type",
+                        "filter",
+                        "hook",
+                        "output",
+                        "priority",
+                        "0",
+                        ";",
+                        "policy",
+                        "drop",
+                        ";",
+                        "}",
+                    ],
+                    [
+                        "nft",
+                        "add",
+                        "rule",
+                        "inet",
+                        "natlangchain_block",
+                        "output",
+                        "ct",
+                        "state",
+                        "established,related",
+                        "accept",
+                    ],
+                    [
+                        "nft",
+                        "add",
+                        "rule",
+                        "inet",
+                        "natlangchain_block",
+                        "output",
+                        "oif",
+                        "lo",
+                        "accept",
+                    ],
                 ]
                 # Track which commands are idempotent (can fail if already exists)
                 idempotent_indices = {0, 1}  # table and chain creation
@@ -376,8 +439,17 @@ class NetworkEnforcement:
                 cmds = [
                     ["iptables", "-N", "NATLANGCHAIN_BLOCK"],  # May fail if exists - OK
                     ["iptables", "-F", "NATLANGCHAIN_BLOCK"],
-                    ["iptables", "-A", "NATLANGCHAIN_BLOCK", "-m", "state",
-                     "--state", "ESTABLISHED,RELATED", "-j", "ACCEPT"],
+                    [
+                        "iptables",
+                        "-A",
+                        "NATLANGCHAIN_BLOCK",
+                        "-m",
+                        "state",
+                        "--state",
+                        "ESTABLISHED,RELATED",
+                        "-j",
+                        "ACCEPT",
+                    ],
                     ["iptables", "-A", "NATLANGCHAIN_BLOCK", "-o", "lo", "-j", "ACCEPT"],
                     ["iptables", "-A", "NATLANGCHAIN_BLOCK", "-j", "DROP"],
                     ["iptables", "-I", "OUTPUT", "-j", "NATLANGCHAIN_BLOCK"],
@@ -386,11 +458,7 @@ class NetworkEnforcement:
                 idempotent_indices = {0}
 
             for idx, cmd in enumerate(cmds):
-                result = subprocess.run(
-                    cmd,
-                    capture_output=True,
-                    timeout=10
-                )
+                result = subprocess.run(cmd, capture_output=True, timeout=10)
                 stderr_text = result.stderr.decode() if result.stderr else ""
                 # Allow failures for idempotent commands (already exists is OK)
                 is_idempotent = idx in idempotent_indices
@@ -402,27 +470,28 @@ class NetworkEnforcement:
                         return EnforcementResult(
                             success=False,
                             action="block_all_outbound",
-                            error=f"Command failed: {' '.join(cmd)} - {stderr_text}"
+                            error=f"Command failed: {' '.join(cmd)} - {stderr_text}",
                         )
                 self._rules_applied.append(" ".join(cmd))
 
             return EnforcementResult(
                 success=True,
                 action="block_all_outbound",
-                details={"rules_applied": len(cmds), "method": "nftables" if self.use_nftables else "iptables"}
+                details={
+                    "rules_applied": len(cmds),
+                    "method": "nftables" if self.use_nftables else "iptables",
+                },
             )
 
         except subprocess.TimeoutExpired:
             return EnforcementResult(
-                success=False,
-                action="block_all_outbound",
-                error="Firewall command timed out"
+                success=False, action="block_all_outbound", error="Firewall command timed out"
             )
         except PermissionError:
             return EnforcementResult(
                 success=False,
                 action="block_all_outbound",
-                error="Permission denied - requires root/sudo"
+                error="Permission denied - requires root/sudo",
             )
 
     def block_destination(self, ip: str, port: int | None = None) -> EnforcementResult:
@@ -436,62 +505,57 @@ class NetworkEnforcement:
         ip_valid, ip_error = validate_ip_address(ip)
         if not ip_valid:
             return EnforcementResult(
-                success=False,
-                action="block_destination",
-                error=f"Invalid IP address: {ip_error}"
+                success=False, action="block_destination", error=f"Invalid IP address: {ip_error}"
             )
 
         port_valid, port_error = validate_port(port)
         if not port_valid:
             return EnforcementResult(
-                success=False,
-                action="block_destination",
-                error=f"Invalid port: {port_error}"
+                success=False, action="block_destination", error=f"Invalid port: {port_error}"
             )
 
         # Now check system capabilities
         if not self.use_iptables:
             return EnforcementResult(
-                success=False,
-                action="block_destination",
-                error="iptables not available"
+                success=False, action="block_destination", error="iptables not available"
             )
 
         try:
             # SECURITY FIX: Use list-based args instead of shell=True
             if port:
-                cmd_args = ["iptables", "-A", "OUTPUT", "-d", ip,
-                           "-p", "tcp", "--dport", str(int(port)), "-j", "DROP"]
+                cmd_args = [
+                    "iptables",
+                    "-A",
+                    "OUTPUT",
+                    "-d",
+                    ip,
+                    "-p",
+                    "tcp",
+                    "--dport",
+                    str(int(port)),
+                    "-j",
+                    "DROP",
+                ]
             else:
                 cmd_args = ["iptables", "-A", "OUTPUT", "-d", ip, "-j", "DROP"]
 
             result = subprocess.run(cmd_args, capture_output=True, timeout=10)
             if result.returncode != 0:
                 return EnforcementResult(
-                    success=False,
-                    action="block_destination",
-                    error=result.stderr.decode()
+                    success=False, action="block_destination", error=result.stderr.decode()
                 )
 
             self._rules_applied.append(" ".join(cmd_args))
             return EnforcementResult(
-                success=True,
-                action="block_destination",
-                details={"ip": ip, "port": port}
+                success=True, action="block_destination", details={"ip": ip, "port": port}
             )
 
         except subprocess.TimeoutExpired:
             return EnforcementResult(
-                success=False,
-                action="block_destination",
-                error="Command timed out"
+                success=False, action="block_destination", error="Command timed out"
             )
         except Exception as e:
-            return EnforcementResult(
-                success=False,
-                action="block_destination",
-                error=str(e)
-            )
+            return EnforcementResult(success=False, action="block_destination", error=str(e))
 
     def allow_only_vpn(self, vpn_interface: str = "tun0") -> EnforcementResult:
         """
@@ -501,9 +565,7 @@ class NetworkEnforcement:
         """
         if not self.use_iptables:
             return EnforcementResult(
-                success=False,
-                action="allow_only_vpn",
-                error="iptables not available"
+                success=False, action="allow_only_vpn", error="iptables not available"
             )
 
         # SECURITY FIX: Validate interface name
@@ -512,24 +574,31 @@ class NetworkEnforcement:
             return EnforcementResult(
                 success=False,
                 action="allow_only_vpn",
-                error=f"Invalid interface name: {iface_error}"
+                error=f"Invalid interface name: {iface_error}",
             )
 
         try:
             # SECURITY FIX: Use list-based subprocess calls
             # First, create the chain (may already exist)
-            subprocess.run(["iptables", "-N", "NATLANGCHAIN_VPN"],
-                          capture_output=True, timeout=10)
+            subprocess.run(["iptables", "-N", "NATLANGCHAIN_VPN"], capture_output=True, timeout=10)
             # Flush existing rules
-            subprocess.run(["iptables", "-F", "NATLANGCHAIN_VPN"],
-                          capture_output=True, timeout=10)
+            subprocess.run(["iptables", "-F", "NATLANGCHAIN_VPN"], capture_output=True, timeout=10)
 
             # Add VPN rules using list-based args
             cmds = [
                 ["iptables", "-A", "NATLANGCHAIN_VPN", "-o", vpn_interface, "-j", "ACCEPT"],
                 ["iptables", "-A", "NATLANGCHAIN_VPN", "-o", "lo", "-j", "ACCEPT"],
-                ["iptables", "-A", "NATLANGCHAIN_VPN", "-m", "state",
-                 "--state", "ESTABLISHED,RELATED", "-j", "ACCEPT"],
+                [
+                    "iptables",
+                    "-A",
+                    "NATLANGCHAIN_VPN",
+                    "-m",
+                    "state",
+                    "--state",
+                    "ESTABLISHED,RELATED",
+                    "-j",
+                    "ACCEPT",
+                ],
                 ["iptables", "-A", "NATLANGCHAIN_VPN", "-j", "DROP"],
                 ["iptables", "-I", "OUTPUT", "-j", "NATLANGCHAIN_VPN"],
             ]
@@ -539,80 +608,96 @@ class NetworkEnforcement:
                 self._rules_applied.append(" ".join(cmd_args))
 
             return EnforcementResult(
-                success=True,
-                action="allow_only_vpn",
-                details={"vpn_interface": vpn_interface}
+                success=True, action="allow_only_vpn", details={"vpn_interface": vpn_interface}
             )
 
         except subprocess.TimeoutExpired:
             return EnforcementResult(
-                success=False,
-                action="allow_only_vpn",
-                error="Command timed out"
+                success=False, action="allow_only_vpn", error="Command timed out"
             )
         except Exception as e:
-            return EnforcementResult(
-                success=False,
-                action="allow_only_vpn",
-                error=str(e)
-            )
+            return EnforcementResult(success=False, action="allow_only_vpn", error=str(e))
 
     def clear_rules(self) -> EnforcementResult:
         """Remove all NatLangChain firewall rules."""
         try:
             # SECURITY FIX: Use list-based subprocess calls
             if self.use_nftables:
-                subprocess.run(["nft", "delete", "table", "inet", "natlangchain_block"],
-                              capture_output=True, timeout=10)
-                subprocess.run(["nft", "delete", "table", "inet", "natlangchain_allowlist"],
-                              capture_output=True, timeout=10)
+                subprocess.run(
+                    ["nft", "delete", "table", "inet", "natlangchain_block"],
+                    capture_output=True,
+                    timeout=10,
+                )
+                subprocess.run(
+                    ["nft", "delete", "table", "inet", "natlangchain_allowlist"],
+                    capture_output=True,
+                    timeout=10,
+                )
             if self.use_iptables:
                 # Delete chain references from main chains
-                subprocess.run(["iptables", "-D", "OUTPUT", "-j", "NATLANGCHAIN_BLOCK"],
-                              capture_output=True, timeout=10)
-                subprocess.run(["iptables", "-D", "OUTPUT", "-j", "NATLANGCHAIN_VPN"],
-                              capture_output=True, timeout=10)
-                subprocess.run(["iptables", "-D", "OUTPUT", "-j", "NATLANGCHAIN_ALLOWLIST"],
-                              capture_output=True, timeout=10)
-                subprocess.run(["iptables", "-D", "INPUT", "-j", "NATLANGCHAIN_INBOUND"],
-                              capture_output=True, timeout=10)
+                subprocess.run(
+                    ["iptables", "-D", "OUTPUT", "-j", "NATLANGCHAIN_BLOCK"],
+                    capture_output=True,
+                    timeout=10,
+                )
+                subprocess.run(
+                    ["iptables", "-D", "OUTPUT", "-j", "NATLANGCHAIN_VPN"],
+                    capture_output=True,
+                    timeout=10,
+                )
+                subprocess.run(
+                    ["iptables", "-D", "OUTPUT", "-j", "NATLANGCHAIN_ALLOWLIST"],
+                    capture_output=True,
+                    timeout=10,
+                )
+                subprocess.run(
+                    ["iptables", "-D", "INPUT", "-j", "NATLANGCHAIN_INBOUND"],
+                    capture_output=True,
+                    timeout=10,
+                )
                 # Flush chains
-                subprocess.run(["iptables", "-F", "NATLANGCHAIN_BLOCK"],
-                              capture_output=True, timeout=10)
-                subprocess.run(["iptables", "-F", "NATLANGCHAIN_VPN"],
-                              capture_output=True, timeout=10)
-                subprocess.run(["iptables", "-F", "NATLANGCHAIN_ALLOWLIST"],
-                              capture_output=True, timeout=10)
-                subprocess.run(["iptables", "-F", "NATLANGCHAIN_INBOUND"],
-                              capture_output=True, timeout=10)
+                subprocess.run(
+                    ["iptables", "-F", "NATLANGCHAIN_BLOCK"], capture_output=True, timeout=10
+                )
+                subprocess.run(
+                    ["iptables", "-F", "NATLANGCHAIN_VPN"], capture_output=True, timeout=10
+                )
+                subprocess.run(
+                    ["iptables", "-F", "NATLANGCHAIN_ALLOWLIST"], capture_output=True, timeout=10
+                )
+                subprocess.run(
+                    ["iptables", "-F", "NATLANGCHAIN_INBOUND"], capture_output=True, timeout=10
+                )
                 # Delete chains
-                subprocess.run(["iptables", "-X", "NATLANGCHAIN_BLOCK"],
-                              capture_output=True, timeout=10)
-                subprocess.run(["iptables", "-X", "NATLANGCHAIN_VPN"],
-                              capture_output=True, timeout=10)
-                subprocess.run(["iptables", "-X", "NATLANGCHAIN_ALLOWLIST"],
-                              capture_output=True, timeout=10)
-                subprocess.run(["iptables", "-X", "NATLANGCHAIN_INBOUND"],
-                              capture_output=True, timeout=10)
+                subprocess.run(
+                    ["iptables", "-X", "NATLANGCHAIN_BLOCK"], capture_output=True, timeout=10
+                )
+                subprocess.run(
+                    ["iptables", "-X", "NATLANGCHAIN_VPN"], capture_output=True, timeout=10
+                )
+                subprocess.run(
+                    ["iptables", "-X", "NATLANGCHAIN_ALLOWLIST"], capture_output=True, timeout=10
+                )
+                subprocess.run(
+                    ["iptables", "-X", "NATLANGCHAIN_INBOUND"], capture_output=True, timeout=10
+                )
 
             self._rules_applied.clear()
             return EnforcementResult(
                 success=True,
                 action="clear_rules",
-                details={"message": "All NatLangChain firewall rules cleared"}
+                details={"message": "All NatLangChain firewall rules cleared"},
             )
         except Exception as e:
-            return EnforcementResult(
-                success=False,
-                action="clear_rules",
-                error=str(e)
-            )
+            return EnforcementResult(success=False, action="clear_rules", error=str(e))
 
     # =========================================================================
     # Extended Network Admin Features
     # =========================================================================
 
-    def allowlist_only(self, allowed_ips: list[str], allowed_ports: list[int] | None = None) -> EnforcementResult:
+    def allowlist_only(
+        self, allowed_ips: list[str], allowed_ports: list[int] | None = None
+    ) -> EnforcementResult:
         """
         Allowlist mode: Block everything EXCEPT specified IPs/ports.
         This is stricter than blocklist - denies by default.
@@ -624,9 +709,7 @@ class NetworkEnforcement:
             ip_valid, ip_error = validate_ip_address(ip)
             if not ip_valid:
                 return EnforcementResult(
-                    success=False,
-                    action="allowlist_only",
-                    error=f"Invalid IP address: {ip_error}"
+                    success=False, action="allowlist_only", error=f"Invalid IP address: {ip_error}"
                 )
 
         # SECURITY FIX: Validate all ports
@@ -635,32 +718,39 @@ class NetworkEnforcement:
                 port_valid, port_error = validate_port(port)
                 if not port_valid:
                     return EnforcementResult(
-                        success=False,
-                        action="allowlist_only",
-                        error=f"Invalid port: {port_error}"
+                        success=False, action="allowlist_only", error=f"Invalid port: {port_error}"
                     )
 
         # Now check system capabilities (after validation)
         if not self.use_iptables:
             return EnforcementResult(
-                success=False,
-                action="allowlist_only",
-                error="iptables not available"
+                success=False, action="allowlist_only", error="iptables not available"
             )
 
         try:
             # SECURITY FIX: Use list-based subprocess calls
             # Create chain (may already exist, suppress error)
-            subprocess.run(["iptables", "-N", "NATLANGCHAIN_ALLOWLIST"],
-                          capture_output=True, timeout=10)
+            subprocess.run(
+                ["iptables", "-N", "NATLANGCHAIN_ALLOWLIST"], capture_output=True, timeout=10
+            )
             # Flush existing rules
-            subprocess.run(["iptables", "-F", "NATLANGCHAIN_ALLOWLIST"],
-                          capture_output=True, timeout=10)
+            subprocess.run(
+                ["iptables", "-F", "NATLANGCHAIN_ALLOWLIST"], capture_output=True, timeout=10
+            )
 
             # Base commands using list-based args
             base_cmds = [
-                ["iptables", "-A", "NATLANGCHAIN_ALLOWLIST", "-m", "state",
-                 "--state", "ESTABLISHED,RELATED", "-j", "ACCEPT"],
+                [
+                    "iptables",
+                    "-A",
+                    "NATLANGCHAIN_ALLOWLIST",
+                    "-m",
+                    "state",
+                    "--state",
+                    "ESTABLISHED,RELATED",
+                    "-j",
+                    "ACCEPT",
+                ],
                 ["iptables", "-A", "NATLANGCHAIN_ALLOWLIST", "-o", "lo", "-j", "ACCEPT"],
             ]
 
@@ -672,12 +762,31 @@ class NetworkEnforcement:
             for ip in allowed_ips:
                 if allowed_ports:
                     for port in allowed_ports:
-                        cmd_args = ["iptables", "-A", "NATLANGCHAIN_ALLOWLIST",
-                                   "-d", ip, "-p", "tcp", "--dport", str(int(port)), "-j", "ACCEPT"]
+                        cmd_args = [
+                            "iptables",
+                            "-A",
+                            "NATLANGCHAIN_ALLOWLIST",
+                            "-d",
+                            ip,
+                            "-p",
+                            "tcp",
+                            "--dport",
+                            str(int(port)),
+                            "-j",
+                            "ACCEPT",
+                        ]
                         subprocess.run(cmd_args, capture_output=True, timeout=10)
                         self._rules_applied.append(" ".join(cmd_args))
                 else:
-                    cmd_args = ["iptables", "-A", "NATLANGCHAIN_ALLOWLIST", "-d", ip, "-j", "ACCEPT"]
+                    cmd_args = [
+                        "iptables",
+                        "-A",
+                        "NATLANGCHAIN_ALLOWLIST",
+                        "-d",
+                        ip,
+                        "-j",
+                        "ACCEPT",
+                    ]
                     subprocess.run(cmd_args, capture_output=True, timeout=10)
                     self._rules_applied.append(" ".join(cmd_args))
 
@@ -693,14 +802,10 @@ class NetworkEnforcement:
             return EnforcementResult(
                 success=True,
                 action="allowlist_only",
-                details={"allowed_ips": allowed_ips, "allowed_ports": allowed_ports}
+                details={"allowed_ips": allowed_ips, "allowed_ports": allowed_ports},
             )
         except Exception as e:
-            return EnforcementResult(
-                success=False,
-                action="allowlist_only",
-                error=str(e)
-            )
+            return EnforcementResult(success=False, action="allowlist_only", error=str(e))
 
     def block_inbound(self, except_ports: list[int] | None = None) -> EnforcementResult:
         """
@@ -717,32 +822,39 @@ class NetworkEnforcement:
                 port_valid, port_error = validate_port(port)
                 if not port_valid:
                     return EnforcementResult(
-                        success=False,
-                        action="block_inbound",
-                        error=f"Invalid port: {port_error}"
+                        success=False, action="block_inbound", error=f"Invalid port: {port_error}"
                     )
 
         # Now check system capabilities (after validation)
         if not self.use_iptables:
             return EnforcementResult(
-                success=False,
-                action="block_inbound",
-                error="iptables not available"
+                success=False, action="block_inbound", error="iptables not available"
             )
 
         try:
             # SECURITY FIX: Use list-based subprocess calls
             # Create chain (may already exist)
-            subprocess.run(["iptables", "-N", "NATLANGCHAIN_INBOUND"],
-                          capture_output=True, timeout=10)
+            subprocess.run(
+                ["iptables", "-N", "NATLANGCHAIN_INBOUND"], capture_output=True, timeout=10
+            )
             # Flush existing rules
-            subprocess.run(["iptables", "-F", "NATLANGCHAIN_INBOUND"],
-                          capture_output=True, timeout=10)
+            subprocess.run(
+                ["iptables", "-F", "NATLANGCHAIN_INBOUND"], capture_output=True, timeout=10
+            )
 
             # Base rules using list-based args
             base_cmds = [
-                ["iptables", "-A", "NATLANGCHAIN_INBOUND", "-m", "state",
-                 "--state", "ESTABLISHED,RELATED", "-j", "ACCEPT"],
+                [
+                    "iptables",
+                    "-A",
+                    "NATLANGCHAIN_INBOUND",
+                    "-m",
+                    "state",
+                    "--state",
+                    "ESTABLISHED,RELATED",
+                    "-j",
+                    "ACCEPT",
+                ],
                 ["iptables", "-A", "NATLANGCHAIN_INBOUND", "-i", "lo", "-j", "ACCEPT"],
             ]
 
@@ -753,8 +865,17 @@ class NetworkEnforcement:
             # Allow specified ports using list-based args
             if except_ports:
                 for port in except_ports:
-                    cmd_args = ["iptables", "-A", "NATLANGCHAIN_INBOUND",
-                               "-p", "tcp", "--dport", str(int(port)), "-j", "ACCEPT"]
+                    cmd_args = [
+                        "iptables",
+                        "-A",
+                        "NATLANGCHAIN_INBOUND",
+                        "-p",
+                        "tcp",
+                        "--dport",
+                        str(int(port)),
+                        "-j",
+                        "ACCEPT",
+                    ]
                     subprocess.run(cmd_args, capture_output=True, timeout=10)
                     self._rules_applied.append(" ".join(cmd_args))
 
@@ -768,16 +889,10 @@ class NetworkEnforcement:
                 self._rules_applied.append(" ".join(cmd_args))
 
             return EnforcementResult(
-                success=True,
-                action="block_inbound",
-                details={"allowed_ports": except_ports or []}
+                success=True, action="block_inbound", details={"allowed_ports": except_ports or []}
             )
         except Exception as e:
-            return EnforcementResult(
-                success=False,
-                action="block_inbound",
-                error=str(e)
-            )
+            return EnforcementResult(success=False, action="block_inbound", error=str(e))
 
     def rate_limit_outbound(self, limit: str = "100/minute", burst: int = 50) -> EnforcementResult:
         """
@@ -791,26 +906,22 @@ class NetworkEnforcement:
         """
         if not self.use_iptables:
             return EnforcementResult(
-                success=False,
-                action="rate_limit_outbound",
-                error="iptables not available"
+                success=False, action="rate_limit_outbound", error="iptables not available"
             )
 
         # SECURITY FIX: Validate limit format (number/unit)
         if not isinstance(limit, str):
             return EnforcementResult(
-                success=False,
-                action="rate_limit_outbound",
-                error="Limit must be a string"
+                success=False, action="rate_limit_outbound", error="Limit must be a string"
             )
 
         # Valid format: number/unit (e.g., "100/minute", "10/second", "5/hour")
-        limit_pattern = r'^(\d+)/(second|minute|hour|day)$'
+        limit_pattern = r"^(\d+)/(second|minute|hour|day)$"
         if not re.match(limit_pattern, limit):
             return EnforcementResult(
                 success=False,
                 action="rate_limit_outbound",
-                error=f"Invalid limit format: {limit}. Expected format: number/unit (e.g., '100/minute')"
+                error=f"Invalid limit format: {limit}. Expected format: number/unit (e.g., '100/minute')",
             )
 
         # SECURITY FIX: Validate burst is a positive integer
@@ -820,20 +931,31 @@ class NetworkEnforcement:
                 return EnforcementResult(
                     success=False,
                     action="rate_limit_outbound",
-                    error=f"Burst must be between 1 and 10000, got: {burst_int}"
+                    error=f"Burst must be between 1 and 10000, got: {burst_int}",
                 )
         except (ValueError, TypeError):
             return EnforcementResult(
                 success=False,
                 action="rate_limit_outbound",
-                error=f"Burst must be a valid integer, got: {burst}"
+                error=f"Burst must be a valid integer, got: {burst}",
             )
 
         try:
             # SECURITY FIX: Use list-based subprocess calls
             cmds = [
-                ["iptables", "-A", "OUTPUT", "-m", "limit",
-                 "--limit", limit, "--limit-burst", str(burst_int), "-j", "ACCEPT"],
+                [
+                    "iptables",
+                    "-A",
+                    "OUTPUT",
+                    "-m",
+                    "limit",
+                    "--limit",
+                    limit,
+                    "--limit-burst",
+                    str(burst_int),
+                    "-j",
+                    "ACCEPT",
+                ],
                 ["iptables", "-A", "OUTPUT", "-j", "DROP"],
             ]
 
@@ -844,14 +966,10 @@ class NetworkEnforcement:
             return EnforcementResult(
                 success=True,
                 action="rate_limit_outbound",
-                details={"limit": limit, "burst": burst_int}
+                details={"limit": limit, "burst": burst_int},
             )
         except Exception as e:
-            return EnforcementResult(
-                success=False,
-                action="rate_limit_outbound",
-                error=str(e)
-            )
+            return EnforcementResult(success=False, action="rate_limit_outbound", error=str(e))
 
     def log_connections(self, prefix: str = "NATLANG") -> EnforcementResult:
         """
@@ -863,9 +981,7 @@ class NetworkEnforcement:
         """
         if not self.use_iptables:
             return EnforcementResult(
-                success=False,
-                action="log_connections",
-                error="iptables not available"
+                success=False, action="log_connections", error="iptables not available"
             )
 
         # SECURITY FIX: Sanitize the log prefix
@@ -874,10 +990,32 @@ class NetworkEnforcement:
         try:
             # SECURITY FIX: Use list-based subprocess calls
             cmds = [
-                ["iptables", "-A", "OUTPUT", "-m", "state", "--state", "NEW",
-                 "-j", "LOG", "--log-prefix", f"{safe_prefix}_OUT: "],
-                ["iptables", "-A", "INPUT", "-m", "state", "--state", "NEW",
-                 "-j", "LOG", "--log-prefix", f"{safe_prefix}_IN: "],
+                [
+                    "iptables",
+                    "-A",
+                    "OUTPUT",
+                    "-m",
+                    "state",
+                    "--state",
+                    "NEW",
+                    "-j",
+                    "LOG",
+                    "--log-prefix",
+                    f"{safe_prefix}_OUT: ",
+                ],
+                [
+                    "iptables",
+                    "-A",
+                    "INPUT",
+                    "-m",
+                    "state",
+                    "--state",
+                    "NEW",
+                    "-j",
+                    "LOG",
+                    "--log-prefix",
+                    f"{safe_prefix}_IN: ",
+                ],
             ]
 
             for cmd_args in cmds:
@@ -887,22 +1025,16 @@ class NetworkEnforcement:
             return EnforcementResult(
                 success=True,
                 action="log_connections",
-                details={"prefix": safe_prefix, "log_location": "/var/log/kern.log or dmesg"}
+                details={"prefix": safe_prefix, "log_location": "/var/log/kern.log or dmesg"},
             )
         except Exception as e:
-            return EnforcementResult(
-                success=False,
-                action="log_connections",
-                error=str(e)
-            )
+            return EnforcementResult(success=False, action="log_connections", error=str(e))
 
     def get_active_rules(self) -> EnforcementResult:
         """Get list of currently active iptables rules."""
         if not self.use_iptables:
             return EnforcementResult(
-                success=False,
-                action="get_active_rules",
-                error="iptables not available"
+                success=False, action="get_active_rules", error="iptables not available"
             )
 
         try:
@@ -911,7 +1043,7 @@ class NetworkEnforcement:
                 ["iptables", "-L", "-n", "-v", "--line-numbers"],
                 capture_output=True,
                 timeout=10,
-                text=True
+                text=True,
             )
 
             return EnforcementResult(
@@ -919,15 +1051,11 @@ class NetworkEnforcement:
                 action="get_active_rules",
                 details={
                     "rules": result.stdout,
-                    "natlangchain_rules_applied": len(self._rules_applied)
-                }
+                    "natlangchain_rules_applied": len(self._rules_applied),
+                },
             )
         except Exception as e:
-            return EnforcementResult(
-                success=False,
-                action="get_active_rules",
-                error=str(e)
-            )
+            return EnforcementResult(success=False, action="get_active_rules", error=str(e))
 
     # =========================================================================
     # Fluent Builder API
@@ -974,8 +1102,19 @@ class NetworkEnforcement:
             # Remove the specific rule we added
             try:
                 if port:
-                    cmd_args = ["iptables", "-D", "OUTPUT", "-d", ip,
-                               "-p", "tcp", "--dport", str(int(port)), "-j", "DROP"]
+                    cmd_args = [
+                        "iptables",
+                        "-D",
+                        "OUTPUT",
+                        "-d",
+                        ip,
+                        "-p",
+                        "tcp",
+                        "--dport",
+                        str(int(port)),
+                        "-j",
+                        "DROP",
+                    ]
                 else:
                     cmd_args = ["iptables", "-D", "OUTPUT", "-d", ip, "-j", "DROP"]
                 subprocess.run(cmd_args, capture_output=True, timeout=10)
@@ -1054,7 +1193,7 @@ class NetworkRuleBuilder:
             result = EnforcementResult(
                 success=False,
                 action="rule_builder",
-                error="Must call block() or allow() before apply()"
+                error="Must call block() or allow() before apply()",
             )
             if raise_on_failure:
                 raise SecurityEnforcementError(result)
@@ -1062,9 +1201,7 @@ class NetworkRuleBuilder:
 
         if not self._destination and not self._source:
             result = EnforcementResult(
-                success=False,
-                action="rule_builder",
-                error="Must specify destination() or source()"
+                success=False, action="rule_builder", error="Must specify destination() or source()"
             )
             if raise_on_failure:
                 raise SecurityEnforcementError(result)
@@ -1075,9 +1212,7 @@ class NetworkRuleBuilder:
             ip_valid, ip_error = validate_ip_address(self._destination)
             if not ip_valid:
                 result = EnforcementResult(
-                    success=False,
-                    action="rule_builder",
-                    error=f"Invalid destination: {ip_error}"
+                    success=False, action="rule_builder", error=f"Invalid destination: {ip_error}"
                 )
                 if raise_on_failure:
                     raise SecurityEnforcementError(result)
@@ -1087,9 +1222,7 @@ class NetworkRuleBuilder:
             ip_valid, ip_error = validate_ip_address(self._source)
             if not ip_valid:
                 result = EnforcementResult(
-                    success=False,
-                    action="rule_builder",
-                    error=f"Invalid source: {ip_error}"
+                    success=False, action="rule_builder", error=f"Invalid source: {ip_error}"
                 )
                 if raise_on_failure:
                     raise SecurityEnforcementError(result)
@@ -1099,9 +1232,7 @@ class NetworkRuleBuilder:
             port_valid, port_error = validate_port(self._port)
             if not port_valid:
                 result = EnforcementResult(
-                    success=False,
-                    action="rule_builder",
-                    error=f"Invalid port: {port_error}"
+                    success=False, action="rule_builder", error=f"Invalid port: {port_error}"
                 )
                 if raise_on_failure:
                     raise SecurityEnforcementError(result)
@@ -1109,9 +1240,7 @@ class NetworkRuleBuilder:
 
         if not self._network.use_iptables:
             result = EnforcementResult(
-                success=False,
-                action="rule_builder",
-                error="iptables not available"
+                success=False, action="rule_builder", error="iptables not available"
             )
             if raise_on_failure:
                 raise SecurityEnforcementError(result)
@@ -1142,8 +1271,8 @@ class NetworkRuleBuilder:
                     "direction": self._direction,
                     "destination": self._destination,
                     "source": self._source,
-                    "port": self._port
-                }
+                    "port": self._port,
+                },
             )
             return result
 
@@ -1151,18 +1280,14 @@ class NetworkRuleBuilder:
             result = EnforcementResult(
                 success=False,
                 action="rule_builder",
-                error=f"iptables command failed: {e.stderr.decode() if e.stderr else str(e)}"
+                error=f"iptables command failed: {e.stderr.decode() if e.stderr else str(e)}",
             )
             if raise_on_failure:
                 raise SecurityEnforcementError(result)
             return result
 
         except Exception as e:
-            result = EnforcementResult(
-                success=False,
-                action="rule_builder",
-                error=str(e)
-            )
+            result = EnforcementResult(success=False, action="rule_builder", error=str(e))
             if raise_on_failure:
                 raise SecurityEnforcementError(result)
             return result
@@ -1182,9 +1307,7 @@ class USBEnforcement:
         """Block USB storage devices via udev rules."""
         if not os.path.exists("/etc/udev/rules.d"):
             return EnforcementResult(
-                success=False,
-                action="block_usb_storage",
-                error="udev not available"
+                success=False, action="block_usb_storage", error="udev not available"
             )
 
         try:
@@ -1203,21 +1326,15 @@ ACTION=="add", SUBSYSTEMS=="usb", ATTR{bInterfaceClass}=="08", RUN+="/bin/sh -c 
             return EnforcementResult(
                 success=True,
                 action="block_usb_storage",
-                details={"rules_file": str(self.UDEV_RULES_PATH)}
+                details={"rules_file": str(self.UDEV_RULES_PATH)},
             )
 
         except PermissionError:
             return EnforcementResult(
-                success=False,
-                action="block_usb_storage",
-                error="Permission denied - requires root"
+                success=False, action="block_usb_storage", error="Permission denied - requires root"
             )
         except Exception as e:
-            return EnforcementResult(
-                success=False,
-                action="block_usb_storage",
-                error=str(e)
-            )
+            return EnforcementResult(success=False, action="block_usb_storage", error=str(e))
 
     def allow_usb_storage(self) -> EnforcementResult:
         """Remove USB storage blocking rules."""
@@ -1229,14 +1346,10 @@ ACTION=="add", SUBSYSTEMS=="usb", ATTR{bInterfaceClass}=="08", RUN+="/bin/sh -c 
             return EnforcementResult(
                 success=True,
                 action="allow_usb_storage",
-                details={"message": "USB storage blocking removed"}
+                details={"message": "USB storage blocking removed"},
             )
         except Exception as e:
-            return EnforcementResult(
-                success=False,
-                action="allow_usb_storage",
-                error=str(e)
-            )
+            return EnforcementResult(success=False, action="allow_usb_storage", error=str(e))
 
 
 class ProcessSandbox:
@@ -1248,12 +1361,34 @@ class ProcessSandbox:
 
     # Minimal syscalls needed for basic operation
     ALLOWED_SYSCALLS_MINIMAL = [
-        "read", "write", "close", "fstat", "mmap", "mprotect",
-        "munmap", "brk", "rt_sigaction", "rt_sigprocmask",
-        "ioctl", "access", "pipe", "select", "sched_yield",
-        "mremap", "msync", "mincore", "madvise", "dup", "dup2",
-        "nanosleep", "getpid", "exit", "exit_group", "futex",
-        "clock_gettime", "clock_nanosleep"
+        "read",
+        "write",
+        "close",
+        "fstat",
+        "mmap",
+        "mprotect",
+        "munmap",
+        "brk",
+        "rt_sigaction",
+        "rt_sigprocmask",
+        "ioctl",
+        "access",
+        "pipe",
+        "select",
+        "sched_yield",
+        "mremap",
+        "msync",
+        "mincore",
+        "madvise",
+        "dup",
+        "dup2",
+        "nanosleep",
+        "getpid",
+        "exit",
+        "exit_group",
+        "futex",
+        "clock_gettime",
+        "clock_nanosleep",
     ]
 
     def __init__(self):
@@ -1261,7 +1396,9 @@ class ProcessSandbox:
         self.seccomp_available = self.capabilities.get(EnforcementCapability.SECCOMP, False)
         self.namespaces_available = self.capabilities.get(EnforcementCapability.NAMESPACES, False)
 
-    def enter_sandbox(self, allow_network: bool = False, allow_filesystem: bool = True) -> EnforcementResult:
+    def enter_sandbox(
+        self, allow_network: bool = False, allow_filesystem: bool = True
+    ) -> EnforcementResult:
         """
         Enter a sandboxed environment.
 
@@ -1269,9 +1406,7 @@ class ProcessSandbox:
         """
         if platform.system() != "Linux":
             return EnforcementResult(
-                success=False,
-                action="enter_sandbox",
-                error="Sandboxing only available on Linux"
+                success=False, action="enter_sandbox", error="Sandboxing only available on Linux"
             )
 
         results = []
@@ -1301,8 +1436,8 @@ class ProcessSandbox:
             details={
                 "actions_taken": results,
                 "seccomp_available": self.seccomp_available,
-                "namespaces_available": self.namespaces_available
-            }
+                "namespaces_available": self.namespaces_available,
+            },
         )
 
     def run_sandboxed(self, command: list[str], timeout: int = 60) -> EnforcementResult:
@@ -1322,16 +1457,11 @@ class ProcessSandbox:
             return EnforcementResult(
                 success=False,
                 action="run_sandboxed",
-                error="No sandbox tool available (need firejail, unshare, or bwrap)"
+                error="No sandbox tool available (need firejail, unshare, or bwrap)",
             )
 
         try:
-            result = subprocess.run(
-                sandbox_cmd,
-                capture_output=True,
-                timeout=timeout,
-                text=True
-            )
+            result = subprocess.run(sandbox_cmd, capture_output=True, timeout=timeout, text=True)
 
             return EnforcementResult(
                 success=result.returncode == 0,
@@ -1341,21 +1471,15 @@ class ProcessSandbox:
                     "sandbox_tool": sandbox_cmd[0],
                     "stdout": result.stdout[:1000],
                     "stderr": result.stderr[:1000],
-                    "returncode": result.returncode
-                }
+                    "returncode": result.returncode,
+                },
             )
         except subprocess.TimeoutExpired:
             return EnforcementResult(
-                success=False,
-                action="run_sandboxed",
-                error=f"Command timed out after {timeout}s"
+                success=False, action="run_sandboxed", error=f"Command timed out after {timeout}s"
             )
         except Exception as e:
-            return EnforcementResult(
-                success=False,
-                action="run_sandboxed",
-                error=str(e)
-            )
+            return EnforcementResult(success=False, action="run_sandboxed", error=str(e))
 
     def _check_command_exists(self, cmd: str) -> bool:
         """Check if a command exists in PATH."""
@@ -1387,7 +1511,7 @@ class ImmutableAuditLog:
         """Load existing hash chain from log file."""
         if self.log_path.exists():
             try:
-                with open(self.log_path, "r") as f:
+                with open(self.log_path) as f:
                     for line in f:
                         try:
                             entry = json.loads(line.strip())
@@ -1422,7 +1546,7 @@ class ImmutableAuditLog:
             "timestamp": datetime.utcnow().isoformat() + "Z",
             "event_type": event_type,
             "data": data,
-            "sequence": len(self._hash_chain) + 1
+            "sequence": len(self._hash_chain) + 1,
         }
 
         prev_hash = self._get_previous_hash()
@@ -1451,25 +1575,17 @@ class ImmutableAuditLog:
             return EnforcementResult(
                 success=True,
                 action="audit_append",
-                details={"hash": entry_hash, "sequence": entry["sequence"]}
+                details={"hash": entry_hash, "sequence": entry["sequence"]},
             )
 
         except Exception as e:
-            return EnforcementResult(
-                success=False,
-                action="audit_append",
-                error=str(e)
-            )
+            return EnforcementResult(success=False, action="audit_append", error=str(e))
 
     def _try_set_immutable(self):
         """Try to set append-only flag on the log file."""
         try:
             # Use chattr to set append-only
-            subprocess.run(
-                ["chattr", "+a", str(self.log_path)],
-                capture_output=True,
-                timeout=5
-            )
+            subprocess.run(["chattr", "+a", str(self.log_path)], capture_output=True, timeout=5)
         except Exception:
             pass  # Not critical if this fails
 
@@ -1483,7 +1599,7 @@ class ImmutableAuditLog:
             return EnforcementResult(
                 success=True,
                 action="verify_integrity",
-                details={"message": "No log file exists yet"}
+                details={"message": "No log file exists yet"},
             )
 
         try:
@@ -1491,7 +1607,7 @@ class ImmutableAuditLog:
             entry_count = 0
             corrupted_entries = []
 
-            with open(self.log_path, "r") as f:
+            with open(self.log_path) as f:
                 for line_num, line in enumerate(f, 1):
                     try:
                         entry = json.loads(line.strip())
@@ -1499,35 +1615,38 @@ class ImmutableAuditLog:
 
                         # Verify previous hash matches
                         if entry.get("prev_hash") != prev_hash:
-                            corrupted_entries.append({
-                                "line": line_num,
-                                "error": "prev_hash mismatch",
-                                "expected": prev_hash,
-                                "found": entry.get("prev_hash")
-                            })
+                            corrupted_entries.append(
+                                {
+                                    "line": line_num,
+                                    "error": "prev_hash mismatch",
+                                    "expected": prev_hash,
+                                    "found": entry.get("prev_hash"),
+                                }
+                            )
 
                         # Verify entry hash
                         stored_hash = entry.pop("hash", None)
                         computed_hash = self._compute_entry_hash(
                             {k: v for k, v in entry.items() if k != "prev_hash"},
-                            entry.get("prev_hash", "GENESIS")
+                            entry.get("prev_hash", "GENESIS"),
                         )
 
                         if stored_hash != computed_hash:
-                            corrupted_entries.append({
-                                "line": line_num,
-                                "error": "hash mismatch",
-                                "expected": computed_hash,
-                                "found": stored_hash
-                            })
+                            corrupted_entries.append(
+                                {
+                                    "line": line_num,
+                                    "error": "hash mismatch",
+                                    "expected": computed_hash,
+                                    "found": stored_hash,
+                                }
+                            )
 
                         prev_hash = stored_hash or computed_hash
 
                     except json.JSONDecodeError as e:
-                        corrupted_entries.append({
-                            "line": line_num,
-                            "error": f"JSON parse error: {e}"
-                        })
+                        corrupted_entries.append(
+                            {"line": line_num, "error": f"JSON parse error: {e}"}
+                        )
 
             return EnforcementResult(
                 success=len(corrupted_entries) == 0,
@@ -1535,16 +1654,12 @@ class ImmutableAuditLog:
                 details={
                     "entries_checked": entry_count,
                     "corrupted_entries": corrupted_entries,
-                    "integrity_verified": len(corrupted_entries) == 0
-                }
+                    "integrity_verified": len(corrupted_entries) == 0,
+                },
             )
 
         except Exception as e:
-            return EnforcementResult(
-                success=False,
-                action="verify_integrity",
-                error=str(e)
-            )
+            return EnforcementResult(success=False, action="verify_integrity", error=str(e))
 
 
 class DaemonWatchdog:
@@ -1558,7 +1673,7 @@ class DaemonWatchdog:
         self,
         target_pid: int | None = None,
         restart_command: list[str] | None = None,
-        check_interval: float = 1.0
+        check_interval: float = 1.0,
     ):
         self.target_pid = target_pid or os.getpid()
         self.restart_command = restart_command
@@ -1574,9 +1689,7 @@ class DaemonWatchdog:
         """Start the watchdog monitoring."""
         if self._running:
             return EnforcementResult(
-                success=False,
-                action="watchdog_start",
-                error="Watchdog already running"
+                success=False, action="watchdog_start", error="Watchdog already running"
             )
 
         self._running = True
@@ -1586,7 +1699,7 @@ class DaemonWatchdog:
         return EnforcementResult(
             success=True,
             action="watchdog_start",
-            details={"target_pid": self.target_pid, "interval": self.check_interval}
+            details={"target_pid": self.target_pid, "interval": self.check_interval},
         )
 
     def stop(self) -> EnforcementResult:
@@ -1598,7 +1711,7 @@ class DaemonWatchdog:
         return EnforcementResult(
             success=True,
             action="watchdog_stop",
-            details={"restarts_performed": self._restart_count}
+            details={"restarts_performed": self._restart_count},
         )
 
     def _monitor_loop(self):
@@ -1630,9 +1743,7 @@ class DaemonWatchdog:
         if self.restart_command:
             try:
                 proc = subprocess.Popen(
-                    self.restart_command,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL
+                    self.restart_command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
                 )
                 self.target_pid = proc.pid
                 self._restart_count += 1
@@ -1658,21 +1769,28 @@ class SecurityEnforcementManager:
         self.watchdog: DaemonWatchdog | None = None
 
         # Log initialization
-        self.audit_log.append("system_init", {
-            "capabilities": {k.value: v for k, v in self.capabilities.items()},
-            "enforcement_available": self._get_available_enforcement()
-        })
+        self.audit_log.append(
+            "system_init",
+            {
+                "capabilities": {k.value: v for k, v in self.capabilities.items()},
+                "enforcement_available": self._get_available_enforcement(),
+            },
+        )
 
     def _get_available_enforcement(self) -> list[str]:
         """Get list of available enforcement mechanisms."""
         available = []
-        if self.capabilities.get(EnforcementCapability.IPTABLES) or self.capabilities.get(EnforcementCapability.NFTABLES):
+        if self.capabilities.get(EnforcementCapability.IPTABLES) or self.capabilities.get(
+            EnforcementCapability.NFTABLES
+        ):
             available.append("network_blocking")
         if self.capabilities.get(EnforcementCapability.UDEV):
             available.append("usb_blocking")
         if self.capabilities.get(EnforcementCapability.SECCOMP):
             available.append("process_sandboxing")
-        if self.capabilities.get(EnforcementCapability.APPARMOR) or self.capabilities.get(EnforcementCapability.SELINUX):
+        if self.capabilities.get(EnforcementCapability.APPARMOR) or self.capabilities.get(
+            EnforcementCapability.SELINUX
+        ):
             available.append("mandatory_access_control")
         return available
 
@@ -1696,16 +1814,16 @@ class SecurityEnforcementManager:
                 print(f"Failed: {e.result.error}")
         """
         result = self.network.block_all_outbound()
-        self.audit_log.append("mode_change", {
-            "mode": "AIRGAP",
-            "action": "network_blocked",
-            "result": result.success
-        })
+        self.audit_log.append(
+            "mode_change", {"mode": "AIRGAP", "action": "network_blocked", "result": result.success}
+        )
         if raise_on_failure and not result.success:
             raise SecurityEnforcementError(result)
         return result
 
-    def enforce_trusted_mode(self, vpn_interface: str = "tun0", raise_on_failure: bool = False) -> EnforcementResult:
+    def enforce_trusted_mode(
+        self, vpn_interface: str = "tun0", raise_on_failure: bool = False
+    ) -> EnforcementResult:
         """
         ACTUALLY enforce TRUSTED mode by allowing only VPN traffic.
 
@@ -1714,12 +1832,15 @@ class SecurityEnforcementManager:
             raise_on_failure: If True, raises SecurityEnforcementError on failure
         """
         result = self.network.allow_only_vpn(vpn_interface)
-        self.audit_log.append("mode_change", {
-            "mode": "TRUSTED",
-            "action": "vpn_only",
-            "vpn_interface": vpn_interface,
-            "result": result.success
-        })
+        self.audit_log.append(
+            "mode_change",
+            {
+                "mode": "TRUSTED",
+                "action": "vpn_only",
+                "vpn_interface": vpn_interface,
+                "result": result.success,
+            },
+        )
         if raise_on_failure and not result.success:
             raise SecurityEnforcementError(result)
         return result
@@ -1732,11 +1853,9 @@ class SecurityEnforcementManager:
             raise_on_failure: If True, raises SecurityEnforcementError on failure
         """
         result = self.usb.block_usb_storage()
-        self.audit_log.append("mode_change", {
-            "mode": "COLDROOM",
-            "action": "usb_blocked",
-            "result": result.success
-        })
+        self.audit_log.append(
+            "mode_change", {"mode": "COLDROOM", "action": "usb_blocked", "result": result.success}
+        )
         if raise_on_failure and not result.success:
             raise SecurityEnforcementError(result)
         return result
@@ -1761,16 +1880,11 @@ class SecurityEnforcementManager:
         results.append(("usb", usb_result.success))
 
         # Log the lockdown
-        self.audit_log.append("mode_change", {
-            "mode": "LOCKDOWN",
-            "actions": results
-        })
+        self.audit_log.append("mode_change", {"mode": "LOCKDOWN", "actions": results})
 
         success = all(r[1] for r in results)
         result = EnforcementResult(
-            success=success,
-            action="enforce_lockdown",
-            details={"results": dict(results)}
+            success=success, action="enforce_lockdown", details={"results": dict(results)}
         )
         if raise_on_failure and not success:
             raise SecurityEnforcementError(result)
@@ -1781,15 +1895,10 @@ class SecurityEnforcementManager:
         self.network.clear_rules()
         self.usb.allow_usb_storage()
 
-        self.audit_log.append("mode_change", {
-            "mode": "OPEN",
-            "action": "lockdown_lifted"
-        })
+        self.audit_log.append("mode_change", {"mode": "OPEN", "action": "lockdown_lifted"})
 
         return EnforcementResult(
-            success=True,
-            action="exit_lockdown",
-            details={"message": "All restrictions removed"}
+            success=True, action="exit_lockdown", details={"message": "All restrictions removed"}
         )
 
     def start_watchdog(self, restart_command: list[str] | None = None) -> EnforcementResult:
@@ -1809,7 +1918,7 @@ class SecurityEnforcementManager:
             "network_rules_active": len(self.network._rules_applied) > 0,
             "watchdog_active": self.watchdog is not None and self.watchdog._running,
             "audit_log_integrity": self.audit_log.verify_integrity().success,
-            "limitations": env_info.get("limitations", [])
+            "limitations": env_info.get("limitations", []),
         }
 
 
@@ -1839,7 +1948,5 @@ def enforce_boundary_mode(mode: str) -> EnforcementResult:
         return manager.exit_lockdown()
     else:
         return EnforcementResult(
-            success=False,
-            action="enforce_mode",
-            error=f"Unknown mode: {mode}"
+            success=False, action="enforce_mode", error=f"Unknown mode: {mode}"
         )

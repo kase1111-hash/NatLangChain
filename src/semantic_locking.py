@@ -30,12 +30,14 @@ logger = logging.getLogger("natlangchain.semantic_lock")
 
 class DisputeLevel(Enum):
     """Dispute severity levels per NCIP-005."""
+
     D3 = "D3"  # Soft - 24h cooling
     D4 = "D4"  # Hard - 72h cooling
 
 
 class DisputeTrigger(Enum):
     """Valid dispute triggers per NCIP-005 Section 3.1."""
+
     DRIFT_D3 = "drift_level_d3"
     DRIFT_D4 = "drift_level_d4"
     POU_FAILURE = "pou_failure"
@@ -47,6 +49,7 @@ class DisputeTrigger(Enum):
 
 class LockAction(Enum):
     """Actions that can be attempted during a semantic lock."""
+
     # Allowed during cooling
     CLARIFICATION = "clarification"
     SETTLEMENT_PROPOSAL = "settlement_proposal"
@@ -64,6 +67,7 @@ class LockAction(Enum):
 
 class EscalationStage(Enum):
     """Escalation path stages per NCIP-005 Section 7."""
+
     COOLING = "cooling"
     MUTUAL_SETTLEMENT = "mutual_settlement"
     MEDIATOR_REVIEW = "mediator_review"
@@ -74,17 +78,18 @@ class EscalationStage(Enum):
 
 class ResolutionOutcome(Enum):
     """Dispute resolution outcomes per NCIP-005 Section 9."""
-    DISMISSED = "dismissed"         # Execution resumes
-    CLARIFIED = "clarified"         # Semantic Lock updated + re-ratified
-    AMENDED = "amended"             # New Prose Contract required
-    TERMINATED = "terminated"       # Agreement voided
-    COMPENSATED = "compensated"     # Settlement enforced
+
+    DISMISSED = "dismissed"  # Execution resumes
+    CLARIFIED = "clarified"  # Semantic Lock updated + re-ratified
+    AMENDED = "amended"  # New Prose Contract required
+    TERMINATED = "terminated"  # Agreement voided
+    COMPENSATED = "compensated"  # Settlement enforced
 
 
 # NCIP-005 Cooling Period Durations (in hours)
 COOLING_PERIODS = {
     DisputeLevel.D3: 24,  # 24 hours for soft disputes
-    DisputeLevel.D4: 72   # 72 hours for hard disputes
+    DisputeLevel.D4: 72,  # 72 hours for hard disputes
 }
 
 # Actions allowed during cooling period
@@ -92,7 +97,7 @@ ALLOWED_DURING_COOLING = {
     LockAction.CLARIFICATION,
     LockAction.SETTLEMENT_PROPOSAL,
     LockAction.MEDIATOR_ASSIGNMENT,
-    LockAction.EVIDENCE_SUBMISSION
+    LockAction.EVIDENCE_SUBMISSION,
 }
 
 # Actions forbidden during cooling period
@@ -103,7 +108,7 @@ FORBIDDEN_DURING_COOLING = {
     LockAction.CONTRACT_AMENDMENT,
     LockAction.RE_TRANSLATION,
     LockAction.REGISTRY_UPGRADE,
-    LockAction.POU_REGENERATION
+    LockAction.POU_REGENERATION,
 }
 
 # Actions forbidden during ANY semantic lock
@@ -112,7 +117,7 @@ FORBIDDEN_DURING_LOCK = {
     LockAction.RE_TRANSLATION,
     LockAction.REGISTRY_UPGRADE,
     LockAction.POU_REGENERATION,
-    LockAction.SEMANTIC_CHANGE
+    LockAction.SEMANTIC_CHANGE,
 }
 
 
@@ -128,6 +133,7 @@ class LockedState:
     - Verified PoUs
     - Applicable NCIPs
     """
+
     registry_version: str
     prose_content_hash: str
     anchor_language: str
@@ -140,9 +146,10 @@ class LockedState:
 @dataclass
 class CoolingPeriodStatus:
     """Status of a cooling period."""
+
     dispute_level: DisputeLevel
     started_at: str  # ISO timestamp
-    ends_at: str     # ISO timestamp
+    ends_at: str  # ISO timestamp
     duration_hours: int
     is_active: bool
     time_remaining_seconds: float
@@ -156,6 +163,7 @@ class SemanticLock:
     Ensures meaning freezes before conflict escalates.
     All interpretation references Tₗ state only.
     """
+
     lock_id: str
     dispute_id: str
     contract_id: str
@@ -174,6 +182,7 @@ class SemanticLock:
 @dataclass
 class DisputeEntry:
     """A dispute entry per NCIP-005 Section 3.2."""
+
     contract_id: str
     trigger: DisputeTrigger
     claimed_divergence: str
@@ -202,7 +211,7 @@ class SemanticLockManager:
         """
         self.validator_id = validator_id
         self._locks: dict[str, SemanticLock] = {}  # lock_id -> lock
-        self._dispute_locks: dict[str, str] = {}   # dispute_id -> lock_id
+        self._dispute_locks: dict[str, str] = {}  # dispute_id -> lock_id
         self._contract_locks: dict[str, str] = {}  # contract_id -> lock_id
 
     def _generate_lock_id(self, dispute_id: str, contract_id: str) -> str:
@@ -227,7 +236,7 @@ class SemanticLockManager:
         prose_content: str,
         anchor_language: str = "en",
         verified_pou_hashes: list[str] | None = None,
-        applicable_ncips: list[str] | None = None
+        applicable_ncips: list[str] | None = None,
     ) -> tuple[SemanticLock, DisputeEntry]:
         """
         Initiate a dispute and activate semantic lock per NCIP-005.
@@ -275,7 +284,7 @@ class SemanticLockManager:
             claimed_divergence=claimed_divergence,
             timestamp=timestamp,
             initiator_id=initiator_id,
-            dispute_level=dispute_level
+            dispute_level=dispute_level,
         )
 
         # Calculate cooling period end
@@ -291,7 +300,7 @@ class SemanticLockManager:
             verified_pou_hashes=verified_pou_hashes or [],
             applicable_ncips=applicable_ncips or ["NCIP-001", "NCIP-002", "NCIP-004", "NCIP-005"],
             contract_id=contract_id,
-            locked_at=timestamp
+            locked_at=timestamp,
         )
 
         # Create semantic lock
@@ -310,12 +319,14 @@ class SemanticLockManager:
             cooling_ends_at=cooling_ends.isoformat() + "Z",
             current_stage=EscalationStage.COOLING,
             execution_halted=True,
-            action_log=[{
-                "action": "lock_activated",
-                "timestamp": timestamp,
-                "by": self.validator_id,
-                "details": f"Semantic lock activated due to {trigger.value}"
-            }]
+            action_log=[
+                {
+                    "action": "lock_activated",
+                    "timestamp": timestamp,
+                    "by": self.validator_id,
+                    "details": f"Semantic lock activated due to {trigger.value}",
+                }
+            ],
         )
 
         # Store lock
@@ -361,7 +372,7 @@ class SemanticLockManager:
             return None
 
         now = datetime.utcnow()
-        cooling_ends = datetime.fromisoformat(lock.cooling_ends_at.rstrip('Z'))
+        cooling_ends = datetime.fromisoformat(lock.cooling_ends_at.rstrip("Z"))
         time_remaining = (cooling_ends - now).total_seconds()
         is_active = time_remaining > 0
 
@@ -371,7 +382,7 @@ class SemanticLockManager:
             ends_at=lock.cooling_ends_at,
             duration_hours=COOLING_PERIODS[lock.dispute_level],
             is_active=is_active,
-            time_remaining_seconds=max(0, time_remaining)
+            time_remaining_seconds=max(0, time_remaining),
         )
 
     def is_cooling_active(self, lock_id: str) -> bool:
@@ -379,11 +390,7 @@ class SemanticLockManager:
         status = self.get_cooling_status(lock_id)
         return status is not None and status.is_active
 
-    def can_perform_action(
-        self,
-        lock_id: str,
-        action: LockAction
-    ) -> tuple[bool, str]:
+    def can_perform_action(self, lock_id: str, action: LockAction) -> tuple[bool, str]:
         """
         Check if an action is allowed given the current lock state.
 
@@ -405,7 +412,10 @@ class SemanticLockManager:
 
         # Actions forbidden during ANY lock
         if action in FORBIDDEN_DURING_LOCK:
-            return False, f"Action '{action.value}' is forbidden during semantic lock per NCIP-005 Section 5.2"
+            return (
+                False,
+                f"Action '{action.value}' is forbidden during semantic lock per NCIP-005 Section 5.2",
+            )
 
         # Check cooling period specific rules
         cooling_status = self.get_cooling_status(lock_id)
@@ -429,11 +439,7 @@ class SemanticLockManager:
         return True, "Action allowed"
 
     def attempt_action(
-        self,
-        lock_id: str,
-        action: LockAction,
-        actor_id: str,
-        details: str | None = None
+        self, lock_id: str, action: LockAction, actor_id: str, details: str | None = None
     ) -> tuple[bool, str]:
         """
         Attempt to perform an action, logging the attempt.
@@ -451,31 +457,28 @@ class SemanticLockManager:
 
         lock = self._locks.get(lock_id)
         if lock:
-            lock.action_log.append({
-                "action": action.value,
-                "attempted_by": actor_id,
-                "timestamp": datetime.utcnow().isoformat() + "Z",
-                "allowed": allowed,
-                "reason": reason,
-                "details": details
-            })
+            lock.action_log.append(
+                {
+                    "action": action.value,
+                    "attempted_by": actor_id,
+                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                    "allowed": allowed,
+                    "reason": reason,
+                    "details": details,
+                }
+            )
 
             if not allowed:
                 logger.warning(
                     f"Blocked action {action.value} on lock {lock_id} by {actor_id}: {reason}"
                 )
             else:
-                logger.info(
-                    f"Allowed action {action.value} on lock {lock_id} by {actor_id}"
-                )
+                logger.info(f"Allowed action {action.value} on lock {lock_id} by {actor_id}")
 
         return allowed, reason
 
     def advance_stage(
-        self,
-        lock_id: str,
-        actor_id: str,
-        reason: str | None = None
+        self, lock_id: str, actor_id: str, reason: str | None = None
     ) -> tuple[bool, str, EscalationStage | None]:
         """
         Advance to the next escalation stage per NCIP-005 Section 7.
@@ -507,7 +510,7 @@ class SemanticLockManager:
             EscalationStage.MEDIATOR_REVIEW,
             EscalationStage.ADJUDICATION,
             EscalationStage.BINDING_RESOLUTION,
-            EscalationStage.RESOLVED
+            EscalationStage.RESOLVED,
         ]
 
         # Check if cooling period is still active
@@ -528,14 +531,16 @@ class SemanticLockManager:
         new_stage = stage_order[current_idx + 1]
         lock.current_stage = new_stage
 
-        lock.action_log.append({
-            "action": "stage_advanced",
-            "from_stage": current.value,
-            "to_stage": new_stage.value,
-            "advanced_by": actor_id,
-            "timestamp": datetime.utcnow().isoformat() + "Z",
-            "reason": reason
-        })
+        lock.action_log.append(
+            {
+                "action": "stage_advanced",
+                "from_stage": current.value,
+                "to_stage": new_stage.value,
+                "advanced_by": actor_id,
+                "timestamp": datetime.utcnow().isoformat() + "Z",
+                "reason": reason,
+            }
+        )
 
         logger.info(f"Lock {lock_id} advanced from {current.value} to {new_stage.value}")
 
@@ -547,7 +552,7 @@ class SemanticLockManager:
         outcome: ResolutionOutcome,
         resolution_authority: str,
         resolution_details: str,
-        findings: dict[str, Any] | None = None
+        findings: dict[str, Any] | None = None,
     ) -> tuple[bool, str]:
         """
         Resolve a dispute and release the semantic lock.
@@ -576,7 +581,10 @@ class SemanticLockManager:
             return False, "Cannot resolve during cooling period"
 
         # Ensure we're at binding resolution stage or beyond
-        if lock.current_stage not in [EscalationStage.BINDING_RESOLUTION, EscalationStage.ADJUDICATION]:
+        if lock.current_stage not in [
+            EscalationStage.BINDING_RESOLUTION,
+            EscalationStage.ADJUDICATION,
+        ]:
             # Allow resolution from adjudication or binding_resolution
             pass
 
@@ -591,15 +599,17 @@ class SemanticLockManager:
         if outcome == ResolutionOutcome.DISMISSED:
             lock.execution_halted = False  # Resume execution
 
-        lock.action_log.append({
-            "action": "dispute_resolved",
-            "outcome": outcome.value,
-            "resolution_authority": resolution_authority,
-            "resolution_details": resolution_details,
-            "findings": findings,
-            "effects": effects,
-            "timestamp": now
-        })
+        lock.action_log.append(
+            {
+                "action": "dispute_resolved",
+                "outcome": outcome.value,
+                "resolution_authority": resolution_authority,
+                "resolution_details": resolution_details,
+                "findings": findings,
+                "effects": effects,
+                "timestamp": now,
+            }
+        )
 
         # Clean up references
         if lock.contract_id in self._contract_locks:
@@ -614,37 +624,28 @@ class SemanticLockManager:
     def _get_resolution_effects(self, outcome: ResolutionOutcome) -> dict[str, Any]:
         """Get the effects of a resolution outcome per NCIP-005 Section 9."""
         effects = {
-            ResolutionOutcome.DISMISSED: {
-                "resume_execution": True,
-                "requires_action": False
-            },
+            ResolutionOutcome.DISMISSED: {"resume_execution": True, "requires_action": False},
             ResolutionOutcome.CLARIFIED: {
                 "resume_execution": False,
                 "require_reratification": True,
-                "update_semantic_lock": True
+                "update_semantic_lock": True,
             },
             ResolutionOutcome.AMENDED: {
                 "resume_execution": False,
                 "require_new_contract": True,
-                "void_current": True
+                "void_current": True,
             },
             ResolutionOutcome.TERMINATED: {
                 "resume_execution": False,
                 "void_contract": True,
-                "release_all_parties": True
+                "release_all_parties": True,
             },
-            ResolutionOutcome.COMPENSATED: {
-                "resume_execution": False,
-                "enforce_settlement": True
-            }
+            ResolutionOutcome.COMPENSATED: {"resume_execution": False, "enforce_settlement": True},
         }
         return effects.get(outcome, {})
 
     def verify_against_lock(
-        self,
-        lock_id: str,
-        registry_version: str,
-        prose_content: str
+        self, lock_id: str, registry_version: str, prose_content: str
     ) -> tuple[bool, list[str]]:
         """
         Verify that content matches the locked state.
@@ -679,11 +680,7 @@ class SemanticLockManager:
 
         return len(discrepancies) == 0, discrepancies
 
-    def get_validator_response(
-        self,
-        lock_id: str,
-        action: LockAction
-    ) -> dict[str, Any]:
+    def get_validator_response(self, lock_id: str, action: LockAction) -> dict[str, Any]:
         """
         Get complete validator response for an action attempt.
 
@@ -697,11 +694,7 @@ class SemanticLockManager:
         lock = self._locks.get(lock_id)
 
         if not lock:
-            return {
-                "lock_active": False,
-                "action_allowed": True,
-                "message": "No active lock"
-            }
+            return {"lock_active": False, "action_allowed": True, "message": "No active lock"}
 
         allowed, reason = self.can_perform_action(lock_id, action)
         cooling_status = self.get_cooling_status(lock_id)
@@ -718,7 +711,7 @@ class SemanticLockManager:
             "action": action.value,
             "action_allowed": allowed,
             "reason": reason,
-            "validator_id": self.validator_id
+            "validator_id": self.validator_id,
         }
 
         if cooling_status:
@@ -726,7 +719,7 @@ class SemanticLockManager:
                 "is_active": cooling_status.is_active,
                 "ends_at": cooling_status.ends_at,
                 "duration_hours": cooling_status.duration_hours,
-                "time_remaining_seconds": cooling_status.time_remaining_seconds
+                "time_remaining_seconds": cooling_status.time_remaining_seconds,
             }
 
         return response
@@ -756,9 +749,9 @@ class SemanticLockManager:
                 "registry_version": lock.locked_state.registry_version,
                 "anchor_language": lock.locked_state.anchor_language,
                 "pou_count": len(lock.locked_state.verified_pou_hashes),
-                "ncip_count": len(lock.locked_state.applicable_ncips)
+                "ncip_count": len(lock.locked_state.applicable_ncips),
             },
-            "action_count": len(lock.action_log)
+            "action_count": len(lock.action_log),
         }
 
     def get_action_log(self, lock_id: str) -> list[dict[str, Any]]:
@@ -771,13 +764,10 @@ class SemanticLockManager:
 NCIP_005_CONFIG = {
     "dispute_protocol": {
         "version": "1.0",
-        "cooling_periods": {
-            "D3": "24h",
-            "D4": "72h"
-        },
+        "cooling_periods": {"D3": "24h", "D4": "72h"},
         "during_cooling": {
             "allowed": ["clarification", "settlement_proposal", "mediator_assignment"],
-            "forbidden": ["escalation", "enforcement", "semantic_change"]
+            "forbidden": ["escalation", "enforcement", "semantic_change"],
         },
         "semantic_lock": {
             "freezes": [
@@ -785,27 +775,27 @@ NCIP_005_CONFIG = {
                 "prose_content",
                 "anchor_language",
                 "verified_pous",
-                "applicable_ncips"
+                "applicable_ncips",
             ],
             "prohibits": [
                 "contract_amendment",
                 "re_translation",
                 "registry_upgrade",
-                "pou_regeneration"
-            ]
+                "pou_regeneration",
+            ],
         },
         "escalation_path": [
             "mutual_settlement",
             "mediator_review",
             "adjudication",
-            "binding_resolution"
+            "binding_resolution",
         ],
         "resolution_outcomes": {
             "dismissed": {"resume_execution": True},
             "clarified": {"require_reratification": True},
             "amended": {"require_new_contract": True},
             "terminated": {"void_contract": True},
-            "compensated": {"enforce_settlement": True}
+            "compensated": {"enforce_settlement": True},
         },
         "triggers": [
             "drift_level_d3",
@@ -814,8 +804,8 @@ NCIP_005_CONFIG = {
             "pou_contradiction",
             "conflicting_ratifications",
             "multilingual_misalignment",
-            "material_breach"
-        ]
+            "material_breach",
+        ],
     }
 }
 

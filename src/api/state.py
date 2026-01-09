@@ -11,14 +11,12 @@ Storage backends are pluggable - set STORAGE_BACKEND environment variable:
 - "memory": In-memory (for testing)
 """
 
-import os
 from typing import Any
 
 # Import blockchain - always required
 from blockchain import NatLangChain
 
 # Import manager registry
-from .utils import managers
 
 # ============================================================
 # Shared State
@@ -36,6 +34,7 @@ def get_storage():
     global _storage
     if _storage is None:
         from storage import get_storage_backend
+
         _storage = get_storage_backend()
     return _storage
 
@@ -56,25 +55,33 @@ try:
         is_encrypted,
         is_encryption_enabled,
     )
+
     ENCRYPTION_AVAILABLE = True
 except ImportError:
     ENCRYPTION_AVAILABLE = False
+
     def is_encryption_enabled():
         return False
+
     encrypt_chain_data = None
     decrypt_chain_data = None
+
     def encrypt_sensitive_fields(x, **kwargs):
         return x
+
     def decrypt_sensitive_fields(x, **kwargs):
         return x
+
     def is_encrypted(x):
         return False
+
     EncryptionError = Exception
     ENCRYPTION_KEY_ENV = "NATLANGCHAIN_ENCRYPTION_KEY"
 
 
-def create_entry_with_encryption(content: str, author: str, intent: str,
-                                  metadata: dict[str, Any] | None = None) -> Any:
+def create_entry_with_encryption(
+    content: str, author: str, intent: str, metadata: dict[str, Any] | None = None
+) -> Any:
     """
     Create an entry with optional encryption of sensitive metadata fields.
 
@@ -93,15 +100,11 @@ def create_entry_with_encryption(content: str, author: str, intent: str,
     encrypted_metadata = metadata or {}
     if is_encryption_enabled() and encrypted_metadata:
         encrypted_metadata = encrypt_sensitive_fields(
-            encrypted_metadata,
-            sensitive_keys=["private_notes", "internal_id", "contact_info"]
+            encrypted_metadata, sensitive_keys=["private_notes", "internal_id", "contact_info"]
         )
 
     return NaturalLanguageEntry(
-        content=content,
-        author=author,
-        intent=intent,
-        metadata=encrypted_metadata
+        content=content, author=author, intent=intent, metadata=encrypted_metadata
     )
 
 
@@ -118,10 +121,9 @@ def decrypt_entry_metadata(entry_dict: dict[str, Any]) -> dict[str, Any]:
     if not is_encryption_enabled():
         return entry_dict
 
-    if "metadata" in entry_dict and entry_dict["metadata"]:
+    if entry_dict.get("metadata"):
         entry_dict["metadata"] = decrypt_sensitive_fields(
-            entry_dict["metadata"],
-            sensitive_keys=["private_notes", "internal_id", "contact_info"]
+            entry_dict["metadata"], sensitive_keys=["private_notes", "internal_id", "contact_info"]
         )
 
     return entry_dict
@@ -130,6 +132,7 @@ def decrypt_entry_metadata(entry_dict: dict[str, Any]) -> dict[str, Any]:
 # ============================================================
 # Chain Persistence (using storage abstraction)
 # ============================================================
+
 
 def load_chain():
     """

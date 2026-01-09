@@ -8,27 +8,28 @@ Tests cover:
 - Phase 14D: Threshold Decryption
 """
 
-import pytest
 import sys
 import time
 from datetime import datetime, timedelta
 
+import pytest
+
 sys.path.insert(0, "src")
 
 from zk_privacy import (
-    PoseidonHasher,
     DisputeMembershipCircuit,
-    ProofStatus,
-    PedersenCommitment,
-    ShamirSecretSharing,
     ECIESEncryption,
+    PedersenCommitment,
+    PoseidonHasher,
+    ProofStatus,
+    ShamirSecretSharing,
     ViewingKeyManager,
 )
-
 
 # ============================================================
 # Phase 14A: Dispute Membership Circuit Tests
 # ============================================================
+
 
 class TestPoseidonHasher:
     """Tests for Poseidon hash simulation."""
@@ -99,7 +100,7 @@ class TestDisputeMembershipCircuit:
             dispute_id="DISPUTE-001",
             prover_address="0xProver",
             identity_secret=secret,
-            identity_manager=identity_hash
+            identity_manager=identity_hash,
         )
 
         assert success is True
@@ -119,7 +120,7 @@ class TestDisputeMembershipCircuit:
             dispute_id="DISPUTE-001",
             prover_address="0xUser",
             identity_secret="wrong_secret",
-            identity_manager=identity_hash
+            identity_manager=identity_hash,
         )
 
         assert success is False
@@ -133,12 +134,11 @@ class TestDisputeMembershipCircuit:
             dispute_id="DISPUTE-001",
             prover_address="0xProver",
             identity_secret=secret,
-            identity_manager=identity_hash
+            identity_manager=identity_hash,
         )
 
         success, verify_result = circuit.verify_proof(
-            proof_id=gen_result["proof_id"],
-            expected_identity_hash=identity_hash
+            proof_id=gen_result["proof_id"], expected_identity_hash=identity_hash
         )
 
         assert success is True
@@ -147,8 +147,7 @@ class TestDisputeMembershipCircuit:
     def test_verify_proof_not_found(self, circuit):
         """Should fail for non-existent proof."""
         success, result = circuit.verify_proof(
-            proof_id="PROOF-NONEXISTENT",
-            expected_identity_hash="0x123"
+            proof_id="PROOF-NONEXISTENT", expected_identity_hash="0x123"
         )
 
         assert success is False
@@ -162,12 +161,11 @@ class TestDisputeMembershipCircuit:
             dispute_id="DISPUTE-001",
             prover_address="0xProver",
             identity_secret=secret,
-            identity_manager=identity_hash
+            identity_manager=identity_hash,
         )
 
         success, result = circuit.verify_proof(
-            proof_id=gen_result["proof_id"],
-            expected_identity_hash="0xWrongHash"
+            proof_id=gen_result["proof_id"], expected_identity_hash="0xWrongHash"
         )
 
         assert success is False
@@ -181,7 +179,7 @@ class TestDisputeMembershipCircuit:
             dispute_id="DISPUTE-001",
             prover_address="0xProver",
             identity_secret=secret,
-            identity_manager=identity_hash
+            identity_manager=identity_hash,
         )
 
         # First verification should succeed
@@ -201,7 +199,7 @@ class TestDisputeMembershipCircuit:
             dispute_id="DISPUTE-001",
             prover_address="0xProver",
             identity_secret=secret,
-            identity_manager=identity_hash
+            identity_manager=identity_hash,
         )
 
         proof = circuit.get_proof(gen_result["proof_id"])
@@ -219,7 +217,7 @@ class TestDisputeMembershipCircuit:
             dispute_id="DISPUTE-001",
             prover_address="0xProver",
             identity_secret=secret,
-            identity_manager=identity_hash
+            identity_manager=identity_hash,
         )
 
         assert len(circuit.audit_trail) >= 2  # commitment + proof generation
@@ -228,6 +226,7 @@ class TestDisputeMembershipCircuit:
 # ============================================================
 # Phase 14B: Viewing Key Infrastructure Tests
 # ============================================================
+
 
 class TestPedersenCommitment:
     """Tests for Pedersen commitment scheme."""
@@ -369,7 +368,9 @@ class TestECIESEncryption:
         assert "mac" in encrypted
         assert encrypted["mac"].startswith("0x")
 
-    @pytest.mark.skip(reason="ECIES is simulated - shared secret derivation doesn't match in simulation")
+    @pytest.mark.skip(
+        reason="ECIES is simulated - shared secret derivation doesn't match in simulation"
+    )
     def test_encrypt_decrypt_roundtrip(self):
         """Should decrypt to original plaintext."""
         private_key, public_key = ECIESEncryption.generate_keypair()
@@ -380,7 +381,9 @@ class TestECIESEncryption:
 
         assert decrypted == plaintext
 
-    @pytest.mark.skip(reason="ECIES is simulated - shared secret derivation doesn't match in simulation")
+    @pytest.mark.skip(
+        reason="ECIES is simulated - shared secret derivation doesn't match in simulation"
+    )
     def test_encrypt_decrypt_unicode(self):
         """Should handle unicode text."""
         private_key, public_key = ECIESEncryption.generate_keypair()
@@ -416,10 +419,7 @@ class TestViewingKeyManager:
         metadata = {"dispute_type": "contract", "parties": ["A", "B"]}
 
         success, result = manager.create_viewing_key(
-            dispute_id="DISPUTE-001",
-            metadata=metadata,
-            share_holders=share_holders,
-            threshold=3
+            dispute_id="DISPUTE-001", metadata=metadata, share_holders=share_holders, threshold=3
         )
 
         assert success is True
@@ -435,7 +435,7 @@ class TestViewingKeyManager:
             dispute_id="DISPUTE-001",
             metadata={"test": True},
             share_holders=["holder1", "holder2"],
-            threshold=3
+            threshold=3,
         )
 
         assert success is False
@@ -446,10 +446,7 @@ class TestViewingKeyManager:
         share_holders = ["h1", "h2", "h3"]
 
         _, result = manager.create_viewing_key(
-            dispute_id="DISPUTE-001",
-            metadata={},
-            share_holders=share_holders,
-            threshold=2
+            dispute_id="DISPUTE-001", metadata={}, share_holders=share_holders, threshold=2
         )
 
         assert result["key_id"] in manager.keys
@@ -459,10 +456,7 @@ class TestViewingKeyManager:
     def test_audit_trail(self, manager):
         """Should log audit trail."""
         manager.create_viewing_key(
-            dispute_id="DISPUTE-001",
-            metadata={},
-            share_holders=["h1", "h2", "h3"],
-            threshold=2
+            dispute_id="DISPUTE-001", metadata={}, share_holders=["h1", "h2", "h3"], threshold=2
         )
 
         assert len(manager.audit_trail) > 0
@@ -473,6 +467,7 @@ class TestViewingKeyManager:
 # Integration Tests
 # ============================================================
 
+
 class TestZKPrivacyIntegration:
     """Integration tests for ZK privacy components."""
 
@@ -481,9 +476,7 @@ class TestZKPrivacyIntegration:
         circuit = DisputeMembershipCircuit()
 
         # 1. User generates identity commitment off-chain
-        identity_secret, identity_hash = circuit.generate_identity_commitment(
-            "0xAlice"
-        )
+        identity_secret, identity_hash = circuit.generate_identity_commitment("0xAlice")
 
         # 2. Identity hash is registered on-chain (simulated)
         on_chain_identity = identity_hash
@@ -493,14 +486,13 @@ class TestZKPrivacyIntegration:
             dispute_id="DISPUTE-INTEGRATION",
             prover_address="0xAlice",
             identity_secret=identity_secret,
-            identity_manager=on_chain_identity
+            identity_manager=on_chain_identity,
         )
         assert success
 
         # 4. Verifier checks proof on-chain
         verified, verify_result = circuit.verify_proof(
-            proof_id=proof_result["proof_id"],
-            expected_identity_hash=on_chain_identity
+            proof_id=proof_result["proof_id"], expected_identity_hash=on_chain_identity
         )
         assert verified
         assert verify_result["status"] == "verified"
@@ -514,14 +506,14 @@ class TestZKPrivacyIntegration:
         metadata = {
             "dispute_id": "DISPUTE-SENSITIVE",
             "parties": ["PartyA", "PartyB"],
-            "classified": True
+            "classified": True,
         }
 
         success, result = manager.create_viewing_key(
             dispute_id="DISPUTE-SENSITIVE",
             metadata=metadata,
             share_holders=share_holders,
-            threshold=3
+            threshold=3,
         )
         assert success
 
@@ -533,16 +525,15 @@ class TestZKPrivacyIntegration:
         # 3. Simulate share submission (3 shares)
         submitted = []
         for share in shares[:3]:
-            submitted.append({
-                "index": share.share_index,
-                "share": share.share_data
-            })
+            submitted.append({"index": share.share_index, "share": share.share_data})
 
         # 4. Reconstruct key from 3 shares
         reconstructed = ShamirSecretSharing.reconstruct(submitted)
         assert reconstructed.startswith("0x")
 
-    @pytest.mark.skip(reason="ECIES is simulated - shared secret derivation doesn't match in simulation")
+    @pytest.mark.skip(
+        reason="ECIES is simulated - shared secret derivation doesn't match in simulation"
+    )
     def test_pedersen_ecies_combination(self):
         """Test Pedersen commitment with ECIES encryption."""
         # Create commitment to a secret

@@ -39,10 +39,10 @@ sys.path.insert(0, "src")
 
 from blockchain import NatLangChain, NaturalLanguageEntry
 
-
 # =============================================================================
 # Benchmark Configuration
 # =============================================================================
+
 
 @dataclass
 class BenchmarkConfig:
@@ -110,14 +110,12 @@ def generate_entry(index: int) -> NaturalLanguageEntry:
         content=f"{SAMPLE_PROSE} Transaction reference: TXN-{index:06d}",
         author=SAMPLE_AUTHORS[index % len(SAMPLE_AUTHORS)],
         intent=SAMPLE_INTENTS[index % len(SAMPLE_INTENTS)],
-        metadata={"tx_id": f"TXN-{index:06d}", "sequence": index}
+        metadata={"tx_id": f"TXN-{index:06d}", "sequence": index},
     )
 
 
 def create_test_chain(
-    num_blocks: int = 10,
-    entries_per_block: int = 5,
-    difficulty: int = 1
+    num_blocks: int = 10, entries_per_block: int = 5, difficulty: int = 1
 ) -> NatLangChain:
     """Create a test blockchain with specified structure."""
     chain = NatLangChain(
@@ -144,6 +142,7 @@ def create_test_chain(
 # =============================================================================
 # Benchmark Result Classes
 # =============================================================================
+
 
 @dataclass
 class ThroughputResult:
@@ -234,6 +233,7 @@ def compute_throughput_result(name: str, latencies: list[float]) -> ThroughputRe
 # Entry Submission Throughput Tests
 # =============================================================================
 
+
 class TestEntryThroughput:
     """Benchmark entry submission throughput."""
 
@@ -316,7 +316,7 @@ class TestEntryThroughput:
                     content=f"{SAMPLE_PROSE} Unique ref: {i}",
                     author=f"author_{i}@example.com",
                     intent="Record transaction",
-                    metadata={"seq": i}
+                    metadata={"seq": i},
                 )
 
                 start = time.perf_counter()
@@ -338,6 +338,7 @@ class TestEntryThroughput:
 # =============================================================================
 # Block Mining Throughput Tests
 # =============================================================================
+
 
 class TestMiningThroughput:
     """Benchmark block mining throughput."""
@@ -382,7 +383,9 @@ class TestMiningThroughput:
         print(result)
 
         # Calculate effective TPS (entries per second)
-        entries_per_second = (CONFIG.mining_batch_size * CONFIG.mining_iterations) / result.total_time_seconds
+        entries_per_second = (
+            CONFIG.mining_batch_size * CONFIG.mining_iterations
+        ) / result.total_time_seconds
         print(f"  Effective Entry TPS: {entries_per_second:,.1f} entries/sec")
         print(f"  Entries per Block: {CONFIG.mining_batch_size}")
 
@@ -407,7 +410,7 @@ class TestMiningThroughput:
             elapsed = time.perf_counter() - start
 
             results.append((difficulty, elapsed))
-            print(f"  Difficulty {difficulty}: {elapsed*1000:.2f}ms")
+            print(f"  Difficulty {difficulty}: {elapsed * 1000:.2f}ms")
 
         # Higher difficulty should take longer (exponential scaling)
         assert results[1][1] > results[0][1], "Difficulty 2 should take longer than 1"
@@ -417,6 +420,7 @@ class TestMiningThroughput:
 # Query Throughput Tests
 # =============================================================================
 
+
 class TestQueryThroughput:
     """Benchmark blockchain query throughput."""
 
@@ -424,9 +428,7 @@ class TestQueryThroughput:
     def populated_chain(self):
         """Create a blockchain with test data."""
         return create_test_chain(
-            num_blocks=CONFIG.query_chain_size,
-            entries_per_block=10,
-            difficulty=1
+            num_blocks=CONFIG.query_chain_size, entries_per_block=10, difficulty=1
         )
 
     def test_chain_validation_tps(self, populated_chain):
@@ -507,6 +509,7 @@ class TestQueryThroughput:
 # Concurrent Access Tests
 # =============================================================================
 
+
 class TestConcurrentThroughput:
     """Benchmark concurrent access patterns."""
 
@@ -546,10 +549,7 @@ class TestConcurrentThroughput:
         start_time = time.perf_counter()
 
         with ThreadPoolExecutor(max_workers=CONFIG.concurrent_threads) as executor:
-            futures = [
-                executor.submit(submit_entries, i)
-                for i in range(CONFIG.concurrent_threads)
-            ]
+            futures = [executor.submit(submit_entries, i) for i in range(CONFIG.concurrent_threads)]
             for future in as_completed(futures):
                 future.result()  # Raise any exceptions
 
@@ -619,6 +619,7 @@ class TestConcurrentThroughput:
 # Compression Throughput Tests
 # =============================================================================
 
+
 class TestCompressionThroughput:
     """Benchmark compression impact on throughput."""
 
@@ -632,7 +633,7 @@ class TestCompressionThroughput:
         compressor = BlockCompressor(compression_level=6)
         chain = create_test_chain(num_blocks=5, entries_per_block=10)
         chain_data = chain.to_dict()
-        json_bytes = json.dumps(chain_data).encode('utf-8')
+        json_bytes = json.dumps(chain_data).encode("utf-8")
 
         # Measure compression throughput
         compress_latencies = []
@@ -665,7 +666,7 @@ class TestCompressionThroughput:
         print(decompress_result)
         print(f"  Original Size: {len(json_bytes):,} bytes")
         print(f"  Compressed Size: {result.compressed_size:,} bytes")
-        print(f"  Compression Ratio: {result.compression_ratio*100:.1f}%")
+        print(f"  Compression Ratio: {result.compression_ratio * 100:.1f}%")
 
     def test_storage_with_compression(self):
         """Measure storage throughput with compression enabled."""
@@ -674,8 +675,8 @@ class TestCompressionThroughput:
         except ImportError:
             pytest.skip("JSONFileStorage not available")
 
-        import tempfile
         import os
+        import tempfile
 
         chain = create_test_chain(num_blocks=10, entries_per_block=10)
         chain_data = chain.to_dict()
@@ -684,16 +685,13 @@ class TestCompressionThroughput:
             # Test with compression
             compressed_path = os.path.join(tmpdir, "compressed.json")
             storage_compressed = JSONFileStorage(
-                file_path=compressed_path,
-                compression_enabled=True,
-                compression_level=6
+                file_path=compressed_path, compression_enabled=True, compression_level=6
             )
 
             # Test without compression
             uncompressed_path = os.path.join(tmpdir, "uncompressed.json")
             storage_uncompressed = JSONFileStorage(
-                file_path=uncompressed_path,
-                compression_enabled=False
+                file_path=uncompressed_path, compression_enabled=False
             )
 
             # Measure save times
@@ -727,12 +725,13 @@ class TestCompressionThroughput:
 
             print(f"  Compressed File: {compressed_size:,} bytes")
             print(f"  Uncompressed File: {uncompressed_size:,} bytes")
-            print(f"  Space Saved: {(1 - compressed_size/uncompressed_size)*100:.1f}%")
+            print(f"  Space Saved: {(1 - compressed_size / uncompressed_size) * 100:.1f}%")
 
 
 # =============================================================================
 # Cache Throughput Tests
 # =============================================================================
+
 
 class TestCacheThroughput:
     """Benchmark adaptive cache throughput."""
@@ -815,8 +814,7 @@ class TestCacheThroughput:
 
             start = time.perf_counter()
             result = cache.get_or_compute(
-                CacheCategory.STATS, key,
-                lambda k=key: expensive_compute(k)
+                CacheCategory.STATS, key, lambda k=key: expensive_compute(k)
             )
             elapsed = time.perf_counter() - start
 
@@ -828,8 +826,7 @@ class TestCacheThroughput:
 
             start = time.perf_counter()
             result = cache.get_or_compute(
-                CacheCategory.STATS, key,
-                lambda k=key: expensive_compute(k)
+                CacheCategory.STATS, key, lambda k=key: expensive_compute(k)
             )
             elapsed = time.perf_counter() - start
 
@@ -848,6 +845,7 @@ class TestCacheThroughput:
 # =============================================================================
 # End-to-End Throughput Test
 # =============================================================================
+
 
 class TestEndToEndThroughput:
     """Benchmark complete transaction lifecycle."""
@@ -913,13 +911,16 @@ class TestEndToEndThroughput:
             total_time = submit_time + mine_time
             tps = batch_size / total_time
 
-            print(f"  Batch {batch_size:3d}: {tps:,.1f} TPS "
-                  f"(submit: {submit_time*1000:.1f}ms, mine: {mine_time*1000:.1f}ms)")
+            print(
+                f"  Batch {batch_size:3d}: {tps:,.1f} TPS "
+                f"(submit: {submit_time * 1000:.1f}ms, mine: {mine_time * 1000:.1f}ms)"
+            )
 
 
 # =============================================================================
 # Summary Report
 # =============================================================================
+
 
 class TestThroughputSummary:
     """Generate comprehensive throughput summary."""
@@ -954,7 +955,7 @@ class TestThroughputSummary:
         results["mining_50_entries"] = {
             "time_seconds": mine_time,
             "entries": 50,
-            "effective_tps": 50 / mine_time
+            "effective_tps": 50 / mine_time,
         }
 
         # Chain validation
@@ -970,15 +971,15 @@ class TestThroughputSummary:
         print("  NATLANGCHAIN THROUGHPUT SUMMARY")
         print("=" * 70)
 
-        print(f"\n  Entry Submission:")
+        print("\n  Entry Submission:")
         print(f"    TPS: {results['entry_submission'].operations_per_second:,.1f}")
         print(f"    Avg Latency: {results['entry_submission'].avg_latency_ms:.3f}ms")
 
-        print(f"\n  Block Mining (50 entries):")
-        print(f"    Time: {results['mining_50_entries']['time_seconds']*1000:.1f}ms")
+        print("\n  Block Mining (50 entries):")
+        print(f"    Time: {results['mining_50_entries']['time_seconds'] * 1000:.1f}ms")
         print(f"    Effective TPS: {results['mining_50_entries']['effective_tps']:,.1f}")
 
-        print(f"\n  Chain Validation:")
+        print("\n  Chain Validation:")
         print(f"    TPS: {results['chain_validation'].operations_per_second:,.1f}")
         print(f"    Avg Latency: {results['chain_validation'].avg_latency_ms:.3f}ms")
 

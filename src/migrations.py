@@ -33,11 +33,11 @@ import os
 import re
 import sys
 import threading
-from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +45,7 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 # Migration Data Structures
 # =============================================================================
+
 
 @dataclass
 class Migration:
@@ -80,6 +81,7 @@ class MigrationRecord:
 # =============================================================================
 # Migration Manager
 # =============================================================================
+
 
 class MigrationManager:
     """
@@ -122,6 +124,7 @@ class MigrationManager:
         if self._connection is None:
             try:
                 import psycopg2
+
                 self._connection = psycopg2.connect(self.database_url)
             except ImportError:
                 raise RuntimeError(
@@ -160,9 +163,7 @@ class MigrationManager:
                 self._migrations[version] = migration
                 logger.debug(f"Loaded migration V{version:04d}__{name}")
 
-    def _load_sql_migration(
-        self, file_path: Path, version: int, name: str
-    ) -> Migration | None:
+    def _load_sql_migration(self, file_path: Path, version: int, name: str) -> Migration | None:
         """Load a SQL migration file."""
         try:
             content = file_path.read_text()
@@ -188,14 +189,10 @@ class MigrationManager:
             logger.error(f"Failed to load SQL migration {file_path}: {e}")
             return None
 
-    def _load_python_migration(
-        self, file_path: Path, version: int, name: str
-    ) -> Migration | None:
+    def _load_python_migration(self, file_path: Path, version: int, name: str) -> Migration | None:
         """Load a Python migration file."""
         try:
-            spec = importlib.util.spec_from_file_location(
-                f"migration_{version}", file_path
-            )
+            spec = importlib.util.spec_from_file_location(f"migration_{version}", file_path)
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
 
@@ -249,12 +246,14 @@ class MigrationManager:
     def _acquire_lock(self, cursor, timeout_seconds: int = 60) -> bool:
         """Acquire the migration lock."""
         import socket
+
         hostname = socket.gethostname()
         pid = os.getpid()
         lock_id = f"{hostname}:{pid}"
 
         # Try to acquire lock with timeout check
-        cursor.execute(f"""
+        cursor.execute(
+            f"""
             UPDATE {self.LOCK_TABLE}
             SET locked_at = CURRENT_TIMESTAMP, locked_by = %s
             WHERE id = 1
@@ -263,7 +262,9 @@ class MigrationManager:
                 OR locked_at < CURRENT_TIMESTAMP - INTERVAL '%s seconds'
             )
             RETURNING id
-        """, (lock_id, timeout_seconds))
+        """,
+            (lock_id, timeout_seconds),
+        )
 
         result = cursor.fetchone()
         return result is not None
@@ -293,13 +294,15 @@ class MigrationManager:
 
             records = []
             for row in cursor.fetchall():
-                records.append(MigrationRecord(
-                    version=row[0],
-                    name=row[1],
-                    checksum=row[2],
-                    applied_at=row[3],
-                    execution_time_ms=row[4],
-                ))
+                records.append(
+                    MigrationRecord(
+                        version=row[0],
+                        name=row[1],
+                        checksum=row[2],
+                        applied_at=row[3],
+                        execution_time_ms=row[4],
+                    )
+                )
 
             return records
         finally:
@@ -308,10 +311,7 @@ class MigrationManager:
     def get_pending_migrations(self) -> list[Migration]:
         """Get list of pending migrations."""
         applied = {r.version for r in self.get_applied_migrations()}
-        pending = [
-            m for v, m in sorted(self._migrations.items())
-            if v not in applied
-        ]
+        pending = [m for v, m in sorted(self._migrations.items()) if v not in applied]
         return pending
 
     def get_current_version(self) -> int:
@@ -416,9 +416,7 @@ class MigrationManager:
 
         return results
 
-    def _apply_migration(
-        self, cursor, conn, migration: Migration
-    ) -> dict[str, Any]:
+    def _apply_migration(self, cursor, conn, migration: Migration) -> dict[str, Any]:
         """Apply a single migration."""
         import time
 
@@ -434,17 +432,19 @@ class MigrationManager:
 
             # Record migration
             execution_time_ms = int((time.time() - start_time) * 1000)
-            cursor.execute(f"""
+            cursor.execute(
+                f"""
                 INSERT INTO {self.MIGRATIONS_TABLE}
                 (version, name, checksum, execution_time_ms)
                 VALUES (%s, %s, %s, %s)
-            """, (migration.version, migration.name, migration.checksum, execution_time_ms))
+            """,
+                (migration.version, migration.name, migration.checksum, execution_time_ms),
+            )
 
             conn.commit()
 
             logger.info(
-                f"Applied V{migration.version:04d}__{migration.name} "
-                f"in {execution_time_ms}ms"
+                f"Applied V{migration.version:04d}__{migration.name} in {execution_time_ms}ms"
             )
 
             return {
@@ -481,10 +481,7 @@ class MigrationManager:
             List of rollback results
         """
         applied = self.get_applied_migrations()
-        to_rollback = [
-            r for r in reversed(applied)
-            if r.version > target_version
-        ]
+        to_rollback = [r for r in reversed(applied) if r.version > target_version]
 
         if not to_rollback:
             logger.info("No migrations to rollback")
@@ -530,9 +527,7 @@ class MigrationManager:
 
         return results
 
-    def _rollback_migration(
-        self, cursor, conn, record: MigrationRecord
-    ) -> dict[str, Any]:
+    def _rollback_migration(self, cursor, conn, record: MigrationRecord) -> dict[str, Any]:
         """Rollback a single migration."""
         import time
 
@@ -564,17 +559,19 @@ class MigrationManager:
                 migration.downgrade_fn(cursor, conn)
 
             # Remove migration record
-            cursor.execute(f"""
+            cursor.execute(
+                f"""
                 DELETE FROM {self.MIGRATIONS_TABLE}
                 WHERE version = %s
-            """, (record.version,))
+            """,
+                (record.version,),
+            )
 
             conn.commit()
 
             execution_time_ms = int((time.time() - start_time) * 1000)
             logger.info(
-                f"Rolled back V{migration.version:04d}__{migration.name} "
-                f"in {execution_time_ms}ms"
+                f"Rolled back V{migration.version:04d}__{migration.name} in {execution_time_ms}ms"
             )
 
             return {
@@ -604,19 +601,23 @@ class MigrationManager:
             migration = self._migrations.get(record.version)
 
             if not migration:
-                issues.append({
-                    "version": record.version,
-                    "name": record.name,
-                    "issue": "Migration file missing",
-                })
+                issues.append(
+                    {
+                        "version": record.version,
+                        "name": record.name,
+                        "issue": "Migration file missing",
+                    }
+                )
             elif migration.checksum != record.checksum:
-                issues.append({
-                    "version": record.version,
-                    "name": record.name,
-                    "issue": "Checksum mismatch",
-                    "expected": record.checksum,
-                    "actual": migration.checksum,
-                })
+                issues.append(
+                    {
+                        "version": record.version,
+                        "name": record.name,
+                        "issue": "Checksum mismatch",
+                        "expected": record.checksum,
+                        "actual": migration.checksum,
+                    }
+                )
 
         return issues
 
@@ -631,6 +632,7 @@ class MigrationManager:
 # CLI Interface
 # =============================================================================
 
+
 def main():
     """CLI entry point for migrations."""
     import argparse
@@ -641,23 +643,19 @@ def main():
     # upgrade command
     upgrade_parser = subparsers.add_parser("upgrade", help="Apply pending migrations")
     upgrade_parser.add_argument(
-        "--to", type=int, dest="target",
-        help="Target version to migrate to"
+        "--to", type=int, dest="target", help="Target version to migrate to"
     )
     upgrade_parser.add_argument(
-        "--dry-run", action="store_true",
-        help="Show what would be done without executing"
+        "--dry-run", action="store_true", help="Show what would be done without executing"
     )
 
     # downgrade command
     downgrade_parser = subparsers.add_parser("downgrade", help="Rollback migrations")
     downgrade_parser.add_argument(
-        "--to", type=int, dest="target", default=0,
-        help="Target version to rollback to"
+        "--to", type=int, dest="target", default=0, help="Target version to rollback to"
     )
     downgrade_parser.add_argument(
-        "--dry-run", action="store_true",
-        help="Show what would be done without executing"
+        "--dry-run", action="store_true", help="Show what would be done without executing"
     )
 
     # status command
@@ -670,17 +668,13 @@ def main():
     create_parser = subparsers.add_parser("create", help="Create a new migration")
     create_parser.add_argument("name", help="Migration name (use underscores)")
     create_parser.add_argument(
-        "--type", choices=["sql", "py"], default="sql",
-        help="Migration file type"
+        "--type", choices=["sql", "py"], default="sql", help="Migration file type"
     )
 
     args = parser.parse_args()
 
     # Configure logging
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(levelname)s - %(message)s"
-    )
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
     if args.command == "upgrade":
         manager = MigrationManager()
@@ -717,14 +711,14 @@ def main():
         print(f"Applied:         {status['applied_count']}")
         print(f"Pending:         {status['pending_count']}")
 
-        if status['applied']:
+        if status["applied"]:
             print("\nApplied migrations:")
-            for m in status['applied']:
+            for m in status["applied"]:
                 print(f"  V{m['version']:04d}__{m['name']} ({m['applied_at']})")
 
-        if status['pending']:
+        if status["pending"]:
             print("\nPending migrations:")
-            for m in status['pending']:
+            for m in status["pending"]:
                 print(f"  V{m['version']:04d}__{m['name']}")
 
         manager.close()
@@ -751,10 +745,7 @@ def main():
         # Find next version number
         existing = list(migrations_dir.glob("V*__*"))
         if existing:
-            max_version = max(
-                int(re.match(r"V(\d+)", p.name).group(1))
-                for p in existing
-            )
+            max_version = max(int(re.match(r"V(\d+)", p.name).group(1)) for p in existing)
             next_version = max_version + 1
         else:
             next_version = 1
@@ -765,7 +756,7 @@ def main():
         filepath = migrations_dir / filename
 
         if ext == "sql":
-            content = f"""-- {args.name.replace('_', ' ').title()}
+            content = f"""-- {args.name.replace("_", " ").title()}
 -- Migration V{next_version:04d}
 
 -- Add your upgrade SQL here
@@ -778,11 +769,11 @@ def main():
 """
         else:
             content = f'''"""
-{args.name.replace('_', ' ').title()}
+{args.name.replace("_", " ").title()}
 Migration V{next_version:04d}
 """
 
-DESCRIPTION = "{args.name.replace('_', ' ').title()}"
+DESCRIPTION = "{args.name.replace("_", " ").title()}"
 
 
 def upgrade(cursor, connection):

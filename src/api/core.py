@@ -26,22 +26,24 @@ from .utils import (
 )
 
 # Create the blueprint
-core_bp = Blueprint('core', __name__)
+core_bp = Blueprint("core", __name__)
 
 
-@core_bp.route('/health', methods=['GET'])
+@core_bp.route("/health", methods=["GET"])
 def health_check():
     """Health check endpoint."""
-    return jsonify({
-        "status": "healthy",
-        "service": "NatLangChain API",
-        "llm_validation_available": managers.llm_validator is not None,
-        "blocks": len(blockchain.chain),
-        "pending_entries": len(blockchain.pending_entries)
-    })
+    return jsonify(
+        {
+            "status": "healthy",
+            "service": "NatLangChain API",
+            "llm_validation_available": managers.llm_validator is not None,
+            "blocks": len(blockchain.chain),
+            "pending_entries": len(blockchain.pending_entries),
+        }
+    )
 
 
-@core_bp.route('/chain', methods=['GET'])
+@core_bp.route("/chain", methods=["GET"])
 def get_chain():
     """
     Get the entire blockchain.
@@ -49,14 +51,16 @@ def get_chain():
     Returns:
         Full blockchain data
     """
-    return jsonify({
-        "length": len(blockchain.chain),
-        "chain": blockchain.to_dict(),
-        "valid": blockchain.validate_chain()
-    })
+    return jsonify(
+        {
+            "length": len(blockchain.chain),
+            "chain": blockchain.to_dict(),
+            "valid": blockchain.validate_chain(),
+        }
+    )
 
 
-@core_bp.route('/chain/narrative', methods=['GET'])
+@core_bp.route("/chain/narrative", methods=["GET"])
 def get_narrative():
     """
     Get the full narrative history as human-readable text.
@@ -67,10 +71,10 @@ def get_narrative():
         Complete narrative of all entries
     """
     narrative = blockchain.get_full_narrative()
-    return narrative, 200, {'Content-Type': 'text/plain; charset=utf-8'}
+    return narrative, 200, {"Content-Type": "text/plain; charset=utf-8"}
 
 
-@core_bp.route('/entry', methods=['POST'])
+@core_bp.route("/entry", methods=["POST"])
 @require_api_key
 def add_entry():
     """
@@ -96,9 +100,9 @@ def add_entry():
 
     # SECURITY: Schema validation for entry payload
     ENTRY_MAX_LENGTHS = {
-        "content": 50000,   # 50KB max for content
-        "author": 500,      # 500 chars for author
-        "intent": 2000,     # 2KB for intent
+        "content": 50000,  # 50KB max for content
+        "author": 500,  # 500 chars for author
+        "intent": 2000,  # 2KB for intent
     }
 
     is_valid, error_msg = validate_json_schema(
@@ -109,9 +113,9 @@ def add_entry():
             "validate": bool,
             "auto_mine": bool,
             "validation_mode": str,
-            "multi_validator": bool
+            "multi_validator": bool,
         },
-        max_lengths=ENTRY_MAX_LENGTHS
+        max_lengths=ENTRY_MAX_LENGTHS,
     )
 
     if not is_valid:
@@ -129,20 +133,19 @@ def add_entry():
         try:
             metadata_str = json.dumps(metadata)
             if len(metadata_str) > MAX_METADATA_LEN:
-                return jsonify({
-                    "error": "Metadata too large",
-                    "max_length": MAX_METADATA_LEN,
-                    "received_length": len(metadata_str)
-                }), 400
+                return jsonify(
+                    {
+                        "error": "Metadata too large",
+                        "max_length": MAX_METADATA_LEN,
+                        "received_length": len(metadata_str),
+                    }
+                ), 400
         except (TypeError, ValueError):
             return jsonify({"error": "Invalid metadata format"}), 400
 
     # Create entry with encrypted sensitive metadata
     entry = create_entry_with_encryption(
-        content=content,
-        author=author,
-        intent=intent,
-        metadata=data.get("metadata", {})
+        content=content, author=author, intent=intent, metadata=data.get("metadata", {})
     )
 
     # Validate if requested
@@ -152,13 +155,11 @@ def add_entry():
 
     if validate:
         if validation_mode == "dialectic" and managers.dialectic_validator:
-            dialectic_result = managers.dialectic_validator.validate_entry(
-                content, intent, author
-            )
+            dialectic_result = managers.dialectic_validator.validate_entry(content, intent, author)
             validation_result = {
                 "validation_mode": "dialectic",
                 "dialectic_validation": dialectic_result,
-                "overall_decision": dialectic_result.get("decision", "ERROR")
+                "overall_decision": dialectic_result.get("decision", "ERROR"),
             }
         elif managers.hybrid_validator:
             validation_result = managers.hybrid_validator.validate(
@@ -166,16 +167,14 @@ def add_entry():
                 intent=intent,
                 author=author,
                 use_llm=True,
-                multi_validator=(
-                    validation_mode == "multi" or data.get("multi_validator", False)
-                )
+                multi_validator=(validation_mode == "multi" or data.get("multi_validator", False)),
             )
             validation_result["validation_mode"] = validation_mode
         else:
             validation_result = {
                 "validation_mode": "none",
                 "overall_decision": "ACCEPTED",
-                "note": "No LLM validator configured - entry accepted without semantic validation"
+                "note": "No LLM validator configured - entry accepted without semantic validation",
             }
 
         # Update entry with validation results
@@ -187,9 +186,7 @@ def add_entry():
             if "validations" in llm_val:
                 entry.validation_paraphrases = llm_val.get("paraphrases", [])
             elif "validation" in llm_val:
-                entry.validation_paraphrases = [
-                    llm_val["validation"].get("paraphrase", "")
-                ]
+                entry.validation_paraphrases = [llm_val["validation"].get("paraphrase", "")]
 
     # Add to blockchain
     result = blockchain.add_entry(entry)
@@ -201,22 +198,15 @@ def add_entry():
         mined_block = blockchain.mine_pending_entries()
         save_chain()
 
-    response = {
-        "status": "success",
-        "entry": result,
-        "validation": validation_result
-    }
+    response = {"status": "success", "entry": result, "validation": validation_result}
 
     if mined_block:
-        response["mined_block"] = {
-            "index": mined_block.index,
-            "hash": mined_block.hash
-        }
+        response["mined_block"] = {"index": mined_block.index, "hash": mined_block.hash}
 
     return jsonify(response), 201
 
 
-@core_bp.route('/entry/validate', methods=['POST'])
+@core_bp.route("/entry/validate", methods=["POST"])
 @require_api_key
 def validate_entry():
     """
@@ -234,10 +224,9 @@ def validate_entry():
         Validation results
     """
     if not managers.hybrid_validator:
-        return jsonify({
-            "error": "LLM validation not available",
-            "reason": "ANTHROPIC_API_KEY not configured"
-        }), 503
+        return jsonify(
+            {"error": "LLM validation not available", "reason": "ANTHROPIC_API_KEY not configured"}
+        ), 503
 
     data = request.get_json()
 
@@ -248,7 +237,7 @@ def validate_entry():
         data,
         required_fields={"content": str, "author": str, "intent": str},
         optional_fields={"multi_validator": bool},
-        max_lengths={"content": 50000, "author": 500, "intent": 2000}
+        max_lengths={"content": 50000, "author": 500, "intent": 2000},
     )
 
     if not is_valid:
@@ -259,23 +248,22 @@ def validate_entry():
     intent = data.get("intent")
 
     if not all([content, author, intent]):
-        return jsonify({
-            "error": "Missing required fields",
-            "required": ["content", "author", "intent"]
-        }), 400
+        return jsonify(
+            {"error": "Missing required fields", "required": ["content", "author", "intent"]}
+        ), 400
 
     validation_result = managers.hybrid_validator.validate(
         content=content,
         intent=intent,
         author=author,
         use_llm=True,
-        multi_validator=data.get("multi_validator", False)
+        multi_validator=data.get("multi_validator", False),
     )
 
     return jsonify(validation_result)
 
 
-@core_bp.route('/mine', methods=['POST'])
+@core_bp.route("/mine", methods=["POST"])
 @require_api_key
 def mine_block():
     """
@@ -293,9 +281,7 @@ def mine_block():
     difficulty = data.get("difficulty")
 
     if not blockchain.pending_entries:
-        return jsonify({
-            "error": "No pending entries to mine"
-        }), 400
+        return jsonify({"error": "No pending entries to mine"}), 400
 
     # Mine the block
     if difficulty:
@@ -306,19 +292,21 @@ def mine_block():
     # Persist to file
     save_chain()
 
-    return jsonify({
-        "status": "success",
-        "block": {
-            "index": new_block.index,
-            "timestamp": new_block.timestamp,
-            "entries_count": len(new_block.entries),
-            "hash": new_block.hash,
-            "previous_hash": new_block.previous_hash
+    return jsonify(
+        {
+            "status": "success",
+            "block": {
+                "index": new_block.index,
+                "timestamp": new_block.timestamp,
+                "entries_count": len(new_block.entries),
+                "hash": new_block.hash,
+                "previous_hash": new_block.previous_hash,
+            },
         }
-    }), 201
+    ), 201
 
 
-@core_bp.route('/block/<int:index>', methods=['GET'])
+@core_bp.route("/block/<int:index>", methods=["GET"])
 def get_block(index: int):
     """
     Get a specific block by index.
@@ -330,16 +318,15 @@ def get_block(index: int):
         Block details
     """
     if index < 0 or index >= len(blockchain.chain):
-        return jsonify({
-            "error": "Block not found",
-            "valid_range": f"0-{len(blockchain.chain) - 1}"
-        }), 404
+        return jsonify(
+            {"error": "Block not found", "valid_range": f"0-{len(blockchain.chain) - 1}"}
+        ), 404
 
     block = blockchain.chain[index]
     return jsonify(block.to_dict())
 
 
-@core_bp.route('/block/latest', methods=['GET'])
+@core_bp.route("/block/latest", methods=["GET"])
 def get_latest_block():
     """
     Get the most recent block.
@@ -351,14 +338,16 @@ def get_latest_block():
         return jsonify({"error": "No blocks in chain"}), 404
 
     latest = blockchain.chain[-1]
-    return jsonify({
-        "block": latest.to_dict(),
-        "chain_length": len(blockchain.chain),
-        "pending_entries": len(blockchain.pending_entries)
-    })
+    return jsonify(
+        {
+            "block": latest.to_dict(),
+            "chain_length": len(blockchain.chain),
+            "pending_entries": len(blockchain.pending_entries),
+        }
+    )
 
 
-@core_bp.route('/entries/author/<author>', methods=['GET'])
+@core_bp.route("/entries/author/<author>", methods=["GET"])
 def get_entries_by_author(author: str):
     """
     Get all entries by a specific author.
@@ -370,14 +359,12 @@ def get_entries_by_author(author: str):
         List of entries by the author
     """
     entries = blockchain.get_entries_by_author(author)
-    return jsonify({
-        "author": author,
-        "count": len(entries),
-        "entries": [e.to_dict() for e in entries]
-    })
+    return jsonify(
+        {"author": author, "count": len(entries), "entries": [e.to_dict() for e in entries]}
+    )
 
 
-@core_bp.route('/entries/search', methods=['GET'])
+@core_bp.route("/entries/search", methods=["GET"])
 def search_entries():
     """
     Search entries by content keyword.
@@ -389,8 +376,8 @@ def search_entries():
     Returns:
         Matching entries
     """
-    query = request.args.get('q', '')
-    limit = request.args.get('limit', 10, type=int)
+    query = request.args.get("q", "")
+    limit = request.args.get("limit", 10, type=int)
 
     # Bound the limit
     limit, _ = validate_pagination_params(limit)
@@ -409,14 +396,10 @@ def search_entries():
         if len(results) >= limit:
             break
 
-    return jsonify({
-        "query": query,
-        "count": len(results),
-        "entries": results
-    })
+    return jsonify({"query": query, "count": len(results), "entries": results})
 
 
-@core_bp.route('/validate/chain', methods=['GET'])
+@core_bp.route("/validate/chain", methods=["GET"])
 def validate_blockchain():
     """
     Validate the entire blockchain integrity.
@@ -425,14 +408,16 @@ def validate_blockchain():
         Validation status
     """
     is_valid = blockchain.validate_chain()
-    return jsonify({
-        "valid": is_valid,
-        "blocks": len(blockchain.chain),
-        "pending_entries": len(blockchain.pending_entries)
-    })
+    return jsonify(
+        {
+            "valid": is_valid,
+            "blocks": len(blockchain.chain),
+            "pending_entries": len(blockchain.pending_entries),
+        }
+    )
 
 
-@core_bp.route('/pending', methods=['GET'])
+@core_bp.route("/pending", methods=["GET"])
 def get_pending_entries():
     """
     Get all pending (unmined) entries.
@@ -440,13 +425,15 @@ def get_pending_entries():
     Returns:
         List of pending entries
     """
-    return jsonify({
-        "count": len(blockchain.pending_entries),
-        "entries": [e.to_dict() for e in blockchain.pending_entries]
-    })
+    return jsonify(
+        {
+            "count": len(blockchain.pending_entries),
+            "entries": [e.to_dict() for e in blockchain.pending_entries],
+        }
+    )
 
 
-@core_bp.route('/stats', methods=['GET'])
+@core_bp.route("/stats", methods=["GET"])
 def get_stats():
     """
     Get blockchain statistics.
@@ -485,11 +472,13 @@ def get_stats():
         "mobile_deployment": managers.mobile_deployment is not None,
     }
 
-    return jsonify({
-        "blocks": len(blockchain.chain),
-        "pending_entries": len(blockchain.pending_entries),
-        "total_entries": total_entries,
-        "unique_authors": len(authors),
-        "chain_valid": blockchain.validate_chain(),
-        "features": features
-    })
+    return jsonify(
+        {
+            "blocks": len(blockchain.chain),
+            "pending_entries": len(blockchain.pending_entries),
+            "total_entries": total_entries,
+            "unique_authors": len(authors),
+            "chain_valid": blockchain.validate_chain(),
+            "features": features,
+        }
+    )

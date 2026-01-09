@@ -9,39 +9,39 @@ import time
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 import pytest
 
 from gossip_protocol import (
-    # Enums
-    GossipMessageType,
-    MessagePriority,
-    PeerType,
-    # Bloom Filter
-    BloomFilter,
-    RotatingBloomFilter,
-    # Message Cache
-    MessageCache,
-    CachedMessage,
-    # Message Queue
-    MessageQueue,
-    PrioritizedMessage,
-    # Peer Management
-    GossipPeerState,
-    PlumtreePeerManager,
-    # Adaptive Fanout
-    AdaptiveFanout,
-    # Main Protocol
-    GossipProtocol,
     # Constants
     GOSSIP_FANOUT,
     MAX_EAGER_PEERS,
     MAX_LAZY_PEERS,
     PRUNE_THRESHOLD,
+    # Adaptive Fanout
+    AdaptiveFanout,
+    # Bloom Filter
+    BloomFilter,
+    CachedMessage,
+    # Enums
+    GossipMessageType,
+    # Peer Management
+    GossipPeerState,
+    # Main Protocol
+    GossipProtocol,
+    # Message Cache
+    MessageCache,
+    MessagePriority,
+    # Message Queue
+    MessageQueue,
+    PeerType,
+    PlumtreePeerManager,
+    PrioritizedMessage,
+    RotatingBloomFilter,
+    calculate_optimal_fanout,
     # Helper functions
     get_message_priority,
-    calculate_optimal_fanout,
 )
 
 
@@ -120,10 +120,7 @@ class TestBloomFilter:
                 bf.add(item)
                 items_added.append(item)
 
-        threads = [
-            threading.Thread(target=add_items, args=(f"thread_{t}", 100))
-            for t in range(5)
-        ]
+        threads = [threading.Thread(target=add_items, args=(f"thread_{t}", 100)) for t in range(5)]
 
         for t in threads:
             t.start()
@@ -457,7 +454,7 @@ class TestGossipProtocol:
             "message_id": "msg1",
             "origin": "sender1",
             "payload": {"content": "test"},
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         }
 
         success = protocol.handle_message("sender1", message)
@@ -475,7 +472,7 @@ class TestGossipProtocol:
             "message_id": "msg1",
             "origin": "sender1",
             "payload": {"content": "test"},
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         }
 
         success = protocol.handle_message("sender1", message)
@@ -497,7 +494,7 @@ class TestGossipProtocol:
             "type": GossipMessageType.IHAVE.value,
             "message_ids": ["msg1", "msg2"],
             "origin": "sender1",
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         }
 
         success = protocol.handle_message("sender1", message)
@@ -517,7 +514,7 @@ class TestGossipProtocol:
             "type": GossipMessageType.IWANT.value,
             "message_ids": ["msg1"],
             "origin": "sender1",
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         }
 
         success = protocol.handle_message("sender1", message)
@@ -533,7 +530,7 @@ class TestGossipProtocol:
         message = {
             "type": GossipMessageType.GRAFT.value,
             "origin": "sender1",
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         }
 
         success = protocol.handle_message("sender1", message)
@@ -548,7 +545,7 @@ class TestGossipProtocol:
         message = {
             "type": GossipMessageType.PRUNE.value,
             "origin": "sender1",
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         }
 
         success = protocol.handle_message("sender1", message)
@@ -608,7 +605,7 @@ class TestP2PIntegration:
 
     def test_p2p_gossip_initialization(self):
         """Test P2P network initializes gossip protocol."""
-        from p2p_network import P2PNetwork, HAS_GOSSIP_PROTOCOL
+        from p2p_network import HAS_GOSSIP_PROTOCOL, P2PNetwork
 
         network = P2PNetwork()
 
@@ -621,7 +618,7 @@ class TestP2PIntegration:
 
     def test_p2p_network_stats_include_gossip(self):
         """Test network stats include gossip metrics."""
-        from p2p_network import P2PNetwork, HAS_GOSSIP_PROTOCOL
+        from p2p_network import HAS_GOSSIP_PROTOCOL, P2PNetwork
 
         network = P2PNetwork()
         stats = network.get_network_stats()
@@ -637,7 +634,7 @@ class TestP2PIntegration:
 
     def test_p2p_gossip_stats_method(self):
         """Test dedicated gossip stats method."""
-        from p2p_network import P2PNetwork, HAS_GOSSIP_PROTOCOL
+        from p2p_network import HAS_GOSSIP_PROTOCOL, P2PNetwork
 
         network = P2PNetwork()
         stats = network.get_gossip_stats()

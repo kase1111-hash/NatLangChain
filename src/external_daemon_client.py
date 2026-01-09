@@ -24,12 +24,13 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Callable
+from typing import Any
 from urllib.parse import urljoin
 
 # Optional HTTP client
 try:
     import requests
+
     REQUESTS_AVAILABLE = True
 except ImportError:
     REQUESTS_AVAILABLE = False
@@ -39,6 +40,7 @@ logger = logging.getLogger(__name__)
 
 class DaemonDecision(Enum):
     """Decisions returned by the external daemon."""
+
     ALLOW = "allow"
     DENY = "deny"
     CONDITIONAL = "conditional"
@@ -46,6 +48,7 @@ class DaemonDecision(Enum):
 
 class OperationType(Enum):
     """Types of operations to request from the daemon."""
+
     MODE_QUERY = "mode_query"
     MODE_SET = "mode_set"
     POLICY_EVAL = "policy_eval"
@@ -60,6 +63,7 @@ class OperationType(Enum):
 @dataclass
 class DaemonRequest:
     """Request to send to the external daemon."""
+
     operation: OperationType
     context: dict[str, Any]
     parameters: dict[str, Any]
@@ -73,7 +77,7 @@ class DaemonRequest:
             "context": self.context,
             "parameters": self.parameters,
             "timestamp": self.timestamp,
-            "request_id": self.request_id
+            "request_id": self.request_id,
         }
 
     def to_json(self) -> str:
@@ -84,6 +88,7 @@ class DaemonRequest:
 @dataclass
 class DaemonResponse:
     """Response from the external daemon."""
+
     request_id: str
     decision: DaemonDecision
     reasoning: str
@@ -104,22 +109,20 @@ class DaemonResponse:
             metadata=data.get("metadata", {}),
             timestamp=data.get("timestamp", datetime.utcnow().isoformat() + "Z"),
             deadline=data.get("deadline"),
-            ceremony_steps=data.get("ceremony_steps")
+            ceremony_steps=data.get("ceremony_steps"),
         )
 
     @classmethod
     def deny(cls, request_id: str, reason: str) -> "DaemonResponse":
         """Create a denial response."""
         return cls(
-            request_id=request_id,
-            decision=DaemonDecision.DENY,
-            reasoning=reason,
-            metadata={}
+            request_id=request_id, decision=DaemonDecision.DENY, reasoning=reason, metadata={}
         )
 
 
 class ExternalDaemonConnectionError(Exception):
     """Raised when connection to external daemon fails."""
+
     pass
 
 
@@ -149,7 +152,7 @@ class ExternalDaemonClient:
         timeout: float = DEFAULT_TIMEOUT,
         retry_attempts: int = 3,
         retry_delay: float = 0.5,
-        fail_open: bool = False  # Default to fail-closed (DENY on errors)
+        fail_open: bool = False,  # Default to fail-closed (DENY on errors)
     ):
         """
         Initialize the external daemon client.
@@ -164,8 +167,7 @@ class ExternalDaemonClient:
             fail_open: If True, failures result in ALLOW (dangerous!)
         """
         self.socket_path = socket_path or os.getenv(
-            "BOUNDARY_DAEMON_SOCKET",
-            self.DEFAULT_SOCKET_PATH
+            "BOUNDARY_DAEMON_SOCKET", self.DEFAULT_SOCKET_PATH
         )
         self.http_url = http_url or os.getenv("BOUNDARY_DAEMON_URL")
         self.api_key = api_key or os.getenv("BOUNDARY_DAEMON_API_KEY")
@@ -185,7 +187,7 @@ class ExternalDaemonClient:
             "requests_succeeded": 0,
             "requests_failed": 0,
             "connection_errors": 0,
-            "last_request_time": None
+            "last_request_time": None,
         }
 
         # Initialize HTTP session if needed
@@ -195,6 +197,7 @@ class ExternalDaemonClient:
     def _init_http_session(self) -> None:
         """Initialize HTTP session with connection pooling."""
         import requests
+
         self._session = requests.Session()
         if self.api_key:
             self._session.headers["Authorization"] = f"Bearer {self.api_key}"
@@ -296,7 +299,7 @@ class ExternalDaemonClient:
             except Exception as e:
                 last_error = e
                 if attempt < self.retry_attempts - 1:
-                    delay = self.retry_delay * (2 ** attempt)
+                    delay = self.retry_delay * (2**attempt)
                     logger.warning(
                         f"Daemon request failed (attempt {attempt + 1}), retrying in {delay}s: {e}"
                     )
@@ -313,12 +316,12 @@ class ExternalDaemonClient:
                 request_id=request.request_id,
                 decision=DaemonDecision.ALLOW,
                 reasoning="Daemon unavailable, fail-open mode active",
-                metadata={"fallback": True}
+                metadata={"fallback": True},
             )
         else:
             return DaemonResponse.deny(
                 request_id=request.request_id,
-                reason=f"Daemon unavailable (fail-closed): {last_error}"
+                reason=f"Daemon unavailable (fail-closed): {last_error}",
             )
 
     # Maximum response size to prevent DoS via large responses (10MB)
@@ -352,7 +355,7 @@ class ExternalDaemonClient:
             response_dict = json.loads(response_data.decode().strip())
             return DaemonResponse.from_dict(response_dict)
 
-        except socket.timeout:
+        except TimeoutError:
             raise ExternalDaemonConnectionError("Socket timeout")
         except json.JSONDecodeError as e:
             raise ExternalDaemonConnectionError(f"Invalid response JSON: {e}")
@@ -373,34 +376,32 @@ class ExternalDaemonClient:
                 OperationType.EVENT_LOG: "/events",
                 OperationType.CEREMONY_REQUEST: "/ceremony/request",
                 OperationType.CEREMONY_CONFIRM: "/ceremony/confirm",
-                OperationType.HEALTH_CHECK: "/health"
+                OperationType.HEALTH_CHECK: "/health",
             }
 
             endpoint = endpoint_map.get(request.operation, "/request")
             url = urljoin(self.http_url, endpoint)
 
             # Determine HTTP method
-            if request.operation in [OperationType.MODE_SET, OperationType.EVENT_LOG,
-                                      OperationType.CEREMONY_REQUEST, OperationType.CEREMONY_CONFIRM]:
+            if request.operation in [
+                OperationType.MODE_SET,
+                OperationType.EVENT_LOG,
+                OperationType.CEREMONY_REQUEST,
+                OperationType.CEREMONY_CONFIRM,
+            ]:
                 method = "POST"
             else:
                 method = "POST"  # Use POST for all gated operations
 
             response = self._session.request(
-                method,
-                url,
-                json=request.to_dict(),
-                timeout=self.timeout
+                method, url, json=request.to_dict(), timeout=self.timeout
             )
 
             if response.status_code == 200:
                 return DaemonResponse.from_dict(response.json())
             else:
                 logger.warning(f"Daemon HTTP error {response.status_code}: {response.text}")
-                return DaemonResponse.deny(
-                    request.request_id,
-                    f"HTTP error {response.status_code}"
-                )
+                return DaemonResponse.deny(request.request_id, f"HTTP error {response.status_code}")
 
         except Exception as e:
             raise ExternalDaemonConnectionError(f"HTTP request failed: {e}")
@@ -409,12 +410,7 @@ class ExternalDaemonClient:
     # RecallGate - Memory Access Control
     # =========================================================================
 
-    def check_recall(
-        self,
-        memory_class: int,
-        purpose: str,
-        requester: str
-    ) -> DaemonResponse:
+    def check_recall(self, memory_class: int, purpose: str, requester: str) -> DaemonResponse:
         """
         Query RecallGate for memory access permission.
 
@@ -428,14 +424,8 @@ class ExternalDaemonClient:
         """
         request = DaemonRequest(
             operation=OperationType.RECALL_GATE,
-            context={
-                "requester": requester,
-                "process": "NatLangChain"
-            },
-            parameters={
-                "memory_class": memory_class,
-                "purpose": purpose
-            }
+            context={"requester": requester, "process": "NatLangChain"},
+            parameters={"memory_class": memory_class, "purpose": purpose},
         )
         return self._send_request(request)
 
@@ -444,10 +434,7 @@ class ExternalDaemonClient:
     # =========================================================================
 
     def check_tool(
-        self,
-        tool_name: str,
-        parameters: dict[str, Any],
-        requester: str
+        self, tool_name: str, parameters: dict[str, Any], requester: str
     ) -> DaemonResponse:
         """
         Query ToolGate for tool execution permission.
@@ -462,14 +449,8 @@ class ExternalDaemonClient:
         """
         request = DaemonRequest(
             operation=OperationType.TOOL_GATE,
-            context={
-                "requester": requester,
-                "process": "NatLangChain"
-            },
-            parameters={
-                "tool": tool_name,
-                "tool_parameters": parameters
-            }
+            context={"requester": requester, "process": "NatLangChain"},
+            parameters={"tool": tool_name, "tool_parameters": parameters},
         )
         return self._send_request(request)
 
@@ -485,18 +466,11 @@ class ExternalDaemonClient:
             DaemonResponse with mode in metadata
         """
         request = DaemonRequest(
-            operation=OperationType.MODE_QUERY,
-            context={"process": "NatLangChain"},
-            parameters={}
+            operation=OperationType.MODE_QUERY, context={"process": "NatLangChain"}, parameters={}
         )
         return self._send_request(request)
 
-    def set_mode(
-        self,
-        mode: str,
-        reason: str,
-        requester: str
-    ) -> DaemonResponse:
+    def set_mode(self, mode: str, reason: str, requester: str) -> DaemonResponse:
         """
         Request mode change from the daemon.
 
@@ -510,14 +484,8 @@ class ExternalDaemonClient:
         """
         request = DaemonRequest(
             operation=OperationType.MODE_SET,
-            context={
-                "requester": requester,
-                "process": "NatLangChain"
-            },
-            parameters={
-                "target_mode": mode,
-                "reason": reason
-            }
+            context={"requester": requester, "process": "NatLangChain"},
+            parameters={"target_mode": mode, "reason": reason},
         )
         return self._send_request(request)
 
@@ -526,10 +494,7 @@ class ExternalDaemonClient:
     # =========================================================================
 
     def evaluate_policy(
-        self,
-        action: str,
-        resource: str,
-        context: dict[str, Any]
+        self, action: str, resource: str, context: dict[str, Any]
     ) -> DaemonResponse:
         """
         Evaluate a policy decision.
@@ -544,14 +509,8 @@ class ExternalDaemonClient:
         """
         request = DaemonRequest(
             operation=OperationType.POLICY_EVAL,
-            context={
-                "process": "NatLangChain",
-                **context
-            },
-            parameters={
-                "action": action,
-                "resource": resource
-            }
+            context={"process": "NatLangChain", **context},
+            parameters={"action": action, "resource": resource},
         )
         return self._send_request(request)
 
@@ -560,10 +519,7 @@ class ExternalDaemonClient:
     # =========================================================================
 
     def log_event(
-        self,
-        event_type: str,
-        event_data: dict[str, Any],
-        severity: int = 3
+        self, event_type: str, event_data: dict[str, Any], severity: int = 3
     ) -> DaemonResponse:
         """
         Forward an event to the daemon for unified audit trail.
@@ -579,11 +535,7 @@ class ExternalDaemonClient:
         request = DaemonRequest(
             operation=OperationType.EVENT_LOG,
             context={"process": "NatLangChain"},
-            parameters={
-                "event_type": event_type,
-                "event_data": event_data,
-                "severity": severity
-            }
+            parameters={"event_type": event_type, "event_data": event_data, "severity": severity},
         )
         return self._send_request(request)
 
@@ -592,11 +544,7 @@ class ExternalDaemonClient:
     # =========================================================================
 
     def request_ceremony(
-        self,
-        ceremony_type: str,
-        reason: str,
-        requester: str,
-        target: str
+        self, ceremony_type: str, reason: str, requester: str, target: str
     ) -> DaemonResponse:
         """
         Request a human override ceremony.
@@ -612,23 +560,13 @@ class ExternalDaemonClient:
         """
         request = DaemonRequest(
             operation=OperationType.CEREMONY_REQUEST,
-            context={
-                "requester": requester,
-                "process": "NatLangChain"
-            },
-            parameters={
-                "ceremony_type": ceremony_type,
-                "reason": reason,
-                "target": target
-            }
+            context={"requester": requester, "process": "NatLangChain"},
+            parameters={"ceremony_type": ceremony_type, "reason": reason, "target": target},
         )
         return self._send_request(request)
 
     def confirm_ceremony(
-        self,
-        ceremony_id: str,
-        confirmation_code: str,
-        confirmed_by: str
+        self, ceremony_id: str, confirmation_code: str, confirmed_by: str
     ) -> DaemonResponse:
         """
         Confirm a human override ceremony.
@@ -643,14 +581,8 @@ class ExternalDaemonClient:
         """
         request = DaemonRequest(
             operation=OperationType.CEREMONY_CONFIRM,
-            context={
-                "confirmed_by": confirmed_by,
-                "process": "NatLangChain"
-            },
-            parameters={
-                "ceremony_id": ceremony_id,
-                "confirmation_code": confirmation_code
-            }
+            context={"confirmed_by": confirmed_by, "process": "NatLangChain"},
+            parameters={"ceremony_id": ceremony_id, "confirmation_code": confirmation_code},
         )
         return self._send_request(request)
 
@@ -666,9 +598,7 @@ class ExternalDaemonClient:
             Health status dictionary
         """
         request = DaemonRequest(
-            operation=OperationType.HEALTH_CHECK,
-            context={"process": "NatLangChain"},
-            parameters={}
+            operation=OperationType.HEALTH_CHECK, context={"process": "NatLangChain"}, parameters={}
         )
 
         try:
@@ -678,14 +608,14 @@ class ExternalDaemonClient:
                 "connected": self._connected,
                 "transport": "socket" if self._socket else "http" if self._session else "none",
                 "details": response.metadata,
-                "stats": self._stats.copy()
+                "stats": self._stats.copy(),
             }
         except Exception as e:
             return {
                 "healthy": False,
                 "connected": False,
                 "error": str(e),
-                "stats": self._stats.copy()
+                "stats": self._stats.copy(),
             }
 
     def get_stats(self) -> dict[str, Any]:

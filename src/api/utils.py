@@ -5,11 +5,10 @@ This module contains common utilities, decorators, and helpers
 used across all API blueprints.
 """
 
-import ipaddress
 import os
 import secrets
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from functools import wraps
 from typing import Any
 
@@ -45,11 +44,9 @@ DEFAULT_HISTORY_LIMIT = int(os.getenv("NATLANGCHAIN_DEFAULT_HISTORY_LIMIT", "50"
 # Validation Utilities
 # ============================================================
 
+
 def validate_pagination_params(
-    limit: int,
-    offset: int = 0,
-    max_limit: int = MAX_RESULTS,
-    max_offset: int = MAX_OFFSET
+    limit: int, offset: int = 0, max_limit: int = MAX_RESULTS, max_offset: int = MAX_OFFSET
 ) -> tuple:
     """
     Validate and bound pagination parameters to prevent DoS attacks.
@@ -76,7 +73,7 @@ def validate_json_schema(
     data: dict[str, Any],
     required_fields: dict[str, type],
     optional_fields: dict[str, type] | None = None,
-    max_lengths: dict[str, int] | None = None
+    max_lengths: dict[str, int] | None = None,
 ) -> tuple:
     """
     Validate JSON payload against a simple schema.
@@ -125,16 +122,9 @@ def validate_json_schema(
 # ============================================================
 # Import from standalone module (no Flask dependency for testing)
 from .ssrf_protection import (
-    BLOCKED_IP_RANGES,
-    BLOCKED_HOSTS,
     TRUSTED_PROXIES,
-    is_valid_ip,
-    is_private_ip,
-    validate_url_for_ssrf,
-    is_safe_peer_endpoint,
     get_client_ip_from_headers,
 )
-
 
 # ============================================================
 # IP and Rate Limiting Utilities
@@ -156,9 +146,9 @@ def get_client_ip() -> str:
     """
     # Use the standalone implementation with Flask request context
     return get_client_ip_from_headers(
-        remote_addr=request.remote_addr or 'unknown',
-        xff_header=request.headers.get('X-Forwarded-For'),
-        trusted_proxies=TRUSTED_PROXIES
+        remote_addr=request.remote_addr or "unknown",
+        xff_header=request.headers.get("X-Forwarded-For"),
+        trusted_proxies=TRUSTED_PROXIES,
     )
 
 
@@ -173,10 +163,7 @@ def check_rate_limit() -> dict[str, Any] | None:
     current_time = time.time()
 
     if client_ip not in rate_limit_store:
-        rate_limit_store[client_ip] = {
-            "count": 0,
-            "window_start": current_time
-        }
+        rate_limit_store[client_ip] = {"count": 0, "window_start": current_time}
 
     client_data = rate_limit_store[client_ip]
 
@@ -189,7 +176,7 @@ def check_rate_limit() -> dict[str, Any] | None:
     if client_data["count"] >= RATE_LIMIT_REQUESTS:
         return {
             "error": "Rate limit exceeded",
-            "retry_after": int(RATE_LIMIT_WINDOW - (current_time - client_data["window_start"]))
+            "retry_after": int(RATE_LIMIT_WINDOW - (current_time - client_data["window_start"])),
         }
 
     client_data["count"] += 1
@@ -200,38 +187,43 @@ def check_rate_limit() -> dict[str, Any] | None:
 # Authentication Decorator
 # ============================================================
 
+
 def require_api_key(f):
     """Decorator to require API key authentication."""
+
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not API_KEY_REQUIRED:
             return f(*args, **kwargs)
 
         # Check for API key in header
-        provided_key = request.headers.get('X-API-Key')
+        provided_key = request.headers.get("X-API-Key")
 
         if not provided_key:
-            return jsonify({
-                "error": "API key required",
-                "hint": "Provide API key in X-API-Key header"
-            }), 401
+            return jsonify(
+                {"error": "API key required", "hint": "Provide API key in X-API-Key header"}
+            ), 401
 
         if not API_KEY:
-            return jsonify({
-                "error": "Server API key not configured",
-                "hint": "Set NATLANGCHAIN_API_KEY environment variable"
-            }), 503
+            return jsonify(
+                {
+                    "error": "Server API key not configured",
+                    "hint": "Set NATLANGCHAIN_API_KEY environment variable",
+                }
+            ), 503
 
         if not secrets.compare_digest(provided_key, API_KEY):
             return jsonify({"error": "Invalid API key"}), 403
 
         return f(*args, **kwargs)
+
     return decorated_function
 
 
 # ============================================================
 # Manager Registry
 # ============================================================
+
 
 @dataclass
 class ManagerRegistry:
@@ -241,6 +233,7 @@ class ManagerRegistry:
     This provides a clean interface for accessing optional features
     and makes it easy to check feature availability.
     """
+
     # LLM-based validators
     llm_validator: Any = None
     hybrid_validator: Any = None

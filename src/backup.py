@@ -48,17 +48,18 @@ import shutil
 import threading
 import time
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from dataclasses import dataclass
+from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 class BackupBackend(Enum):
     """Supported backup storage backends."""
+
     LOCAL = "local"
     S3 = "s3"
     GCS = "gcs"
@@ -66,6 +67,7 @@ class BackupBackend(Enum):
 
 class BackupType(Enum):
     """Backup classification for retention policies."""
+
     DAILY = "daily"
     WEEKLY = "weekly"
     MONTHLY = "monthly"
@@ -284,6 +286,7 @@ class S3BackupStorage(BackupStorage):
         if self._client is None:
             try:
                 import boto3
+
                 self._client = boto3.client("s3", region_name=self.region)
             except ImportError:
                 raise ImportError("boto3 required for S3 backup. Install with: pip install boto3")
@@ -341,7 +344,7 @@ class S3BackupStorage(BackupStorage):
                 key = obj["Key"]
                 if key.endswith(".gz") and not key.endswith(".meta.json"):
                     # Remove prefix to get relative path
-                    rel_path = key[len(self.prefix):] if self.prefix else key
+                    rel_path = key[len(self.prefix) :] if self.prefix else key
                     files.append(rel_path)
             return files
         except Exception as e:
@@ -373,6 +376,7 @@ class GCSBackupStorage(BackupStorage):
         if self._bucket is None:
             try:
                 from google.cloud import storage
+
                 self._client = storage.Client()
                 self._bucket = self._client.bucket(self.bucket_name)
             except ImportError:
@@ -433,7 +437,7 @@ class GCSBackupStorage(BackupStorage):
             files = []
             for blob in blobs:
                 if blob.name.endswith(".gz") and not blob.name.endswith(".meta.json"):
-                    rel_path = blob.name[len(self.prefix):] if self.prefix else blob.name
+                    rel_path = blob.name[len(self.prefix) :] if self.prefix else blob.name
                     files.append(rel_path)
             return files
         except Exception as e:
@@ -464,9 +468,7 @@ class BackupManager:
     """
 
     def __init__(
-        self,
-        config: BackupConfig | None = None,
-        chain_data_file: str = "chain_data.json"
+        self, config: BackupConfig | None = None, chain_data_file: str = "chain_data.json"
     ):
         self.config = config or BackupConfig.from_env()
         self.chain_data_file = chain_data_file
@@ -485,17 +487,12 @@ class BackupManager:
             if not self.config.s3_bucket:
                 raise ValueError("S3 bucket not configured. Set BACKUP_S3_BUCKET")
             return S3BackupStorage(
-                self.config.s3_bucket,
-                self.config.s3_prefix,
-                self.config.s3_region
+                self.config.s3_bucket, self.config.s3_prefix, self.config.s3_region
             )
         elif backend == "gcs":
             if not self.config.gcs_bucket:
                 raise ValueError("GCS bucket not configured. Set BACKUP_GCS_BUCKET")
-            return GCSBackupStorage(
-                self.config.gcs_bucket,
-                self.config.gcs_prefix
-            )
+            return GCSBackupStorage(self.config.gcs_bucket, self.config.gcs_prefix)
         else:
             raise ValueError(f"Unknown backup backend: {backend}")
 
@@ -524,9 +521,7 @@ class BackupManager:
         return f"natlangchain_{ts_str}_{backup_type.value}.json.gz"
 
     def create_backup(
-        self,
-        backup_type: BackupType | None = None,
-        source_file: str | None = None
+        self, backup_type: BackupType | None = None, source_file: str | None = None
     ) -> BackupMetadata | None:
         """
         Create a backup of the blockchain data.
@@ -553,17 +548,17 @@ class BackupManager:
                 backup_name = self._generate_backup_name(timestamp, backup_type)
 
                 # Read and parse chain data for metadata
-                with open(source, "r") as f:
+                with open(source) as f:
                     chain_data = json.load(f)
 
                 chain_blocks = len(chain_data.get("chain", []))
                 chain_entries = sum(
-                    len(block.get("entries", []))
-                    for block in chain_data.get("chain", [])
+                    len(block.get("entries", [])) for block in chain_data.get("chain", [])
                 )
 
                 # Create temporary compressed file
                 import tempfile
+
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".gz") as tmp:
                     tmp_path = tmp.name
 
@@ -571,9 +566,13 @@ class BackupManager:
                     # Compress
                     original_size = os.path.getsize(source)
 
-                    with open(source, "rb") as f_in:
-                        with gzip.open(tmp_path, "wb", compresslevel=self.config.compression_level) as f_out:
-                            shutil.copyfileobj(f_in, f_out)
+                    with (
+                        open(source, "rb") as f_in,
+                        gzip.open(
+                            tmp_path, "wb", compresslevel=self.config.compression_level
+                        ) as f_out,
+                    ):
+                        shutil.copyfileobj(f_in, f_out)
 
                     compressed_size = os.path.getsize(tmp_path)
                     checksum = self._compute_checksum(tmp_path)
@@ -594,7 +593,9 @@ class BackupManager:
                         checksum_sha256=checksum,
                         chain_blocks=chain_blocks,
                         chain_entries=chain_entries,
-                        compression_ratio=compressed_size / original_size if original_size > 0 else 1.0,
+                        compression_ratio=compressed_size / original_size
+                        if original_size > 0
+                        else 1.0,
                         backend=self.config.backend,
                         location=backup_name,
                     )
@@ -679,9 +680,8 @@ class BackupManager:
                 return False
 
             # Decompress
-            with gzip.open(tmp_path, "rb") as f_in:
-                with open(target, "wb") as f_out:
-                    shutil.copyfileobj(f_in, f_out)
+            with gzip.open(tmp_path, "rb") as f_in, open(target, "wb") as f_out:
+                shutil.copyfileobj(f_in, f_out)
 
             os.unlink(tmp_path)
             logger.info(f"Backup restored to {target}")
@@ -756,30 +756,33 @@ class BackupManager:
             for file in files:
                 # Try to load metadata
                 import tempfile
+
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as tmp:
                     tmp_path = tmp.name
 
                 try:
                     if self.storage.download(file + ".meta.json", tmp_path):
-                        with open(tmp_path, "r") as f:
+                        with open(tmp_path) as f:
                             meta_dict = json.load(f)
                         backups.append(BackupMetadata.from_dict(meta_dict))
                 except Exception:
                     # Create minimal metadata if meta file not found
-                    backups.append(BackupMetadata(
-                        backup_id="unknown",
-                        timestamp="unknown",
-                        backup_type=BackupType.MANUAL,
-                        source_file="unknown",
-                        size_bytes=0,
-                        compressed_size_bytes=0,
-                        checksum_sha256="unknown",
-                        chain_blocks=0,
-                        chain_entries=0,
-                        compression_ratio=0,
-                        backend=self.config.backend,
-                        location=file,
-                    ))
+                    backups.append(
+                        BackupMetadata(
+                            backup_id="unknown",
+                            timestamp="unknown",
+                            backup_type=BackupType.MANUAL,
+                            source_file="unknown",
+                            size_bytes=0,
+                            compressed_size_bytes=0,
+                            checksum_sha256="unknown",
+                            chain_blocks=0,
+                            chain_entries=0,
+                            compression_ratio=0,
+                            backend=self.config.backend,
+                            location=file,
+                        )
+                    )
                 finally:
                     if os.path.exists(tmp_path):
                         os.unlink(tmp_path)
@@ -794,9 +797,7 @@ class BackupManager:
 
     def _scheduler_loop(self):
         """Background scheduler loop."""
-        logger.info(
-            f"Backup scheduler started (interval: {self.config.schedule_interval_hours}h)"
-        )
+        logger.info(f"Backup scheduler started (interval: {self.config.schedule_interval_hours}h)")
 
         while not self._stop_scheduler.is_set():
             try:
@@ -830,9 +831,7 @@ class BackupManager:
 
         self._stop_scheduler.clear()
         self._scheduler_thread = threading.Thread(
-            target=self._scheduler_loop,
-            name="BackupScheduler",
-            daemon=True
+            target=self._scheduler_loop, name="BackupScheduler", daemon=True
         )
         self._scheduler_thread.start()
 
@@ -850,10 +849,7 @@ def main():
 
     parser = argparse.ArgumentParser(description="NatLangChain Backup Manager")
     parser.add_argument(
-        "--backend",
-        choices=["local", "s3", "gcs"],
-        default="local",
-        help="Backup storage backend"
+        "--backend", choices=["local", "s3", "gcs"], default="local", help="Backup storage backend"
     )
     parser.add_argument("--bucket", help="S3/GCS bucket name")
     parser.add_argument("--local-path", default="./backups", help="Local backup path")
@@ -867,7 +863,7 @@ def main():
         "--type",
         choices=["daily", "weekly", "monthly", "manual"],
         default="manual",
-        help="Backup type"
+        help="Backup type",
     )
 
     # Restore command
@@ -938,8 +934,5 @@ def main():
 
 
 if __name__ == "__main__":
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(message)s"
-    )
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
     exit(main())

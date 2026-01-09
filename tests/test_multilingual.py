@@ -14,7 +14,7 @@ Tests cover:
 import os
 import sys
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 import unittest
 
@@ -146,27 +146,21 @@ class TestMultilingualContract(unittest.TestCase):
     def test_add_aligned_language(self):
         """Test adding aligned language."""
         self.contract.add_language("en", LanguageRole.ANCHOR, "Test contract")
-        success, _msg = self.contract.add_language(
-            "es", LanguageRole.ALIGNED, "Contrato de prueba"
-        )
+        success, _msg = self.contract.add_language("es", LanguageRole.ALIGNED, "Contrato de prueba")
         self.assertTrue(success)
         self.assertEqual(len(self.contract.aligned_entries), 1)
 
     def test_add_informational_language(self):
         """Test adding informational language."""
         self.contract.add_language("en", LanguageRole.ANCHOR, "Test")
-        success, _msg = self.contract.add_language(
-            "ja", LanguageRole.INFORMATIONAL, "テスト"
-        )
+        success, _msg = self.contract.add_language("ja", LanguageRole.INFORMATIONAL, "テスト")
         self.assertTrue(success)
         self.assertEqual(len(self.contract.informational_entries), 1)
 
     def test_only_one_anchor_allowed(self):
         """Contract can only have one anchor language."""
         self.contract.add_language("en", LanguageRole.ANCHOR, "Test")
-        success, msg = self.contract.add_language(
-            "fr", LanguageRole.ANCHOR, "Test français"
-        )
+        success, msg = self.contract.add_language("fr", LanguageRole.ANCHOR, "Test français")
         self.assertFalse(success)
         self.assertIn("already has an anchor", msg)
 
@@ -205,25 +199,16 @@ class TestDriftMeasurement(unittest.TestCase):
 
     def test_validator_actions(self):
         """Test validator actions per drift level."""
+        self.assertEqual(self.manager.get_validator_action(DriftLevel.D0), ValidatorAction.ACCEPT)
+        self.assertEqual(self.manager.get_validator_action(DriftLevel.D1), ValidatorAction.ACCEPT)
         self.assertEqual(
-            self.manager.get_validator_action(DriftLevel.D0),
-            ValidatorAction.ACCEPT
+            self.manager.get_validator_action(DriftLevel.D2), ValidatorAction.PAUSE_CLARIFY
         )
         self.assertEqual(
-            self.manager.get_validator_action(DriftLevel.D1),
-            ValidatorAction.ACCEPT
+            self.manager.get_validator_action(DriftLevel.D3), ValidatorAction.REQUIRE_RATIFICATION
         )
         self.assertEqual(
-            self.manager.get_validator_action(DriftLevel.D2),
-            ValidatorAction.PAUSE_CLARIFY
-        )
-        self.assertEqual(
-            self.manager.get_validator_action(DriftLevel.D3),
-            ValidatorAction.REQUIRE_RATIFICATION
-        )
-        self.assertEqual(
-            self.manager.get_validator_action(DriftLevel.D4),
-            ValidatorAction.REJECT_ESCALATE
+            self.manager.get_validator_action(DriftLevel.D4), ValidatorAction.REJECT_ESCALATE
         )
 
     def test_similar_content_low_drift(self):
@@ -258,10 +243,16 @@ class TestContractValidation(unittest.TestCase):
     def test_validate_simple_contract(self):
         """Test validating a simple multilingual contract."""
         contract = self.manager.create_contract("test-001")
-        contract.add_language("en", LanguageRole.ANCHOR,
-            "This agreement is between Party A and Party B for software development.")
-        contract.add_language("es", LanguageRole.ALIGNED,
-            "Este acuerdo es entre la Parte A y la Parte B para desarrollo de software.")
+        contract.add_language(
+            "en",
+            LanguageRole.ANCHOR,
+            "This agreement is between Party A and Party B for software development.",
+        )
+        contract.add_language(
+            "es",
+            LanguageRole.ALIGNED,
+            "Este acuerdo es entre la Parte A y la Parte B para desarrollo de software.",
+        )
 
         valid, report = self.manager.validate_contract_alignment(contract)
 
@@ -274,7 +265,9 @@ class TestContractValidation(unittest.TestCase):
         contract = self.manager.create_contract("test-002")
         contract.add_language("en", LanguageRole.ANCHOR, "Test content for the contract.")
         contract.add_language("es", LanguageRole.ALIGNED, "Contenido de prueba.")
-        contract.add_language("de", LanguageRole.ALIGNED, "Completely different unrelated text here.")
+        contract.add_language(
+            "de", LanguageRole.ALIGNED, "Completely different unrelated text here."
+        )
 
         _valid, report = self.manager.validate_contract_alignment(contract)
 
@@ -295,7 +288,9 @@ class TestContractValidation(unittest.TestCase):
         """Informational languages are excluded from drift computation."""
         contract = self.manager.create_contract("test-004")
         contract.add_language("en", LanguageRole.ANCHOR, "Test content")
-        contract.add_language("ja", LanguageRole.INFORMATIONAL, "Completely unrelated Japanese text")
+        contract.add_language(
+            "ja", LanguageRole.INFORMATIONAL, "Completely unrelated Japanese text"
+        )
 
         valid, report = self.manager.validate_contract_alignment(contract)
 
@@ -351,10 +346,7 @@ class TestCanonicalTermMapping(unittest.TestCase):
 
     def test_create_term_mapping(self):
         """Test creating a term mapping."""
-        mapping = CanonicalTermMapping(
-            term_id="PROSE_CONTRACT",
-            anchor_term="Prose Contract"
-        )
+        mapping = CanonicalTermMapping(term_id="PROSE_CONTRACT", anchor_term="Prose Contract")
         mapping.add_translation("es", "Contrato en Prosa")
         mapping.add_translation("fr", "Contrat en Prose")
 
@@ -371,7 +363,7 @@ class TestCanonicalTermMapping(unittest.TestCase):
             term_id="RATIFICATION",
             anchor_term="Ratification",
             translated_term="Ratificación",
-            language_code="es"
+            language_code="es",
         )
 
         self.assertTrue(success)
@@ -382,9 +374,7 @@ class TestCanonicalTermMapping(unittest.TestCase):
         self.contract.add_language("en", LanguageRole.ANCHOR, "Test")
 
         # First add a term
-        self.manager.validate_term_mapping(
-            self.contract, "TERM1", "Original", "Traducción", "es"
-        )
+        self.manager.validate_term_mapping(self.contract, "TERM1", "Original", "Traducción", "es")
 
         # Try to add with different anchor term
         success, msg = self.manager.validate_term_mapping(
@@ -407,9 +397,7 @@ class TestMultilingualRatification(unittest.TestCase):
     def test_create_ratification(self):
         """Test creating multilingual ratification."""
         ratification = self.manager.create_multilingual_ratification(
-            self.contract,
-            ratifier_id="user-001",
-            reviewed_languages=["en", "es"]
+            self.contract, ratifier_id="user-001", reviewed_languages=["en", "es"]
         )
 
         self.assertEqual(ratification.anchor_language, "en")
@@ -430,9 +418,7 @@ class TestMultilingualRatification(unittest.TestCase):
 
     def test_ratification_requires_reviewed_languages(self):
         """Ratification requires at least one reviewed language."""
-        ratification = self.manager.create_multilingual_ratification(
-            self.contract, "user-001", []
-        )
+        ratification = self.manager.create_multilingual_ratification(self.contract, "user-001", [])
 
         success, _msg = self.manager.confirm_ratification(ratification)
         self.assertFalse(success)
@@ -556,7 +542,7 @@ class TestClauseDriftResult(unittest.TestCase):
             clause_id="clause-1",
             anchor_text="The contractor must deliver the software.",
             aligned_text="El contratista debe entregar el software.",
-            language_code="es"
+            language_code="es",
         )
 
         self.assertIsInstance(result, ClauseDriftResult)

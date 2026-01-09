@@ -165,9 +165,7 @@ class LLMProvider(ABC):
             json_str = self._extract_json_from_response(response_text)
             return json.loads(json_str)
         except json.JSONDecodeError as e:
-            logger.warning(
-                "Failed to parse JSON from %s response: %s", self.name, str(e)
-            )
+            logger.warning("Failed to parse JSON from %s response: %s", self.name, str(e))
             return None
 
 
@@ -201,8 +199,8 @@ class AnthropicProvider(LLMProvider):
         if not self.config.api_key:
             return False
         try:
-            from anthropic import Anthropic
             import httpx
+            from anthropic import Anthropic
 
             # Create client with timeout configuration
             timeout = httpx.Timeout(
@@ -234,8 +232,8 @@ class AnthropicProvider(LLMProvider):
 
         start_time = time.time()
         try:
-            from anthropic import Anthropic, APITimeoutError
             import httpx
+            from anthropic import Anthropic
 
             if self._client is None:
                 # Create client with timeout configuration
@@ -289,7 +287,7 @@ class AnthropicProvider(LLMProvider):
                     "Anthropic API timeout after %.1fs (limit: %ds): %s",
                     latency / 1000,
                     self.config.timeout,
-                    str(e)
+                    str(e),
                 )
                 return LLMResponse(
                     success=False,
@@ -334,8 +332,8 @@ class OpenAIProvider(LLMProvider):
         if not self.config.api_key:
             return False
         try:
-            from openai import OpenAI
             import httpx
+            from openai import OpenAI
 
             # Create client with timeout configuration
             timeout = httpx.Timeout(
@@ -367,8 +365,8 @@ class OpenAIProvider(LLMProvider):
 
         start_time = time.time()
         try:
-            from openai import OpenAI
             import httpx
+            from openai import OpenAI
 
             if self._client is None:
                 timeout = httpx.Timeout(
@@ -421,7 +419,7 @@ class OpenAIProvider(LLMProvider):
                     "OpenAI API timeout after %.1fs (limit: %ds): %s",
                     latency / 1000,
                     self.config.timeout,
-                    str(e)
+                    str(e),
                 )
                 return LLMResponse(
                     success=False,
@@ -573,8 +571,7 @@ class GrokProvider(LLMProvider):
             return True
         except ImportError:
             logger.warning(
-                "openai package not installed (required for Grok). "
-                "Install with: pip install openai"
+                "openai package not installed (required for Grok). Install with: pip install openai"
             )
             return False
         except Exception as e:
@@ -692,8 +689,7 @@ class OllamaProvider(LLMProvider):
             return False
         except requests.RequestException:
             logger.warning(
-                "Ollama not available at %s. "
-                "Start with: ollama serve",
+                "Ollama not available at %s. Start with: ollama serve",
                 self.config.base_url,
             )
             return False
@@ -1105,13 +1101,9 @@ class ProviderManager:
         Returns:
             List of matching providers
         """
-        return [
-            p for p in self.providers.values() if p.config.provider_type == provider_type
-        ]
+        return [p for p in self.providers.values() if p.config.provider_type == provider_type]
 
-    def get_providers_by_strength(
-        self, strength: ProviderStrength
-    ) -> list[LLMProvider]:
+    def get_providers_by_strength(self, strength: ProviderStrength) -> list[LLMProvider]:
         """
         Get providers with a specific strength.
 
@@ -1121,9 +1113,7 @@ class ProviderManager:
         Returns:
             List of matching providers
         """
-        return [
-            p for p in self.providers.values() if p.config.strength == strength
-        ]
+        return [p for p in self.providers.values() if p.config.strength == strength]
 
     @property
     def provider_count(self) -> int:
@@ -1133,18 +1123,12 @@ class ProviderManager:
     @property
     def has_cloud_providers(self) -> bool:
         """Whether any cloud providers are available."""
-        return any(
-            p.config.provider_type == ProviderType.CLOUD
-            for p in self.providers.values()
-        )
+        return any(p.config.provider_type == ProviderType.CLOUD for p in self.providers.values())
 
     @property
     def has_local_providers(self) -> bool:
         """Whether any local providers are available."""
-        return any(
-            p.config.provider_type == ProviderType.LOCAL
-            for p in self.providers.values()
-        )
+        return any(p.config.provider_type == ProviderType.LOCAL for p in self.providers.values())
 
 
 # =============================================================================

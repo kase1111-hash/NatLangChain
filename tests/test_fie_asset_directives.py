@@ -9,7 +9,7 @@ import sys
 import unittest
 from datetime import datetime, timedelta
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from blockchain import NatLangChain, NaturalLanguageEntry
 
@@ -25,16 +25,16 @@ class TestFIEAssetDirectives(unittest.TestCase):
             enable_deduplication=False,
             enable_rate_limiting=False,
             enable_timestamp_validation=False,
-            enable_metadata_sanitization=False
+            enable_metadata_sanitization=False,
         )
 
     def test_record_crypto_wallet_directive(self):
         """Test recording directive for crypto wallet transfer."""
         entry = NaturalLanguageEntry(
             content="Asset Directive: Upon my passing, transfer all cryptocurrency assets "
-                    "in wallet 0xMyWallet123 to my daughter Sarah (0xSarahWallet456). "
-                    "This includes ETH, BTC, and all ERC-20 tokens. The transfer should "
-                    "occur within 30 days of verified death.",
+            "in wallet 0xMyWallet123 to my daughter Sarah (0xSarahWallet456). "
+            "This includes ETH, BTC, and all ERC-20 tokens. The transfer should "
+            "occur within 30 days of verified death.",
             author="john_doe",
             intent="Posthumous crypto transfer",
             metadata={
@@ -46,37 +46,31 @@ class TestFIEAssetDirectives(unittest.TestCase):
                         "asset_type": "crypto_wallet",
                         "wallet_address": "0xMyWallet123",
                         "chain": "ethereum",
-                        "includes": ["ETH", "all_erc20"]
+                        "includes": ["ETH", "all_erc20"],
                     },
                     {
                         "asset_type": "crypto_wallet",
                         "wallet_address": "bc1qmywallet789",
-                        "chain": "bitcoin"
-                    }
+                        "chain": "bitcoin",
+                    },
                 ],
                 "beneficiary": {
                     "name": "Sarah Doe",
                     "relationship": "daughter",
-                    "wallet": "0xSarahWallet456"
+                    "wallet": "0xSarahWallet456",
                 },
                 "trigger": {
                     "type": "death",
                     "verification_method": "death_certificate_oracle",
-                    "minimum_confirmations": 2
+                    "minimum_confirmations": 2,
                 },
                 "executor": {
                     "primary": "finite_intent_executor_mainnet",
-                    "authorized_executors": ["fie_node_1", "fie_node_2"]
+                    "authorized_executors": ["fie_node_1", "fie_node_2"],
                 },
-                "execution_window": {
-                    "min_days_after_trigger": 7,
-                    "max_days_after_trigger": 30
-                },
-                "revocation": {
-                    "revocable": True,
-                    "revocation_method": "author_multisig"
-                }
-            }
+                "execution_window": {"min_days_after_trigger": 7, "max_days_after_trigger": 30},
+                "revocation": {"revocable": True, "revocation_method": "author_multisig"},
+            },
         )
         entry.validation_status = "valid"
 
@@ -95,11 +89,11 @@ class TestFIEAssetDirectives(unittest.TestCase):
         """Test recording directive for intellectual property transfer."""
         entry = NaturalLanguageEntry(
             content="IP Rights Directive: I hereby direct that upon my death, all intellectual "
-                    "property rights to my software projects shall be transferred as follows: "
-                    "(1) ProjectAlpha to the Apache Foundation under Apache 2.0 license, "
-                    "(2) ProjectBeta to my co-founder Mike under existing partnership terms, "
-                    "(3) All remaining projects to public domain. Any registered patents "
-                    "shall be dedicated to defensive patent pools.",
+            "property rights to my software projects shall be transferred as follows: "
+            "(1) ProjectAlpha to the Apache Foundation under Apache 2.0 license, "
+            "(2) ProjectBeta to my co-founder Mike under existing partnership terms, "
+            "(3) All remaining projects to public domain. Any registered patents "
+            "shall be dedicated to defensive patent pools.",
             author="inventor_alice",
             intent="Posthumous IP distribution",
             metadata={
@@ -112,31 +106,28 @@ class TestFIEAssetDirectives(unittest.TestCase):
                         "ip_type": "software",
                         "identifier": "github.com/alice/ProjectAlpha",
                         "transfer_to": "apache_foundation",
-                        "license": "Apache-2.0"
+                        "license": "Apache-2.0",
                     },
                     {
                         "asset_type": "intellectual_property",
                         "ip_type": "software",
                         "identifier": "github.com/alice/ProjectBeta",
                         "transfer_to": "mike_cofounder",
-                        "terms": "existing_partnership_agreement"
+                        "terms": "existing_partnership_agreement",
                     },
                     {
                         "asset_type": "intellectual_property",
                         "ip_type": "patents",
                         "identifier": "all_registered_patents",
-                        "transfer_to": "defensive_patent_pool"
-                    }
+                        "transfer_to": "defensive_patent_pool",
+                    },
                 ],
-                "trigger": {
-                    "type": "death",
-                    "minimum_confirmations": 2
-                },
+                "trigger": {"type": "death", "minimum_confirmations": 2},
                 "executor": {
                     "primary": "finite_intent_executor_mainnet",
-                    "legal_executor": "ip_law_firm_llc"
-                }
-            }
+                    "legal_executor": "ip_law_firm_llc",
+                },
+            },
         )
         entry.validation_status = "valid"
 
@@ -151,10 +142,10 @@ class TestFIEAssetDirectives(unittest.TestCase):
         """Test recording directive for physical assets with digital proof."""
         entry = NaturalLanguageEntry(
             content="Physical Asset Directive: My art collection, documented in Memory Vault "
-                    "reference MV-ART-001, shall be donated to the Metropolitan Museum upon "
-                    "my passing. The NFT certificates of authenticity shall be transferred "
-                    "to the museum's wallet. Physical transfer shall be coordinated by "
-                    "Christie's auction house as designated handler.",
+            "reference MV-ART-001, shall be donated to the Metropolitan Museum upon "
+            "my passing. The NFT certificates of authenticity shall be transferred "
+            "to the museum's wallet. Physical transfer shall be coordinated by "
+            "Christie's auction house as designated handler.",
             author="art_collector",
             intent="Posthumous art donation",
             metadata={
@@ -169,23 +160,20 @@ class TestFIEAssetDirectives(unittest.TestCase):
                         "item_count": 47,
                         "appraised_value": {"amount": 2500000, "currency": "USD"},
                         "nft_certificates": ["NFT-ART-001", "NFT-ART-002"],
-                        "physical_handler": "christies_auction_house"
+                        "physical_handler": "christies_auction_house",
                     }
                 ],
                 "beneficiary": {
                     "name": "Metropolitan Museum of Art",
                     "identifier": "met_museum",
-                    "wallet": "0xMetMuseum..."
+                    "wallet": "0xMetMuseum...",
                 },
-                "trigger": {
-                    "type": "death",
-                    "minimum_confirmations": 2
-                },
+                "trigger": {"type": "death", "minimum_confirmations": 2},
                 "executor": {
                     "primary": "finite_intent_executor_mainnet",
-                    "physical_coordinator": "christies_auction_house"
-                }
-            }
+                    "physical_coordinator": "christies_auction_house",
+                },
+            },
         )
         entry.validation_status = "valid"
 
@@ -208,7 +196,7 @@ class TestExecutorAssetAccess(unittest.TestCase):
             enable_deduplication=False,
             enable_rate_limiting=False,
             enable_timestamp_validation=False,
-            enable_metadata_sanitization=False
+            enable_metadata_sanitization=False,
         )
         self._populate_test_directives()
 
@@ -219,26 +207,26 @@ class TestExecutorAssetAccess(unittest.TestCase):
                 "author": "user_a",
                 "executor": "fie_node_1",
                 "asset_type": "crypto",
-                "triggered": False
+                "triggered": False,
             },
             {
                 "author": "user_b",
                 "executor": "fie_node_1",
                 "asset_type": "ip_rights",
-                "triggered": False
+                "triggered": False,
             },
             {
                 "author": "user_c",
                 "executor": "fie_node_2",
                 "asset_type": "crypto",
-                "triggered": True  # Already triggered
+                "triggered": True,  # Already triggered
             },
             {
                 "author": "user_d",
                 "executor": "fie_node_1",
                 "asset_type": "physical",
-                "triggered": False
-            }
+                "triggered": False,
+            },
         ]
 
         for d in directives:
@@ -252,8 +240,8 @@ class TestExecutorAssetAccess(unittest.TestCase):
                     "asset_type": d["asset_type"],
                     "executor": {"primary": d["executor"]},
                     "triggered": d["triggered"],
-                    "trigger": {"type": "death"}
-                }
+                    "trigger": {"type": "death"},
+                },
             )
             entry.validation_status = "valid"
             self.blockchain.add_entry(entry)
@@ -270,11 +258,13 @@ class TestExecutorAssetAccess(unittest.TestCase):
                 if entry.metadata:
                     executor = entry.metadata.get("executor", {})
                     if executor.get("primary") == executor_id:
-                        assigned_directives.append({
-                            "author": entry.author,
-                            "asset_type": entry.metadata.get("asset_type"),
-                            "triggered": entry.metadata.get("triggered", False)
-                        })
+                        assigned_directives.append(
+                            {
+                                "author": entry.author,
+                                "asset_type": entry.metadata.get("asset_type"),
+                                "triggered": entry.metadata.get("triggered", False),
+                            }
+                        )
 
         # fie_node_1 should have 3 directives
         self.assertEqual(len(assigned_directives), 3)
@@ -300,8 +290,10 @@ class TestExecutorAssetAccess(unittest.TestCase):
 
         for block in self.blockchain.chain:
             for entry in block.entries:
-                if entry.metadata and (entry.metadata.get("asset_directive") and
-                        not entry.metadata.get("triggered", False)):
+                if entry.metadata and (
+                    entry.metadata.get("asset_directive")
+                    and not entry.metadata.get("triggered", False)
+                ):
                     pending_directives.append(entry)
 
         self.assertEqual(len(pending_directives), 3)
@@ -318,7 +310,7 @@ class TestExecutorRecordsExecution(unittest.TestCase):
             enable_deduplication=False,
             enable_rate_limiting=False,
             enable_timestamp_validation=False,
-            enable_metadata_sanitization=False
+            enable_metadata_sanitization=False,
         )
 
         # Record initial directive
@@ -330,16 +322,18 @@ class TestExecutorRecordsExecution(unittest.TestCase):
                 "is_delayed_intent": True,
                 "delayed_intent_id": "DI-ETH-001",
                 "asset_directive": True,
-                "assets": [{
-                    "asset_type": "crypto",
-                    "amount": 10,
-                    "currency": "ETH",
-                    "source": "0xSource",
-                    "destination": "0xBeneficiary"
-                }],
+                "assets": [
+                    {
+                        "asset_type": "crypto",
+                        "amount": 10,
+                        "currency": "ETH",
+                        "source": "0xSource",
+                        "destination": "0xBeneficiary",
+                    }
+                ],
                 "trigger": {"type": "death"},
-                "executor": {"primary": "fie_mainnet"}
-            }
+                "executor": {"primary": "fie_mainnet"},
+            },
         )
         self.directive_entry.validation_status = "valid"
         self.blockchain.add_entry(self.directive_entry)
@@ -349,8 +343,8 @@ class TestExecutorRecordsExecution(unittest.TestCase):
         """Test executor recording trigger verification."""
         verification_entry = NaturalLanguageEntry(
             content="Trigger Verification for DI-ETH-001: Death of original_owner verified "
-                    "through Social Security Death Index (SSDI-12345) and legal executor "
-                    "declaration from Law Firm XYZ. Two independent confirmations received.",
+            "through Social Security Death Index (SSDI-12345) and legal executor "
+            "declaration from Law Firm XYZ. Two independent confirmations received.",
             author="fie_mainnet",
             intent="Record trigger verification",
             metadata={
@@ -362,17 +356,17 @@ class TestExecutorRecordsExecution(unittest.TestCase):
                     {
                         "source": "social_security_death_index",
                         "record_id": "SSDI-12345",
-                        "verified": True
+                        "verified": True,
                     },
                     {
                         "source": "legal_executor_declaration",
                         "executor": "law_firm_xyz",
-                        "notarized": True
-                    }
+                        "notarized": True,
+                    },
                 ],
                 "confirmations": 2,
-                "verification_timestamp": datetime.utcnow().isoformat()
-            }
+                "verification_timestamp": datetime.utcnow().isoformat(),
+            },
         )
         verification_entry.validation_status = "valid"
 
@@ -387,9 +381,9 @@ class TestExecutorRecordsExecution(unittest.TestCase):
         """Test executor recording execution proof."""
         execution_entry = NaturalLanguageEntry(
             content="Execution Record for DI-ETH-001: On 2035-06-20, following verified death "
-                    "of original_owner, 10 ETH was transferred from 0xSource to 0xBeneficiary. "
-                    "Transaction hash: 0xTxHash123. Execution performed by fie_mainnet in "
-                    "accordance with original directive.",
+            "of original_owner, 10 ETH was transferred from 0xSource to 0xBeneficiary. "
+            "Transaction hash: 0xTxHash123. Execution performed by fie_mainnet in "
+            "accordance with original directive.",
             author="fie_mainnet",
             intent="Record execution proof",
             metadata={
@@ -406,13 +400,13 @@ class TestExecutorRecordsExecution(unittest.TestCase):
                         "to": "0xBeneficiary",
                         "tx_hash": "0xTxHash123",
                         "status": "confirmed",
-                        "block_number": 18500000
+                        "block_number": 18500000,
                     }
                 ],
                 "execution_timestamp": "2035-06-20T10:00:00Z",
                 "executor_node": "fie_mainnet",
-                "legal_certificate_hash": "SHA256:LegalCert..."
-            }
+                "legal_certificate_hash": "SHA256:LegalCert...",
+            },
         )
         execution_entry.validation_status = "valid"
 
@@ -436,20 +430,20 @@ class TestMultiAssetDirective(unittest.TestCase):
             enable_deduplication=False,
             enable_rate_limiting=False,
             enable_timestamp_validation=False,
-            enable_metadata_sanitization=False
+            enable_metadata_sanitization=False,
         )
 
     def test_estate_distribution_directive(self):
         """Test comprehensive estate distribution directive."""
         entry = NaturalLanguageEntry(
             content="Complete Estate Distribution Directive: Upon my death, distribute my "
-                    "digital estate as follows: "
-                    "(1) Crypto assets: 50% to spouse, 25% each to children. "
-                    "(2) NFT collection: All to spouse. "
-                    "(3) Software IP: Open source under MIT. "
-                    "(4) Digital photos: Family shared vault. "
-                    "(5) Social media: Memorial mode. "
-                    "Executor shall complete within 60 days.",
+            "digital estate as follows: "
+            "(1) Crypto assets: 50% to spouse, 25% each to children. "
+            "(2) NFT collection: All to spouse. "
+            "(3) Software IP: Open source under MIT. "
+            "(4) Digital photos: Family shared vault. "
+            "(5) Social media: Memorial mode. "
+            "Executor shall complete within 60 days.",
             author="estate_owner",
             intent="Complete estate distribution",
             metadata={
@@ -463,48 +457,45 @@ class TestMultiAssetDirective(unittest.TestCase):
                         "distribution": [
                             {"beneficiary": "spouse", "percentage": 50},
                             {"beneficiary": "child_1", "percentage": 25},
-                            {"beneficiary": "child_2", "percentage": 25}
+                            {"beneficiary": "child_2", "percentage": 25},
                         ],
-                        "wallets": ["0xMainWallet", "0xTradingWallet"]
+                        "wallets": ["0xMainWallet", "0xTradingWallet"],
                     },
                     {
                         "category": "nft_collection",
                         "vault_ref": "MV-NFT-001",
-                        "distribution": [{"beneficiary": "spouse", "percentage": 100}]
+                        "distribution": [{"beneficiary": "spouse", "percentage": 100}],
                     },
                     {
                         "category": "software_ip",
                         "repos": ["github.com/owner/*"],
                         "action": "open_source",
-                        "license": "MIT"
+                        "license": "MIT",
                     },
                     {
                         "category": "digital_media",
                         "type": "photos",
                         "vault_ref": "MV-PHOTOS-001",
-                        "action": "transfer_to_family_vault"
+                        "action": "transfer_to_family_vault",
                     },
                     {
                         "category": "social_accounts",
                         "platforms": ["twitter", "linkedin", "facebook"],
-                        "action": "memorial_mode"
-                    }
+                        "action": "memorial_mode",
+                    },
                 ],
-                "trigger": {
-                    "type": "death",
-                    "minimum_confirmations": 3
-                },
+                "trigger": {"type": "death", "minimum_confirmations": 3},
                 "executor": {
                     "primary": "fie_mainnet",
                     "backup": "fie_backup",
-                    "legal_executor": "estate_attorney_llc"
+                    "legal_executor": "estate_attorney_llc",
                 },
                 "execution_deadline_days": 60,
                 "witnesses": [
                     {"name": "witness_1", "signature": "sig1"},
-                    {"name": "witness_2", "signature": "sig2"}
-                ]
-            }
+                    {"name": "witness_2", "signature": "sig2"},
+                ],
+            },
         )
         entry.validation_status = "valid"
 
@@ -532,41 +523,43 @@ class TestConditionalAssetDirectives(unittest.TestCase):
             enable_deduplication=False,
             enable_rate_limiting=False,
             enable_timestamp_validation=False,
-            enable_metadata_sanitization=False
+            enable_metadata_sanitization=False,
         )
 
     def test_incapacity_directive(self):
         """Test directive triggered by incapacity declaration."""
         entry = NaturalLanguageEntry(
             content="Incapacity Directive: If I am declared mentally incapacitated by "
-                    "two licensed physicians, transfer control of my crypto assets to "
-                    "my designated power of attorney (spouse). This is not a full transfer "
-                    "but grants management rights until recovery or death.",
+            "two licensed physicians, transfer control of my crypto assets to "
+            "my designated power of attorney (spouse). This is not a full transfer "
+            "but grants management rights until recovery or death.",
             author="prudent_owner",
             intent="Incapacity asset management",
             metadata={
                 "is_delayed_intent": True,
                 "delayed_intent_type": "incapacity",
                 "asset_directive": True,
-                "assets": [{
-                    "asset_type": "crypto_management_rights",
-                    "wallets": ["0xAllWallets"],
-                    "rights_granted": ["view", "transfer", "stake"],
-                    "rights_withheld": ["close_accounts"]
-                }],
+                "assets": [
+                    {
+                        "asset_type": "crypto_management_rights",
+                        "wallets": ["0xAllWallets"],
+                        "rights_granted": ["view", "transfer", "stake"],
+                        "rights_withheld": ["close_accounts"],
+                    }
+                ],
                 "trigger": {
                     "type": "incapacity",
                     "verification_method": "medical_declaration",
                     "required_physicians": 2,
-                    "reversible": True
+                    "reversible": True,
                 },
                 "beneficiary": {
                     "name": "Spouse",
                     "role": "power_of_attorney",
-                    "wallet": "0xSpouseWallet"
+                    "wallet": "0xSpouseWallet",
                 },
-                "executor": {"primary": "fie_mainnet"}
-            }
+                "executor": {"primary": "fie_mainnet"},
+            },
         )
         entry.validation_status = "valid"
 
@@ -579,39 +572,35 @@ class TestConditionalAssetDirectives(unittest.TestCase):
 
     def test_time_locked_directive(self):
         """Test time-locked asset release directive."""
-        (datetime.utcnow() + timedelta(days=365*5)).isoformat()
+        (datetime.utcnow() + timedelta(days=365 * 5)).isoformat()
 
         entry = NaturalLanguageEntry(
             content="Time-Locked Release: On my child's 25th birthday (2030-03-15), "
-                    "release the trust fund of 100 ETH to their wallet. Until then, "
-                    "the assets remain locked and cannot be accessed by anyone.",
+            "release the trust fund of 100 ETH to their wallet. Until then, "
+            "the assets remain locked and cannot be accessed by anyone.",
             author="parent",
             intent="Time-locked trust release",
             metadata={
                 "is_delayed_intent": True,
                 "delayed_intent_type": "time_delayed",
                 "asset_directive": True,
-                "assets": [{
-                    "asset_type": "crypto",
-                    "amount": 100,
-                    "currency": "ETH",
-                    "locked_in": "trust_contract_0x123"
-                }],
+                "assets": [
+                    {
+                        "asset_type": "crypto",
+                        "amount": 100,
+                        "currency": "ETH",
+                        "locked_in": "trust_contract_0x123",
+                    }
+                ],
                 "trigger": {
                     "type": "datetime",
                     "trigger_at": "2030-03-15T00:00:00Z",
-                    "timezone": "UTC"
+                    "timezone": "UTC",
                 },
-                "beneficiary": {
-                    "name": "Child",
-                    "wallet": "0xChildWallet"
-                },
+                "beneficiary": {"name": "Child", "wallet": "0xChildWallet"},
                 "executor": {"primary": "fie_mainnet"},
-                "revocation": {
-                    "revocable": True,
-                    "revocation_deadline": "2030-03-14T23:59:59Z"
-                }
-            }
+                "revocation": {"revocable": True, "revocation_deadline": "2030-03-14T23:59:59Z"},
+            },
         )
         entry.validation_status = "valid"
 
@@ -634,21 +623,21 @@ class TestFullFIEWorkflow(unittest.TestCase):
             enable_deduplication=False,
             enable_rate_limiting=False,
             enable_timestamp_validation=False,
-            enable_metadata_sanitization=False
+            enable_metadata_sanitization=False,
         )
 
     def test_complete_asset_directive_workflow(self):
         """Test full workflow: directive → trigger → execution → proof."""
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("FIE ASSET DIRECTIVE WORKFLOW TEST")
-        print("="*60)
+        print("=" * 60)
 
         # Step 1: Owner records asset directive
         print("\n[STEP 1] Owner records asset directive...")
         directive = NaturalLanguageEntry(
             content="I direct that upon my death, my crypto portfolio (approx 50 ETH, "
-                    "10000 USDC) be liquidated and distributed: 70% to spouse, "
-                    "15% each to two children. Executor: FIE Mainnet.",
+            "10000 USDC) be liquidated and distributed: 70% to spouse, "
+            "15% each to two children. Executor: FIE Mainnet.",
             author="crypto_holder",
             intent="Posthumous crypto distribution",
             metadata={
@@ -657,16 +646,16 @@ class TestFullFIEWorkflow(unittest.TestCase):
                 "asset_directive": True,
                 "assets": [
                     {"currency": "ETH", "amount": 50},
-                    {"currency": "USDC", "amount": 10000}
+                    {"currency": "USDC", "amount": 10000},
                 ],
                 "distribution": [
                     {"beneficiary": "spouse", "percentage": 70},
                     {"beneficiary": "child_1", "percentage": 15},
-                    {"beneficiary": "child_2", "percentage": 15}
+                    {"beneficiary": "child_2", "percentage": 15},
                 ],
                 "trigger": {"type": "death", "minimum_confirmations": 2},
-                "executor": {"primary": "fie_mainnet"}
-            }
+                "executor": {"primary": "fie_mainnet"},
+            },
         )
         directive.validation_status = "valid"
         self.blockchain.add_entry(directive)
@@ -678,7 +667,7 @@ class TestFullFIEWorkflow(unittest.TestCase):
         print("\n[STEP 2] Trigger verification by executor...")
         verification = NaturalLanguageEntry(
             content="Death verification for crypto_holder confirmed via SSDI and "
-                    "legal executor declaration. Ready for execution.",
+            "legal executor declaration. Ready for execution.",
             author="fie_mainnet",
             intent="Verify death trigger",
             metadata={
@@ -687,8 +676,8 @@ class TestFullFIEWorkflow(unittest.TestCase):
                 "original_block": directive_block,
                 "verification_id": "VER-999",
                 "confirmations": 2,
-                "verified_at": datetime.utcnow().isoformat()
-            }
+                "verified_at": datetime.utcnow().isoformat(),
+            },
         )
         verification.validation_status = "valid"
         self.blockchain.add_entry(verification)
@@ -699,8 +688,8 @@ class TestFullFIEWorkflow(unittest.TestCase):
         print("\n[STEP 3] Executor records execution...")
         execution = NaturalLanguageEntry(
             content="Execution complete for DI-CRYPTO-999. Assets distributed: "
-                    "35 ETH + 7000 USDC to spouse, 7.5 ETH + 1500 USDC to each child. "
-                    "All transactions confirmed on Ethereum mainnet.",
+            "35 ETH + 7000 USDC to spouse, 7.5 ETH + 1500 USDC to each child. "
+            "All transactions confirmed on Ethereum mainnet.",
             author="fie_mainnet",
             intent="Record execution",
             metadata={
@@ -711,11 +700,11 @@ class TestFullFIEWorkflow(unittest.TestCase):
                 "transactions": [
                     {"to": "spouse", "eth": 35, "usdc": 7000, "tx": "0xTx1"},
                     {"to": "child_1", "eth": 7.5, "usdc": 1500, "tx": "0xTx2"},
-                    {"to": "child_2", "eth": 7.5, "usdc": 1500, "tx": "0xTx3"}
+                    {"to": "child_2", "eth": 7.5, "usdc": 1500, "tx": "0xTx3"},
                 ],
                 "executed_at": datetime.utcnow().isoformat(),
-                "all_actions_complete": True
-            }
+                "all_actions_complete": True,
+            },
         )
         execution.validation_status = "valid"
         self.blockchain.add_entry(execution)
@@ -742,9 +731,9 @@ class TestFullFIEWorkflow(unittest.TestCase):
         self.assertEqual(len(execution_records), 1)
         self.assertTrue(execution_records[0].metadata["all_actions_complete"])
 
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("WORKFLOW TEST COMPLETE ✓")
-        print("="*60 + "\n")
+        print("=" * 60 + "\n")
 
 
 def run_fie_asset_tests():
