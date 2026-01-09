@@ -41,6 +41,7 @@ from .identity import identity_bp
 from .marketplace import marketplace_bp
 from .mobile import mobile_bp
 from .monitoring import monitoring_bp
+from .revenue import revenue_bp
 from .search import search_bp
 
 # List of all blueprints for registration
@@ -61,6 +62,7 @@ ALL_BLUEPRINTS = [
     (identity_bp, ""),  # DID identity routes (/identity/*)
     (composability_bp, ""),  # Data composability routes (/composability/*)
     (compute_bp, ""),  # Compute-to-data routes (/compute/*)
+    (revenue_bp, ""),  # Revenue sharing routes (/revenue/*)
 ]
 
 
@@ -230,3 +232,12 @@ def init_managers(api_key: str = None):
         print("Compute-to-data service initialized")
     except Exception as e:
         print(f"Warning: Could not initialize compute service: {e}")
+
+    # Initialize revenue sharing service (royalties for derivative chains)
+    try:
+        from revenue_sharing import RevenueSharingService
+
+        managers.revenue_service = RevenueSharingService()
+        print("Revenue sharing service initialized")
+    except Exception as e:
+        print(f"Warning: Could not initialize revenue service: {e}")

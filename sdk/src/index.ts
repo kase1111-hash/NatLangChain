@@ -49,6 +49,7 @@ import { AnchoringClient } from './clients/anchoring';
 import { IdentityClient } from './clients/identity';
 import { ComposabilityClient } from './clients/composability';
 import { ComputeClient } from './clients/compute';
+import { RevenueClient } from './clients/revenue';
 import type { NatLangChainConfig } from './types';
 
 // Re-export all types
@@ -204,6 +205,35 @@ export type {
   ComputeEventsResponse,
   ComputeStatistics,
 } from './clients/compute';
+export type {
+  RoyaltyType,
+  RevenueEventType,
+  PaymentStatus,
+  ClaimStatus,
+  EntryRef,
+  RoyaltyConfig,
+  RevenueEvent,
+  RoyaltyPayment,
+  RevenuePool,
+  Claim,
+  RoyaltyDistribution,
+  RevenueEventWithRoyalties,
+  ConfigureRoyaltiesRequest,
+  UpdateRoyaltyConfigRequest,
+  RecordRevenueEventRequest,
+  ClaimRevenueRequest,
+  EstimateRoyaltiesRequest,
+  RevenueEventsResponse,
+  PaymentsResponse,
+  ClaimsResponse,
+  BalanceResponse,
+  EntryEarningsResponse,
+  ChainRevenueResponse,
+  RoyaltyEstimateResponse,
+  RevenueStatistics,
+  AuditEvent,
+  AuditEventsResponse,
+} from './clients/revenue';
 
 /**
  * NatLangChain SDK Client
@@ -476,6 +506,41 @@ export class NatLangChain {
   public readonly compute: ComputeClient;
 
   /**
+   * Revenue operations: royalties for derivative intent chains
+   *
+   * Configure and collect royalties from derivative entries/contracts.
+   * Inspired by Story Protocol's programmable IP royalty system.
+   *
+   * @example
+   * ```ts
+   * // Configure royalties for an entry
+   * const config = await client.revenue.configureRoyalties({
+   *   block_index: 1,
+   *   entry_index: 0,
+   *   owner: 'did:nlc:author...',
+   *   royalty_type: 'fixed',
+   *   base_rate: '5.0',  // 5%
+   *   chain_propagation: true
+   * });
+   *
+   * // Record revenue event (royalties auto-calculated)
+   * const event = await client.revenue.recordRevenueEvent({
+   *   block_index: 2,
+   *   entry_index: 0,
+   *   event_type: 'derivative_created',
+   *   amount: '100.00'
+   * });
+   *
+   * // Check balance and claim
+   * const balance = await client.revenue.getBalance('did:nlc:author...');
+   * const claim = await client.revenue.claimRevenue({
+   *   recipient: 'did:nlc:author...'
+   * });
+   * ```
+   */
+  public readonly revenue: RevenueClient;
+
+  /**
    * Create a new NatLangChain client
    *
    * @param config - Client configuration
@@ -494,6 +559,7 @@ export class NatLangChain {
     this.identity = new IdentityClient(this.http);
     this.composability = new ComposabilityClient(this.http);
     this.compute = new ComputeClient(this.http);
+    this.revenue = new RevenueClient(this.http);
   }
 
   /**

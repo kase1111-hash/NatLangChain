@@ -268,6 +268,7 @@ class ManagerRegistry:
     identity_service: Any = None  # DID identity layer
     composability_service: Any = None  # Cross-application data composability
     compute_service: Any = None  # Privacy-preserving compute-to-data
+    revenue_service: Any = None  # Revenue sharing and royalties
 
     # Advanced features
     negotiation_engine: Any = None
@@ -311,6 +312,10 @@ class ManagerRegistry:
     def is_compute_enabled(self) -> bool:
         """Check if compute-to-data service is available."""
         return self.compute_service is not None
+
+    def is_revenue_enabled(self) -> bool:
+        """Check if revenue sharing service is available."""
+        return self.revenue_service is not None
 
     def is_p2p_enabled(self) -> bool:
         """Check if P2P network is available."""

@@ -13,3 +13,4 @@ export { AnchoringClient } from './anchoring';
 export { IdentityClient } from './identity';
 export { ComposabilityClient } from './composability';
 export { ComputeClient } from './compute';
+export { RevenueClient } from './revenue';
