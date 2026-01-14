@@ -14,8 +14,8 @@ Run this example:
 No API key required - this uses basic mode without LLM validation.
 """
 
-import sys
 import os
+import sys
 
 # Add src to path so we can import the blockchain
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
@@ -42,7 +42,7 @@ def main():
         enable_rate_limiting=False,    # No rate limits for demo
         enable_quality_checks=False,   # Skip quality analysis
     )
-    print(f"  Created blockchain with genesis block")
+    print("  Created blockchain with genesis block")
     print(f"  Chain length: {len(chain.chain)} block(s)")
     print()
 

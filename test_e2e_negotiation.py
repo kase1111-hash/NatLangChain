@@ -4,18 +4,18 @@ End-to-End Blockchain Negotiation Test
 Tests the complete flow: entry creation -> matching -> negotiation -> acceptance -> payment
 """
 
-import sys
-import os
-import time
 import json
-from typing import Dict, Any
+import os
+import sys
+import time
 
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
 from blockchain import NatLangChain, NaturalLanguageEntry
-from contract_parser import ContractParser
 from contract_matcher import ContractMatcher
+from contract_parser import ContractParser
+
 
 def print_section(title: str):
     """Print a formatted section header"""
@@ -49,7 +49,7 @@ def main():
     parser = ContractParser()
     matcher = ContractMatcher()
 
-    print(f"✓ Blockchain initialized with genesis block")
+    print("✓ Blockchain initialized with genesis block")
     print(f"  Chain length: {len(blockchain.chain)}")
 
     # =========================================================================
@@ -80,7 +80,7 @@ Available for projects ranging from 1 week to 3 months.
     )
 
     result = blockchain.add_entry(offer_entry)
-    print(f"✓ OFFER entry added to pending entries")
+    print("✓ OFFER entry added to pending entries")
     print_entry(offer_entry, "Alice's OFFER")
 
     # =========================================================================
@@ -110,7 +110,7 @@ Need someone who can start immediately and deliver within 2 weeks.
     )
 
     result = blockchain.add_entry(seek_entry)
-    print(f"✓ SEEK entry added to pending entries")
+    print("✓ SEEK entry added to pending entries")
     print_entry(seek_entry, "Bob's SEEK")
 
     # =========================================================================
@@ -211,7 +211,7 @@ I'm willing to accept the $150/hour rate, which seems fair given Alice's experie
             current_round
         )
 
-        print(f"\nMediation Result:")
+        print("\nMediation Result:")
         print(f"  Points of Agreement: {', '.join(mediation.get('points_of_agreement', []))}")
         print(f"  Differences: {', '.join(mediation.get('differences', []))}")
         print(f"  Recommended Action: {mediation.get('recommended_action', 'CONTINUE')}")
@@ -407,13 +407,13 @@ Contract is now CLOSED and ready for execution."""
     upfront_amount = contract_value * 0.40
     upfront_to_alice = upfront_amount * (1 - miner_fee_pct)
 
-    print(f"\n💰 Payment Calculation:")
+    print("\n💰 Payment Calculation:")
     print(f"   Total Contract Value: ${contract_value:.2f}")
     print(f"   Miner Fee (2%): ${miner_fee:.2f}")
     print(f"   Net to Alice: ${net_to_alice:.2f}")
     print()
 
-    print(f"📤 Payment #1: Upfront Payment (40%)")
+    print("📤 Payment #1: Upfront Payment (40%)")
     payment1_content = f"""[PAYMENT TRANSFER]
 From: Bob (buyer)
 To: Alice (developer)
@@ -448,7 +448,7 @@ Status: COMPLETED"""
     # Payment 2: Miner facilitation fee from upfront payment
     upfront_miner_fee = upfront_amount * miner_fee_pct
 
-    print(f"📤 Payment #2: Miner Fee from Upfront (2%)")
+    print("📤 Payment #2: Miner Fee from Upfront (2%)")
     payment2_content = f"""[PAYOUT]
 Miner: Charlie (charlie_miner)
 Amount: ${upfront_miner_fee:.2f} (2% facilitation fee from upfront payment)
@@ -494,13 +494,13 @@ Status: COMPLETED"""
     print(f"\n{'─'*80}")
     print("💵 PAYMENT SUMMARY (Three Parties)")
     print(f"{'─'*80}")
-    print(f"\n👤 Bob (Buyer):")
+    print("\n👤 Bob (Buyer):")
     print(f"   Pays: ${upfront_amount:.2f} upfront (40% of ${contract_value:.2f})")
     print(f"   Remaining: ${contract_value - upfront_amount:.2f} (to be paid at milestones)")
-    print(f"\n👤 Alice (Developer):")
+    print("\n👤 Alice (Developer):")
     print(f"   Receives: ${upfront_to_alice:.2f} net upfront payment")
     print(f"   Expected Total: ${net_to_alice:.2f} (after all milestones)")
-    print(f"\n👤 Charlie (Miner):")
+    print("\n👤 Charlie (Miner):")
     print(f"   Receives: ${upfront_miner_fee:.2f} facilitation fee (from upfront)")
     print(f"   Expected Total: ${miner_fee:.2f} (after all milestones)")
     print(f"\n{'─'*80}\n")
@@ -510,12 +510,12 @@ Status: COMPLETED"""
     # =========================================================================
     print_section("STEP 7: Final Blockchain State")
 
-    print(f"Blockchain Statistics:")
+    print("Blockchain Statistics:")
     print(f"  Total Blocks: {len(blockchain.chain)}")
     print(f"  Pending Entries: {len(blockchain.pending_entries)}")
     print(f"  Chain Valid: {blockchain.is_chain_valid()}")
 
-    print(f"\nBlock Details:")
+    print("\nBlock Details:")
     for i, block in enumerate(blockchain.chain):
         print(f"\n  Block #{block.index}:")
         print(f"    Hash: {block.hash}")

@@ -11,8 +11,8 @@ This script tests all security features added during the audit:
 6. Context manager (temporary rules)
 """
 
-import sys
 import os
+import sys
 
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
@@ -43,17 +43,14 @@ def run_tests():
 
     try:
         from security_enforcement import (
-            NetworkEnforcement,
-            USBEnforcement,
-            ProcessSandbox,
-            DaemonWatchdog,
-            ImmutableAuditLog,
-            EnforcementResult,
             EnforcementError,
+            EnforcementResult,
+            ImmutableAuditLog,
+            NetworkEnforcement,
             NetworkRuleBuilder,
+            validate_interface_name,
             validate_ip_address,
             validate_port,
-            validate_interface_name,
         )
         # Alias for test compatibility
         validate_interface = validate_interface_name
@@ -362,7 +359,6 @@ def run_tests():
         results["failed"] += 1
 
     # Test context manager protocol
-    import contextlib
     if hasattr(net.temporary_block("8.8.8.8", 443), '__enter__'):
         test_pass("temporary_block is a context manager")
         results["passed"] += 1

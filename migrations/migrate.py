@@ -80,7 +80,7 @@ def apply_migration(conn, version: int, name: str, sql_path: Path, dry_run: bool
         cur.execute(sql)
 
     conn.commit()
-    print(f"  Applied successfully")
+    print("  Applied successfully")
 
 
 def show_status(conn):

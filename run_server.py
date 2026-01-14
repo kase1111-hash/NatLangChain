@@ -10,8 +10,8 @@ This script starts the NatLangChain API server. Make sure you have:
 2. Configured .env file (optional, see .env.example)
 """
 
-import sys
 import os
+import sys
 
 # Add src to path for imports
 src_path = os.path.join(os.path.dirname(__file__), 'src')

@@ -108,7 +108,7 @@ else:
 print("\n[TEST 5] Verifying sample blockchain data...")
 try:
     import json
-    with open("data/chain.json", 'r') as f:
+    with open("data/chain.json") as f:
         chain_data = json.load(f)
 
     print(f"  Loaded {len(chain_data)} blocks from chain.json")
