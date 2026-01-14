@@ -675,9 +675,9 @@ class TURNClient:
 
     def _get_long_term_key(self) -> bytes:
         """Compute long-term credential key."""
-        # Key = MD5(username:realm:password)
+        # Key = MD5(username:realm:password) per RFC 5389 - protocol-mandated
         key_input = f"{self.server.username}:{self.server.realm}:{self.server.password}"
-        return hashlib.md5(key_input.encode()).digest()
+        return hashlib.md5(key_input.encode(), usedforsecurity=False).digest()
 
     def _build_allocate_request(self, nonce: str = "", realm: str = "") -> bytes:
         """Build TURN Allocate Request message."""

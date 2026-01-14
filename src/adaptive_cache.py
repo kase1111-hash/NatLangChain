@@ -629,9 +629,9 @@ def make_cache_key(*args, **kwargs) -> str:
     key_parts.extend(f"{k}={v}" for k, v in sorted(kwargs.items()))
     key_str = ":".join(key_parts)
 
-    # Hash if too long
+    # Hash if too long (MD5 used for key shortening, not security)
     if len(key_str) > 200:
-        return hashlib.md5(key_str.encode()).hexdigest()
+        return hashlib.md5(key_str.encode(), usedforsecurity=False).hexdigest()
     return key_str
 
 
