@@ -228,6 +228,54 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Check for Metro bundler (should not be present)
+        run: |
+          echo "Checking that Metro bundler is not present in dependencies..."
+          echo "This project uses Vite, not Metro (React Native bundler)."
+
+          # List of Metro-related packages that should NOT be present
+          METRO_PACKAGES=(
+            "metro"
+            "metro-bundler"
+            "metro-config"
+            "metro-core"
+            "metro-resolver"
+            "metro-react-native-babel-preset"
+            "react-native"
+            "@react-native"
+          )
+
+          FOUND_METRO=false
+
+          for pkg in "${METRO_PACKAGES[@]}"; do
+            if grep -q "\"$pkg\"" package.json 2>/dev/null || \
+               grep -q "\"$pkg\"" package-lock.json 2>/dev/null; then
+              echo "::error::Found Metro-related package: $pkg"
+              echo "This project uses Vite bundler. Metro/React Native packages should not be present."
+              FOUND_METRO=true
+            fi
+          done
+
+          # Also check node_modules if it exists (belt and suspenders)
+          if [ -d "node_modules" ]; then
+            for pkg in "metro" "react-native"; do
+              if [ -d "node_modules/$pkg" ]; then
+                echo "::error::Found Metro-related package in node_modules: $pkg"
+                FOUND_METRO=true
+              fi
+            done
+          fi
+
+          if [ "$FOUND_METRO" = true ]; then
+            echo ""
+            echo "::error::Metro bundler check failed!"
+            echo "This is a Svelte + Vite project. Please remove React Native/Metro dependencies."
+            exit 1
+          fi
+
+          echo "✓ Metro bundler check passed - no React Native/Metro packages found"
+          echo "✓ Project correctly uses Vite as the bundler"
+
       - name: Run ESLint
         run: npm run lint
         continue-on-error: true
