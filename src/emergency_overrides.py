@@ -607,28 +607,88 @@ class EmergencyManager:
 
         Per NCIP-013 Section 5: Oracle outputs are evidence, not authority.
         """
+        # Input validation
+        if not emergency_id:
+            return {"status": "error", "message": "Emergency ID is required"}
+
+        if not oracle_id:
+            return {"status": "error", "message": "Oracle ID is required"}
+
+        if oracle_type is None:
+            return {"status": "error", "message": "Oracle type is required"}
+
+        # Validate oracle_type is a valid enum value
+        if not isinstance(oracle_type, OracleType):
+            try:
+                oracle_type = OracleType(oracle_type)
+            except (ValueError, TypeError):
+                return {
+                    "status": "error",
+                    "message": f"Invalid oracle type: {oracle_type}. Valid types: {[t.value for t in OracleType]}",
+                }
+
+        if not evidence_data:
+            return {"status": "error", "message": "Evidence data is required"}
+
+        if not isinstance(evidence_data, str):
+            try:
+                evidence_data = str(evidence_data)
+            except Exception:
+                return {"status": "error", "message": "Evidence data must be convertible to string"}
+
+        # Validate confidence_score
+        if confidence_score is None:
+            return {"status": "error", "message": "Confidence score is required"}
+
+        try:
+            confidence_score = float(confidence_score)
+        except (ValueError, TypeError):
+            return {"status": "error", "message": "Confidence score must be a number"}
+
+        if confidence_score < 0 or confidence_score > 1:
+            return {
+                "status": "warning",
+                "message": f"Confidence score {confidence_score} clamped to valid range [0.0, 1.0]",
+            }
+
         emergency = self.emergencies.get(emergency_id)
         if not emergency:
             return {"status": "error", "message": f"Emergency {emergency_id} not found"}
 
-        evidence = OracleEvidence(
-            oracle_id=oracle_id,
-            oracle_type=oracle_type,
-            evidence_data=evidence_data,
-            confidence_score=min(1.0, max(0.0, confidence_score)),
-            is_authoritative=False,  # Always False per NCIP-013
-        )
+        # Validate emergency state - cannot add evidence to resolved emergencies
+        if emergency.status in (EmergencyStatus.RESOLVED, EmergencyStatus.REJECTED):
+            return {
+                "status": "error",
+                "message": f"Cannot add evidence to {emergency.status.value} emergency",
+            }
 
-        emergency.oracle_evidence.append(evidence)
+        try:
+            evidence = OracleEvidence(
+                oracle_id=oracle_id,
+                oracle_type=oracle_type,
+                evidence_data=evidence_data,
+                confidence_score=min(1.0, max(0.0, confidence_score)),
+                is_authoritative=False,  # Always False per NCIP-013
+            )
 
-        return {
-            "status": "added",
-            "emergency_id": emergency_id,
-            "oracle_id": oracle_id,
-            "oracle_type": oracle_type.value,
-            "confidence_score": evidence.confidence_score,
-            "note": "Oracle output is evidence, not authority - does not auto-resolve",
-        }
+            emergency.oracle_evidence.append(evidence)
+
+            return {
+                "status": "added",
+                "emergency_id": emergency_id,
+                "oracle_id": oracle_id,
+                "oracle_type": oracle_type.value,
+                "confidence_score": evidence.confidence_score,
+                "evidence_count": len(emergency.oracle_evidence),
+                "note": "Oracle output is evidence, not authority - does not auto-resolve",
+            }
+
+        except Exception as e:
+            return {
+                "status": "error",
+                "message": f"Failed to add oracle evidence: {str(e)}",
+                "error_type": type(e).__name__,
+            }
 
     # -------------------------------------------------------------------------
     # Emergency Disputes
@@ -773,48 +833,114 @@ class EmergencyManager:
 
         Actions: resume_execution, terminate_fallback, ratify_amendment
         """
+        # Input validation
+        if not emergency_id:
+            return {"status": "error", "message": "Emergency ID is required"}
+
+        if not action:
+            return {"status": "error", "message": "Action is required"}
+
+        # Normalize action to lowercase for comparison
+        action = action.strip().lower()
+
+        valid_actions = ["resume_execution", "terminate_fallback", "ratify_amendment"]
+        if action not in valid_actions:
+            return {
+                "status": "error",
+                "message": f"Invalid action: {action}. Use one of: {', '.join(valid_actions)}",
+            }
+
         emergency = self.emergencies.get(emergency_id)
         if not emergency:
             return {"status": "error", "message": f"Emergency {emergency_id} not found"}
 
-        if action == "resume_execution":
-            emergency.status = EmergencyStatus.RESOLVED
-            emergency.resolved_at = datetime.utcnow()
-            emergency.resolution_reason = "Execution resumed after emergency expiry"
-            return {
-                "status": "resolved",
-                "action": "resume_execution",
-                "emergency_id": emergency_id,
-            }
-
-        elif action == "terminate_fallback":
-            emergency.status = EmergencyStatus.RESOLVED
-            emergency.resolved_at = datetime.utcnow()
-            emergency.resolution_reason = "Contract terminated per fallback clause"
-            return {
-                "status": "resolved",
-                "action": "terminate_fallback",
-                "emergency_id": emergency_id,
-            }
-
-        elif action == "ratify_amendment":
-            if not ratification_id:
-                return {"status": "error", "message": "ratification_id required for amendment"}
-            emergency.status = EmergencyStatus.RESOLVED
-            emergency.resolved_at = datetime.utcnow()
-            emergency.resolution_reason = f"Parties ratified amendment {ratification_id}"
-            return {
-                "status": "resolved",
-                "action": "ratify_amendment",
-                "emergency_id": emergency_id,
-                "ratification_id": ratification_id,
-            }
-
-        else:
+        # Validate emergency state - cannot process already resolved emergencies
+        if emergency.status == EmergencyStatus.RESOLVED:
             return {
                 "status": "error",
-                "message": f"Invalid action: {action}. Use resume_execution, terminate_fallback, or ratify_amendment",
+                "message": "Emergency is already resolved",
+                "resolved_at": emergency.resolved_at.isoformat() if emergency.resolved_at else None,
+                "resolution_reason": emergency.resolution_reason,
             }
+
+        if emergency.status == EmergencyStatus.REJECTED:
+            return {
+                "status": "error",
+                "message": "Cannot process expiry for a rejected emergency",
+            }
+
+        # Validate that emergency is expired or needs review for expiry processing
+        if not emergency.is_expired and not emergency.needs_review:
+            return {
+                "status": "error",
+                "message": "Emergency has not expired yet",
+                "expiry_deadline": emergency.expiry_deadline.isoformat() if emergency.expiry_deadline else None,
+                "days_remaining": (emergency.expiry_deadline - datetime.utcnow()).days if emergency.expiry_deadline else None,
+            }
+
+        try:
+            if action == "resume_execution":
+                emergency.status = EmergencyStatus.RESOLVED
+                emergency.resolved_at = datetime.utcnow()
+                emergency.resolution_reason = "Execution resumed after emergency expiry"
+                return {
+                    "status": "resolved",
+                    "action": "resume_execution",
+                    "emergency_id": emergency_id,
+                }
+
+            elif action == "terminate_fallback":
+                # Verify fallbacks exist for affected contracts
+                has_fallbacks = any(
+                    ref in self.fallbacks for ref in emergency.affected_refs
+                )
+                if not has_fallbacks:
+                    return {
+                        "status": "warning",
+                        "message": "No fallbacks found for affected contracts. Proceeding with termination.",
+                        "action": "terminate_fallback",
+                        "emergency_id": emergency_id,
+                    }
+
+                emergency.status = EmergencyStatus.RESOLVED
+                emergency.resolved_at = datetime.utcnow()
+                emergency.resolution_reason = "Contract terminated per fallback clause"
+                return {
+                    "status": "resolved",
+                    "action": "terminate_fallback",
+                    "emergency_id": emergency_id,
+                }
+
+            elif action == "ratify_amendment":
+                if not ratification_id:
+                    return {"status": "error", "message": "ratification_id required for amendment"}
+
+                # Validate ratification_id format
+                if not isinstance(ratification_id, str) or len(ratification_id.strip()) == 0:
+                    return {"status": "error", "message": "ratification_id must be a non-empty string"}
+
+                emergency.status = EmergencyStatus.RESOLVED
+                emergency.resolved_at = datetime.utcnow()
+                emergency.resolution_reason = f"Parties ratified amendment {ratification_id}"
+                return {
+                    "status": "resolved",
+                    "action": "ratify_amendment",
+                    "emergency_id": emergency_id,
+                    "ratification_id": ratification_id,
+                }
+
+        except Exception as e:
+            return {
+                "status": "error",
+                "message": f"Failed to process expiry: {str(e)}",
+                "error_type": type(e).__name__,
+            }
+
+        # Should not reach here, but provide fallback
+        return {
+            "status": "error",
+            "message": f"Unhandled action: {action}",
+        }
 
     def check_escalation_needed(self, emergency_id: str) -> dict[str, Any]:
         """

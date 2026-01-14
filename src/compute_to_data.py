@@ -660,21 +660,61 @@ class ComputeEnvironment:
 
         start_time = time.time()
 
+        # Input validation
+        if not algorithm_id:
+            return False, {"error": "Algorithm ID is required"}, 0
+
+        if data is None:
+            return False, {"error": "Data cannot be None"}, 0
+
+        if not isinstance(data, list):
+            return False, {"error": "Data must be a list"}, 0
+
+        if parameters is None:
+            parameters = {}
+
         try:
             if algorithm_id not in self.algorithms:
                 return False, {"error": f"Algorithm {algorithm_id} not found"}, 0
 
             algorithm = self.algorithms[algorithm_id]
+
+            # Validate algorithm is callable
+            if not callable(algorithm):
+                return False, {"error": f"Algorithm {algorithm_id} is not callable"}, 0
+
             result = algorithm(data, parameters)
+
+            # Validate result is a dictionary
+            if result is None:
+                return False, {"error": "Algorithm returned None"}, int((time.time() - start_time) * 1000)
+
+            if not isinstance(result, dict):
+                return False, {"error": "Algorithm must return a dictionary"}, int((time.time() - start_time) * 1000)
 
             compute_time = int((time.time() - start_time) * 1000)
             return True, result, compute_time
 
         except TimeoutError:
-            return False, {"error": "Computation timeout"}, int(timeout_seconds * 1000)
+            return False, {"error": "Computation timeout", "timeout_seconds": timeout_seconds}, int(timeout_seconds * 1000)
+        except MemoryError:
+            compute_time = int((time.time() - start_time) * 1000)
+            return False, {"error": "Out of memory during computation"}, compute_time
+        except RecursionError:
+            compute_time = int((time.time() - start_time) * 1000)
+            return False, {"error": "Maximum recursion depth exceeded"}, compute_time
+        except TypeError as e:
+            compute_time = int((time.time() - start_time) * 1000)
+            return False, {"error": f"Type error in algorithm: {str(e)}"}, compute_time
+        except KeyError as e:
+            compute_time = int((time.time() - start_time) * 1000)
+            return False, {"error": f"Missing required key: {str(e)}"}, compute_time
+        except ValueError as e:
+            compute_time = int((time.time() - start_time) * 1000)
+            return False, {"error": f"Invalid value: {str(e)}"}, compute_time
         except Exception as e:
             compute_time = int((time.time() - start_time) * 1000)
-            return False, {"error": str(e)}, compute_time
+            return False, {"error": f"Unexpected error: {str(e)}", "error_type": type(e).__name__}, compute_time
 
 
 # =============================================================================

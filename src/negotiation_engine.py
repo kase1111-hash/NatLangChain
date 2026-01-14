@@ -1291,6 +1291,13 @@ class AutomatedNegotiationEngine:
         Returns:
             Tuple of (success, result)
         """
+        # Input validation
+        if not session_id:
+            return False, {"error": "Session ID is required"}
+
+        if not party:
+            return False, {"error": "Party identifier is required"}
+
         if session_id not in self.sessions:
             return False, {"error": "Session not found"}
 
@@ -1299,34 +1306,104 @@ class AutomatedNegotiationEngine:
         if party not in [session.initiator, session.counterparty]:
             return False, {"error": "Not a party to this session"}
 
+        # Check session expiry
+        if session.expires_at:
+            try:
+                expiry = datetime.fromisoformat(session.expires_at)
+                if datetime.utcnow() > expiry:
+                    session.phase = NegotiationPhase.EXPIRED
+                    return False, {
+                        "error": "Session has expired",
+                        "expired_at": session.expires_at,
+                    }
+            except (ValueError, TypeError):
+                pass  # Invalid expiry format, continue with phase advancement
+
         old_phase = session.phase
 
-        # Phase transitions
-        if session.phase == NegotiationPhase.INTENT_ALIGNMENT:
-            session.phase = NegotiationPhase.CLAUSE_DRAFTING
-        elif session.phase == NegotiationPhase.CLAUSE_DRAFTING:
-            session.phase = NegotiationPhase.NEGOTIATING
-        elif session.phase == NegotiationPhase.NEGOTIATING:
-            session.phase = NegotiationPhase.PENDING_APPROVAL
-        else:
-            return False, {"error": f"Cannot advance from phase: {session.phase.value}"}
+        # Terminal states cannot be advanced
+        terminal_phases = [NegotiationPhase.AGREED, NegotiationPhase.FAILED, NegotiationPhase.EXPIRED]
+        if session.phase in terminal_phases:
+            return False, {
+                "error": f"Session is in terminal state: {session.phase.value}",
+                "message": "Cannot advance from completed, failed, or expired sessions",
+            }
 
-        session.updated_at = datetime.utcnow().isoformat()
+        # Define valid phase transitions with prerequisites
+        try:
+            if session.phase == NegotiationPhase.INITIATED:
+                # Cannot advance from INITIATED - counterparty must join
+                return False, {
+                    "error": "Cannot advance from initiated phase",
+                    "message": "Counterparty must join the session first",
+                    "current_phase": session.phase.value,
+                }
 
-        self._log_audit(
-            "phase_advanced",
-            {
+            elif session.phase == NegotiationPhase.INTENT_ALIGNMENT:
+                # Verify both intents are set before advancing
+                if not session.initiator_intent:
+                    return False, {
+                        "error": "Initiator intent not set",
+                        "message": "Cannot advance until initiator intent is established",
+                    }
+                if not session.counterparty_intent:
+                    return False, {
+                        "error": "Counterparty intent not set",
+                        "message": "Cannot advance until counterparty intent is established",
+                    }
+                session.phase = NegotiationPhase.CLAUSE_DRAFTING
+
+            elif session.phase == NegotiationPhase.CLAUSE_DRAFTING:
+                # Allow advancing to negotiating even without clauses
+                # (parties may negotiate without formal clauses)
+                session.phase = NegotiationPhase.NEGOTIATING
+
+            elif session.phase == NegotiationPhase.NEGOTIATING:
+                # Verify there are offers before moving to pending approval
+                if not session.offers:
+                    return False, {
+                        "error": "No offers made yet",
+                        "message": "At least one offer must be made before moving to approval",
+                    }
+                session.phase = NegotiationPhase.PENDING_APPROVAL
+
+            elif session.phase == NegotiationPhase.PENDING_APPROVAL:
+                # Cannot advance from pending - must be accepted or rejected
+                return False, {
+                    "error": "Cannot advance from pending approval",
+                    "message": "Session must be accepted or rejected by both parties",
+                    "current_phase": session.phase.value,
+                }
+
+            else:
+                return False, {"error": f"Cannot advance from phase: {session.phase.value}"}
+
+            session.updated_at = datetime.utcnow().isoformat()
+
+            self._log_audit(
+                "phase_advanced",
+                {
+                    "session_id": session_id,
+                    "from_phase": old_phase.value,
+                    "to_phase": session.phase.value,
+                    "advanced_by": party,
+                },
+            )
+
+            return True, {
                 "session_id": session_id,
-                "from_phase": old_phase.value,
-                "to_phase": session.phase.value,
-            },
-        )
+                "previous_phase": old_phase.value,
+                "current_phase": session.phase.value,
+            }
 
-        return True, {
-            "session_id": session_id,
-            "previous_phase": old_phase.value,
-            "current_phase": session.phase.value,
-        }
+        except Exception as e:
+            # Rollback phase on error
+            session.phase = old_phase
+            return False, {
+                "error": f"Failed to advance phase: {str(e)}",
+                "error_type": type(e).__name__,
+                "current_phase": session.phase.value,
+            }
 
     # ===== Clause Management =====
 
@@ -1456,6 +1533,22 @@ class AutomatedNegotiationEngine:
         Returns:
             Tuple of (success, result)
         """
+        # Input validation
+        if not session_id:
+            return False, {"error": "Session ID is required"}
+
+        if not from_party:
+            return False, {"error": "From party is required"}
+
+        if terms is None:
+            return False, {"error": "Terms are required"}
+
+        if not isinstance(terms, dict):
+            return False, {"error": "Terms must be a dictionary"}
+
+        if not message:
+            message = "Offer submitted."  # Provide default message
+
         if session_id not in self.sessions:
             return False, {"error": "Session not found"}
 
@@ -1464,49 +1557,94 @@ class AutomatedNegotiationEngine:
         if from_party not in [session.initiator, session.counterparty]:
             return False, {"error": "Not a party to this session"}
 
+        # Check session state
+        terminal_phases = [NegotiationPhase.AGREED, NegotiationPhase.FAILED, NegotiationPhase.EXPIRED]
+        if session.phase in terminal_phases:
+            return False, {
+                "error": f"Cannot make offer in terminal state: {session.phase.value}",
+            }
+
+        # Check session expiry
+        if session.expires_at:
+            try:
+                expiry = datetime.fromisoformat(session.expires_at)
+                if datetime.utcnow() > expiry:
+                    session.phase = NegotiationPhase.EXPIRED
+                    return False, {
+                        "error": "Session has expired",
+                        "expired_at": session.expires_at,
+                    }
+            except (ValueError, TypeError):
+                pass  # Invalid expiry format, continue
+
         if session.round_count >= session.max_rounds:
-            return False, {"error": "Maximum rounds reached"}
+            return False, {
+                "error": "Maximum rounds reached",
+                "round_count": session.round_count,
+                "max_rounds": session.max_rounds,
+                "suggestion": "Consider making a final offer or concluding negotiation",
+            }
 
-        offer_id = f"OFFER-{secrets.token_hex(6).upper()}"
-        to_party = session.counterparty if from_party == session.initiator else session.initiator
+        # Validate offer_type
+        if offer_type is None:
+            offer_type = OfferType.INITIAL
 
-        offer = Offer(
-            offer_id=offer_id,
-            offer_type=offer_type,
-            from_party=from_party,
-            to_party=to_party,
-            terms=terms,
-            clauses=list(session.clauses.keys()),
-            message=message,
-        )
+        if not isinstance(offer_type, OfferType):
+            try:
+                offer_type = OfferType(offer_type)
+            except (ValueError, TypeError):
+                return False, {
+                    "error": f"Invalid offer type: {offer_type}",
+                    "valid_types": [t.value for t in OfferType],
+                }
 
-        session.offers.append(offer)
-        session.current_terms = terms
-        session.round_count += 1
-        session.updated_at = datetime.utcnow().isoformat()
+        try:
+            offer_id = f"OFFER-{secrets.token_hex(6).upper()}"
+            to_party = session.counterparty if from_party == session.initiator else session.initiator
 
-        if session.phase == NegotiationPhase.INTENT_ALIGNMENT:
-            session.phase = NegotiationPhase.NEGOTIATING
+            offer = Offer(
+                offer_id=offer_id,
+                offer_type=offer_type,
+                from_party=from_party,
+                to_party=to_party,
+                terms=terms,
+                clauses=list(session.clauses.keys()),
+                message=message,
+            )
 
-        self._log_audit(
-            "offer_made",
-            {
-                "session_id": session_id,
+            session.offers.append(offer)
+            session.current_terms = terms
+            session.round_count += 1
+            session.updated_at = datetime.utcnow().isoformat()
+
+            if session.phase == NegotiationPhase.INTENT_ALIGNMENT:
+                session.phase = NegotiationPhase.NEGOTIATING
+
+            self._log_audit(
+                "offer_made",
+                {
+                    "session_id": session_id,
+                    "offer_id": offer_id,
+                    "from_party": from_party,
+                    "round": session.round_count,
+                },
+            )
+
+            return True, {
                 "offer_id": offer_id,
-                "from_party": from_party,
+                "offer_type": offer_type.value,
+                "from": from_party,
+                "to": to_party,
+                "terms": terms,
                 "round": session.round_count,
-            },
-        )
+                "max_rounds": session.max_rounds,
+            }
 
-        return True, {
-            "offer_id": offer_id,
-            "offer_type": offer_type.value,
-            "from": from_party,
-            "to": to_party,
-            "terms": terms,
-            "round": session.round_count,
-            "max_rounds": session.max_rounds,
-        }
+        except Exception as e:
+            return False, {
+                "error": f"Failed to create offer: {str(e)}",
+                "error_type": type(e).__name__,
+            }
 
     def respond_to_offer(
         self,
