@@ -170,7 +170,7 @@
     try {
       const result = await getChatQuestions();
       starterQuestions = result.questions || [];
-    } catch (e) {
+    } catch (_e) {
       starterQuestions = [];
     }
   }

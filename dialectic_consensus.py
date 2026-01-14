@@ -37,7 +37,7 @@ class ConsensusModule:
 
         If the Skeptic's concerns are 'Critical' (making the trade unenforceable), REJECT.
         If they can be resolved by the Facilitator's summary, ACCEPT.
-        
+
         Return JSON: {{"status": "ACCEPT/REJECT", "final_summary": "...", "reasoning": "..."}}
         """
 

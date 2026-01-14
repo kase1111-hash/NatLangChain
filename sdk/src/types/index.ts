@@ -262,7 +262,7 @@ export interface MineResponse {
 }
 
 /** Block response */
-export interface BlockResponse extends Block {}
+export type BlockResponse = Block;
 
 /** Latest block response */
 export interface LatestBlockResponse {

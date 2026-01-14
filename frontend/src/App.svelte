@@ -26,7 +26,7 @@
   async function updateDreamingStatus() {
     try {
       dreamingStatus = await getDreamingStatus();
-    } catch (e) {
+    } catch (_e) {
       // Silently fail - dreaming is non-critical
       dreamingStatus = { message: 'Dreaming quietly...', state: 'idle' };
     }
@@ -431,10 +431,6 @@
     align-items: center;
   }
 
-  .footer-content p {
-    color: #52525b;
-    font-size: 0.875rem;
-  }
 
   .footer-links {
     display: flex;

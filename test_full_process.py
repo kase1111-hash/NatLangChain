@@ -26,6 +26,33 @@ import tempfile
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
+# Import security enforcement components
+# Import SSRF protection
+from api.ssrf_protection import (
+    BLOCKED_HOSTS,
+    BLOCKED_IP_RANGES,
+    get_client_ip_from_headers,
+    is_private_ip,
+    validate_url_for_ssrf,
+)
+from security_enforcement import (
+    DaemonWatchdog,
+    EnforcementError,
+    EnforcementResult,
+    ImmutableAuditLog,
+    NetworkEnforcement,
+    NetworkRuleBuilder,
+    ProcessSandbox,
+    SecurityEnforcementManager,
+    USBEnforcement,
+    enforce_boundary_mode,
+    sanitize_log_prefix,
+    validate_interface_name,
+    validate_ip_address,
+    validate_port,
+)
+
+
 # Test counters
 class TestResults:
     def __init__(self):
@@ -670,7 +697,7 @@ def test_watchdog():
         results.add_fail("watchdog", "Missing _running state")
 
     # Test initial state is not running
-    if watchdog._running == False:
+    if not watchdog._running:
         results.add_pass("watchdog", "Initial state is not running")
     else:
         results.add_fail("watchdog", "Should start in non-running state")
@@ -749,7 +776,7 @@ def test_enforcement_result():
         details={"key": "value"}
     )
 
-    if result.success == True:
+    if result.success:
         results.add_pass("result", "success attribute works")
     else:
         results.add_fail("result", "success attribute wrong")
