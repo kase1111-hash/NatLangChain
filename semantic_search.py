@@ -1,7 +1,8 @@
 import json
+
 import numpy as np
-from sentence_transformers import SentenceTransformer # Standard for 2025 semantic tasks
-from typing import List, Dict
+from sentence_transformers import SentenceTransformer  # Standard for 2025 semantic tasks
+
 
 class NatLangSearch:
     def __init__(self, model_name: str = "all-MiniLM-L6-v2"):
@@ -10,10 +11,10 @@ class NatLangSearch:
         self.chain_data = []
 
     def load_chain(self, file_path: str):
-        with open(file_path, 'r') as f:
+        with open(file_path) as f:
             self.chain_data = json.load(f)
 
-    def search(self, query: str, top_k: int = 3) -> List[Dict]:
+    def search(self, query: str, top_k: int = 3) -> list[dict]:
         """
         Performs semantic search across all prose entries in the blockchain.
         """
@@ -34,17 +35,17 @@ class NatLangSearch:
 
         # Calculate Cosine Similarity
         similarities = np.dot(prose_embeddings, query_embedding.T).flatten()
-        
+
         # Sort and return the top_k results
         results = []
         top_indices = similarities.argsort()[-top_k:][::-1]
-        
+
         for idx in top_indices:
             results.append({
                 "score": round(float(similarities[idx]), 4),
                 "data": all_entries[idx]
             })
-            
+
         return results
 
 # --- EXECUTION EXAMPLE ---

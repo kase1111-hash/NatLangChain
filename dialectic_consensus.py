@@ -1,4 +1,5 @@
-import anthropic # Model A
+import anthropic  # Model A
+
 # import openai  # Model B (e.g., GPT-5 or Llama-4)
 
 class ConsensusModule:
@@ -6,8 +7,8 @@ class ConsensusModule:
         self.client = anthropic.Anthropic(api_key=api_key)
 
     def debate_entry(self, prose_entry: str):
-        print(f"--- Initiating Proof of Understanding for Entry ---")
-        
+        print("--- Initiating Proof of Understanding for Entry ---")
+
         # 1. The Skeptic: Tries to find 'Ambiguity Arbitrage'
         skeptic_prompt = f"""
         Role: The Skeptic (Financial Auditor).
@@ -15,7 +16,7 @@ class ConsensusModule:
         Task: Identify any vague terms, 'force majeure' loopholes, or ambiguous timelines.
         Be extremely critical.
         """
-        
+
         # 2. The Facilitator: Extracts the core economic spirit
         facilitator_prompt = f"""
         Role: The Facilitator (Intent Specialist).
@@ -36,10 +37,10 @@ class ConsensusModule:
 
         If the Skeptic's concerns are 'Critical' (making the trade unenforceable), REJECT.
         If they can be resolved by the Facilitator's summary, ACCEPT.
-        
+
         Return JSON: {{"status": "ACCEPT/REJECT", "final_summary": "...", "reasoning": "..."}}
         """
-        
+
         return self._call_llm(consensus_check, role="Consensus_Engine")
 
     def _call_llm(self, prompt, role):
@@ -59,10 +60,10 @@ class ConsensusModule:
                 return response.content[0].text
             return "No response from LLM."
         except Exception as e:
-            print(f"Error calling LLM ({role}): {str(e)}")
-            return f"Error: {str(e)}" 
+            print(f"Error calling LLM ({role}): {e!s}")
+            return f"Error: {e!s}"
 
 # --- Usage ---
 # entry = "I'll hedge some oil soon if things get crazy in the Middle East."
-# result = consensus.debate_entry(entry) 
+# result = consensus.debate_entry(entry)
 # -> Output: REJECT (Reason: 'some oil', 'soon', and 'crazy' are semantically null).

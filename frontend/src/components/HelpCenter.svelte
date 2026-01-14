@@ -42,7 +42,7 @@
       if (philosophyRes.ok) philosophy = await philosophyRes.json();
 
       loading = false;
-    } catch (err) {
+    } catch (_err) {
       console.warn('Could not fetch governance data from API, using embedded data');
       // Use embedded fallback data
       loadEmbeddedData();

@@ -17,15 +17,41 @@ This comprehensive test validates all security processes and features:
 12. Daemon watchdog
 """
 
-import sys
-import os
-import tempfile
-import json
 import inspect
-from pathlib import Path
+import json
+import os
+import sys
+import tempfile
 
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+
+# Import security enforcement components
+# Import SSRF protection
+from api.ssrf_protection import (
+    BLOCKED_HOSTS,
+    BLOCKED_IP_RANGES,
+    get_client_ip_from_headers,
+    is_private_ip,
+    validate_url_for_ssrf,
+)
+from security_enforcement import (
+    DaemonWatchdog,
+    EnforcementError,
+    EnforcementResult,
+    ImmutableAuditLog,
+    NetworkEnforcement,
+    NetworkRuleBuilder,
+    ProcessSandbox,
+    SecurityEnforcementManager,
+    USBEnforcement,
+    enforce_boundary_mode,
+    sanitize_log_prefix,
+    validate_interface_name,
+    validate_ip_address,
+    validate_port,
+)
+
 
 # Test counters
 class TestResults:
@@ -98,23 +124,6 @@ def test_imports():
 
     # Core security enforcement
     try:
-        from security_enforcement import (
-            NetworkEnforcement,
-            USBEnforcement,
-            ProcessSandbox,
-            DaemonWatchdog,
-            ImmutableAuditLog,
-            EnforcementResult,
-            EnforcementError,
-            NetworkRuleBuilder,
-            SecurityEnforcementManager,
-            EnforcementCapability,
-            validate_ip_address,
-            validate_port,
-            validate_interface_name,
-            sanitize_log_prefix,
-            enforce_boundary_mode,
-        )
         results.add_pass("imports", "Core security_enforcement module")
         globals().update(locals())  # Make imports available globally
     except Exception as e:
@@ -233,9 +242,9 @@ def test_input_validation():
     for iface in invalid_interfaces:
         is_valid, error = validate_interface_name(iface)
         if not is_valid:
-            results.add_pass("input_validation", f"Interface rejected: {repr(iface)}")
+            results.add_pass("input_validation", f"Interface rejected: {iface!r}")
         else:
-            results.add_fail("input_validation", f"Interface should be rejected: {repr(iface)}")
+            results.add_fail("input_validation", f"Interface should be rejected: {iface!r}")
 
     # Log prefix sanitization
     # sanitize_log_prefix removes non-alphanumeric (except _) and limits to 20 chars
@@ -531,7 +540,7 @@ def test_audit_log():
             results.add_fail("audit", "Log file empty or missing")
 
         # Test log format (JSON lines)
-        with open(log_file, 'r') as f:
+        with open(log_file) as f:
             lines = f.readlines()
             if len(lines) >= 3:
                 try:
@@ -688,7 +697,7 @@ def test_watchdog():
         results.add_fail("watchdog", "Missing _running state")
 
     # Test initial state is not running
-    if watchdog._running == False:
+    if not watchdog._running:
         results.add_pass("watchdog", "Initial state is not running")
     else:
         results.add_fail("watchdog", "Should start in non-running state")
@@ -698,7 +707,7 @@ def test_watchdog():
     if isinstance(result, EnforcementResult):
         results.add_pass("watchdog", "start() returns EnforcementResult")
     else:
-        results.add_fail("watchdog", f"start() should return EnforcementResult")
+        results.add_fail("watchdog", "start() should return EnforcementResult")
 
     # Stop the watchdog
     watchdog.stop()
@@ -767,7 +776,7 @@ def test_enforcement_result():
         details={"key": "value"}
     )
 
-    if result.success == True:
+    if result.success:
         results.add_pass("result", "success attribute works")
     else:
         results.add_fail("result", "success attribute wrong")

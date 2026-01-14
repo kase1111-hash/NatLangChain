@@ -28,8 +28,9 @@ except Exception as e:
 print("\n[TEST 2] Testing semantic_search.py with chain.json...")
 try:
     # Check if dependencies are available
-    import numpy
-    import sentence_transformers
+    import importlib.util
+    if not importlib.util.find_spec("numpy") or not importlib.util.find_spec("sentence_transformers"):
+        raise ImportError("Required dependencies not installed")
 
     # Now test the actual search functionality
     from semantic_search import NatLangSearch
@@ -108,7 +109,7 @@ else:
 print("\n[TEST 5] Verifying sample blockchain data...")
 try:
     import json
-    with open("data/chain.json", 'r') as f:
+    with open("data/chain.json") as f:
         chain_data = json.load(f)
 
     print(f"  Loaded {len(chain_data)} blocks from chain.json")

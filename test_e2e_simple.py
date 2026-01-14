@@ -4,16 +4,16 @@ Simplified End-to-End Blockchain Negotiation Test
 Tests the complete flow without requiring LLM dependencies
 """
 
-import sys
-import os
-import time
 import json
-from typing import Dict, Any
+import os
+import sys
+import time
 
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
 from blockchain import NatLangChain, NaturalLanguageEntry
+
 
 def print_section(title: str):
     """Print a formatted section header"""
@@ -46,7 +46,7 @@ def main():
     print("Initializing blockchain...")
     blockchain = NatLangChain()
 
-    print(f"✓ Blockchain initialized with genesis block")
+    print("✓ Blockchain initialized with genesis block")
     print(f"  Chain length: {len(blockchain.chain)}")
 
     # =========================================================================
@@ -77,7 +77,7 @@ Available for projects ranging from 1 week to 3 months.
     )
 
     blockchain.add_entry(offer_entry)
-    print(f"✓ OFFER entry added to pending entries")
+    print("✓ OFFER entry added to pending entries")
     print_entry(offer_entry, "Alice's OFFER")
 
     # =========================================================================
@@ -107,7 +107,7 @@ Need someone who can start immediately and deliver within 2 weeks.
     )
 
     blockchain.add_entry(seek_entry)
-    print(f"✓ SEEK entry added to pending entries")
+    print("✓ SEEK entry added to pending entries")
     print_entry(seek_entry, "Bob's SEEK")
 
     # =========================================================================
@@ -120,7 +120,7 @@ Need someone who can start immediately and deliver within 2 weeks.
     # Create proposal entry (simulating what the matcher would do)
     miner_id = "charlie_miner"
 
-    proposal_content = f"""[CONTRACT: PROPOSAL] Matched contract between alice (web developer) and bob (e-commerce project).
+    proposal_content = """[CONTRACT: PROPOSAL] Matched contract between alice (web developer) and bob (e-commerce project).
 
 MATCH ANALYSIS:
 - Compatibility Score: 87%
@@ -394,14 +394,14 @@ Contract is now CLOSED and ready for execution."""
     upfront_to_alice = upfront_gross * (1 - miner_fee_pct)
     upfront_miner_fee = upfront_gross * miner_fee_pct
 
-    print(f"\n💰 Payment Calculation:")
+    print("\n💰 Payment Calculation:")
     print(f"   Total Contract Value: ${contract_value:.2f}")
     print(f"   Miner Fee (2%): ${miner_fee:.2f}")
     print(f"   Net to Alice: ${net_to_alice:.2f}")
     print()
 
     # Payment 1: Upfront payment from Bob to Alice
-    print(f"📤 Payment #1: Upfront Payment (40%)")
+    print("📤 Payment #1: Upfront Payment (40%)")
     payment1_content = f"""[PAYMENT TRANSFER]
 From: Bob (buyer)
 To: Alice (developer)
@@ -434,7 +434,7 @@ Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}"""
     print_entry(payment1_entry, "Payment Transfer #1")
 
     # Payment 2: Miner fee from upfront payment
-    print(f"📤 Payment #2: Miner Fee from Upfront (2%)")
+    print("📤 Payment #2: Miner Fee from Upfront (2%)")
     payment2_content = f"""[PAYOUT]
 Miner: Charlie (charlie_miner)
 Amount: ${upfront_miner_fee:.2f} (2% facilitation fee from upfront payment)
@@ -489,23 +489,23 @@ Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}"""
     print(f"\n{'─'*80}")
     print("💵 PAYMENT SUMMARY (Three Parties)")
     print(f"{'─'*80}")
-    print(f"\n👤 Bob (Buyer):")
+    print("\n👤 Bob (Buyer):")
     print(f"   Paid: ${upfront_gross:.2f} upfront (40%)")
-    print(f"   Remaining Payments:")
+    print("   Remaining Payments:")
     print(f"     - Midpoint (30%): ${midpoint_gross:.2f}")
     print(f"     - Completion (30%): ${completion_gross:.2f}")
     print(f"   Total Contract: ${contract_value:.2f}")
 
-    print(f"\n👤 Alice (Developer):")
+    print("\n👤 Alice (Developer):")
     print(f"   Received: ${upfront_to_alice:.2f} net upfront payment")
-    print(f"   Expected Future Payments:")
+    print("   Expected Future Payments:")
     print(f"     - Midpoint: ${midpoint_to_alice:.2f} net")
     print(f"     - Completion: ${completion_to_alice:.2f} net")
     print(f"   Expected Total: ${net_to_alice:.2f} net")
 
-    print(f"\n👤 Charlie (Miner):")
+    print("\n👤 Charlie (Miner):")
     print(f"   Received: ${upfront_miner_fee:.2f} facilitation fee (from upfront)")
-    print(f"   Expected Future Fees:")
+    print("   Expected Future Fees:")
     print(f"     - Midpoint: ${midpoint_miner_fee:.2f}")
     print(f"     - Completion: ${completion_miner_fee:.2f}")
     print(f"   Expected Total: ${miner_fee:.2f}")
@@ -516,12 +516,12 @@ Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}"""
     # =========================================================================
     print_section("STEP 7: Final Blockchain State")
 
-    print(f"Blockchain Statistics:")
+    print("Blockchain Statistics:")
     print(f"  Total Blocks: {len(blockchain.chain)}")
     print(f"  Pending Entries: {len(blockchain.pending_entries)}")
     print(f"  Chain Valid: {blockchain.validate_chain()}")
 
-    print(f"\nBlock Details:")
+    print("\nBlock Details:")
     for i, block in enumerate(blockchain.chain):
         print(f"\n  Block #{block.index}:")
         print(f"    Hash: {block.hash}")

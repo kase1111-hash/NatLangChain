@@ -1,5 +1,7 @@
-import anthropic  # Leveraging the 2025-standard for nuanced reasoning
 import os
+
+import anthropic  # Leveraging the 2025-standard for nuanced reasoning
+
 
 class SemanticDiff:
     """

@@ -1,6 +1,7 @@
 {
   "name": "@natlangchain/sdk",
   "version": "1.0.0",
+  "type": "module",
   "description": "TypeScript SDK for NatLangChain - the prose-first, intent-native blockchain",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -19,7 +20,7 @@
   "scripts": {
     "build": "tsup src/index.ts --format cjs,esm --dts --clean",
     "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
-    "lint": "eslint src --ext .ts",
+    "lint": "eslint src/",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
@@ -41,10 +42,13 @@
     "url": "https://github.com/natlangchain/sdk"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.2",
     "@types/node": "^20.10.0",
-    "eslint": "^8.55.0",
+    "eslint": "^9.39.2",
+    "globals": "^17.0.0",
     "tsup": "^8.0.1",
     "typescript": "^5.3.3",
+    "typescript-eslint": "^8.53.0",
     "vitest": "^1.0.4"
   },
   "engines": {

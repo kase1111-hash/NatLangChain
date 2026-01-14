@@ -14,7 +14,7 @@ print("=" * 70)
 
 # Check 1: dialectic_consensus.py has real LLM implementation
 print("\n[CHECK 1] dialectic_consensus.py - Real LLM Implementation")
-with open("dialectic_consensus.py", "r") as f:
+with open("dialectic_consensus.py") as f:
     content = f.read()
 
 if "return \"Analysis completed.\"" in content:
@@ -25,7 +25,7 @@ elif "self.client.messages.create" in content and "model=" in content:
     match = re.search(r'def _call_llm.*?return.*?(?=\n\n|\nif|\n#|\Z)', content, re.DOTALL)
     if match:
         lines = match.group(0).split('\n')[:5]
-        print(f"  Implementation preview:")
+        print("  Implementation preview:")
         for line in lines:
             print(f"    {line}")
 else:
@@ -35,7 +35,7 @@ else:
 print("\n[CHECK 2] SemanticDiff.py - Renamed and Fixed")
 if os.path.exists("SemanticDiff.py") and not os.path.exists("SemanticDiff.md"):
     print("  ✓ PASSED: File renamed from .md to .py")
-    with open("SemanticDiff.py", "r") as f:
+    with open("SemanticDiff.py") as f:
         content = f.read()
     if 'api_key = os.getenv("ANTHROPIC_API_KEY")' in content:
         print("  ✓ PASSED: Uses environment variable instead of placeholder")
@@ -50,7 +50,7 @@ else:
 
 # Check 3: requirements.txt has new dependencies
 print("\n[CHECK 3] requirements.txt - Updated Dependencies")
-with open("requirements.txt", "r") as f:
+with open("requirements.txt") as f:
     reqs = f.read()
 
 missing = []
@@ -68,7 +68,7 @@ else:
 
 # Check 4: semantic_search.py code structure is correct
 print("\n[CHECK 4] semantic_search.py - Code Structure")
-with open("semantic_search.py", "r") as f:
+with open("semantic_search.py") as f:
     content = f.read()
 
 checks = [

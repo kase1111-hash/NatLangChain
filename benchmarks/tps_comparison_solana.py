@@ -18,13 +18,11 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
-from typing import Any
 
 # Add src to path
 sys.path.insert(0, "src")
 
 from blockchain import NatLangChain, NaturalLanguageEntry
-
 
 # =============================================================================
 # Solana Reference Metrics (2024-2025 benchmarks)
@@ -140,7 +138,7 @@ def percentile(data: list, p: float) -> float:
 def run_simulation(name: str, latencies: list) -> SimulationResult:
     """Compute simulation results from latency measurements."""
     total_time = sum(latencies)
-    latencies_ms = [l * 1000 for l in latencies]
+    latencies_ms = [lat * 1000 for lat in latencies]
 
     return SimulationResult(
         name=name,
