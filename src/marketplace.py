@@ -542,13 +542,69 @@ class PaymentProcessor:
         Returns:
             Payment result with transaction details
         """
-        splits = self.calculate_splits(amount_eth, config.revenue_split)
+        # Input validation
+        if not buyer_wallet:
+            return {
+                "success": False,
+                "error": "Buyer wallet address is required",
+            }
+
+        if not buyer_wallet.startswith("0x") or len(buyer_wallet) != 42:
+            return {
+                "success": False,
+                "error": "Invalid buyer wallet address format",
+            }
+
+        if amount_eth is None or amount_eth <= 0:
+            return {
+                "success": False,
+                "error": "Payment amount must be greater than zero",
+            }
+
+        if config is None:
+            return {
+                "success": False,
+                "error": "Market configuration is required",
+            }
+
+        if config.revenue_split is None:
+            return {
+                "success": False,
+                "error": "Revenue split configuration is missing",
+            }
+
+        try:
+            splits = self.calculate_splits(amount_eth, config.revenue_split)
+        except ValueError as e:
+            return {
+                "success": False,
+                "error": f"Revenue split calculation failed: {str(e)}",
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"Unexpected error in split calculation: {str(e)}",
+            }
+
+        # Validate recipient wallets
+        developer_wallet = config.developer_wallet or config.owner_wallet
+        if not developer_wallet:
+            return {
+                "success": False,
+                "error": "No developer or owner wallet configured",
+            }
 
         # In production, this would execute actual blockchain transactions
         # For now, we return a mock result
-        payment_id = hashlib.sha256(
-            f"{buyer_wallet}:{amount_eth}:{time.time()}".encode()
-        ).hexdigest()[:16]
+        try:
+            payment_id = hashlib.sha256(
+                f"{buyer_wallet}:{amount_eth}:{time.time()}".encode()
+            ).hexdigest()[:16]
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"Failed to generate payment ID: {str(e)}",
+            }
 
         return {
             "success": True,
@@ -556,7 +612,7 @@ class PaymentProcessor:
             "amount_eth": amount_eth,
             "splits": {
                 "developer": {
-                    "wallet": config.developer_wallet or config.owner_wallet,
+                    "wallet": developer_wallet,
                     "amount": splits["developer"],
                 },
                 "platform": {"wallet": config.platform_wallet, "amount": splits["platform"]},
@@ -716,6 +772,16 @@ class MarketplaceManager:
         Returns:
             Purchase result with license NFT details
         """
+        # Input validation
+        if not module_id:
+            return {"success": False, "error": "Module ID is required"}
+
+        if not buyer_wallet:
+            return {"success": False, "error": "Buyer wallet address is required"}
+
+        if tier is None:
+            return {"success": False, "error": "License tier is required"}
+
         # Validate module exists
         config = self._module_registry.get(module_id)
         if not config:
@@ -725,8 +791,18 @@ class MarketplaceManager:
         if not config.ip_asset_id:
             return {"success": False, "error": "Module has no Story Protocol IP Asset ID"}
 
+        # Validate PIL terms exist
+        if not config.pil_terms:
+            return {"success": False, "error": "Module has no PIL terms configured"}
+
         # Calculate price for tier
-        price_eth = config.get_tier_price(tier)
+        try:
+            price_eth = config.get_tier_price(tier)
+        except Exception as e:
+            return {"success": False, "error": f"Failed to calculate tier price: {str(e)}"}
+
+        if price_eth <= 0:
+            return {"success": False, "error": "Invalid price calculated for tier"}
 
         # Process payment
         payment_result = self.payment_processor.process_payment(
@@ -741,30 +817,62 @@ class MarketplaceManager:
             }
 
         # Mint license NFT
-        mint_result = self.story_client.mint_license_nft(
-            ip_asset_id=config.ip_asset_id,
-            buyer_wallet=buyer_wallet,
-            license_terms=config.pil_terms.to_dict(),
-        )
+        try:
+            mint_result = self.story_client.mint_license_nft(
+                ip_asset_id=config.ip_asset_id,
+                buyer_wallet=buyer_wallet,
+                license_terms=config.pil_terms.to_dict(),
+            )
+        except Exception as e:
+            # Payment was processed but minting failed - record for manual resolution
+            return {
+                "success": False,
+                "error": "License NFT minting failed with exception",
+                "error_details": str(e),
+                "payment_processed": True,
+                "payment_id": payment_result.get("payment_id"),
+                "requires_manual_resolution": True,
+                "message": "Payment was processed but NFT minting failed. Please contact support.",
+            }
 
         if not mint_result.get("success"):
-            return {"success": False, "error": "License NFT minting failed", "details": mint_result}
+            # Payment was processed but minting failed
+            return {
+                "success": False,
+                "error": "License NFT minting failed",
+                "details": mint_result,
+                "payment_processed": True,
+                "payment_id": payment_result.get("payment_id"),
+                "requires_manual_resolution": True,
+                "message": "Payment was processed but NFT minting failed. Please contact support.",
+            }
 
         # Record purchase
-        purchase = LicensePurchase(
-            purchase_id="",  # Will be auto-generated
-            module_name=config.module_name,
-            ip_asset_id=config.ip_asset_id,
-            buyer_wallet=buyer_wallet,
-            seller_wallet=config.owner_wallet,
-            tier=tier,
-            price_eth=price_eth,
-            license_nft_id=mint_result.get("nft_id", ""),
-            transaction_hash=mint_result.get("transaction_hash", ""),
-            status="completed",
-        )
+        try:
+            purchase = LicensePurchase(
+                purchase_id="",  # Will be auto-generated
+                module_name=config.module_name,
+                ip_asset_id=config.ip_asset_id,
+                buyer_wallet=buyer_wallet,
+                seller_wallet=config.owner_wallet,
+                tier=tier,
+                price_eth=price_eth,
+                license_nft_id=mint_result.get("nft_id", ""),
+                transaction_hash=mint_result.get("transaction_hash", ""),
+                status="completed",
+            )
 
-        self._purchases[purchase.purchase_id] = purchase
+            self._purchases[purchase.purchase_id] = purchase
+        except Exception as e:
+            # Both payment and minting succeeded, but recording failed
+            # This is not critical but should be logged
+            return {
+                "success": True,
+                "warning": f"Purchase completed but recording failed: {str(e)}",
+                "payment": payment_result,
+                "license_nft": mint_result,
+                "message": f"Successfully purchased {tier.value} license for {config.module_name} (recording error)",
+            }
 
         return {
             "success": True,

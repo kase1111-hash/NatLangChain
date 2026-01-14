@@ -276,26 +276,55 @@ class FeeExtractor:
 
         Returns FeeInfo with amount=0 if no fee found (zero-fee contract).
         """
+        # Input validation
+        if content is None:
+            return FeeInfo(
+                amount=0.0, currency=DEFAULT_FEE_CURRENCY, source="invalid_input", is_explicit=False
+            )
+
+        if not isinstance(content, str):
+            try:
+                content = str(content)
+            except Exception:
+                return FeeInfo(
+                    amount=0.0, currency=DEFAULT_FEE_CURRENCY, source="conversion_failed", is_explicit=False
+                )
+
         # Try each pattern
         for pattern in self.patterns:
-            match = pattern.search(content)
-            if match:
-                try:
-                    # Parse amount, removing commas
-                    amount_str = match.group(1).replace(",", "")
-                    amount = float(amount_str)
+            try:
+                match = pattern.search(content)
+                if match:
+                    try:
+                        # Parse amount, removing commas
+                        amount_str = match.group(1).replace(",", "")
+                        amount = float(amount_str)
 
-                    # Detect currency from context
-                    currency = self._detect_currency(content, match.start())
+                        # Validate amount is reasonable (prevent overflow)
+                        if amount < 0:
+                            continue  # Negative fees not allowed
+                        if amount > 1_000_000_000:  # 1 billion cap
+                            continue  # Unreasonable amount, skip
 
-                    return FeeInfo(
-                        amount=amount,
-                        currency=currency,
-                        source=pattern.pattern[:50],  # First 50 chars of pattern
-                        is_explicit=True,
-                    )
-                except (ValueError, IndexError):
-                    continue
+                        # Detect currency from context
+                        currency = self._detect_currency(content, match.start())
+
+                        return FeeInfo(
+                            amount=amount,
+                            currency=currency,
+                            source=pattern.pattern[:50],  # First 50 chars of pattern
+                            is_explicit=True,
+                        )
+                    except (ValueError, IndexError):
+                        continue
+                    except OverflowError:
+                        continue  # Number too large
+            except re.error:
+                # Regex error - skip this pattern
+                continue
+            except Exception:
+                # Any other error with pattern matching - skip
+                continue
 
         # No fee found - this is a zero-fee contract
         return FeeInfo(
@@ -591,6 +620,13 @@ class VoluntaryProcessingQueue:
         Returns:
             (success, earnings_info)
         """
+        # Input validation
+        if not contract_id:
+            return (False, {"error": "Contract ID is required"})
+
+        if not mediator_id:
+            return (False, {"error": "Mediator ID is required"})
+
         contract = self._contracts.get(contract_id)
         if not contract:
             return (False, {"error": f"Contract {contract_id} not found"})
@@ -601,66 +637,95 @@ class VoluntaryProcessingQueue:
                 {"error": f"Contract claimed by {contract.claimed_by}, not {mediator_id}"},
             )
 
-        if contract.status not in (ProcessingStatus.CLAIMED, ProcessingStatus.PROCESSING):
-            return (False, {"error": f"Contract is {contract.status.value}"})
+        # Valid state transitions: CLAIMED -> COMPLETED, PROCESSING -> COMPLETED
+        valid_states = (ProcessingStatus.CLAIMED, ProcessingStatus.PROCESSING)
+        if contract.status not in valid_states:
+            return (
+                False,
+                {
+                    "error": f"Invalid state transition: cannot complete from {contract.status.value}",
+                    "valid_states": [s.value for s in valid_states],
+                },
+            )
 
-        contract.status = ProcessingStatus.COMPLETED
-        contract.completed_at = datetime.utcnow()
+        # Prevent double completion
+        if contract.completed_at is not None:
+            return (
+                False,
+                {"error": "Contract has already been completed", "completed_at": contract.completed_at.isoformat()},
+            )
 
-        # Calculate earnings
-        earnings = self._get_or_create_earnings(mediator_id)
-        fee_amount = contract.fee.amount
-        subsidy_amount = 0.0
-        reputation_bonus = 0.0
+        try:
+            contract.status = ProcessingStatus.COMPLETED
+            contract.completed_at = datetime.utcnow()
 
-        # Fee-based earning
-        if fee_amount > 0:
-            # Deduct community pool contribution
-            net_fee = fee_amount * (1 - COMMUNITY_POOL_PERCENTAGE)
-            earnings.fees_collected += net_fee
-            earnings.total_earned += net_fee
-            self._stats["total_fees_collected"] += net_fee
-        else:
-            # Zero-fee processing
-            earnings.zero_fee_processed += 1
+            # Calculate earnings
+            earnings = self._get_or_create_earnings(mediator_id)
+            fee_amount = contract.fee.amount if contract.fee else 0.0
+            subsidy_amount = 0.0
+            reputation_bonus = 0.0
 
-            # Reputation bonus
-            reputation_bonus = ZERO_FEE_REPUTATION_BONUS
-            earnings.reputation_bonuses += reputation_bonus
+            # Fee-based earning
+            if fee_amount > 0:
+                # Deduct community pool contribution
+                net_fee = fee_amount * (1 - COMMUNITY_POOL_PERCENTAGE)
+                earnings.fees_collected += net_fee
+                earnings.total_earned += net_fee
+                self._stats["total_fees_collected"] += net_fee
+            else:
+                # Zero-fee processing
+                earnings.zero_fee_processed += 1
 
-            # Optional community subsidy
-            if apply_community_subsidy and self.community_pool.balance > 0:
-                # Small fixed subsidy for zero-fee
-                subsidy_amount = min(10.0, self.community_pool.balance)
-                if self.community_pool.disburse(subsidy_amount, contract_id, mediator_id):
-                    contract.subsidy_amount = subsidy_amount
-                    contract.incentive_type = IncentiveType.COMMUNITY_SUBSIDY
-                    earnings.subsidies_received += subsidy_amount
-                    earnings.total_earned += subsidy_amount
+                # Reputation bonus
+                reputation_bonus = ZERO_FEE_REPUTATION_BONUS
+                earnings.reputation_bonuses += reputation_bonus
 
-            self._stats["zero_fee_processed"] += 1
+                # Optional community subsidy
+                if apply_community_subsidy and self.community_pool.balance > 0:
+                    # Small fixed subsidy for zero-fee
+                    subsidy_amount = min(10.0, self.community_pool.balance)
+                    if self.community_pool.disburse(subsidy_amount, contract_id, mediator_id):
+                        contract.subsidy_amount = subsidy_amount
+                        contract.incentive_type = IncentiveType.COMMUNITY_SUBSIDY
+                        earnings.subsidies_received += subsidy_amount
+                        earnings.total_earned += subsidy_amount
 
-        earnings.contracts_processed += 1
-        self._stats["total_processed"] += 1
+                self._stats["zero_fee_processed"] += 1
 
-        # Update average wait time
-        wait_hours = (contract.completed_at - contract.submitted_at).total_seconds() / 3600
-        total = self._stats["total_processed"]
-        avg = self._stats["average_wait_hours"]
-        self._stats["average_wait_hours"] = (avg * (total - 1) + wait_hours) / total
+            earnings.contracts_processed += 1
+            self._stats["total_processed"] += 1
 
-        return (
-            True,
-            {
-                "contract_id": contract_id,
-                "mediator_id": mediator_id,
-                "fee_earned": fee_amount * (1 - COMMUNITY_POOL_PERCENTAGE) if fee_amount > 0 else 0,
-                "subsidy_earned": subsidy_amount,
-                "reputation_bonus": reputation_bonus,
-                "is_zero_fee": fee_amount == 0,
-                "wait_hours": wait_hours,
-            },
-        )
+            # Update average wait time safely
+            try:
+                wait_hours = (contract.completed_at - contract.submitted_at).total_seconds() / 3600
+                total = self._stats["total_processed"]
+                if total > 0:
+                    avg = self._stats["average_wait_hours"]
+                    self._stats["average_wait_hours"] = (avg * (total - 1) + wait_hours) / total
+            except (TypeError, ZeroDivisionError):
+                wait_hours = 0.0  # Fallback if calculation fails
+
+            return (
+                True,
+                {
+                    "contract_id": contract_id,
+                    "mediator_id": mediator_id,
+                    "fee_earned": fee_amount * (1 - COMMUNITY_POOL_PERCENTAGE) if fee_amount > 0 else 0,
+                    "subsidy_earned": subsidy_amount,
+                    "reputation_bonus": reputation_bonus,
+                    "is_zero_fee": fee_amount == 0,
+                    "wait_hours": wait_hours,
+                },
+            )
+
+        except Exception as e:
+            # Rollback status on error
+            contract.status = ProcessingStatus.CLAIMED
+            contract.completed_at = None
+            return (
+                False,
+                {"error": f"Failed to complete processing: {str(e)}", "error_type": type(e).__name__},
+            )
 
     def abandon_contract(self, contract_id: str, mediator_id: str) -> tuple[bool, str]:
         """
