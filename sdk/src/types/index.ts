@@ -492,6 +492,154 @@ export interface SettlementStatusResponse {
 }
 
 // ============================================================================
+// Permanence Endowment Types (Arweave-inspired)
+// ============================================================================
+
+/** Storage cost projection over time */
+export interface StorageCostProjection {
+  entry_size_bytes: number;
+  current_annual_cost: number;
+  total_lifetime_cost: number;
+  required_endowment: number;
+  years_projected: number;
+  cost_by_decade: Record<number, number>;
+}
+
+/** Fee calculation result for permanence */
+export interface PermanenceFeeCalculation {
+  entry_size_bytes: number;
+  total_fee: number;
+  fee_breakdown: {
+    endowment_allocation: number;
+    immediate_storage: number;
+  };
+  storage_projection: StorageCostProjection;
+  yield_assumptions: {
+    current_rate: number;
+    strategy: string;
+  };
+  sustainability: {
+    projected_years: number;
+    safety_multiplier: number;
+  };
+}
+
+/** Permanence guarantee for an entry */
+export interface PermanenceGuarantee {
+  guarantee_id: string;
+  entry_hash: string;
+  entry_size_bytes: number;
+  fee_paid: number;
+  endowment_allocated: number;
+  immediate_storage_paid: number;
+  status: 'pending' | 'guaranteed' | 'partial' | 'expired' | 'revoked';
+  created_at: string;
+  expires_at: string | null;
+  yield_strategy: string;
+  projected_sustainability_years: number;
+  guarantee_hash: string;
+}
+
+/** Endowment pool status */
+export interface EndowmentPoolStatus {
+  principal: number;
+  accrued_yield: number;
+  total_funds: number;
+  total_deposits: number;
+  total_payouts: number;
+  total_yield_generated: number;
+  entries_guaranteed: number;
+  bytes_guaranteed: number;
+  yield_rate: number;
+  annual_yield_projection: number;
+  annual_storage_cost: number;
+  sustainability_ratio: number;
+  health_status: 'excellent' | 'healthy' | 'stable' | 'warning' | 'critical';
+  last_yield_accrual: string | null;
+  last_storage_payout: string | null;
+}
+
+/** Endowment statistics */
+export interface EndowmentStatistics {
+  pool: EndowmentPoolStatus;
+  guarantees: {
+    total: number;
+    by_status: Record<string, number>;
+    total_entries: number;
+    total_bytes: number;
+    average_entry_size: number;
+  };
+  yield_history: {
+    total_accruals: number;
+    total_generated: number;
+    average_rate: number;
+  };
+  payouts: {
+    total_count: number;
+    total_amount: number;
+    from_yield: number;
+    from_principal: number;
+  };
+  events_count: number;
+}
+
+/** Year projection for sustainability report */
+export interface YearProjection {
+  year: number;
+  projected_principal: number;
+  annual_yield: number;
+  annual_cost: number;
+  net_position: number;
+  sustainable: boolean;
+}
+
+/** Sustainability report */
+export interface SustainabilityReport {
+  current_status: EndowmentPoolStatus;
+  yield_assumptions: {
+    current_rate: number;
+    strategy: string;
+    min_assumed: number;
+  };
+  cost_assumptions: {
+    current_cost_per_gb: number;
+    annual_decline_rate: number;
+    cost_floor: number;
+  };
+  ten_year_projection: YearProjection[];
+  sustainability_summary: {
+    years_projected_sustainable: number;
+    is_perpetually_sustainable: boolean;
+    confidence: 'high' | 'medium' | 'low';
+  };
+  recommendations: string[];
+}
+
+/** Yield accrual result */
+export interface YieldAccrualResult {
+  status: string;
+  accrual_id?: string;
+  days_elapsed?: number;
+  yield_amount?: number;
+  yield_rate?: number;
+  new_principal?: number;
+  total_yield_generated?: number;
+}
+
+/** Storage payout result */
+export interface StoragePayoutResult {
+  status: string;
+  payout_id: string;
+  amount: number;
+  storage_provider: string;
+  entries_covered: number;
+  bytes_stored: number;
+  funded_from: 'yield' | 'principal';
+  remaining_yield: number;
+  remaining_principal: number;
+}
+
+// ============================================================================
 // SDK Configuration
 // ============================================================================
 

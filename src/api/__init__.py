@@ -27,15 +27,21 @@ Future blueprints (to be extracted from api.py):
 - p2p: Peer-to-peer network operations
 """
 
+from .anchoring import anchoring_bp
 from .boundary import boundary_bp
 from .chat import chat_bp
+from .composability import composability_bp
+from .compute import compute_bp
 from .contracts import contracts_bp
 from .core import core_bp
 from .derivatives import derivatives_bp
+from .endowment import endowment_bp
 from .help import help_bp
+from .identity import identity_bp
 from .marketplace import marketplace_bp
 from .mobile import mobile_bp
 from .monitoring import monitoring_bp
+from .revenue import revenue_bp
 from .search import search_bp
 
 # List of all blueprints for registration
@@ -51,6 +57,12 @@ ALL_BLUEPRINTS = [
     (chat_bp, ""),  # Chat routes (/chat/*)
     (contracts_bp, ""),  # Contract routes (/contract/*)
     (derivatives_bp, ""),  # Derivative tracking routes (/derivatives/*)
+    (endowment_bp, ""),  # Permanence endowment routes (/endowment/*)
+    (anchoring_bp, ""),  # External anchoring routes (/anchoring/*)
+    (identity_bp, ""),  # DID identity routes (/identity/*)
+    (composability_bp, ""),  # Data composability routes (/composability/*)
+    (compute_bp, ""),  # Compute-to-data routes (/compute/*)
+    (revenue_bp, ""),  # Revenue sharing routes (/revenue/*)
 ]
 
 
@@ -175,3 +187,57 @@ def init_managers(api_key: str = None):
         print("Marketplace initialized with RRA-Module registered")
     except Exception as e:
         print(f"Warning: Could not initialize marketplace: {e}")
+
+    # Initialize permanence endowment (Arweave-inspired pay-once-store-forever)
+    try:
+        from permanence_endowment import PermanenceEndowment
+
+        managers.permanence_endowment = PermanenceEndowment()
+        print("Permanence endowment initialized")
+    except Exception as e:
+        print(f"Warning: Could not initialize permanence endowment: {e}")
+
+    # Initialize external anchoring service (Ethereum/Arweave anchoring)
+    try:
+        from external_anchoring import ExternalAnchoringService
+
+        managers.anchoring_service = ExternalAnchoringService()
+        print("External anchoring service initialized")
+    except Exception as e:
+        print(f"Warning: Could not initialize external anchoring: {e}")
+
+    # Initialize DID identity service (W3C-compliant decentralized identity)
+    try:
+        from did_identity import IdentityService
+
+        managers.identity_service = IdentityService()
+        print("DID identity service initialized")
+    except Exception as e:
+        print(f"Warning: Could not initialize identity service: {e}")
+
+    # Initialize data composability service (cross-application data sharing)
+    try:
+        from data_composability import ComposabilityService
+
+        managers.composability_service = ComposabilityService()
+        print("Data composability service initialized")
+    except Exception as e:
+        print(f"Warning: Could not initialize composability service: {e}")
+
+    # Initialize compute-to-data service (privacy-preserving computation)
+    try:
+        from compute_to_data import ComputeToDataService
+
+        managers.compute_service = ComputeToDataService()
+        print("Compute-to-data service initialized")
+    except Exception as e:
+        print(f"Warning: Could not initialize compute service: {e}")
+
+    # Initialize revenue sharing service (royalties for derivative chains)
+    try:
+        from revenue_sharing import RevenueSharingService
+
+        managers.revenue_service = RevenueSharingService()
+        print("Revenue sharing service initialized")
+    except Exception as e:
+        print(f"Warning: Could not initialize revenue service: {e}")

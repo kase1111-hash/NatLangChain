@@ -44,6 +44,12 @@ import { ContractsClient } from './clients/contracts';
 import { DisputesClient } from './clients/disputes';
 import { SettlementsClient } from './clients/settlements';
 import { DerivativesClient } from './clients/derivatives';
+import { EndowmentClient } from './clients/endowment';
+import { AnchoringClient } from './clients/anchoring';
+import { IdentityClient } from './clients/identity';
+import { ComposabilityClient } from './clients/composability';
+import { ComputeClient } from './clients/compute';
+import { RevenueClient } from './clients/revenue';
 import type { NatLangChainConfig } from './types';
 
 // Re-export all types
@@ -80,6 +86,154 @@ export type {
   GetDerivativesOptions,
   GetLineageOptions,
 } from './clients/derivatives';
+export type {
+  AnchorChain,
+  AnchorBatchStatus,
+  QueueEntryRequest,
+  QueueBlockRequest,
+  CreateAnchorRequest,
+  VerifyProofRequest,
+  QueueResult,
+  QueueStatus,
+  MerkleProof,
+  AnchorBatch,
+  AnchorResult,
+  VerifyProofResult,
+  LegalProof,
+  ChainCostEstimate,
+  CostEstimation,
+  AnchoringStatistics,
+  AnchorProvider,
+  AnchoringEvent,
+  EventsResponse,
+} from './clients/anchoring';
+export type {
+  VerificationMethodType,
+  VerificationRelationship,
+  ServiceType,
+  DIDStatus,
+  VerificationMethod,
+  ServiceEndpoint,
+  DIDDocument,
+  DIDDocumentMetadata,
+  DIDResolutionResult,
+  CreateDIDRequest,
+  CreateDIDResponse,
+  UpdateDIDRequest,
+  UpdateDIDResponse,
+  AddKeyRequest,
+  AddKeyResponse,
+  RevokeKeyResponse,
+  RotateKeyRequest,
+  RotateKeyResponse,
+  AddServiceRequest,
+  AddServiceResponse,
+  Delegation,
+  GrantDelegationRequest,
+  DelegationsResponse,
+  LinkAuthorRequest,
+  ResolveAuthorResponse,
+  VerifyAuthorshipRequest,
+  VerifyAuthorshipResponse,
+  VerifyAuthenticationRequest,
+  VerifyAuthenticationResponse,
+  IdentityStatistics,
+  DIDEvent,
+  KeyRotationRecord,
+  DIDHistoryResponse,
+  IdentityEventsResponse,
+  DeactivateResponse,
+} from './clients/identity';
+export type {
+  StreamType,
+  CommitType,
+  StreamState,
+  SchemaType,
+  LinkType,
+  StreamMetadata,
+  StreamCommit,
+  Stream,
+  CrossAppLink,
+  Schema,
+  Application,
+  CreateStreamRequest,
+  CreateStreamResponse,
+  UpdateStreamRequest,
+  UpdateStreamResponse,
+  AnchorStreamRequest,
+  RegisterSchemaRequest,
+  RegisterAppRequest,
+  CreateLinkRequest,
+  CreateContractStreamRequest,
+  ExportRequest,
+  ExportPackage,
+  ImportRequest,
+  ImportResult,
+  QueryStreamsOptions,
+  StreamsResponse,
+  SchemasResponse,
+  ApplicationsResponse,
+  LinksResponse,
+  LinkedStreamsResponse,
+  StreamHistoryResponse,
+  ComposabilityStatistics,
+  ComposabilityEvent,
+  ComposabilityEventsResponse,
+} from './clients/composability';
+export type {
+  DataAssetType,
+  ComputeAlgorithmType,
+  AccessLevel,
+  JobStatus,
+  PrivacyLevel,
+  ComputeEventType,
+  DataAsset,
+  ComputeAlgorithm,
+  AccessToken,
+  ComputeJob,
+  ComputeResult,
+  ComputeEvent,
+  RegisterAssetRequest,
+  UpdateAssetRequest,
+  GrantAccessRequest,
+  RegisterAlgorithmRequest,
+  SubmitJobRequest,
+  AssetsResponse,
+  AlgorithmsResponse,
+  AccessTokensResponse,
+  JobsResponse,
+  ComputeEventsResponse,
+  ComputeStatistics,
+} from './clients/compute';
+export type {
+  RoyaltyType,
+  RevenueEventType,
+  PaymentStatus,
+  ClaimStatus,
+  EntryRef,
+  RoyaltyConfig,
+  RevenueEvent,
+  RoyaltyPayment,
+  RevenuePool,
+  Claim,
+  RoyaltyDistribution,
+  RevenueEventWithRoyalties,
+  ConfigureRoyaltiesRequest,
+  UpdateRoyaltyConfigRequest,
+  RecordRevenueEventRequest,
+  ClaimRevenueRequest,
+  EstimateRoyaltiesRequest,
+  RevenueEventsResponse,
+  PaymentsResponse,
+  ClaimsResponse,
+  BalanceResponse,
+  EntryEarningsResponse,
+  ChainRevenueResponse,
+  RoyaltyEstimateResponse,
+  RevenueStatistics,
+  AuditEvent,
+  AuditEventsResponse,
+} from './clients/revenue';
 
 /**
  * NatLangChain SDK Client
@@ -209,6 +363,184 @@ export class NatLangChain {
   public readonly derivatives: DerivativesClient;
 
   /**
+   * Endowment operations: permanence guarantees, yield management
+   *
+   * Pay-once-store-forever system inspired by Arweave.
+   *
+   * @example
+   * ```ts
+   * // Calculate permanence fee
+   * const fee = await client.endowment.calculateFee(2048);
+   *
+   * // Create permanence guarantee
+   * await client.endowment.createGuarantee(entryHash, 2048, fee.total_fee, 'alice');
+   *
+   * // Get pool status
+   * const status = await client.endowment.getPoolStatus();
+   *
+   * // Get sustainability report
+   * const report = await client.endowment.getSustainabilityReport();
+   * ```
+   */
+  public readonly endowment: EndowmentClient;
+
+  /**
+   * Anchoring operations: external blockchain anchoring
+   *
+   * Anchor NatLangChain entries to external blockchains (Ethereum, Arweave)
+   * for independent verification and legal proof generation.
+   *
+   * @example
+   * ```ts
+   * // Queue entry for anchoring
+   * await client.anchoring.queueEntry({ entry_hash: 'abc123...' });
+   *
+   * // Create anchor batch
+   * const anchor = await client.anchoring.createAnchor({ chain: 'ethereum_mainnet' });
+   *
+   * // Get proof for entry
+   * const proof = await client.anchoring.getProof('abc123...');
+   *
+   * // Generate legal proof document
+   * const legal = await client.anchoring.getLegalProof('abc123...');
+   * ```
+   */
+  public readonly anchoring: AnchoringClient;
+
+  /**
+   * Identity operations: DID management, key rotation, verification
+   *
+   * W3C-compliant Decentralized Identifier (DID) system for NatLangChain.
+   *
+   * @example
+   * ```ts
+   * // Create a new identity
+   * const identity = await client.identity.createDID({
+   *   display_name: 'Alice',
+   *   email: 'alice@example.com'
+   * });
+   *
+   * // Resolve a DID
+   * const resolved = await client.identity.resolve(identity.did);
+   *
+   * // Rotate a key
+   * await client.identity.rotateKey(identity.did, 'key-1');
+   *
+   * // Verify authorship
+   * await client.identity.verifyAuthorship({
+   *   entry_hash: 'abc123...',
+   *   claimed_author: 'alice@example.com'
+   * });
+   * ```
+   */
+  public readonly identity: IdentityClient;
+
+  /**
+   * Composability operations: cross-application data sharing
+   *
+   * Stream-based data model for versioned, composable content across applications.
+   * Inspired by Ceramic Network.
+   *
+   * @example
+   * ```ts
+   * // Create a composable stream
+   * const stream = await client.composability.createStream({
+   *   stream_type: 'contract_stream',
+   *   content: { terms: '...' },
+   *   controller: 'did:nlc:...'
+   * });
+   *
+   * // Link streams across applications
+   * await client.composability.createLink({
+   *   source_stream_id: stream.stream_id,
+   *   target_stream_id: 'kjzl_...',
+   *   link_type: 'reference'
+   * });
+   *
+   * // Export for sharing
+   * const pkg = await client.composability.export({
+   *   stream_ids: [stream.stream_id]
+   * });
+   * ```
+   */
+  public readonly composability: ComposabilityClient;
+
+  /**
+   * Compute operations: privacy-preserving computation on data
+   *
+   * Run algorithms on private data without exposing the underlying content.
+   * Inspired by Ocean Protocol's compute-to-data paradigm.
+   *
+   * @example
+   * ```ts
+   * // Register a data asset
+   * const asset = await client.compute.registerAsset({
+   *   asset_type: 'contract',
+   *   owner: 'did:nlc:...',
+   *   name: 'Private Contracts',
+   *   data: contractData,
+   *   privacy_level: 'aggregated'
+   * });
+   *
+   * // Grant compute access
+   * const token = await client.compute.grantAccess({
+   *   asset_id: asset.asset_id,
+   *   owner: 'did:nlc:...',
+   *   grantee: 'did:nlc:analyst...',
+   *   access_level: 'compute_only'
+   * });
+   *
+   * // Submit a compute job
+   * const job = await client.compute.submitJob({
+   *   asset_id: asset.asset_id,
+   *   algorithm_id: 'builtin_count',
+   *   access_token_id: token.token_id,
+   *   requester: 'did:nlc:analyst...',
+   *   parameters: { field: 'status', value: 'active' }
+   * });
+   *
+   * // Get privacy-filtered result
+   * const result = await client.compute.getJobResult(job.job_id, 'did:nlc:analyst...');
+   * ```
+   */
+  public readonly compute: ComputeClient;
+
+  /**
+   * Revenue operations: royalties for derivative intent chains
+   *
+   * Configure and collect royalties from derivative entries/contracts.
+   * Inspired by Story Protocol's programmable IP royalty system.
+   *
+   * @example
+   * ```ts
+   * // Configure royalties for an entry
+   * const config = await client.revenue.configureRoyalties({
+   *   block_index: 1,
+   *   entry_index: 0,
+   *   owner: 'did:nlc:author...',
+   *   royalty_type: 'fixed',
+   *   base_rate: '5.0',  // 5%
+   *   chain_propagation: true
+   * });
+   *
+   * // Record revenue event (royalties auto-calculated)
+   * const event = await client.revenue.recordRevenueEvent({
+   *   block_index: 2,
+   *   entry_index: 0,
+   *   event_type: 'derivative_created',
+   *   amount: '100.00'
+   * });
+   *
+   * // Check balance and claim
+   * const balance = await client.revenue.getBalance('did:nlc:author...');
+   * const claim = await client.revenue.claimRevenue({
+   *   recipient: 'did:nlc:author...'
+   * });
+   * ```
+   */
+  public readonly revenue: RevenueClient;
+
+  /**
    * Create a new NatLangChain client
    *
    * @param config - Client configuration
@@ -222,6 +554,12 @@ export class NatLangChain {
     this.disputes = new DisputesClient(this.http);
     this.settlements = new SettlementsClient(this.http);
     this.derivatives = new DerivativesClient(this.http);
+    this.endowment = new EndowmentClient(this.http);
+    this.anchoring = new AnchoringClient(this.http);
+    this.identity = new IdentityClient(this.http);
+    this.composability = new ComposabilityClient(this.http);
+    this.compute = new ComputeClient(this.http);
+    this.revenue = new RevenueClient(this.http);
   }
 
   /**

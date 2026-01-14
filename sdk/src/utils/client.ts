@@ -270,6 +270,18 @@ export class HttpClient {
   }
 
   /**
+   * PATCH request
+   */
+  async patch<T>(
+    path: string,
+    body?: unknown,
+    headers?: Record<string, string>
+  ): Promise<T> {
+    const response = await this.request<T>('PATCH', path, { body, headers });
+    return response.data;
+  }
+
+  /**
    * DELETE request
    */
   async delete<T>(
