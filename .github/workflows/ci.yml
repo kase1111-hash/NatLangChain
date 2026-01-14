@@ -276,6 +276,92 @@ jobs:
           echo "✓ Metro bundler check passed - no React Native/Metro packages found"
           echo "✓ Project correctly uses Vite as the bundler"
 
+      - name: Check for Expo configuration (should not be present)
+        run: |
+          echo "Checking that Expo configuration is not present..."
+          echo "This project uses Vite + Svelte, not Expo (React Native framework)."
+
+          FOUND_EXPO=false
+
+          # Check for Expo configuration files
+          EXPO_CONFIG_FILES=(
+            "app.config.js"
+            "app.config.ts"
+            "app.config.mjs"
+            "expo-config.js"
+            "expo-config.ts"
+            "expo-config.json"
+          )
+
+          for config_file in "${EXPO_CONFIG_FILES[@]}"; do
+            if [ -f "$config_file" ]; then
+              echo "::error::Found Expo configuration file: $config_file"
+              echo "This project uses Vite + Svelte. Expo configuration files should not be present."
+              FOUND_EXPO=true
+            fi
+          done
+
+          # Check if app.json exists and contains Expo configuration
+          if [ -f "app.json" ]; then
+            if grep -qE '"expo"\s*:' app.json 2>/dev/null; then
+              echo "::error::Found Expo configuration in app.json"
+              echo "The app.json file contains an 'expo' key, indicating Expo framework usage."
+              FOUND_EXPO=true
+            fi
+          fi
+
+          # List of Expo-related packages that should NOT be present
+          EXPO_PACKAGES=(
+            "expo"
+            "expo-cli"
+            "@expo/cli"
+            "@expo/config"
+            "@expo/config-plugins"
+            "@expo/metro-config"
+            "@expo/webpack-config"
+            "@expo/vector-icons"
+            "expo-constants"
+            "expo-device"
+            "expo-file-system"
+            "expo-font"
+            "expo-linking"
+            "expo-location"
+            "expo-notifications"
+            "expo-router"
+            "expo-splash-screen"
+            "expo-status-bar"
+            "expo-updates"
+          )
+
+          for pkg in "${EXPO_PACKAGES[@]}"; do
+            if grep -q "\"$pkg\"" package.json 2>/dev/null || \
+               grep -q "\"$pkg\"" package-lock.json 2>/dev/null; then
+              echo "::error::Found Expo-related package: $pkg"
+              echo "This project uses Vite bundler. Expo packages should not be present."
+              FOUND_EXPO=true
+            fi
+          done
+
+          # Check node_modules if it exists
+          if [ -d "node_modules" ]; then
+            for pkg in "expo" "@expo"; do
+              if [ -d "node_modules/$pkg" ]; then
+                echo "::error::Found Expo-related package in node_modules: $pkg"
+                FOUND_EXPO=true
+              fi
+            done
+          fi
+
+          if [ "$FOUND_EXPO" = true ]; then
+            echo ""
+            echo "::error::Expo configuration check failed!"
+            echo "This is a Svelte + Vite project. Please remove Expo dependencies and configuration."
+            exit 1
+          fi
+
+          echo "✓ Expo configuration check passed - no Expo config files or packages found"
+          echo "✓ Project correctly uses Vite + Svelte (not Expo)"
+
       - name: Run ESLint
         run: npm run lint
         continue-on-error: true
