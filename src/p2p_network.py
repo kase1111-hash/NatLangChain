@@ -76,32 +76,23 @@ except ImportError:
 
 # Import NAT traversal module
 try:
-    from . import nat_traversal
     from .nat_traversal import (
-        CandidateType,
-        ICECandidate,
         NATTraversalManager,
         NATType,
-        TURNServer,
         create_nat_manager_from_env,
-        load_nat_config_from_env,
     )
 
     HAS_NAT_TRAVERSAL = True
 except ImportError:
     HAS_NAT_TRAVERSAL = False
-    nat_traversal = None
     NATTraversalManager = None
     NATType = None
 
 # Import gossip protocol module
 try:
     from .gossip_protocol import (
-        GossipMessageType,
         GossipProtocol,
         MessagePriority,
-        calculate_optimal_fanout,
-        get_message_priority,
     )
 
     HAS_GOSSIP_PROTOCOL = True
@@ -113,13 +104,8 @@ except ImportError:
 # Import block compression module
 try:
     from .block_compression import (
-        HEADER_ACCEPT_ENCODING,
-        HEADER_CONTENT_ENCODING,
         BlockCompressor,
-        CompressionResult,
-        compress_block_data,
         create_compressor_from_env,
-        decompress_block_data,
     )
 
     HAS_BLOCK_COMPRESSION = True

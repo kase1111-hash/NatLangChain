@@ -63,13 +63,11 @@ ENCRYPTED_PREFIX = "ENC:1:"  # Version 1 encrypted data
 class EncryptionError(Exception):
     """Raised when encryption/decryption fails."""
 
-    pass
 
 
 class KeyDerivationError(Exception):
     """Raised when key derivation fails."""
 
-    pass
 
 
 def _derive_key(password: str, salt: bytes) -> bytes:

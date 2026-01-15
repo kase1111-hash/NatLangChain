@@ -31,19 +31,16 @@ from blockchain import NatLangChain
 class SemanticSearchError(Exception):
     """Exception raised for semantic search errors."""
 
-    pass
 
 
 class ModelLoadError(SemanticSearchError):
     """Exception raised when model fails to load."""
 
-    pass
 
 
 class EncodingError(SemanticSearchError):
     """Exception raised when encoding fails."""
 
-    pass
 
 
 class SemanticSearchEngine:

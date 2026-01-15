@@ -28,35 +28,25 @@ from typing import Any
 
 try:
     from agent_security import (
-        AgentSecurityManager,
         RiskLevel,
-        ThreatCategory,
-        ThreatDetection,
         init_agent_security,
     )
     from boundary_daemon import (
         BoundaryDaemon,
-        BoundaryPolicy,
-        DataClassification,
         EnforcementMode,
-        PolicyViolation,
         ViolationType,
     )
     from boundary_modes import (
         BoundaryMode,
-        BoundaryModeManager,
         MemoryClass,
         ModeTransition,
         TripwireType,
         init_mode_manager,
     )
     from boundary_siem import (
-        EnhancedSIEMClient,
         NatLangChainSIEMEvents,
         SIEMAuthConfig,
-        SIEMClient,
         SIEMEvent,
-        SIEMSeverity,
         init_enhanced_siem_client,
         init_siem_client,
         shutdown_enhanced_siem_client,
@@ -64,13 +54,10 @@ try:
     )
     from external_daemon_client import (
         DaemonDecision,
-        DaemonResponse,
-        ExternalDaemonClient,
         init_daemon_client,
         shutdown_daemon_client,
     )
     from security_enforcement import (
-        EnforcementResult,
         SecurityEnforcementManager,
     )
 except ImportError:

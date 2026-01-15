@@ -10,7 +10,6 @@ import json
 import os
 import sys
 import tempfile
-import time
 
 import pytest
 
@@ -22,7 +21,6 @@ from block_compression import (
     GZIP_MAGIC,
     MIN_COMPRESS_SIZE,
     BlockCompressor,
-    CompressionLevel,
     CompressionResult,
     CompressionStats,
     StreamingCompressor,
@@ -466,7 +464,7 @@ class TestStreamingCompressor:
         assert len(compressed_chunks) > 0
 
         # Verify it's valid gzip
-        combined = b"".join(compressed_chunks)
+        b"".join(compressed_chunks)
         # Note: streaming might produce incomplete gzip, this is a simplified test
 
 

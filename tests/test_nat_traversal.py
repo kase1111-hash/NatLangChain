@@ -6,14 +6,11 @@ import os
 import socket
 import struct
 import sys
-import threading
-import time
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-import pytest
 
 from nat_traversal import (
     STUN_ATTR_XOR_MAPPED_ADDRESS,

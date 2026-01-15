@@ -217,14 +217,14 @@ class TestBackupMetadata(unittest.TestCase):
         # First day of month should be monthly
         first_of_month = datetime(now.year, now.month, 1)
         if first_of_month.day == 1:
-            expected_type = BackupType.MONTHLY
+            BackupType.MONTHLY
 
         # Sunday should be weekly (weekday() == 6)
         # Other days should be daily
         if now.weekday() == 6:
-            expected_type = BackupType.WEEKLY
+            BackupType.WEEKLY
         else:
-            expected_type = BackupType.DAILY
+            BackupType.DAILY
 
         # Manual backups are explicitly marked
         manual_type = BackupType.MANUAL

@@ -21,7 +21,6 @@ import time
 from datetime import datetime
 
 from locust import HttpUser, LoadTestShape, constant_throughput, events, task
-from locust.runners import MasterRunner
 
 API_KEY = os.getenv("NATLANGCHAIN_API_KEY", "test-api-key")
 HEADERS = {
@@ -112,7 +111,7 @@ def on_request(
     request_type,
     name,
     response_time,
-    response_length,
+    _response_length,
     response,
     context,
     exception,

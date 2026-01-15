@@ -33,7 +33,7 @@ class TestCmdCheck:
 
         # Capture stdout
         with patch("sys.stdout", new_callable=StringIO) as mock_stdout:
-            result = cmd_check(args)
+            cmd_check(args)
 
         output = mock_stdout.getvalue()
         # Should output check results
@@ -80,7 +80,7 @@ class TestCmdInfo:
         args = argparse.Namespace()
 
         with patch("sys.stdout", new_callable=StringIO) as mock_stdout:
-            result = cmd_info(args)
+            cmd_info(args)
 
         output = mock_stdout.getvalue()
         assert "NatLangChain" in output
@@ -142,7 +142,7 @@ class TestCmdServe:
 
     @patch("cli._get_flask_app")
     @patch("cli.load_dotenv")
-    def test_cmd_serve_development(self, mock_dotenv, mock_get_app):
+    def test_cmd_serve_development(self, _mock_dotenv, mock_get_app):
         """Test serve command in development mode."""
         mock_app = MagicMock()
         mock_get_app.return_value = mock_app
@@ -163,7 +163,7 @@ class TestCmdServe:
 
     @patch("cli._get_flask_app")
     @patch("cli.load_dotenv")
-    def test_cmd_serve_custom_host_port(self, mock_dotenv, mock_get_app):
+    def test_cmd_serve_custom_host_port(self, _mock_dotenv, mock_get_app):
         """Test serve with custom host and port."""
         mock_app = MagicMock()
         mock_get_app.return_value = mock_app
@@ -187,7 +187,7 @@ class TestCmdServe:
     @patch("cli._get_flask_app")
     @patch("cli.load_dotenv")
     @patch.dict(os.environ, {"HOST": "0.0.0.0", "PORT": "5001"})
-    def test_cmd_serve_env_defaults(self, mock_dotenv, mock_get_app):
+    def test_cmd_serve_env_defaults(self, _mock_dotenv, mock_get_app):
         """Test serve uses environment defaults."""
         mock_app = MagicMock()
         mock_get_app.return_value = mock_app
@@ -371,7 +371,7 @@ class TestEdgeCases:
 
     @patch("cli._get_flask_app")
     @patch("cli.load_dotenv")
-    def test_serve_with_zero_port(self, mock_dotenv, mock_get_app):
+    def test_serve_with_zero_port(self, _mock_dotenv, mock_get_app):
         """Test serve with port 0 (system assigns port)."""
         mock_app = MagicMock()
         mock_get_app.return_value = mock_app

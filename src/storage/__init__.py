@@ -30,7 +30,7 @@ from storage.memory import MemoryStorage
 
 # Lazy import for PostgreSQL to avoid requiring psycopg2
 if TYPE_CHECKING:
-    from storage.postgresql import PostgreSQLStorage
+    pass
 
 __all__ = [
     "JSONFileStorage",

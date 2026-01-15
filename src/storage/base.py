@@ -11,25 +11,21 @@ from typing import Any
 class StorageError(Exception):
     """Base exception for storage-related errors."""
 
-    pass
 
 
 class StorageConnectionError(StorageError):
     """Raised when connection to storage backend fails."""
 
-    pass
 
 
 class StorageReadError(StorageError):
     """Raised when reading from storage fails."""
 
-    pass
 
 
 class StorageWriteError(StorageError):
     """Raised when writing to storage fails."""
 
-    pass
 
 
 class StorageBackend(ABC):
@@ -51,7 +47,6 @@ class StorageBackend(ABC):
         Raises:
             StorageReadError: If reading fails
         """
-        pass
 
     @abstractmethod
     def save_chain(self, chain_data: dict[str, Any]) -> None:
@@ -64,7 +59,6 @@ class StorageBackend(ABC):
         Raises:
             StorageWriteError: If writing fails
         """
-        pass
 
     @abstractmethod
     def is_available(self) -> bool:
@@ -74,7 +68,6 @@ class StorageBackend(ABC):
         Returns:
             True if storage is accessible, False otherwise
         """
-        pass
 
     def get_info(self) -> dict[str, Any]:
         """
@@ -100,7 +93,6 @@ class StorageBackend(ABC):
         Args:
             block_data: Dictionary containing block data
         """
-        pass
 
     def save_entry(self, entry_data: dict[str, Any]) -> None:
         """
@@ -112,7 +104,6 @@ class StorageBackend(ABC):
         Args:
             entry_data: Dictionary containing entry data
         """
-        pass
 
     def get_block(self, index: int) -> dict[str, Any] | None:
         """
@@ -209,13 +200,12 @@ class StorageBackend(ABC):
         Default implementation does nothing - backends with connections
         should override this.
         """
-        pass
 
     def __enter__(self):
         """Context manager entry."""
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, _exc_type, _exc_val, _exc_tb):
         """Context manager exit - closes connection."""
         self.close()
         return False

@@ -124,7 +124,7 @@ def cmd_check(args):
 
     # Check core imports
     try:
-        from blockchain import NatLangChain
+        pass
 
         checks.append(("Core blockchain", "OK"))
     except ImportError as e:
@@ -151,7 +151,7 @@ def cmd_check(args):
 
     # Check validator (optional)
     try:
-        from validator import ProofOfUnderstanding
+        pass
 
         checks.append(("LLM Validator", "OK"))
     except ImportError:
@@ -171,7 +171,7 @@ def cmd_check(args):
 
     # Check monitoring
     try:
-        from monitoring import metrics
+        pass
 
         checks.append(("Monitoring", "OK"))
     except ImportError as e:
@@ -190,14 +190,14 @@ def cmd_check(args):
 
     # Check optional dependencies
     try:
-        import redis
+        pass
 
         checks.append(("Redis support", "OK"))
     except ImportError:
         checks.append(("Redis support", "SKIP (redis not installed)"))
 
     try:
-        import psycopg2
+        pass
 
         checks.append(("PostgreSQL support", "OK"))
     except ImportError:

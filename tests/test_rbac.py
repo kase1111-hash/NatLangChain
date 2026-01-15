@@ -10,12 +10,11 @@ Tests:
 - Configuration save/load
 """
 
-import json
 import os
 import tempfile
 import threading
 from datetime import datetime, timedelta
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -29,15 +28,12 @@ from rbac import (
     Role,
     RBACManager,
     ROLE_PERMISSIONS,
-    create_api_key,
     generate_api_key,
     get_rbac_manager,
     init_rbac,
     require_any_permission,
     require_permission,
     require_role,
-    get_current_permissions,
-    get_current_role,
 )
 
 

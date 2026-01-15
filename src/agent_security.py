@@ -24,11 +24,6 @@ from enum import Enum
 from typing import Any
 
 try:
-    from boundary_exceptions import (
-        AttestationError,
-        PatternMatchError,
-        SecurityCheckError,
-    )
     from boundary_siem import (
         NatLangChainSIEMEvents,
         SIEMClient,

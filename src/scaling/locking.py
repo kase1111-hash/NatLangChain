@@ -68,7 +68,6 @@ class LockManager(ABC):
         Returns:
             True if lock acquired, False if timeout
         """
-        pass
 
     @abstractmethod
     def release(self, name: str) -> bool:
@@ -81,12 +80,10 @@ class LockManager(ABC):
         Returns:
             True if lock was held and released, False otherwise
         """
-        pass
 
     @abstractmethod
     def is_locked(self, name: str) -> bool:
         """Check if a lock is currently held."""
-        pass
 
     @contextmanager
     def lock(self, name: str, timeout: float = 30.0, ttl: float = 60.0):

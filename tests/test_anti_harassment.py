@@ -8,7 +8,6 @@ expensive for the harasser than for the target.
 import sys
 import unittest
 from datetime import datetime, timedelta
-from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, "src")
 

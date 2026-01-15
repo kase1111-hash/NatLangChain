@@ -15,12 +15,7 @@ from anthropic import Anthropic
 # Import NCIP-002 drift classification
 try:
     from drift_thresholds import (
-        DriftClassification,
-        DriftLevel,
         SemanticDriftClassifier,
-        TemporalFixityContext,
-        classify_drift_score,
-        get_mandatory_response,
     )
 
     NCIP_002_AVAILABLE = True

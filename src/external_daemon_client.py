@@ -29,7 +29,7 @@ from urllib.parse import urljoin
 
 # Optional HTTP client
 try:
-    import requests
+    pass
 
     REQUESTS_AVAILABLE = True
 except ImportError:
@@ -123,7 +123,6 @@ class DaemonResponse:
 class ExternalDaemonConnectionError(Exception):
     """Raised when connection to external daemon fails."""
 
-    pass
 
 
 class ExternalDaemonClient:

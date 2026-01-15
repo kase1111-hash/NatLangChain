@@ -220,8 +220,8 @@ class MetricsCollector:
                 metric_name = f"natlangchain_{name}"
                 lines.append(f"# TYPE {metric_name} histogram")
                 for key, hist in histograms.items():
-                    label_prefix = f"{{{key}," if key else "{"
-                    label_suffix = "}" if key else ""
+                    f"{{{key}," if key else "{"
+                    "}" if key else ""
 
                     for bucket in hist.buckets:
                         le_val = "+Inf" if bucket.le == float("inf") else bucket.le

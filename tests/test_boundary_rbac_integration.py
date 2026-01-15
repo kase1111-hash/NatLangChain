@@ -6,7 +6,6 @@ Tests the unified security layer combining trust boundaries and access control.
 
 import os
 import sys
-from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -14,7 +13,6 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from boundary_daemon import (
-    BoundaryDaemon,
     DataClassification,
     EnforcementMode,
 )
@@ -29,7 +27,6 @@ from boundary_rbac_integration import (
     set_boundary_mode,
 )
 from rbac import (
-    APIKeyInfo,
     Permission,
     RBACManager,
     Role,
@@ -242,7 +239,7 @@ class TestModeRestrictions:
 
     def test_mode_change_logged(self, gateway):
         """Test that mode changes are logged."""
-        initial_count = len(gateway.get_events())
+        len(gateway.get_events())
 
         gateway.boundary_mode = AccessLevel.ELEVATED
 

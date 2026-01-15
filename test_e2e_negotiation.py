@@ -46,7 +46,7 @@ def main():
     # Initialize blockchain and parsers
     print("Initializing blockchain...")
     blockchain = NatLangChain()
-    parser = ContractParser()
+    ContractParser()
     matcher = ContractMatcher()
 
     print("✓ Blockchain initialized with genesis block")
@@ -79,7 +79,7 @@ Available for projects ranging from 1 week to 3 months.
         }
     )
 
-    result = blockchain.add_entry(offer_entry)
+    blockchain.add_entry(offer_entry)
     print("✓ OFFER entry added to pending entries")
     print_entry(offer_entry, "Alice's OFFER")
 
@@ -109,7 +109,7 @@ Need someone who can start immediately and deliver within 2 weeks.
         }
     )
 
-    result = blockchain.add_entry(seek_entry)
+    blockchain.add_entry(seek_entry)
     print("✓ SEEK entry added to pending entries")
     print_entry(seek_entry, "Bob's SEEK")
 
@@ -163,7 +163,6 @@ Need someone who can start immediately and deliver within 2 weeks.
     # Store negotiation entries
     negotiation_entries = []
     current_round = 1
-    max_rounds = 5
 
     # Round 1: Bob's initial counter-offer
     print(f"\n--- Round {current_round}: Bob's Counter-Offer ---")

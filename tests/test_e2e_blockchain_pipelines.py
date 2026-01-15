@@ -27,9 +27,6 @@ import os
 import sys
 import time
 import uuid
-from datetime import datetime, timedelta
-from typing import Any
-from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -37,7 +34,7 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 # Import core modules
-from blockchain import Block, NatLangChain, NaturalLanguageEntry
+from blockchain import NaturalLanguageEntry
 
 # =============================================================================
 # Test Configuration and Fixtures
@@ -244,7 +241,6 @@ class TestEntryLifecyclePipeline:
         """Test: Rate limiting prevents excessive entry creation."""
         # Note: This test may need adjustment based on actual rate limits
         entries_created = 0
-        rate_limited = False
 
         for i in range(150):  # Try to exceed typical rate limit
             entry_data = {
@@ -254,7 +250,6 @@ class TestEntryLifecyclePipeline:
             }
             response = client.post("/entry", data=json.dumps(entry_data), headers=auth_headers)
             if response.status_code == 429:
-                rate_limited = True
                 break
             entries_created += 1
 
@@ -1246,7 +1241,7 @@ class TestBlockchainCoreLogic:
             blockchain.chain[1].entries[0].content = "TAMPERED CONTENT"
 
             # Validation should fail
-            is_valid = blockchain.validate_chain()
+            blockchain.validate_chain()
             # Note: Depending on implementation, this might still pass
             # if block hashes aren't recalculated during validation
 
@@ -1265,10 +1260,10 @@ class TestBlockchainCoreLogic:
             intent="Test deduplication",
         )
 
-        result1 = blockchain.add_entry(entry1)
+        blockchain.add_entry(entry1)
 
         # Second entry with same content should be rejected or flagged
-        result2 = blockchain.add_entry(entry2)
+        blockchain.add_entry(entry2)
 
         # Check if deduplication worked (implementation-dependent)
         pending_count = len(blockchain.pending_entries)
@@ -1347,7 +1342,7 @@ class TestPerformanceAndLoad:
         initial_length = len(blockchain.chain)
 
         # Simulate concurrent mining (sequential in test, but validates state)
-        result1 = blockchain.mine_pending_entries()
+        blockchain.mine_pending_entries()
         result2 = blockchain.mine_pending_entries()  # Should return None (no pending)
 
         # Only one block should be added

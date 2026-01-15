@@ -63,11 +63,9 @@ try:
     )
     from opentelemetry.sdk.trace.sampling import (
         ParentBasedTraceIdRatio,
-        TraceIdRatioBased,
     )
     from opentelemetry.semconv.resource import ResourceAttributes
     from opentelemetry.trace import SpanKind, Status, StatusCode
-    from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 
     OTEL_AVAILABLE = True
 except ImportError:

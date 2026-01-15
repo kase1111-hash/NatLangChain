@@ -17,7 +17,6 @@ import time
 from datetime import datetime
 
 from locust import HttpUser, between, events, tag, task
-from locust.runners import MasterRunner, WorkerRunner
 
 # Configuration
 API_KEY = os.getenv("NATLANGCHAIN_API_KEY", "test-api-key")
@@ -256,8 +255,7 @@ def on_test_stop(environment, **kwargs):
 
 @events.request.add_listener
 def on_request(
-    request_type, name, response_time, response_length, response, context, exception, **kwargs
+    request_type, name, response_time, _response_length, response, context, exception, **kwargs
 ):
     """Track individual requests for detailed analysis."""
     # Could add custom metrics here
-    pass

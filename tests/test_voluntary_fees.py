@@ -7,19 +7,14 @@ community pool, and mediator incentives.
 
 from datetime import datetime, timedelta
 
-import pytest
 
 from src.voluntary_fees import (
     COMMUNITY_POOL_PERCENTAGE,
     ZERO_FEE_REPUTATION_BONUS,
-    CommunityPool,
     FeeExtractor,
-    FeeInfo,
     IncentiveType,
-    MediatorEarnings,
     ProcessingReason,
     ProcessingStatus,
-    QueuedContract,
     VoluntaryProcessingQueue,
     get_fee_system_config,
     get_processing_queue,
@@ -142,7 +137,7 @@ class TestPriorityQueue:
         medium = queue.submit_contract(f"{base_text}. Fee: $100", "charlie")
 
         # Get next contracts
-        next_contracts = queue.get_next_contracts(3)
+        queue.get_next_contracts(3)
 
         # Verify fee scores are in correct order
         assert high.metrics.fee_score > medium.metrics.fee_score
@@ -172,8 +167,8 @@ class TestPriorityQueue:
         queue = VoluntaryProcessingQueue()
 
         queue.submit_contract("Paid. Fee: $100", "alice")
-        free1 = queue.submit_contract("Free contract 1.", "bob")
-        free2 = queue.submit_contract("Free contract 2.", "charlie")
+        queue.submit_contract("Free contract 1.", "bob")
+        queue.submit_contract("Free contract 2.", "charlie")
 
         zero_fee = queue.get_zero_fee_contracts()
 

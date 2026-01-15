@@ -11,9 +11,7 @@ Tests cover:
 
 import json
 import sys
-import time
 import unittest
-from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, "src")
@@ -620,7 +618,6 @@ class TestAPIEndpoints(unittest.TestCase):
     @patch("api.boundary._get_protection")
     def test_check_input_endpoint(self, mock_get):
         """Test the /boundary/check/input endpoint."""
-        from agent_security import RiskLevel
 
         mock_result = MagicMock()
         mock_result.to_dict.return_value = {

@@ -568,7 +568,6 @@ class TestHumanOverrideCeremony(unittest.TestCase):
 
     def test_expired_override_rejected(self):
         """Test that expired override requests are rejected."""
-        from datetime import datetime, timedelta
 
         request = self.manager.request_override(
             requested_by="test",

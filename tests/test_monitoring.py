@@ -19,7 +19,6 @@ try:
         JSONFormatter,
         LoggingContext,
         clear_request_context,
-        configure_logging,
         get_logger,
         get_request_context,
         set_request_context,

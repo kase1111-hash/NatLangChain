@@ -981,7 +981,7 @@ def reset_trust_manager() -> None:
 
 
 def calculate_weighted_consensus(
-    signals: list[WeightedSignal], aggregation: str = "weighted_average"
+    signals: list[WeightedSignal], _aggregation: str = "weighted_average"
 ) -> dict[str, Any]:
     """
     Calculate weighted consensus from validator signals.
@@ -992,7 +992,7 @@ def calculate_weighted_consensus(
 
     Args:
         signals: List of weighted signals
-        aggregation: Aggregation method ("weighted_average" or "majority")
+        _aggregation: Aggregation method (reserved for future use)
 
     Returns:
         Consensus result

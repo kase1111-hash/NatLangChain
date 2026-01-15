@@ -16,11 +16,10 @@ Tests:
 - Error handling
 """
 
-import json
 import os
 import sys
 import threading
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -30,7 +29,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 # Skip all tests if psycopg2 is not installed
 psycopg2_available = False
 try:
-    import psycopg2
+    pass
 
     psycopg2_available = True
 except ImportError:

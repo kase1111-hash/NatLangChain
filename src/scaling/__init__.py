@@ -28,8 +28,7 @@ from scaling.coordinator import InstanceCoordinator
 from scaling.locking import LocalLockManager, LockManager
 
 if TYPE_CHECKING:
-    from scaling.cache import RedisCache
-    from scaling.locking import RedisLockManager
+    pass
 
 __all__ = [
     "Cache",

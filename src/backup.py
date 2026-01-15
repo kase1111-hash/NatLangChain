@@ -190,27 +190,22 @@ class BackupStorage(ABC):
     @abstractmethod
     def upload(self, local_path: str, remote_path: str) -> bool:
         """Upload a file to the storage backend."""
-        pass
 
     @abstractmethod
     def download(self, remote_path: str, local_path: str) -> bool:
         """Download a file from the storage backend."""
-        pass
 
     @abstractmethod
     def delete(self, remote_path: str) -> bool:
         """Delete a file from the storage backend."""
-        pass
 
     @abstractmethod
     def list_backups(self, prefix: str = "") -> list[str]:
         """List backup files in the storage backend."""
-        pass
 
     @abstractmethod
     def exists(self, remote_path: str) -> bool:
         """Check if a file exists in the storage backend."""
-        pass
 
 
 class LocalBackupStorage(BackupStorage):

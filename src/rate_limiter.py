@@ -116,17 +116,14 @@ class RateLimitStore(ABC):
         Returns:
             Tuple of (current_count, reset_timestamp)
         """
-        pass
 
     @abstractmethod
     def get_count(self, key: str) -> int:
         """Get current count for key."""
-        pass
 
     @abstractmethod
     def is_available(self) -> bool:
         """Check if the store is available."""
-        pass
 
 
 class MemoryRateLimitStore(RateLimitStore):
