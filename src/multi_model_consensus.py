@@ -460,14 +460,14 @@ class HallucinationDetector:
     def detect_hallucination(
         self,
         prompt: str,
-        expected_factual: bool = True,
+        _expected_factual: bool = True,
     ) -> dict[str, Any]:
         """
         Detect potential hallucination by checking model agreement.
 
         Args:
             prompt: Prompt to evaluate
-            expected_factual: Whether response should be factual
+            _expected_factual: Whether response should be factual (reserved for future use)
 
         Returns:
             Hallucination detection result

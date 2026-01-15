@@ -24,10 +24,9 @@ def _check_cryptography_available():
     """Check if cryptography module is usable."""
     try:
         # First check if cffi is available (required by cryptography)
-        import _cffi_backend
+        pass
 
         # Then try the actual cryptography import
-        from cryptography.hazmat.primitives import hashes
 
         return True, None
     except Exception as e:

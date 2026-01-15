@@ -4,15 +4,12 @@ Tests for the entry quality analyzer.
 Tests size limits, repetition detection, and readability suggestions.
 """
 
-import pytest
 
 from src.entry_quality import (
     DEFAULT_MAX_ENTRY_SIZE,
-    DEFAULT_MIN_ENTRY_SIZE,
     EntryQualityAnalyzer,
     QualityDecision,
     QualityIssue,
-    QualityResult,
     check_entry_quality,
     format_quality_feedback,
     get_readability_suggestions,

@@ -53,13 +53,11 @@ logger = logging.getLogger(__name__)
 class RetryableError(Exception):
     """Base class for errors that should trigger a retry."""
 
-    pass
 
 
 class NonRetryableError(Exception):
     """Base class for errors that should NOT trigger a retry."""
 
-    pass
 
 
 class CircuitState(Enum):
@@ -482,7 +480,7 @@ class RetryContext:
             self._circuit = get_circuit_breaker(self.circuit_breaker_name)
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, _exc_type, _exc_val, _exc_tb):
         # Don't suppress exceptions
         return False
 

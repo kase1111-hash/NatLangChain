@@ -21,11 +21,7 @@ from enum import Enum
 from typing import Any
 
 try:
-    from boundary_exceptions import (
-        PolicyConfigurationError,
-        PolicyError,
-        PolicyViolationError,
-    )
+    pass
 except ImportError:
     pass
 

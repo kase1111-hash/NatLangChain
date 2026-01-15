@@ -8,7 +8,6 @@ Tests cover:
 - Intent and Settlement operations
 """
 
-import json
 import sys
 import time
 
@@ -19,9 +18,7 @@ sys.path.insert(0, "src")
 from chain_interface import (
     TIMESTAMP_WINDOW,
     ChainDelegation,
-    ChainHealth,
     ChainIntent,
-    ChainInterface,
     ChainReputation,
     ChainSettlement,
     HMACAuthenticator,

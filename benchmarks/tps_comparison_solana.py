@@ -292,7 +292,7 @@ class TPSSimulation:
                 block = chain.mine_pending_entries(difficulty=1)
 
                 # Verify (query)
-                entries = chain.get_entries_by_author(entry.author)
+                chain.get_entries_by_author(entry.author)
 
                 elapsed = time.perf_counter() - start
                 latencies.append(elapsed)
@@ -410,7 +410,7 @@ class TPSSimulation:
         self.simulate_mining_throughput(entries_per_block=100, num_blocks=10)
         self.simulate_full_lifecycle(num_cycles=50)
         self.simulate_concurrent_throughput(num_threads=4, entries_per_thread=100)
-        batch_results = self.simulate_batch_processing()
+        self.simulate_batch_processing()
 
         return self.results
 

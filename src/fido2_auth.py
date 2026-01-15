@@ -459,7 +459,7 @@ class FIDO2AuthManager:
         authenticator_data: str,
         client_data_json: str,
         signature: str,
-        user_handle: str | None = None,
+        _user_handle: str | None = None,
     ) -> tuple[bool, dict[str, Any]]:
         """
         Verify FIDO2 authentication response.

@@ -25,13 +25,10 @@ from src.llm_providers import (
     ProviderType,
     get_default_provider_manager,
     list_available_providers,
-    quick_complete,
 )
 from src.multi_model_consensus import (
     HallucinationDetector,
     MultiModelConsensus,
-    create_consensus_validator,
-    quick_validate,
 )
 
 # =============================================================================
@@ -125,7 +122,7 @@ class TestAnthropicProvider:
     def test_complete_success(self):
         """Test successful completion with mocked client."""
         try:
-            import anthropic
+            pass
         except ImportError:
             pytest.skip("anthropic package not installed")
 
@@ -167,7 +164,7 @@ class TestOpenAIProvider:
     def test_complete_success(self):
         """Test successful completion with mocked client."""
         try:
-            import openai
+            pass
         except ImportError:
             pytest.skip("openai package not installed")
 

@@ -751,12 +751,13 @@ class SunsetManager:
     # -------------------------------------------------------------------------
 
     def validate_historical_reference(
-        self, archived_entry_id: str, proposed_interpretation: str
+        self, archived_entry_id: str, _proposed_interpretation: str
     ) -> dict[str, Any]:
         """
         Validate a reference to historical/archived entry.
 
         Per NCIP-015 Section 6: Validators MUST reject reinterpretation attempts.
+        Note: _proposed_interpretation is intentionally unused as reinterpretations are rejected.
         """
         archive = self.archives.get(f"ARCHIVE-{archived_entry_id}")
         if not archive:

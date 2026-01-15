@@ -36,7 +36,7 @@ except ImportError:
     PRCTL_AVAILABLE = False
 
 try:
-    import ctypes
+    pass
 
     CTYPES_AVAILABLE = True
 except ImportError:
@@ -112,7 +112,7 @@ def validate_ip_address(ip: str) -> tuple[bool, str | None]:
 
     # Validate as proper IPv4 or IPv6
     try:
-        addr = ipaddress.ip_address(ip)
+        ipaddress.ip_address(ip)
         return True, None
     except ValueError:
         pass
@@ -1397,7 +1397,7 @@ class ProcessSandbox:
         self.namespaces_available = self.capabilities.get(EnforcementCapability.NAMESPACES, False)
 
     def enter_sandbox(
-        self, allow_network: bool = False, allow_filesystem: bool = True
+        self, _allow_network: bool = False, _allow_filesystem: bool = True
     ) -> EnforcementResult:
         """
         Enter a sandboxed environment.

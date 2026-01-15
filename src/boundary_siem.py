@@ -26,7 +26,7 @@ from urllib.parse import urljoin
 
 # Optional HTTP client
 try:
-    import requests
+    pass
 
     REQUESTS_AVAILABLE = True
 except ImportError:
@@ -197,7 +197,6 @@ class SIEMAlert:
 class SIEMConnectionError(Exception):
     """Raised when SIEM connection fails."""
 
-    pass
 
 
 class SIEMClient:

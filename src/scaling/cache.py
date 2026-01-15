@@ -62,7 +62,6 @@ class Cache(ABC):
         Returns:
             Cached value or default
         """
-        pass
 
     @abstractmethod
     def set(self, key: str, value: Any, ttl: float | None = None) -> bool:
@@ -77,7 +76,6 @@ class Cache(ABC):
         Returns:
             True if successful
         """
-        pass
 
     @abstractmethod
     def delete(self, key: str) -> bool:
@@ -90,12 +88,10 @@ class Cache(ABC):
         Returns:
             True if key existed and was deleted
         """
-        pass
 
     @abstractmethod
     def exists(self, key: str) -> bool:
         """Check if a key exists in the cache."""
-        pass
 
     def get_many(self, keys: list[str]) -> dict[str, Any]:
         """
@@ -165,7 +161,6 @@ class Cache(ABC):
 
     def clear(self) -> None:
         """Clear all cached values."""
-        pass
 
     def get_stats(self) -> dict[str, Any]:
         """Get cache statistics."""

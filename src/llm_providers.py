@@ -117,7 +117,6 @@ class LLMProvider(ABC):
         Returns:
             Standardized LLMResponse
         """
-        pass
 
     @abstractmethod
     def is_available(self) -> bool:
@@ -127,7 +126,6 @@ class LLMProvider(ABC):
         Returns:
             True if provider can accept requests
         """
-        pass
 
     def _extract_json_from_response(self, response_text: str) -> str:
         """

@@ -13,7 +13,6 @@ import signal
 import sys
 import threading
 import time
-from dataclasses import dataclass
 from datetime import datetime
 from functools import wraps
 from typing import Any
@@ -21,7 +20,7 @@ from typing import Any
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request
 
-from api.utils import DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT, ManagerRegistry, managers
+from api.utils import DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT
 
 # Core imports (always required)
 from blockchain import NatLangChain, NaturalLanguageEntry
@@ -203,12 +202,9 @@ except ImportError:
 
 try:
     from p2p_network import (
-        BroadcastType,
         ConsensusMode,
         NodeRole,
         P2PNetwork,
-        PeerStatus,
-        get_p2p_network,
         init_p2p_network,
     )
 
@@ -230,7 +226,6 @@ try:
     from adaptive_cache import (
         AdaptiveCache,
         CacheCategory,
-        CongestionLevel,
         get_adaptive_cache,
         make_cache_key,
     )
@@ -288,7 +283,7 @@ rate_limit_store: dict[str, dict[str, Any]] = {}  # Legacy in-memory store
 
 # Distributed rate limiter (Redis-backed when available)
 try:
-    from rate_limiter import RateLimitConfig, RateLimiter, get_rate_limiter
+    from rate_limiter import get_rate_limiter
 
     DISTRIBUTED_RATE_LIMIT_AVAILABLE = True
 except ImportError:
@@ -327,7 +322,7 @@ def _track_request_end():
         _in_flight_requests -= 1
 
 
-def _graceful_shutdown(signum: int, frame) -> None:
+def _graceful_shutdown(signum: int, _frame) -> None:
     """
     Handle SIGTERM/SIGINT for graceful server shutdown.
 
@@ -339,7 +334,7 @@ def _graceful_shutdown(signum: int, frame) -> None:
 
     Args:
         signum: Signal number received
-        frame: Current stack frame (unused)
+        _frame: Current stack frame (unused)
     """
     signal_name = signal.Signals(signum).name if hasattr(signal, "Signals") else str(signum)
     logger.info(f"Received {signal_name} - initiating graceful shutdown...")

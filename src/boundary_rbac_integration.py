@@ -97,16 +97,7 @@ from rbac import (
 # Import security enforcement layer (NEW - provides ACTUAL enforcement)
 try:
     from security_enforcement import (
-        DaemonWatchdog,
-        EnforcementCapability,
-        EnforcementResult,
-        ImmutableAuditLog,
-        NetworkEnforcement,
-        ProcessSandbox,
         SecurityEnforcementManager,
-        SystemCapabilityDetector,
-        USBEnforcement,
-        enforce_boundary_mode,
     )
 
     ENFORCEMENT_AVAILABLE = True

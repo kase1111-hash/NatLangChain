@@ -9,7 +9,6 @@ import base64
 import sys
 import unittest
 from datetime import datetime, timedelta
-from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, "src")
 
@@ -20,7 +19,6 @@ from fido2_auth import (
     FIDO2AuthManager,
     FIDO2Credential,
     SignatureType,
-    SignedMessage,
     UserVerification,
 )
 

@@ -8,9 +8,8 @@ Tests the integration layer with external systems:
 """
 
 import sys
-import time
 import unittest
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, "src")
 
@@ -92,7 +91,6 @@ class TestExternalDaemonClient(unittest.TestCase):
     @patch("socket.socket")
     def test_unix_socket_connection(self, mock_socket_class):
         """Test Unix socket connection."""
-        import os
 
         mock_socket = MagicMock()
         mock_socket_class.return_value = mock_socket
@@ -100,7 +98,7 @@ class TestExternalDaemonClient(unittest.TestCase):
         # Simulate socket exists
         with patch("os.path.exists", return_value=True):
             client = self.ExternalDaemonClient(socket_path="/var/run/test.sock")
-            connected = client.connect()
+            client.connect()
 
             # Socket should be created and connected
             mock_socket.connect.assert_called_once()
@@ -118,7 +116,7 @@ class TestExternalDaemonClient(unittest.TestCase):
             client = self.ExternalDaemonClient(
                 http_url="http://localhost:8080/api/v1", api_key="test-key"
             )
-            connected = client.connect()
+            client.connect()
 
             # HTTP health check should be called
             mock_session.get.assert_called()
@@ -586,7 +584,7 @@ class TestModeSynchronization(unittest.TestCase):
 
         # Create protection - this should trigger sync
         with patch.object(self.BoundaryProtection, "_sync_mode_from_daemon") as mock_sync:
-            protection = self.BoundaryProtection(config)
+            self.BoundaryProtection(config)
             # Sync would be called during init
 
 

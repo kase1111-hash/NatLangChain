@@ -9,8 +9,6 @@ Tests cover:
 """
 
 import sys
-import time
-from datetime import datetime, timedelta
 
 import pytest
 
@@ -21,7 +19,6 @@ from zk_privacy import (
     ECIESEncryption,
     PedersenCommitment,
     PoseidonHasher,
-    ProofStatus,
     ShamirSecretSharing,
     ViewingKeyManager,
 )

@@ -125,7 +125,7 @@ class JSONFileStorage(StorageBackend):
                     return None
 
                 # Track for stats
-                original_size = len(raw_bytes)
+                len(raw_bytes)
 
                 # Handle encrypted data first (encryption wraps compression)
                 if self.encryption_enabled and self._is_encrypted_fn:

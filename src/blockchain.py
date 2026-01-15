@@ -121,9 +121,6 @@ try:
     from src.entry_quality import (
         EntryQualityAnalyzer,
         QualityDecision,
-        QualityResult,
-        check_entry_quality,
-        format_quality_feedback,
     )
 
     ENTRY_QUALITY_AVAILABLE = True

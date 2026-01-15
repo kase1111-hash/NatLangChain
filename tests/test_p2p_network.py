@@ -15,8 +15,6 @@ Tests:
 - Security hardening
 """
 
-import hashlib
-import json
 import os
 import sys
 import threading
@@ -24,7 +22,6 @@ import time
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
-import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
@@ -41,9 +38,7 @@ from p2p_network import (
     PeerSecurityManager,
     PeerStatus,
     SyncState,
-    MAX_MESSAGES_PER_MINUTE,
     MAX_PEERS,
-    MAX_PEERS_PER_IP,
 )
 
 

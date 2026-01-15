@@ -12,8 +12,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 import pytest
 
-from storage import StorageBackend, StorageError, get_storage_backend
-from storage.base import StorageReadError, StorageWriteError
+from storage import StorageError, get_storage_backend
+from storage.base import StorageReadError
 from storage.json_file import JSONFileStorage
 from storage.memory import MemoryStorage
 

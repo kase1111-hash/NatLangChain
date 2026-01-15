@@ -13,7 +13,7 @@ import pytest
 
 from scaling.cache import CacheEntry, LocalCache
 from scaling.coordinator import InstanceCoordinator, InstanceInfo
-from scaling.locking import LocalLockManager, LockInfo
+from scaling.locking import LocalLockManager
 
 
 class TestLocalLockManager:

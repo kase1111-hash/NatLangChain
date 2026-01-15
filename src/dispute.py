@@ -21,18 +21,10 @@ except ImportError:
 # Import NCIP-005 semantic locking
 try:
     from semantic_locking import (
-        CoolingPeriodStatus,
-        DisputeLevel,
         DisputeTrigger,
-        EscalationStage,
         LockAction,
         ResolutionOutcome,
-        SemanticLock,
         SemanticLockManager,
-        get_cooling_period_hours,
-        get_ncip_005_config,
-        is_action_allowed_during_cooling,
-        is_action_forbidden_during_lock,
     )
 
     NCIP_005_AVAILABLE = True
@@ -42,14 +34,7 @@ except ImportError:
 # Import NCIP-010 mediator reputation
 try:
     from mediator_reputation import (
-        CTS_WEIGHTS,
         DEFAULT_BOND,
-        MINIMUM_BOND,
-        CooldownReason,
-        MediatorProfile,
-        MediatorReputationManager,
-        MediatorStatus,
-        ProposalStatus,
         SlashingOffense,
         get_ncip_010_config,
         get_reputation_manager,

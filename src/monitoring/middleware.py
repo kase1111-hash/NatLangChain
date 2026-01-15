@@ -116,7 +116,7 @@ def _record_request_metrics(status_code: int) -> None:
             duration_ms = (time.perf_counter() - g.start_time) * 1000
 
         # Determine status category
-        status_category = f"{status_code // 100}xx"
+        f"{status_code // 100}xx"
 
         # Increment request counter
         metrics.increment(

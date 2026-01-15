@@ -323,7 +323,7 @@ def request_override():
     to_mode_str = data.get("to_mode")
     reason = data.get("reason")
     requested_by = data.get("requested_by", "api_user")
-    validity_minutes = data.get("validity_minutes", 5)
+    data.get("validity_minutes", 5)
 
     if not to_mode_str or not reason:
         return jsonify({"error": "to_mode and reason are required"}), 400
