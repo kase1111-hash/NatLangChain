@@ -22,10 +22,10 @@ import time
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
-
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from p2p_network import (
+    MAX_PEERS,
     BlockValidator,
     BroadcastMessage,
     BroadcastType,
@@ -38,7 +38,6 @@ from p2p_network import (
     PeerSecurityManager,
     PeerStatus,
     SyncState,
-    MAX_PEERS,
 )
 
 

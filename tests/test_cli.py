@@ -20,7 +20,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from cli import cmd_check, cmd_info, cmd_serve, main, _get_flask_app
+from cli import _get_flask_app, cmd_check, cmd_info, cmd_serve, main
 
 
 class TestCmdCheck:

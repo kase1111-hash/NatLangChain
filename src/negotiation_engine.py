@@ -1400,7 +1400,7 @@ class AutomatedNegotiationEngine:
             # Rollback phase on error
             session.phase = old_phase
             return False, {
-                "error": f"Failed to advance phase: {str(e)}",
+                "error": f"Failed to advance phase: {e!s}",
                 "error_type": type(e).__name__,
                 "current_phase": session.phase.value,
             }
@@ -1642,7 +1642,7 @@ class AutomatedNegotiationEngine:
 
         except Exception as e:
             return False, {
-                "error": f"Failed to create offer: {str(e)}",
+                "error": f"Failed to create offer: {e!s}",
                 "error_type": type(e).__name__,
             }
 
