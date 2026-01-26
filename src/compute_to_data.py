@@ -705,16 +705,16 @@ class ComputeEnvironment:
             return False, {"error": "Maximum recursion depth exceeded"}, compute_time
         except TypeError as e:
             compute_time = int((time.time() - start_time) * 1000)
-            return False, {"error": f"Type error in algorithm: {str(e)}"}, compute_time
+            return False, {"error": f"Type error in algorithm: {e!s}"}, compute_time
         except KeyError as e:
             compute_time = int((time.time() - start_time) * 1000)
-            return False, {"error": f"Missing required key: {str(e)}"}, compute_time
+            return False, {"error": f"Missing required key: {e!s}"}, compute_time
         except ValueError as e:
             compute_time = int((time.time() - start_time) * 1000)
-            return False, {"error": f"Invalid value: {str(e)}"}, compute_time
+            return False, {"error": f"Invalid value: {e!s}"}, compute_time
         except Exception as e:
             compute_time = int((time.time() - start_time) * 1000)
-            return False, {"error": f"Unexpected error: {str(e)}", "error_type": type(e).__name__}, compute_time
+            return False, {"error": f"Unexpected error: {e!s}", "error_type": type(e).__name__}, compute_time
 
 
 # =============================================================================

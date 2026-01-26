@@ -11,6 +11,9 @@ Tests:
 """
 
 import os
+
+# Import RBAC module
+import sys
 import tempfile
 import threading
 from datetime import datetime, timedelta
@@ -18,16 +21,14 @@ from unittest.mock import patch
 
 import pytest
 
-# Import RBAC module
-import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from rbac import (
+    ROLE_PERMISSIONS,
     APIKeyInfo,
     Permission,
-    Role,
     RBACManager,
-    ROLE_PERMISSIONS,
+    Role,
     generate_api_key,
     get_rbac_manager,
     init_rbac,

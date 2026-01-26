@@ -724,7 +724,7 @@ class VoluntaryProcessingQueue:
             contract.completed_at = None
             return (
                 False,
-                {"error": f"Failed to complete processing: {str(e)}", "error_type": type(e).__name__},
+                {"error": f"Failed to complete processing: {e!s}", "error_type": type(e).__name__},
             )
 
     def abandon_contract(self, contract_id: str, mediator_id: str) -> tuple[bool, str]:

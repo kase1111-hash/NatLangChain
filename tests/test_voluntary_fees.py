@@ -7,7 +7,6 @@ community pool, and mediator incentives.
 
 from datetime import datetime, timedelta
 
-
 from src.voluntary_fees import (
     COMMUNITY_POOL_PERCENTAGE,
     ZERO_FEE_REPUTATION_BONUS,

@@ -686,7 +686,7 @@ class EmergencyManager:
         except Exception as e:
             return {
                 "status": "error",
-                "message": f"Failed to add oracle evidence: {str(e)}",
+                "message": f"Failed to add oracle evidence: {e!s}",
                 "error_type": type(e).__name__,
             }
 
@@ -932,7 +932,7 @@ class EmergencyManager:
         except Exception as e:
             return {
                 "status": "error",
-                "message": f"Failed to process expiry: {str(e)}",
+                "message": f"Failed to process expiry: {e!s}",
                 "error_type": type(e).__name__,
             }
 

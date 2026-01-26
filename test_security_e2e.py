@@ -72,11 +72,11 @@ def run_tests():
 
         BLOCKED_IP_RANGES = ssrf_module.BLOCKED_IP_RANGES
         BLOCKED_HOSTS = ssrf_module.BLOCKED_HOSTS
-        ssrf_module.TRUSTED_PROXIES
-        ssrf_module.is_valid_ip
+        _TRUSTED_PROXIES = ssrf_module.TRUSTED_PROXIES
+        _is_valid_ip = ssrf_module.is_valid_ip
         is_private_ip = ssrf_module.is_private_ip
         validate_url_for_ssrf = ssrf_module.validate_url_for_ssrf
-        ssrf_module.is_safe_peer_endpoint
+        _is_safe_peer_endpoint = ssrf_module.is_safe_peer_endpoint
         get_client_ip_from_headers = ssrf_module.get_client_ip_from_headers
 
         test_pass("Import SSRF protection utilities (standalone module)")

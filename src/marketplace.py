@@ -578,12 +578,12 @@ class PaymentProcessor:
         except ValueError as e:
             return {
                 "success": False,
-                "error": f"Revenue split calculation failed: {str(e)}",
+                "error": f"Revenue split calculation failed: {e!s}",
             }
         except Exception as e:
             return {
                 "success": False,
-                "error": f"Unexpected error in split calculation: {str(e)}",
+                "error": f"Unexpected error in split calculation: {e!s}",
             }
 
         # Validate recipient wallets
@@ -603,7 +603,7 @@ class PaymentProcessor:
         except Exception as e:
             return {
                 "success": False,
-                "error": f"Failed to generate payment ID: {str(e)}",
+                "error": f"Failed to generate payment ID: {e!s}",
             }
 
         return {
@@ -799,7 +799,7 @@ class MarketplaceManager:
         try:
             price_eth = config.get_tier_price(tier)
         except Exception as e:
-            return {"success": False, "error": f"Failed to calculate tier price: {str(e)}"}
+            return {"success": False, "error": f"Failed to calculate tier price: {e!s}"}
 
         if price_eth <= 0:
             return {"success": False, "error": "Invalid price calculated for tier"}
@@ -868,7 +868,7 @@ class MarketplaceManager:
             # This is not critical but should be logged
             return {
                 "success": True,
-                "warning": f"Purchase completed but recording failed: {str(e)}",
+                "warning": f"Purchase completed but recording failed: {e!s}",
                 "payment": payment_result,
                 "license_nft": mint_result,
                 "message": f"Successfully purchased {tier.value} license for {config.module_name} (recording error)",
