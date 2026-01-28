@@ -64,8 +64,8 @@ def semantic_search():
 
         return jsonify({"query": query, "field": field, "count": len(results), "results": results})
 
-    except Exception as e:
-        return jsonify({"error": "Search failed", "reason": str(e)}), 500
+    except Exception:
+        return jsonify({"error": "Search failed", "reason": "Internal error occurred"}), 500
 
 
 @search_bp.route("/search/similar", methods=["POST"])
@@ -102,8 +102,8 @@ def find_similar():
 
         return jsonify({"content": content, "count": len(results), "similar_entries": results})
 
-    except Exception as e:
-        return jsonify({"error": "Search failed", "reason": str(e)}), 500
+    except Exception:
+        return jsonify({"error": "Search failed", "reason": "Internal error occurred"}), 500
 
 
 # ========== Semantic Drift Detection Endpoints ==========
@@ -320,9 +320,9 @@ def verify_oracle_event():
 
         return jsonify(result)
 
-    except Exception as e:
+    except Exception:
         # Record failure with circuit breaker
         if managers.circuit_breaker:
             managers.circuit_breaker.record_failure()
 
-        return jsonify({"error": "Oracle verification failed", "reason": str(e)}), 500
+        return jsonify({"error": "Oracle verification failed", "reason": "Internal error occurred"}), 500

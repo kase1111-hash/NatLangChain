@@ -10,9 +10,14 @@ Provides REST API endpoints for the module marketplace:
 All endpoints are prefixed with /marketplace/
 """
 
+import re
+
 from flask import Blueprint, jsonify, request
 
 from .utils import managers, require_api_key, validate_json_schema
+
+# Ethereum wallet address pattern: 0x followed by 40 hex characters
+WALLET_ADDRESS_PATTERN = re.compile(r"^0x[0-9a-fA-F]{40}$")
 
 marketplace_bp = Blueprint("marketplace", __name__, url_prefix="/marketplace")
 
@@ -181,9 +186,9 @@ def purchase_license():
     buyer_wallet = data["buyer_wallet"]
     tier_str = data.get("tier", "standard").lower()
 
-    # Validate wallet address format
-    if not buyer_wallet.startswith("0x") or len(buyer_wallet) != 42:
-        return jsonify({"error": "Invalid wallet address format"}), 400
+    # Validate wallet address format with proper hex validation
+    if not WALLET_ADDRESS_PATTERN.match(buyer_wallet):
+        return jsonify({"error": "Invalid wallet address format. Must be 0x followed by 40 hex characters"}), 400
 
     # Parse tier
     from marketplace import LicenseTier
@@ -441,9 +446,9 @@ def purchase_rra_license():
     buyer_wallet = data["buyer_wallet"]
     tier_str = data.get("tier", "standard").lower()
 
-    # Validate wallet address format
-    if not buyer_wallet.startswith("0x") or len(buyer_wallet) != 42:
-        return jsonify({"error": "Invalid wallet address format"}), 400
+    # Validate wallet address format with proper hex validation
+    if not WALLET_ADDRESS_PATTERN.match(buyer_wallet):
+        return jsonify({"error": "Invalid wallet address format. Must be 0x followed by 40 hex characters"}), 400
 
     # Parse tier
     from marketplace import LicenseTier

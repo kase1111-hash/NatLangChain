@@ -588,6 +588,9 @@ def get_linked_streams(stream_id):
 # =============================================================================
 
 
+MAX_STREAM_IDS = 100  # Maximum number of stream IDs per export request
+
+
 @composability_bp.route("/composability/export", methods=["POST"])
 def export_streams():
     """
@@ -595,7 +598,7 @@ def export_streams():
 
     Request body:
         {
-            "stream_ids": ["kjzl_...", ...],
+            "stream_ids": ["kjzl_...", ...],  // Max 100 stream IDs
             "include_schemas": true,         // Default: true
             "include_links": true,           // Default: true
             "exported_by": "did:nlc:..."     // Optional
@@ -611,6 +614,10 @@ def export_streams():
 
     if "stream_ids" not in data or not data["stream_ids"]:
         return jsonify({"error": "stream_ids is required and must not be empty"}), 400
+
+    # Validate list size to prevent resource exhaustion
+    if len(data["stream_ids"]) > MAX_STREAM_IDS:
+        return jsonify({"error": f"stream_ids exceeds maximum limit of {MAX_STREAM_IDS}"}), 400
 
     success, result = managers.composability_service.export_streams(
         stream_ids=data["stream_ids"],

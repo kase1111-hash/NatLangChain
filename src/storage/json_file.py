@@ -124,9 +124,6 @@ class JSONFileStorage(StorageBackend):
                 if not raw_bytes:
                     return None
 
-                # Track for stats
-                len(raw_bytes)
-
                 # Handle encrypted data first (encryption wraps compression)
                 if self.encryption_enabled and self._is_encrypted_fn:
                     # Encryption produces text, so decode first
