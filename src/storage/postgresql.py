@@ -148,15 +148,17 @@ class PostgreSQLStorage(StorageBackend):
             raise StorageConnectionError(f"Failed to connect to PostgreSQL: {e}")
 
     def _get_conn(self):
-        """Get a connection from the pool."""
-        if self._pool is None:
-            raise StorageConnectionError("Connection pool not initialized")
-        return self._pool.getconn()
+        """Get a connection from the pool (thread-safe)."""
+        with self._lock:
+            if self._pool is None:
+                raise StorageConnectionError("Connection pool not initialized")
+            return self._pool.getconn()
 
     def _put_conn(self, conn):
-        """Return a connection to the pool."""
-        if self._pool:
-            self._pool.putconn(conn)
+        """Return a connection to the pool (thread-safe)."""
+        with self._lock:
+            if self._pool:
+                self._pool.putconn(conn)
 
     def _create_tables(self) -> None:
         """Create database tables if they don't exist."""
@@ -255,7 +257,9 @@ class PostgreSQLStorage(StorageBackend):
         """
         Save blockchain data to PostgreSQL.
 
-        Uses a transaction to ensure atomicity.
+        Uses a transaction with UPSERT pattern to prevent data loss.
+        Blocks and entries are upserted, and orphaned records are cleaned up
+        only after successful inserts.
 
         Args:
             chain_data: Dictionary containing the complete chain state
@@ -263,24 +267,29 @@ class PostgreSQLStorage(StorageBackend):
         conn = self._get_conn()
         try:
             with conn.cursor() as cur:
-                # Clear existing data (within transaction)
-                cur.execute("DELETE FROM pending_entries")
-                cur.execute("DELETE FROM entries")
-                cur.execute("DELETE FROM blocks")
-
-                # Insert blocks
                 chain = chain_data.get("chain", [])
+                block_indices = []
+
+                # Upsert blocks
                 for block in chain:
+                    block_index = block.get("index", 0)
+                    block_indices.append(block_index)
                     entries_json = json.dumps(block.get("entries", []))
                     cur.execute(
                         """
                         INSERT INTO blocks
                             (block_index, timestamp, previous_hash, hash, nonce, entries_json)
                         VALUES (%s, %s, %s, %s, %s, %s)
+                        ON CONFLICT (block_index) DO UPDATE SET
+                            timestamp = EXCLUDED.timestamp,
+                            previous_hash = EXCLUDED.previous_hash,
+                            hash = EXCLUDED.hash,
+                            nonce = EXCLUDED.nonce,
+                            entries_json = EXCLUDED.entries_json
                         RETURNING id
                     """,
                         (
-                            block.get("index", 0),
+                            block_index,
                             block.get("timestamp", 0),
                             block.get("previous_hash", ""),
                             block.get("hash", ""),
@@ -289,6 +298,11 @@ class PostgreSQLStorage(StorageBackend):
                         ),
                     )
                     block_id = cur.fetchone()[0]
+
+                    # Delete existing entries for this block and insert new ones
+                    cur.execute(
+                        "DELETE FROM entries WHERE block_index = %s", (block_index,)
+                    )
 
                     # Insert entries (denormalized for queries)
                     for i, entry in enumerate(block.get("entries", [])):
@@ -302,7 +316,7 @@ class PostgreSQLStorage(StorageBackend):
                         """,
                             (
                                 block_id,
-                                block.get("index", 0),
+                                block_index,
                                 i,
                                 entry.get("content", ""),
                                 entry.get("author", ""),
@@ -314,7 +328,18 @@ class PostgreSQLStorage(StorageBackend):
                             ),
                         )
 
-                # Insert pending entries
+                # Clean up blocks that are no longer in the chain (only after successful upserts)
+                if block_indices:
+                    cur.execute(
+                        "DELETE FROM blocks WHERE block_index NOT IN %s",
+                        (tuple(block_indices),)
+                    )
+                else:
+                    # If no blocks, clear all (chain reset scenario)
+                    cur.execute("DELETE FROM blocks")
+
+                # Handle pending entries: clear and re-insert
+                cur.execute("DELETE FROM pending_entries")
                 for entry in chain_data.get("pending_entries", []):
                     cur.execute(
                         """
@@ -430,14 +455,17 @@ class PostgreSQLStorage(StorageBackend):
 
     def is_available(self) -> bool:
         """Check if PostgreSQL is available."""
+        conn = None
         try:
             conn = self._get_conn()
             with conn.cursor() as cur:
                 cur.execute("SELECT 1")
-            self._put_conn(conn)
             return True
         except Exception:
             return False
+        finally:
+            if conn is not None:
+                self._put_conn(conn)
 
     def get_info(self) -> dict[str, Any]:
         """Get storage backend information."""

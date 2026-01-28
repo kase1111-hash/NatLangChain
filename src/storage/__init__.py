@@ -22,6 +22,7 @@ Usage:
 """
 
 import os
+import threading
 from typing import TYPE_CHECKING
 
 from storage.base import StorageBackend, StorageError
@@ -74,13 +75,17 @@ def get_storage_backend() -> StorageBackend:
         raise StorageError(f"Unknown storage backend: {backend_type}")
 
 
-# Default storage instance (lazy initialization)
+# Default storage instance (lazy initialization with thread safety)
 _default_storage: StorageBackend | None = None
+_default_storage_lock = threading.Lock()
 
 
 def get_default_storage() -> StorageBackend:
-    """Get or create the default storage backend."""
+    """Get or create the default storage backend (thread-safe)."""
     global _default_storage
     if _default_storage is None:
-        _default_storage = get_storage_backend()
+        with _default_storage_lock:
+            # Double-check locking pattern
+            if _default_storage is None:
+                _default_storage = get_storage_backend()
     return _default_storage

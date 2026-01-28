@@ -18,6 +18,9 @@ from .state import managers
 
 compute_bp = Blueprint("compute", __name__)
 
+# Maximum number of data records per asset registration
+MAX_DATA_RECORDS = 10000
+
 
 # =============================================================================
 # Data Asset Management Endpoints
@@ -56,6 +59,12 @@ def register_asset():
     missing = [f for f in required if f not in data]
     if missing:
         return jsonify({"error": f"Missing required fields: {missing}"}), 400
+
+    # Validate data array size to prevent resource exhaustion
+    if not isinstance(data["data"], list):
+        return jsonify({"error": "data must be an array"}), 400
+    if len(data["data"]) > MAX_DATA_RECORDS:
+        return jsonify({"error": f"data exceeds maximum limit of {MAX_DATA_RECORDS} records"}), 400
 
     # Parse asset type
     from compute_to_data import DataAssetType, PrivacyLevel

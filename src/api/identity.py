@@ -14,6 +14,7 @@ Provides access to:
 from flask import Blueprint, jsonify, request
 
 from .state import managers
+from .utils import require_api_key
 
 identity_bp = Blueprint("identity", __name__)
 
@@ -87,6 +88,7 @@ def create_did():
 
 
 @identity_bp.route("/identity/did/<path:did>", methods=["GET"])
+@require_api_key
 def resolve_did(did):
     """
     Resolve a DID to its document.
@@ -109,6 +111,7 @@ def resolve_did(did):
 
 
 @identity_bp.route("/identity/did/<path:did>", methods=["PATCH"])
+@require_api_key
 def update_did(did):
     """
     Update a DID document.
@@ -120,7 +123,7 @@ def update_did(did):
         {
             "also_known_as": ["..."],      // Optional
             "controller": "did:nlc:...",   // Optional
-            "authorized_by": "did:nlc:..." // Optional, DID authorizing update
+            "authorized_by": "did:nlc:..." // Required, DID authorizing update
         }
 
     Returns:
@@ -131,6 +134,10 @@ def update_did(did):
 
     data = request.get_json() or {}
 
+    # Require authorization
+    if not data.get("authorized_by"):
+        return jsonify({"error": "authorized_by is required for DID updates"}), 400
+
     updates = {}
     if "also_known_as" in data:
         updates["also_known_as"] = data["also_known_as"]
@@ -138,7 +145,7 @@ def update_did(did):
         updates["controller"] = data["controller"]
 
     success, result = managers.identity_service.registry.update_document(
-        did, updates, authorized_by=data.get("authorized_by")
+        did, updates, authorized_by=data["authorized_by"]
     )
 
     if success:
@@ -432,6 +439,7 @@ def revoke_delegation(delegation_id):
 
 
 @identity_bp.route("/identity/did/<path:did>/delegations", methods=["GET"])
+@require_api_key
 def get_delegations(did):
     """
     Get delegations for a DID.
@@ -497,6 +505,7 @@ def link_author():
 
 
 @identity_bp.route("/identity/resolve/<path:author>", methods=["GET"])
+@require_api_key
 def resolve_author(author):
     """
     Resolve an author identifier to a DID.
@@ -603,6 +612,7 @@ def get_statistics():
 
 
 @identity_bp.route("/identity/events", methods=["GET"])
+@require_api_key
 def get_events():
     """
     Get DID event log.
