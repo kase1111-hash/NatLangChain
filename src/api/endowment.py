@@ -13,6 +13,7 @@ Provides access to:
 from flask import Blueprint, jsonify, request
 
 from .state import managers
+from .utils import DEFAULT_HISTORY_LIMIT, DEFAULT_PAGE_LIMIT
 
 endowment_bp = Blueprint("endowment", __name__)
 
@@ -345,7 +346,7 @@ def get_yield_history():
     if not managers.permanence_endowment:
         return jsonify({"error": "Permanence endowment not initialized"}), 503
 
-    limit = request.args.get("limit", 50, type=int)
+    limit = request.args.get("limit", DEFAULT_HISTORY_LIMIT, type=int)
 
     accruals = managers.permanence_endowment.yield_accruals[-limit:]
 
@@ -427,7 +428,7 @@ def get_payout_history():
     if not managers.permanence_endowment:
         return jsonify({"error": "Permanence endowment not initialized"}), 503
 
-    limit = request.args.get("limit", 50, type=int)
+    limit = request.args.get("limit", DEFAULT_HISTORY_LIMIT, type=int)
 
     payouts = managers.permanence_endowment.storage_payouts[-limit:]
 
@@ -471,7 +472,7 @@ def get_events():
     if not managers.permanence_endowment:
         return jsonify({"error": "Permanence endowment not initialized"}), 503
 
-    limit = request.args.get("limit", 100, type=int)
+    limit = request.args.get("limit", DEFAULT_PAGE_LIMIT, type=int)
     event_type = request.args.get("event_type")
 
     events = managers.permanence_endowment.events

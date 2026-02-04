@@ -16,7 +16,7 @@ import re
 from flask import Blueprint, jsonify, request
 
 from .state import managers
-from .utils import require_api_key
+from .utils import DEFAULT_PAGE_LIMIT, require_api_key
 
 identity_bp = Blueprint("identity", __name__)
 
@@ -677,7 +677,7 @@ def get_events():
     if not managers.identity_service:
         return jsonify({"error": "Identity service not initialized"}), 503
 
-    limit = request.args.get("limit", 100, type=int)
+    limit = request.args.get("limit", DEFAULT_PAGE_LIMIT, type=int)
     did_filter = request.args.get("did")
     event_type = request.args.get("event_type")
 

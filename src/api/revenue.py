@@ -17,6 +17,7 @@ from decimal import Decimal
 from flask import Blueprint, jsonify, request
 
 from .state import managers
+from .utils import DEFAULT_PAGE_LIMIT
 
 revenue_bp = Blueprint("revenue", __name__)
 
@@ -321,7 +322,7 @@ def list_revenue_events():
     block_index = request.args.get("block_index", type=int)
     entry_index = request.args.get("entry_index", type=int)
     event_type_str = request.args.get("event_type")
-    limit = request.args.get("limit", 100, type=int)
+    limit = request.args.get("limit", DEFAULT_PAGE_LIMIT, type=int)
 
     events = list(managers.revenue_service.revenue_events.values())
 
@@ -480,7 +481,7 @@ def list_claims():
 
     recipient = request.args.get("recipient")
     status_str = request.args.get("status")
-    limit = request.args.get("limit", 100, type=int)
+    limit = request.args.get("limit", DEFAULT_PAGE_LIMIT, type=int)
 
     status = None
     if status_str:
@@ -546,7 +547,7 @@ def list_payments():
     recipient = request.args.get("recipient")
     event_id = request.args.get("event_id")
     status_str = request.args.get("status")
-    limit = request.args.get("limit", 100, type=int)
+    limit = request.args.get("limit", DEFAULT_PAGE_LIMIT, type=int)
 
     payments = list(managers.revenue_service.payments.values())
 
@@ -680,7 +681,7 @@ def get_audit_events():
     if not managers.revenue_service:
         return jsonify({"error": "Revenue service not initialized"}), 503
 
-    limit = request.args.get("limit", 100, type=int)
+    limit = request.args.get("limit", DEFAULT_PAGE_LIMIT, type=int)
     event_type_filter = request.args.get("event_type")
 
     events = managers.revenue_service.events

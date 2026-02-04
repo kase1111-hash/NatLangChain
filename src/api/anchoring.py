@@ -12,6 +12,7 @@ Provides access to:
 from flask import Blueprint, jsonify, request
 
 from .state import managers
+from .utils import DEFAULT_PAGE_LIMIT
 
 anchoring_bp = Blueprint("anchoring", __name__)
 
@@ -367,7 +368,7 @@ def get_events():
     if not managers.anchoring_service:
         return jsonify({"error": "Anchoring service not initialized"}), 503
 
-    limit = request.args.get("limit", 100, type=int)
+    limit = request.args.get("limit", DEFAULT_PAGE_LIMIT, type=int)
     event_type = request.args.get("event_type")
 
     events = managers.anchoring_service.events
