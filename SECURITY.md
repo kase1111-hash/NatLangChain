@@ -54,11 +54,17 @@ The NatLangChain codebase has undergone comprehensive security audits with all c
 |----------|---------|-------------|
 | `FLASK_DEBUG` | `false` | Enable debug mode (development only) |
 | `NATLANGCHAIN_API_KEY` | None | API key for authentication |
-| `NATLANGCHAIN_REQUIRE_AUTH` | `false` | Require API key for all requests |
+| `NATLANGCHAIN_REQUIRE_AUTH` | `true` | Require API key for all requests |
 | `RATE_LIMIT_REQUESTS` | `100` | Max requests per rate limit window |
 | `RATE_LIMIT_WINDOW` | `60` | Rate limit window in seconds |
-| `CORS_ALLOWED_ORIGINS` | `*` | Allowed CORS origins |
+| `LLM_RATE_LIMIT_REQUESTS` | `10` | Max LLM requests per window (stricter) |
+| `LLM_RATE_LIMIT_WINDOW` | `60` | LLM rate limit window in seconds |
+| `CORS_ALLOWED_ORIGINS` | (none) | Allowed CORS origins (restrictive default) |
 | `NATLANGCHAIN_TRUSTED_PROXIES` | None | Comma-separated trusted proxy IPs |
+| `NATLANGCHAIN_DEFAULT_PAGE_LIMIT` | `100` | Default pagination limit |
+| `NATLANGCHAIN_MAX_PAGE_LIMIT` | `1000` | Maximum pagination limit |
+| `LOG_FORMAT` | (console) | Set to "json" for JSON logging |
+| `LOG_LEVEL` | `INFO` | Logging level (DEBUG, INFO, WARNING, ERROR) |
 
 ### Production Configuration
 

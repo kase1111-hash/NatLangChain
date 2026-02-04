@@ -25,6 +25,58 @@ EMAIL_PATTERN = re.compile(
     r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
 )
 
+# DID validation pattern (W3C DID Core Specification)
+# Format: did:<method>:<method-specific-id>
+# For NatLangChain: did:nlc:<base58-or-hex-identifier>
+DID_PATTERN = re.compile(
+    r"^did:[a-z0-9]+:[a-zA-Z0-9._%-]+$"
+)
+
+# Maximum DID length (reasonable limit to prevent abuse)
+MAX_DID_LENGTH = 256
+
+
+def validate_did(did: str) -> tuple[bool, str | None]:
+    """
+    Validate DID format according to W3C DID Core Specification.
+
+    Args:
+        did: The DID string to validate
+
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    if not did:
+        return False, "DID is required"
+
+    if len(did) > MAX_DID_LENGTH:
+        return False, f"DID exceeds maximum length of {MAX_DID_LENGTH} characters"
+
+    if not did.startswith("did:"):
+        return False, "DID must start with 'did:'"
+
+    if not DID_PATTERN.match(did):
+        return False, "Invalid DID format. Expected: did:<method>:<identifier>"
+
+    # Validate method-specific rules for NatLangChain DIDs
+    parts = did.split(":")
+    if len(parts) < 3:
+        return False, "DID must have at least three parts: did:<method>:<identifier>"
+
+    method = parts[1]
+    identifier = ":".join(parts[2:])  # Handle identifiers with colons
+
+    if not identifier:
+        return False, "DID identifier cannot be empty"
+
+    # For nlc method, validate identifier format
+    if method == "nlc":
+        # NLC identifiers should be alphanumeric (base58 or hex)
+        if not re.match(r"^[a-zA-Z0-9]+$", identifier):
+            return False, "NLC DID identifier must be alphanumeric"
+
+    return True, None
+
 
 def validate_email(email: str) -> tuple[bool, str | None]:
     """
@@ -139,6 +191,11 @@ def resolve_did(did):
     if not managers.identity_service:
         return jsonify({"error": "Identity service not initialized"}), 503
 
+    # Validate DID format
+    is_valid, error_msg = validate_did(did)
+    if not is_valid:
+        return jsonify({"error": error_msg}), 400
+
     result = managers.identity_service.registry.resolve(did)
 
     if result.did_resolution_metadata.get("error"):
@@ -169,11 +226,21 @@ def update_did(did):
     if not managers.identity_service:
         return jsonify({"error": "Identity service not initialized"}), 503
 
+    # Validate DID format
+    is_valid, error_msg = validate_did(did)
+    if not is_valid:
+        return jsonify({"error": error_msg}), 400
+
     data = request.get_json() or {}
 
     # Require authorization
     if not data.get("authorized_by"):
         return jsonify({"error": "authorized_by is required for DID updates"}), 400
+
+    # Validate authorized_by DID format
+    is_valid, error_msg = validate_did(data["authorized_by"])
+    if not is_valid:
+        return jsonify({"error": f"Invalid authorized_by: {error_msg}"}), 400
 
     updates = {}
     if "also_known_as" in data:
