@@ -25,6 +25,7 @@ identity_bp = Blueprint("identity", __name__)
 
 
 @identity_bp.route("/identity/did", methods=["POST"])
+@require_api_key
 def create_did():
     """
     Create a new DID with document.
@@ -155,6 +156,7 @@ def update_did(did):
 
 
 @identity_bp.route("/identity/did/<path:did>/deactivate", methods=["POST"])
+@require_api_key
 def deactivate_did(did):
     """
     Deactivate a DID (permanent).
@@ -182,6 +184,7 @@ def deactivate_did(did):
 
 
 @identity_bp.route("/identity/did/<path:did>/keys", methods=["POST"])
+@require_api_key
 def add_key(did):
     """
     Add a new verification method (key) to a DID.
@@ -235,6 +238,7 @@ def add_key(did):
 
 
 @identity_bp.route("/identity/did/<path:did>/keys/<key_id>/revoke", methods=["POST"])
+@require_api_key
 def revoke_key(did, key_id):
     """
     Revoke a verification method (key).
@@ -261,6 +265,7 @@ def revoke_key(did, key_id):
 
 
 @identity_bp.route("/identity/did/<path:did>/keys/<key_id>/rotate", methods=["POST"])
+@require_api_key
 def rotate_key(did, key_id):
     """
     Rotate a key - create new key and schedule old for revocation.
@@ -306,6 +311,7 @@ def rotate_key(did, key_id):
 
 
 @identity_bp.route("/identity/did/<path:did>/services", methods=["POST"])
+@require_api_key
 def add_service(did):
     """
     Add a service endpoint to a DID.
@@ -345,6 +351,7 @@ def add_service(did):
 
 
 @identity_bp.route("/identity/did/<path:did>/services/<service_id>", methods=["DELETE"])
+@require_api_key
 def remove_service(did, service_id):
     """
     Remove a service endpoint from a DID.
@@ -376,6 +383,7 @@ def remove_service(did, service_id):
 
 
 @identity_bp.route("/identity/delegations", methods=["POST"])
+@require_api_key
 def grant_delegation():
     """
     Grant delegation from one DID to another.
@@ -417,6 +425,7 @@ def grant_delegation():
 
 
 @identity_bp.route("/identity/delegations/<delegation_id>/revoke", methods=["POST"])
+@require_api_key
 def revoke_delegation(delegation_id):
     """
     Revoke a delegation.
@@ -475,6 +484,7 @@ def get_delegations(did):
 
 
 @identity_bp.route("/identity/link", methods=["POST"])
+@require_api_key
 def link_author():
     """
     Link an author identifier (e.g., email) to a DID.
@@ -528,6 +538,7 @@ def resolve_author(author):
 
 
 @identity_bp.route("/identity/verify", methods=["POST"])
+@require_api_key
 def verify_authorship():
     """
     Verify entry authorship.
@@ -561,6 +572,7 @@ def verify_authorship():
 
 
 @identity_bp.route("/identity/authenticate", methods=["POST"])
+@require_api_key
 def verify_authentication():
     """
     Verify that a key can authenticate for a DID.
@@ -598,6 +610,7 @@ def verify_authentication():
 
 
 @identity_bp.route("/identity/statistics", methods=["GET"])
+@require_api_key
 def get_statistics():
     """
     Get identity service statistics.
@@ -646,6 +659,7 @@ def get_events():
 
 
 @identity_bp.route("/identity/did/<path:did>/history", methods=["GET"])
+@require_api_key
 def get_did_history(did):
     """
     Get event history for a specific DID.
