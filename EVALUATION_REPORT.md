@@ -196,27 +196,27 @@ However, significant quality gaps exist: **critical security vulnerabilities** i
 
 ### IV. HIGH-PRIORITY FINDINGS
 
-| # | Finding | Location | Impact |
+| # | Finding | Location | Status |
 |---|---------|----------|--------|
-| H1 | Info Disclosure via Errors | `src/api/search.py:68`, `contracts.py:76` | Internal details leaked to attackers |
-| H2 | Missing Rate Limiting | `/search/semantic`, `/validate/dialectic` | DoS via LLM cost exhaustion |
-| H3 | Missing Auth on DID Updates | `src/api/identity.py:111-147` | Any user can modify any DID |
-| H4 | Race in Connection Pool | `src/storage/postgresql.py:150-159` | TOCTOU with close() |
-| H5 | Test Coverage Gap | `api.py`, `validator.py` | Critical paths unverified |
-| H6 | Unbounded List Parameters | `src/api/composability.py:612` | Resource exhaustion |
+| H1 | Info Disclosure via Errors | `src/api/search.py`, `contracts.py` | ✅ **FIXED** - Generic error messages |
+| H2 | Missing Rate Limiting | `/search/semantic`, `/validate/dialectic` | ✅ **FIXED** - `@rate_limit_llm` decorator added |
+| H3 | Missing Auth on DID Updates | `src/api/identity.py` | ✅ **FIXED** - `@require_api_key` on all endpoints |
+| H4 | Race in Connection Pool | `src/storage/postgresql.py` | ✅ **FIXED** - Proper locking in `_get_conn` |
+| H5 | Test Coverage Gap | `api.py`, `validator.py` | ⚠️ PENDING - Needs coverage improvements |
+| H6 | Unbounded List Parameters | `src/api/composability.py` | ✅ **FIXED** - `MAX_STREAM_IDS=100` limit |
 
 ---
 
 ### V. MODERATE FINDINGS
 
-| # | Finding | Location | Impact |
+| # | Finding | Location | Status |
 |---|---------|----------|--------|
-| M1 | Duplicate Code | `negotiation_engine.py:441,706,1073` | 3 identical `_parse_json` methods |
-| M2 | Dead Code | `src/storage/json_file.py:128` | Unused `len(raw_bytes)` |
-| M3 | Inconsistent Error Format | Multiple API files | No standardized error schema |
-| M4 | Missing Email Validation | Identity creation | Invalid emails accepted |
-| M5 | Parameter Naming | Various | `limit` vs `max_results` vs `max_entries` |
-| M6 | CORS Wildcard | Production default | `*` allows any origin |
+| M1 | Duplicate Code | `negotiation_engine.py` | ✅ **FIXED** - Consolidated to `parse_llm_json_response()` |
+| M2 | Dead Code | `src/storage/json_file.py` | ✅ **FIXED** - No dead code present |
+| M3 | Inconsistent Error Format | Multiple API files | ✅ **FIXED** - Added `error_response()` helpers |
+| M4 | Missing Email Validation | Identity creation | ✅ **FIXED** - RFC 5322 validation added |
+| M5 | Parameter Naming | Various | ⚠️ PENDING - Consistency review needed |
+| M6 | CORS Wildcard | Production default | ✅ **FIXED** - Restrictive by default |
 
 ---
 
