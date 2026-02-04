@@ -19,6 +19,7 @@ from .state import (
     save_chain,
 )
 from .utils import (
+    DEFAULT_PAGE_LIMIT,
     managers,
     require_api_key,
     validate_json_schema,
@@ -377,7 +378,7 @@ def search_entries():
         Matching entries
     """
     query = request.args.get("q", "")
-    limit = request.args.get("limit", 10, type=int)
+    limit = request.args.get("limit", DEFAULT_PAGE_LIMIT, type=int)
 
     # Bound the limit
     limit, _ = validate_pagination_params(limit)

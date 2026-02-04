@@ -62,6 +62,60 @@ except ImportError:
 
 
 # ============================================================
+# Shared JSON Parsing Utility
+# ============================================================
+
+
+def parse_llm_json_response(text: str, context: str = "LLM response") -> dict[str, Any]:
+    """
+    Parse JSON from LLM response, handling markdown code blocks.
+
+    This is a shared utility to avoid code duplication across
+    ProactiveAlignmentLayer, ClauseGenerator, and CounterOfferDrafter.
+
+    Args:
+        text: Raw LLM response text
+        context: Description of the calling context for error messages
+
+    Returns:
+        Parsed JSON as dictionary
+
+    Raises:
+        ValueError: If JSON extraction or parsing fails
+    """
+    if not text or not text.strip():
+        raise ValueError(f"Cannot parse JSON: empty response text in {context}")
+
+    original_text = text
+
+    # Extract JSON from markdown code blocks if present
+    if "```json" in text:
+        json_start = text.find("```json") + 7
+        json_end = text.find("```", json_start)
+        if json_end == -1:
+            raise ValueError(f"Malformed response: unclosed JSON code block in {context}")
+        text = text[json_start:json_end].strip()
+    elif "```" in text:
+        json_start = text.find("```") + 3
+        json_end = text.find("```", json_start)
+        if json_end == -1:
+            raise ValueError(f"Malformed response: unclosed code block in {context}")
+        text = text[json_start:json_end].strip()
+
+    if not text:
+        raise ValueError(
+            f"No JSON content found in {context}: {original_text[:100]}..."
+        )
+
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError as e:
+        raise ValueError(
+            f"Failed to parse JSON in {context}: {e.msg} at position {e.pos}. Content: {text[:100]}..."
+        )
+
+
+# ============================================================
 # Enums and Constants
 # ============================================================
 
@@ -439,49 +493,8 @@ Return JSON:
         return strategies
 
     def _parse_json(self, text: str) -> dict[str, Any]:
-        """
-        Parse JSON from LLM response.
-
-        Args:
-            text: Raw LLM response text
-
-        Returns:
-            Parsed JSON as dictionary
-
-        Raises:
-            ValueError: If JSON extraction or parsing fails
-        """
-        if not text or not text.strip():
-            raise ValueError("Cannot parse JSON: empty response text")
-
-        original_text = text
-
-        if "```json" in text:
-            json_start = text.find("```json") + 7
-            json_end = text.find("```", json_start)
-            if json_end == -1:
-                raise ValueError(
-                    "Malformed response: unclosed JSON code block in alignment response"
-                )
-            text = text[json_start:json_end].strip()
-        elif "```" in text:
-            json_start = text.find("```") + 3
-            json_end = text.find("```", json_start)
-            if json_end == -1:
-                raise ValueError("Malformed response: unclosed code block in alignment response")
-            text = text[json_start:json_end].strip()
-
-        if not text:
-            raise ValueError(
-                f"No JSON content found after extraction from response: {original_text[:100]}..."
-            )
-
-        try:
-            return json.loads(text)
-        except json.JSONDecodeError as e:
-            raise ValueError(
-                f"Failed to parse JSON in alignment layer: {e.msg} at position {e.pos}. Content: {text[:100]}..."
-            )
+        """Parse JSON from LLM response using shared utility."""
+        return parse_llm_json_response(text, "alignment layer")
 
 
 # ============================================================
@@ -704,47 +717,8 @@ Generate a professional contract document that:
         return "\n".join(lines)
 
     def _parse_json(self, text: str) -> dict[str, Any]:
-        """
-        Parse JSON from LLM response.
-
-        Args:
-            text: Raw LLM response text
-
-        Returns:
-            Parsed JSON as dictionary
-
-        Raises:
-            ValueError: If JSON extraction or parsing fails
-        """
-        if not text or not text.strip():
-            raise ValueError("Cannot parse JSON: empty response text in clause generator")
-
-        original_text = text
-
-        if "```json" in text:
-            json_start = text.find("```json") + 7
-            json_end = text.find("```", json_start)
-            if json_end == -1:
-                raise ValueError("Malformed response: unclosed JSON code block in clause generator")
-            text = text[json_start:json_end].strip()
-        elif "```" in text:
-            json_start = text.find("```") + 3
-            json_end = text.find("```", json_start)
-            if json_end == -1:
-                raise ValueError("Malformed response: unclosed code block in clause generator")
-            text = text[json_start:json_end].strip()
-
-        if not text:
-            raise ValueError(
-                f"No JSON content found in clause generator response: {original_text[:100]}..."
-            )
-
-        try:
-            return json.loads(text)
-        except json.JSONDecodeError as e:
-            raise ValueError(
-                f"Failed to parse JSON in clause generator: {e.msg} at position {e.pos}. Content: {text[:100]}..."
-            )
+        """Parse JSON from LLM response using shared utility."""
+        return parse_llm_json_response(text, "clause generator")
 
 
 # ============================================================
@@ -1071,47 +1045,8 @@ Return JSON:
         )
 
     def _parse_json(self, text: str) -> dict[str, Any]:
-        """
-        Parse JSON from LLM response.
-
-        Args:
-            text: Raw LLM response text
-
-        Returns:
-            Parsed JSON as dictionary
-
-        Raises:
-            ValueError: If JSON extraction or parsing fails
-        """
-        if not text or not text.strip():
-            raise ValueError("Cannot parse JSON: empty response text in counter-offer drafter")
-
-        original_text = text
-
-        if "```json" in text:
-            json_start = text.find("```json") + 7
-            json_end = text.find("```", json_start)
-            if json_end == -1:
-                raise ValueError("Malformed response: unclosed JSON code block in counter-offer")
-            text = text[json_start:json_end].strip()
-        elif "```" in text:
-            json_start = text.find("```") + 3
-            json_end = text.find("```", json_start)
-            if json_end == -1:
-                raise ValueError("Malformed response: unclosed code block in counter-offer")
-            text = text[json_start:json_end].strip()
-
-        if not text:
-            raise ValueError(
-                f"No JSON content found in counter-offer response: {original_text[:100]}..."
-            )
-
-        try:
-            return json.loads(text)
-        except json.JSONDecodeError as e:
-            raise ValueError(
-                f"Failed to parse JSON in counter-offer drafter: {e.msg} at position {e.pos}. Content: {text[:100]}..."
-            )
+        """Parse JSON from LLM response using shared utility."""
+        return parse_llm_json_response(text, "counter-offer drafter")
 
 
 # ============================================================

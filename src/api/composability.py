@@ -13,6 +13,7 @@ Provides access to:
 from flask import Blueprint, jsonify, request
 
 from .state import managers
+from .utils import DEFAULT_PAGE_LIMIT
 
 composability_bp = Blueprint("composability", __name__)
 
@@ -273,7 +274,7 @@ def query_streams():
         controller=request.args.get("controller"),
         tags=tags,
         family=request.args.get("family"),
-        limit=request.args.get("limit", 100, type=int),
+        limit=request.args.get("limit", DEFAULT_PAGE_LIMIT, type=int),
     )
 
     return jsonify({"count": len(results), "streams": [s.to_dict() for s in results]})
@@ -759,7 +760,7 @@ def get_events():
     if not managers.composability_service:
         return jsonify({"error": "Composability service not initialized"}), 503
 
-    limit = request.args.get("limit", 100, type=int)
+    limit = request.args.get("limit", DEFAULT_PAGE_LIMIT, type=int)
     event_type = request.args.get("event_type")
 
     events = managers.composability_service.events

@@ -16,7 +16,7 @@ from .state import (
     create_entry_with_encryption,
     save_chain,
 )
-from .utils import managers, require_api_key
+from .utils import managers, rate_limit_llm, require_api_key
 
 # Try to import ContractParser for type constants
 try:
@@ -44,6 +44,7 @@ def _check_contract_features():
 
 
 @contracts_bp.route("/parse", methods=["POST"])
+@rate_limit_llm
 def parse_contract_endpoint():
     """
     Parse natural language contract content and extract structured terms.
@@ -77,6 +78,7 @@ def parse_contract_endpoint():
 
 
 @contracts_bp.route("/match", methods=["POST"])
+@rate_limit_llm
 def match_contracts():
     """
     Find matching contracts for pending entries.
@@ -125,6 +127,7 @@ def match_contracts():
 
 @contracts_bp.route("/post", methods=["POST"])
 @require_api_key
+@rate_limit_llm
 def post_contract():
     """
     Post a new live contract (offer or seek).
@@ -252,6 +255,7 @@ def list_contracts():
 
 @contracts_bp.route("/respond", methods=["POST"])
 @require_api_key
+@rate_limit_llm
 def respond_to_contract():
     """
     Respond to a contract proposal or create a counter-offer.

@@ -11,12 +11,93 @@ Provides access to:
 - Author linking and verification
 """
 
+import re
+
 from flask import Blueprint, jsonify, request
 
 from .state import managers
-from .utils import require_api_key
+from .utils import DEFAULT_PAGE_LIMIT, require_api_key
 
 identity_bp = Blueprint("identity", __name__)
+
+# Email validation pattern (RFC 5322 simplified)
+EMAIL_PATTERN = re.compile(
+    r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+)
+
+# DID validation pattern (W3C DID Core Specification)
+# Format: did:<method>:<method-specific-id>
+# For NatLangChain: did:nlc:<base58-or-hex-identifier>
+DID_PATTERN = re.compile(
+    r"^did:[a-z0-9]+:[a-zA-Z0-9._%-]+$"
+)
+
+# Maximum DID length (reasonable limit to prevent abuse)
+MAX_DID_LENGTH = 256
+
+
+def validate_did(did: str) -> tuple[bool, str | None]:
+    """
+    Validate DID format according to W3C DID Core Specification.
+
+    Args:
+        did: The DID string to validate
+
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    if not did:
+        return False, "DID is required"
+
+    if len(did) > MAX_DID_LENGTH:
+        return False, f"DID exceeds maximum length of {MAX_DID_LENGTH} characters"
+
+    if not did.startswith("did:"):
+        return False, "DID must start with 'did:'"
+
+    if not DID_PATTERN.match(did):
+        return False, "Invalid DID format. Expected: did:<method>:<identifier>"
+
+    # Validate method-specific rules for NatLangChain DIDs
+    parts = did.split(":")
+    if len(parts) < 3:
+        return False, "DID must have at least three parts: did:<method>:<identifier>"
+
+    method = parts[1]
+    identifier = ":".join(parts[2:])  # Handle identifiers with colons
+
+    if not identifier:
+        return False, "DID identifier cannot be empty"
+
+    # For nlc method, validate identifier format
+    if method == "nlc":
+        # NLC identifiers should be alphanumeric (base58 or hex)
+        if not re.match(r"^[a-zA-Z0-9]+$", identifier):
+            return False, "NLC DID identifier must be alphanumeric"
+
+    return True, None
+
+
+def validate_email(email: str) -> tuple[bool, str | None]:
+    """
+    Validate email format.
+
+    Args:
+        email: Email address to validate
+
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    if not email:
+        return True, None  # Email is optional
+
+    if len(email) > 254:  # RFC 5321 max email length
+        return False, "Email address exceeds maximum length of 254 characters"
+
+    if not EMAIL_PATTERN.match(email):
+        return False, "Invalid email address format"
+
+    return True, None
 
 
 # =============================================================================
@@ -25,6 +106,7 @@ identity_bp = Blueprint("identity", __name__)
 
 
 @identity_bp.route("/identity/did", methods=["POST"])
+@require_api_key
 def create_did():
     """
     Create a new DID with document.
@@ -51,10 +133,17 @@ def create_did():
 
     data = request.get_json() or {}
 
+    # Validate email if provided
+    email = data.get("email")
+    if email:
+        is_valid, error_msg = validate_email(email)
+        if not is_valid:
+            return jsonify({"error": error_msg}), 400
+
     # Create identity
     did, doc, private_keys = managers.identity_service.create_identity(
         display_name=data.get("display_name"),
-        email=data.get("email"),
+        email=email,
         profile_data=data.get("profile_data"),
     )
 
@@ -102,6 +191,11 @@ def resolve_did(did):
     if not managers.identity_service:
         return jsonify({"error": "Identity service not initialized"}), 503
 
+    # Validate DID format
+    is_valid, error_msg = validate_did(did)
+    if not is_valid:
+        return jsonify({"error": error_msg}), 400
+
     result = managers.identity_service.registry.resolve(did)
 
     if result.did_resolution_metadata.get("error"):
@@ -132,11 +226,21 @@ def update_did(did):
     if not managers.identity_service:
         return jsonify({"error": "Identity service not initialized"}), 503
 
+    # Validate DID format
+    is_valid, error_msg = validate_did(did)
+    if not is_valid:
+        return jsonify({"error": error_msg}), 400
+
     data = request.get_json() or {}
 
     # Require authorization
     if not data.get("authorized_by"):
         return jsonify({"error": "authorized_by is required for DID updates"}), 400
+
+    # Validate authorized_by DID format
+    is_valid, error_msg = validate_did(data["authorized_by"])
+    if not is_valid:
+        return jsonify({"error": f"Invalid authorized_by: {error_msg}"}), 400
 
     updates = {}
     if "also_known_as" in data:
@@ -155,6 +259,7 @@ def update_did(did):
 
 
 @identity_bp.route("/identity/did/<path:did>/deactivate", methods=["POST"])
+@require_api_key
 def deactivate_did(did):
     """
     Deactivate a DID (permanent).
@@ -182,6 +287,7 @@ def deactivate_did(did):
 
 
 @identity_bp.route("/identity/did/<path:did>/keys", methods=["POST"])
+@require_api_key
 def add_key(did):
     """
     Add a new verification method (key) to a DID.
@@ -235,6 +341,7 @@ def add_key(did):
 
 
 @identity_bp.route("/identity/did/<path:did>/keys/<key_id>/revoke", methods=["POST"])
+@require_api_key
 def revoke_key(did, key_id):
     """
     Revoke a verification method (key).
@@ -261,6 +368,7 @@ def revoke_key(did, key_id):
 
 
 @identity_bp.route("/identity/did/<path:did>/keys/<key_id>/rotate", methods=["POST"])
+@require_api_key
 def rotate_key(did, key_id):
     """
     Rotate a key - create new key and schedule old for revocation.
@@ -306,6 +414,7 @@ def rotate_key(did, key_id):
 
 
 @identity_bp.route("/identity/did/<path:did>/services", methods=["POST"])
+@require_api_key
 def add_service(did):
     """
     Add a service endpoint to a DID.
@@ -345,6 +454,7 @@ def add_service(did):
 
 
 @identity_bp.route("/identity/did/<path:did>/services/<service_id>", methods=["DELETE"])
+@require_api_key
 def remove_service(did, service_id):
     """
     Remove a service endpoint from a DID.
@@ -376,6 +486,7 @@ def remove_service(did, service_id):
 
 
 @identity_bp.route("/identity/delegations", methods=["POST"])
+@require_api_key
 def grant_delegation():
     """
     Grant delegation from one DID to another.
@@ -417,6 +528,7 @@ def grant_delegation():
 
 
 @identity_bp.route("/identity/delegations/<delegation_id>/revoke", methods=["POST"])
+@require_api_key
 def revoke_delegation(delegation_id):
     """
     Revoke a delegation.
@@ -475,6 +587,7 @@ def get_delegations(did):
 
 
 @identity_bp.route("/identity/link", methods=["POST"])
+@require_api_key
 def link_author():
     """
     Link an author identifier (e.g., email) to a DID.
@@ -528,6 +641,7 @@ def resolve_author(author):
 
 
 @identity_bp.route("/identity/verify", methods=["POST"])
+@require_api_key
 def verify_authorship():
     """
     Verify entry authorship.
@@ -561,6 +675,7 @@ def verify_authorship():
 
 
 @identity_bp.route("/identity/authenticate", methods=["POST"])
+@require_api_key
 def verify_authentication():
     """
     Verify that a key can authenticate for a DID.
@@ -598,6 +713,7 @@ def verify_authentication():
 
 
 @identity_bp.route("/identity/statistics", methods=["GET"])
+@require_api_key
 def get_statistics():
     """
     Get identity service statistics.
@@ -628,7 +744,7 @@ def get_events():
     if not managers.identity_service:
         return jsonify({"error": "Identity service not initialized"}), 503
 
-    limit = request.args.get("limit", 100, type=int)
+    limit = request.args.get("limit", DEFAULT_PAGE_LIMIT, type=int)
     did_filter = request.args.get("did")
     event_type = request.args.get("event_type")
 
@@ -646,6 +762,7 @@ def get_events():
 
 
 @identity_bp.route("/identity/did/<path:did>/history", methods=["GET"])
+@require_api_key
 def get_did_history(did):
     """
     Get event history for a specific DID.
