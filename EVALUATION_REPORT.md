@@ -184,13 +184,13 @@ However, significant quality gaps exist: **critical security vulnerabilities** i
 
 ### III. CRITICAL FINDINGS (Must Fix)
 
-| # | Finding | Location | Impact |
+| # | Finding | Location | Status |
 |---|---------|----------|--------|
-| C1 | **Authentication Bypass** | `src/api/identity.py:89-108` | Any user can enumerate all DIDs, public keys, identity documents |
-| C2 | **Connection Leak** | `src/storage/postgresql.py:431-440` | Pool exhaustion on repeated failures |
-| C3 | **Data Loss Risk** | `src/storage/postgresql.py:266-269` | DELETE-before-INSERT loses data on insert failure |
-| C4 | **Race Condition** | `src/storage/__init__.py:78-86` | Non-thread-safe storage initialization |
-| C5 | **Weak Wallet Validation** | `src/api/marketplace.py:185-186` | Accepts `0x` + any 40 chars as valid |
+| C1 | **Authentication Bypass** | `src/api/identity.py` | ✅ **FIXED** - Added `@require_api_key` to 14 endpoints |
+| C2 | **Connection Leak** | `src/storage/postgresql.py:456-468` | ✅ **FIXED** - try/finally ensures connection return |
+| C3 | **Data Loss Risk** | `src/storage/postgresql.py:256-383` | ✅ **FIXED** - UPSERT pattern prevents data loss |
+| C4 | **Race Condition** | `src/storage/__init__.py:83-91` | ✅ **FIXED** - Double-check locking pattern |
+| C5 | **Weak Wallet Validation** | `src/api/marketplace.py:20,190` | ✅ **FIXED** - Proper hex regex validation |
 
 ---
 
