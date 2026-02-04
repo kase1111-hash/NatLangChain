@@ -11,12 +11,41 @@ Provides access to:
 - Author linking and verification
 """
 
+import re
+
 from flask import Blueprint, jsonify, request
 
 from .state import managers
 from .utils import require_api_key
 
 identity_bp = Blueprint("identity", __name__)
+
+# Email validation pattern (RFC 5322 simplified)
+EMAIL_PATTERN = re.compile(
+    r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+)
+
+
+def validate_email(email: str) -> tuple[bool, str | None]:
+    """
+    Validate email format.
+
+    Args:
+        email: Email address to validate
+
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    if not email:
+        return True, None  # Email is optional
+
+    if len(email) > 254:  # RFC 5321 max email length
+        return False, "Email address exceeds maximum length of 254 characters"
+
+    if not EMAIL_PATTERN.match(email):
+        return False, "Invalid email address format"
+
+    return True, None
 
 
 # =============================================================================
@@ -52,10 +81,17 @@ def create_did():
 
     data = request.get_json() or {}
 
+    # Validate email if provided
+    email = data.get("email")
+    if email:
+        is_valid, error_msg = validate_email(email)
+        if not is_valid:
+            return jsonify({"error": error_msg}), 400
+
     # Create identity
     did, doc, private_keys = managers.identity_service.create_identity(
         display_name=data.get("display_name"),
-        email=data.get("email"),
+        email=email,
         profile_data=data.get("profile_data"),
     )
 

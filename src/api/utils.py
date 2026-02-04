@@ -118,6 +118,81 @@ def validate_json_schema(
 
 
 # ============================================================
+# Standardized Error Responses
+# ============================================================
+
+
+def error_response(
+    error: str,
+    status_code: int = 400,
+    details: str | None = None,
+    field: str | None = None,
+) -> tuple:
+    """
+    Create a standardized error response.
+
+    This provides consistent error formatting across all API endpoints.
+    Never include internal implementation details in error responses.
+
+    Args:
+        error: Brief error description (user-facing)
+        status_code: HTTP status code
+        details: Additional context (optional, must be safe to expose)
+        field: The field that caused the error (optional)
+
+    Returns:
+        Tuple of (Flask response dict, status_code)
+    """
+    response = {"error": error}
+
+    if details:
+        response["details"] = details
+
+    if field:
+        response["field"] = field
+
+    return jsonify(response), status_code
+
+
+def validation_error(field: str, message: str) -> tuple:
+    """Create a standardized validation error response."""
+    return error_response(
+        error="Validation failed",
+        status_code=400,
+        details=message,
+        field=field,
+    )
+
+
+def not_found_error(resource: str) -> tuple:
+    """Create a standardized not found error response."""
+    return error_response(
+        error=f"{resource} not found",
+        status_code=404,
+    )
+
+
+def internal_error() -> tuple:
+    """
+    Create a standardized internal error response.
+    Never expose internal details in this response.
+    """
+    return error_response(
+        error="Internal error occurred",
+        status_code=500,
+    )
+
+
+def service_unavailable_error(service: str, reason: str | None = None) -> tuple:
+    """Create a standardized service unavailable error response."""
+    return error_response(
+        error=f"{service} not available",
+        status_code=503,
+        details=reason,
+    )
+
+
+# ============================================================
 # SSRF Protection Utilities
 # ============================================================
 # Import from standalone module (no Flask dependency for testing)
@@ -181,6 +256,66 @@ def check_rate_limit() -> dict[str, Any] | None:
 
     client_data["count"] += 1
     return None
+
+
+# ============================================================
+# Rate Limiting for LLM Endpoints
+# ============================================================
+
+# Stricter rate limits for expensive LLM-backed operations
+LLM_RATE_LIMIT_REQUESTS = int(os.getenv("LLM_RATE_LIMIT_REQUESTS", "10"))
+LLM_RATE_LIMIT_WINDOW = int(os.getenv("LLM_RATE_LIMIT_WINDOW", "60"))  # seconds
+llm_rate_limit_store: dict[str, dict[str, Any]] = {}
+
+
+def check_llm_rate_limit() -> dict[str, Any] | None:
+    """
+    Check if client has exceeded LLM rate limit.
+    Uses stricter limits than standard endpoints due to API costs.
+
+    Returns:
+        None if within limit, error dict if exceeded
+    """
+    client_ip = get_client_ip()
+    current_time = time.time()
+
+    if client_ip not in llm_rate_limit_store:
+        llm_rate_limit_store[client_ip] = {"count": 0, "window_start": current_time}
+
+    client_data = llm_rate_limit_store[client_ip]
+
+    # Reset window if expired
+    if current_time - client_data["window_start"] > LLM_RATE_LIMIT_WINDOW:
+        client_data["count"] = 0
+        client_data["window_start"] = current_time
+
+    # Check limit
+    if client_data["count"] >= LLM_RATE_LIMIT_REQUESTS:
+        return {
+            "error": "LLM rate limit exceeded",
+            "message": "Too many requests to LLM-backed endpoints",
+            "retry_after": int(LLM_RATE_LIMIT_WINDOW - (current_time - client_data["window_start"])),
+        }
+
+    client_data["count"] += 1
+    return None
+
+
+def rate_limit_llm(f):
+    """
+    Decorator to apply stricter rate limiting to LLM-backed endpoints.
+    These endpoints are expensive (API costs) and should be rate-limited
+    more aggressively than standard endpoints.
+    """
+
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        rate_limit_error = check_llm_rate_limit()
+        if rate_limit_error:
+            return jsonify(rate_limit_error), 429
+        return f(*args, **kwargs)
+
+    return decorated_function
 
 
 # ============================================================

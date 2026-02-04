@@ -12,7 +12,7 @@ This blueprint handles semantic search, drift detection, and dialectic consensus
 from flask import Blueprint, jsonify, request
 
 from .state import blockchain
-from .utils import managers, require_api_key, validate_json_schema
+from .utils import managers, rate_limit_llm, require_api_key, validate_json_schema
 
 # Create the blueprint
 search_bp = Blueprint("search", __name__)
@@ -22,6 +22,7 @@ search_bp = Blueprint("search", __name__)
 
 
 @search_bp.route("/search/semantic", methods=["POST"])
+@rate_limit_llm
 def semantic_search():
     """
     Perform semantic search across blockchain entries.
@@ -69,6 +70,7 @@ def semantic_search():
 
 
 @search_bp.route("/search/similar", methods=["POST"])
+@rate_limit_llm
 def find_similar():
     """
     Find entries similar to a given content.
@@ -110,6 +112,7 @@ def find_similar():
 
 
 @search_bp.route("/drift/check", methods=["POST"])
+@rate_limit_llm
 def check_drift():
     """
     Check semantic drift between intent and execution.
@@ -147,6 +150,7 @@ def check_drift():
 
 
 @search_bp.route("/drift/entry/<int:block_index>/<int:entry_index>", methods=["POST"])
+@rate_limit_llm
 def check_entry_drift(block_index: int, entry_index: int):
     """
     Check drift for a specific blockchain entry against an execution log.
@@ -208,6 +212,7 @@ def check_entry_drift(block_index: int, entry_index: int):
 
 
 @search_bp.route("/validate/dialectic", methods=["POST"])
+@rate_limit_llm
 def validate_dialectic():
     """
     Validate an entry using dialectic consensus (Skeptic/Facilitator debate).
@@ -254,6 +259,7 @@ def validate_dialectic():
 
 @search_bp.route("/oracle/verify", methods=["POST"])
 @require_api_key
+@rate_limit_llm
 def verify_oracle_event():
     """
     Verify an external event using semantic oracles with circuit breaker protection.
