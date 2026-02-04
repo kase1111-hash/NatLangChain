@@ -202,7 +202,7 @@ However, significant quality gaps exist: **critical security vulnerabilities** i
 | H2 | Missing Rate Limiting | `/search/semantic`, `/validate/dialectic` | ✅ **FIXED** - `@rate_limit_llm` decorator added |
 | H3 | Missing Auth on DID Updates | `src/api/identity.py` | ✅ **FIXED** - `@require_api_key` on all endpoints |
 | H4 | Race in Connection Pool | `src/storage/postgresql.py` | ✅ **FIXED** - Proper locking in `_get_conn` |
-| H5 | Test Coverage Gap | `api.py`, `validator.py` | ⚠️ PENDING - Needs coverage improvements |
+| H5 | Test Coverage Gap | `api.py`, `validator.py` | ✅ **FIXED** - Added test_api_endpoints.py, test_validator_critical.py |
 | H6 | Unbounded List Parameters | `src/api/composability.py` | ✅ **FIXED** - `MAX_STREAM_IDS=100` limit |
 
 ---
@@ -215,7 +215,7 @@ However, significant quality gaps exist: **critical security vulnerabilities** i
 | M2 | Dead Code | `src/storage/json_file.py` | ✅ **FIXED** - No dead code present |
 | M3 | Inconsistent Error Format | Multiple API files | ✅ **FIXED** - Added `error_response()` helpers |
 | M4 | Missing Email Validation | Identity creation | ✅ **FIXED** - RFC 5322 validation added |
-| M5 | Parameter Naming | Various | ⚠️ PENDING - Consistency review needed |
+| M5 | Parameter Naming | Various | ✅ **FIXED** - Standardized to DEFAULT_PAGE_LIMIT constants |
 | M6 | CORS Wildcard | Production default | ✅ **FIXED** - Restrictive by default |
 
 ---
