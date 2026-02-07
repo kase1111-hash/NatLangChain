@@ -11,8 +11,8 @@ This blueprint provides endpoints for contract operations:
 
 from flask import Blueprint, jsonify, request
 
+from . import state
 from .state import (
-    blockchain,
     create_entry_with_encryption,
     save_chain,
 )
@@ -110,10 +110,10 @@ def match_contracts():
 
     # Use blockchain pending entries if not provided
     if pending_entries is None:
-        pending_entries = blockchain.pending_entries
+        pending_entries = state.blockchain.pending_entries
 
     try:
-        matches = managers.contract_matcher.find_matches(blockchain, pending_entries, miner_id)
+        matches = managers.contract_matcher.find_matches(state.blockchain, pending_entries, miner_id)
         return jsonify(
             {
                 "status": "success",
@@ -191,13 +191,13 @@ def post_contract():
         entry.validation_status = "valid"
 
         # Add to blockchain
-        result = blockchain.add_entry(entry)
+        result = state.blockchain.add_entry(entry)
 
         # Auto-mine if requested
         auto_mine = data.get("auto_mine", False)
         mined_block = None
         if auto_mine:
-            mined_block = blockchain.mine_pending_entries()
+            mined_block = state.blockchain.mine_pending_entries()
             save_chain()
 
         response = {"status": "success", "entry": result, "contract_metadata": contract_data}
@@ -230,7 +230,7 @@ def list_contracts():
 
     contracts = []
 
-    for block in blockchain.chain:
+    for block in state.blockchain.chain:
         for entry in block.entries:
             # Skip if not a contract
             if not entry.metadata.get("is_contract"):
@@ -296,10 +296,10 @@ def respond_to_contract():
         ), 400
 
     # Get original entry
-    if to_block < 0 or to_block >= len(blockchain.chain):
+    if to_block < 0 or to_block >= len(state.blockchain.chain):
         return jsonify({"error": "Block not found"}), 404
 
-    block = blockchain.chain[to_block]
+    block = state.blockchain.chain[to_block]
 
     if to_entry < 0 or to_entry >= len(block.entries):
         return jsonify({"error": "Entry not found"}), 404
@@ -341,7 +341,7 @@ def respond_to_contract():
         metadata=response_metadata,
     )
 
-    blockchain.add_entry(response_entry)
+    state.blockchain.add_entry(response_entry)
 
     return jsonify(
         {"status": "success", "response": response_entry.to_dict(), "mediation": mediation_result}

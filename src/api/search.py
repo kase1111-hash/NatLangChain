@@ -8,7 +8,7 @@ This blueprint handles semantic search:
 
 from flask import Blueprint, jsonify, request
 
-from .state import blockchain
+from . import state
 from .utils import managers, rate_limit_llm
 
 # Create the blueprint
@@ -53,11 +53,11 @@ def semantic_search():
     try:
         if field in ["content", "intent", "both"]:
             results = managers.search_engine.search_by_field(
-                blockchain, query, field=field, top_k=top_k, min_score=min_score
+                state.blockchain, query, field=field, top_k=top_k, min_score=min_score
             )
         else:
             results = managers.search_engine.search(
-                blockchain, query, top_k=top_k, min_score=min_score
+                state.blockchain, query, top_k=top_k, min_score=min_score
             )
 
         return jsonify({"query": query, "field": field, "count": len(results), "results": results})
@@ -96,7 +96,7 @@ def find_similar():
 
     try:
         results = managers.search_engine.find_similar_entries(
-            blockchain, content, top_k=top_k, exclude_exact=exclude_exact
+            state.blockchain, content, top_k=top_k, exclude_exact=exclude_exact
         )
 
         return jsonify({"content": content, "count": len(results), "similar_entries": results})
