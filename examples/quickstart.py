@@ -151,7 +151,7 @@ def main():
     print("Next steps:")
     print("  1. Start the API server: python run_server.py")
     print("  2. Visit http://localhost:5000/health")
-    print("  3. Read the API docs: docs/API.md")
+    print("  3. See README.md for API usage examples")
     print("=" * 60)
 
 

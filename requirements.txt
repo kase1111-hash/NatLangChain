@@ -1,33 +1,24 @@
 # NatLangChain Dependencies
 # =============================================================================
 #
-# Dependency Files:
-#   requirements.txt      - Minimum version constraints (for flexibility)
-#   requirements-lock.txt - Pinned versions (for reproducible production builds)
-#   requirements-dev.txt  - Pinned dev dependencies (includes production deps)
-#
-# Installation Options:
-#   Quick start:     pip install -r requirements.txt
-#   Production:      pip install -r requirements-lock.txt
-#   Development:     pip install -r requirements-dev.txt
-#   Editable + dev:  pip install -e ".[dev]"
+# Core dependencies only. For optional extras, see pyproject.toml:
+#   pip install ".[dev]"       — Development (pytest, ruff, mypy)
+#   pip install ".[postgres]"  — PostgreSQL storage backend
+#   pip install ".[production]"— Production deployment (gunicorn)
 #
 # =============================================================================
 
-# Core dependencies (minimum versions)
+# Core
 flask>=3.0.0
 anthropic>=0.34.2
 python-dotenv>=1.0.0
+
+# Semantic search (embeddings + similarity)
 sentence-transformers>=2.2.0
 numpy>=1.20.0
+
+# Encryption at rest
 cryptography>=41.0.0
+
+# LLM provider HTTP clients (Ollama, llama.cpp)
 requests>=2.28.0
-pyyaml>=6.0.0
-
-# API Documentation
-flask-swagger-ui>=4.11.1
-apispec>=6.3.0
-
-# NAT Traversal (STUN/TURN)
-# The core NAT traversal module uses only standard library (socket, struct, etc.)
-# No additional dependencies required for basic STUN/TURN functionality
