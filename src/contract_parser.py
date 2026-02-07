@@ -50,6 +50,35 @@ class ContractParser:
         self.client = Anthropic(api_key=self.api_key, timeout=30.0) if self.api_key else None
         self.model = "claude-3-5-sonnet-20241022"
 
+    def _call_llm(self, prompt: str, max_tokens: int = 512) -> str:
+        """Call LLM API with metrics recording."""
+        import time
+
+        start = time.monotonic()
+        message = self.client.messages.create(
+            model=self.model, max_tokens=max_tokens, messages=[{"role": "user", "content": prompt}]
+        )
+        latency_ms = (time.monotonic() - start) * 1000
+
+        if not message.content:
+            raise ValueError("Empty response from API")
+        if not hasattr(message.content[0], "text"):
+            raise ValueError("Invalid API response format: missing 'text' attribute")
+
+        try:
+            from llm_metrics import llm_metrics
+
+            llm_metrics.record_call(
+                component="contract_parser",
+                input_tokens=getattr(message.usage, "input_tokens", 0),
+                output_tokens=getattr(message.usage, "output_tokens", 0),
+                latency_ms=latency_ms,
+            )
+        except ImportError:
+            pass
+
+        return message.content[0].text
+
     def is_contract(self, content: str) -> bool:
         """
         Check if content represents a contract.
@@ -216,21 +245,7 @@ Return JSON only:
 
 If a term is not present, omit it. Return {{}} if no clear terms found."""
 
-            message = self.client.messages.create(
-                model=self.model, max_tokens=512, messages=[{"role": "user", "content": prompt}]
-            )
-
-            # Safe access to API response
-            if not message.content:
-                raise ValueError(
-                    "Empty response from API: no content returned during term extraction"
-                )
-            if not hasattr(message.content[0], "text"):
-                raise ValueError(
-                    "Invalid API response format: missing 'text' attribute in term extraction"
-                )
-
-            response_text = message.content[0].text
+            response_text = self._call_llm(prompt)
 
             # Extract JSON with validation
             response_text = self._extract_json_from_response(response_text)
@@ -333,21 +348,7 @@ Return JSON:
     "reasoning": "brief explanation"
 }}"""
 
-            message = self.client.messages.create(
-                model=self.model, max_tokens=512, messages=[{"role": "user", "content": prompt}]
-            )
-
-            # Safe access to API response
-            if not message.content:
-                raise ValueError(
-                    "Empty response from API: no content returned during clarity validation"
-                )
-            if not hasattr(message.content[0], "text"):
-                raise ValueError(
-                    "Invalid API response format: missing 'text' attribute in clarity validation"
-                )
-
-            response_text = message.content[0].text
+            response_text = self._call_llm(prompt)
 
             # Extract JSON with validation
             response_text = self._extract_json_from_response(response_text)

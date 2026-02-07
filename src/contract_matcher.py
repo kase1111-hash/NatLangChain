@@ -42,6 +42,35 @@ class ContractMatcher:
         self.match_threshold = match_threshold
         self.parser = ContractParser(api_key)
 
+    def _call_llm(self, prompt: str, max_tokens: int = 512) -> str:
+        """Call LLM API with metrics recording."""
+        import time
+
+        start = time.monotonic()
+        message = self.client.messages.create(
+            model=self.model, max_tokens=max_tokens, messages=[{"role": "user", "content": prompt}]
+        )
+        latency_ms = (time.monotonic() - start) * 1000
+
+        if not message.content:
+            raise ValueError("Empty response from API")
+        if not hasattr(message.content[0], "text"):
+            raise ValueError("Invalid API response format: missing 'text' attribute")
+
+        try:
+            from llm_metrics import llm_metrics
+
+            llm_metrics.record_call(
+                component="contract_matcher",
+                input_tokens=getattr(message.usage, "input_tokens", 0),
+                output_tokens=getattr(message.usage, "output_tokens", 0),
+                latency_ms=latency_ms,
+            )
+        except ImportError:
+            pass
+
+        return message.content[0].text
+
     def find_matches(
         self, blockchain: NatLangChain, pending_entries: list[NaturalLanguageEntry], miner_id: str
     ) -> list[NaturalLanguageEntry]:
@@ -184,19 +213,7 @@ Return JSON:
     "reasoning": "explanation of score"
 }}"""
 
-            message = self.client.messages.create(
-                model=self.model, max_tokens=512, messages=[{"role": "user", "content": prompt}]
-            )
-
-            # Safe access to API response
-            if not message.content:
-                raise ValueError(
-                    "Empty response from API: no content returned during match computation"
-                )
-            if not hasattr(message.content[0], "text"):
-                raise ValueError("Invalid API response format: missing 'text' attribute")
-
-            response_text = message.content[0].text
+            response_text = self._call_llm(prompt)
 
             # Extract JSON with validation
             response_text = self._extract_json_from_response(response_text)
@@ -310,21 +327,7 @@ Create a natural language proposal that:
 
 Write in clear, contract-appropriate language."""
 
-            message = self.client.messages.create(
-                model=self.model, max_tokens=512, messages=[{"role": "user", "content": prompt}]
-            )
-
-            # Safe access to API response
-            if not message.content:
-                raise ValueError(
-                    "Empty response from API: no content returned during proposal generation"
-                )
-            if not hasattr(message.content[0], "text"):
-                raise ValueError(
-                    "Invalid API response format: missing 'text' attribute in proposal generation"
-                )
-
-            merged_prose = message.content[0].text.strip()
+            merged_prose = self._call_llm(prompt).strip()
 
             # Create proposal entry
             proposal_content = f"[PROPOSAL: Match {match_result['score']}%] {merged_prose}"
@@ -419,19 +422,7 @@ Return JSON:
     "revised_terms": {{"suggested merged terms"}}
 }}"""
 
-            message = self.client.messages.create(
-                model=self.model, max_tokens=512, messages=[{"role": "user", "content": prompt}]
-            )
-
-            # Safe access to API response
-            if not message.content:
-                raise ValueError("Empty response from API: no content returned during mediation")
-            if not hasattr(message.content[0], "text"):
-                raise ValueError(
-                    "Invalid API response format: missing 'text' attribute in mediation"
-                )
-
-            response_text = message.content[0].text
+            response_text = self._call_llm(prompt)
 
             # Extract JSON with validation
             response_text = self._extract_json_from_response(response_text)

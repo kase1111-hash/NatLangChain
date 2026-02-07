@@ -151,7 +151,7 @@ class ProofOfUnderstanding:
     @retry_llm_api
     def _call_llm(self, prompt: str, max_tokens: int = 1024) -> str:
         """
-        Call the LLM API with retry logic.
+        Call the LLM API with retry logic and metrics recording.
 
         Args:
             prompt: The prompt to send
@@ -163,16 +163,35 @@ class ProofOfUnderstanding:
         Raises:
             ValueError: If response is empty or malformed
         """
+        import time
+
+        start = time.monotonic()
         message = self.client.messages.create(
             model=self.model,
             max_tokens=max_tokens,
             messages=[{"role": "user", "content": prompt}],
         )
+        latency_ms = (time.monotonic() - start) * 1000
 
         if not message.content:
             raise ValueError("Empty response from API: no content returned")
         if not hasattr(message.content[0], "text"):
             raise ValueError("Invalid API response format: missing 'text' attribute")
+
+        # Record metrics
+        try:
+            from llm_metrics import llm_metrics
+
+            input_tokens = getattr(message.usage, "input_tokens", 0)
+            output_tokens = getattr(message.usage, "output_tokens", 0)
+            llm_metrics.record_call(
+                component="validator",
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                latency_ms=latency_ms,
+            )
+        except ImportError:
+            pass
 
         return message.content[0].text
 
