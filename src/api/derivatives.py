@@ -10,7 +10,7 @@ This blueprint provides endpoints for intent evolution tracking:
 
 from flask import Blueprint, jsonify, request
 
-from .state import blockchain
+from . import state
 from .utils import require_api_key, validate_json_schema
 
 # Import derivative type constants
@@ -35,7 +35,7 @@ derivatives_bp = Blueprint("derivatives", __name__, url_prefix="/derivatives")
 
 def _check_derivative_tracking():
     """Check if derivative tracking is enabled."""
-    if not blockchain.enable_derivative_tracking:
+    if not state.blockchain.enable_derivative_tracking:
         return jsonify(
             {
                 "error": "Derivative tracking not enabled",
@@ -47,16 +47,16 @@ def _check_derivative_tracking():
 
 def _validate_entry_ref(block_index: int, entry_index: int):
     """Validate that a block/entry reference exists."""
-    if block_index < 0 or block_index >= len(blockchain.chain):
+    if block_index < 0 or block_index >= len(state.blockchain.chain):
         return jsonify(
             {
                 "error": "Block not found",
                 "block_index": block_index,
-                "valid_range": f"0-{len(blockchain.chain) - 1}",
+                "valid_range": f"0-{len(state.blockchain.chain) - 1}",
             }
         ), 404
 
-    block = blockchain.chain[block_index]
+    block = state.blockchain.chain[block_index]
     if entry_index < 0 or entry_index >= len(block.entries):
         return jsonify(
             {
@@ -122,7 +122,7 @@ def get_derivatives(block_index: int, entry_index: int):
     # Bound max_depth to prevent abuse
     max_depth = min(max(1, max_depth), 50)
 
-    result = blockchain.get_derivatives(
+    result = state.blockchain.get_derivatives(
         block_index,
         entry_index,
         recursive=recursive,
@@ -164,7 +164,7 @@ def get_lineage(block_index: int, entry_index: int):
     # Bound max_depth
     max_depth = min(max(1, max_depth), 50)
 
-    result = blockchain.get_lineage(
+    result = state.blockchain.get_lineage(
         block_index, entry_index, max_depth=max_depth, include_entries=include_entries
     )
 
@@ -201,7 +201,7 @@ def get_derivation_tree(block_index: int, entry_index: int):
     # Bound max_depth
     max_depth = min(max(1, max_depth), 50)
 
-    result = blockchain.get_derivation_tree(
+    result = state.blockchain.get_derivation_tree(
         block_index, entry_index, max_depth=max_depth, include_entries=include_entries
     )
 
@@ -228,11 +228,11 @@ def get_derivative_status(block_index: int, entry_index: int):
     if error := _validate_entry_ref(block_index, entry_index):
         return error
 
-    is_derivative = blockchain.is_derivative(block_index, entry_index)
-    has_derivatives = blockchain.has_derivatives(block_index, entry_index)
+    is_derivative = state.blockchain.is_derivative(block_index, entry_index)
+    has_derivatives = state.blockchain.has_derivatives(block_index, entry_index)
 
     # Get the entry to check for parent refs
-    entry = blockchain.chain[block_index].entries[entry_index]
+    entry = state.blockchain.chain[block_index].entries[entry_index]
 
     result = {
         "block_index": block_index,
@@ -308,11 +308,11 @@ def validate_derivative_refs():
             issues.append({"ref_index": i, "error": "Missing block_index or entry_index"})
             continue
 
-        if block_idx < 0 or block_idx >= len(blockchain.chain):
+        if block_idx < 0 or block_idx >= len(state.blockchain.chain):
             issues.append({"ref_index": i, "block_index": block_idx, "error": "Block not found"})
             continue
 
-        block = blockchain.chain[block_idx]
+        block = state.blockchain.chain[block_idx]
         if entry_idx < 0 or entry_idx >= len(block.entries):
             issues.append({"ref_index": i, "entry_index": entry_idx, "error": "Entry not found"})
             continue

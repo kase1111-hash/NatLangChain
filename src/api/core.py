@@ -2,7 +2,6 @@
 Core blockchain operations blueprint.
 
 This blueprint handles the fundamental blockchain operations:
-- Health checks
 - Chain retrieval and narrative
 - Entry creation and validation
 - Block mining and retrieval
@@ -13,8 +12,8 @@ import json
 
 from flask import Blueprint, jsonify, request
 
+from . import state
 from .state import (
-    blockchain,
     create_entry_with_encryption,
     save_chain,
 )
@@ -30,20 +29,6 @@ from .utils import (
 core_bp = Blueprint("core", __name__)
 
 
-@core_bp.route("/health", methods=["GET"])
-def health_check():
-    """Health check endpoint."""
-    return jsonify(
-        {
-            "status": "healthy",
-            "service": "NatLangChain API",
-            "llm_validation_available": managers.llm_validator is not None,
-            "blocks": len(blockchain.chain),
-            "pending_entries": len(blockchain.pending_entries),
-        }
-    )
-
-
 @core_bp.route("/chain", methods=["GET"])
 def get_chain():
     """
@@ -54,9 +39,9 @@ def get_chain():
     """
     return jsonify(
         {
-            "length": len(blockchain.chain),
-            "chain": blockchain.to_dict(),
-            "valid": blockchain.validate_chain(),
+            "length": len(state.blockchain.chain),
+            "chain": state.blockchain.to_dict(),
+            "valid": state.blockchain.validate_chain(),
         }
     )
 
@@ -71,7 +56,7 @@ def get_narrative():
     Returns:
         Complete narrative of all entries
     """
-    narrative = blockchain.get_full_narrative()
+    narrative = state.blockchain.get_full_narrative()
     return narrative, 200, {"Content-Type": "text/plain; charset=utf-8"}
 
 
@@ -183,13 +168,13 @@ def add_entry():
                 entry.validation_paraphrases = [llm_val["validation"].get("paraphrase", "")]
 
     # Add to blockchain
-    result = blockchain.add_entry(entry)
+    result = state.blockchain.add_entry(entry)
 
     # Auto-mine if requested
     auto_mine = data.get("auto_mine", False)
     mined_block = None
     if auto_mine:
-        mined_block = blockchain.mine_pending_entries()
+        mined_block = state.blockchain.mine_pending_entries()
         save_chain()
 
     response = {"status": "success", "entry": result, "validation": validation_result}
@@ -274,14 +259,14 @@ def mine_block():
     data = request.get_json() or {}
     difficulty = data.get("difficulty")
 
-    if not blockchain.pending_entries:
+    if not state.blockchain.pending_entries:
         return jsonify({"error": "No pending entries to mine"}), 400
 
     # Mine the block
     if difficulty:
-        new_block = blockchain.mine_pending_entries(difficulty=difficulty)
+        new_block = state.blockchain.mine_pending_entries(difficulty=difficulty)
     else:
-        new_block = blockchain.mine_pending_entries()
+        new_block = state.blockchain.mine_pending_entries()
 
     # Persist to file
     save_chain()
@@ -311,12 +296,12 @@ def get_block(index: int):
     Returns:
         Block details
     """
-    if index < 0 or index >= len(blockchain.chain):
+    if index < 0 or index >= len(state.blockchain.chain):
         return jsonify(
-            {"error": "Block not found", "valid_range": f"0-{len(blockchain.chain) - 1}"}
+            {"error": "Block not found", "valid_range": f"0-{len(state.blockchain.chain) - 1}"}
         ), 404
 
-    block = blockchain.chain[index]
+    block = state.blockchain.chain[index]
     return jsonify(block.to_dict())
 
 
@@ -328,15 +313,15 @@ def get_latest_block():
     Returns:
         Latest block details with metadata
     """
-    if not blockchain.chain:
+    if not state.blockchain.chain:
         return jsonify({"error": "No blocks in chain"}), 404
 
-    latest = blockchain.chain[-1]
+    latest = state.blockchain.chain[-1]
     return jsonify(
         {
             "block": latest.to_dict(),
-            "chain_length": len(blockchain.chain),
-            "pending_entries": len(blockchain.pending_entries),
+            "chain_length": len(state.blockchain.chain),
+            "pending_entries": len(state.blockchain.pending_entries),
         }
     )
 
@@ -352,7 +337,7 @@ def get_entries_by_author(author: str):
     Returns:
         List of entries by the author
     """
-    entries = blockchain.get_entries_by_author(author)
+    entries = state.blockchain.get_entries_by_author(author)
     return jsonify(
         {"author": author, "count": len(entries), "entries": [e.to_dict() for e in entries]}
     )
@@ -381,7 +366,7 @@ def search_entries():
 
     # Simple keyword search across all entries
     results = []
-    for block in blockchain.chain:
+    for block in state.blockchain.chain:
         for entry in block.entries:
             if query.lower() in entry.content.lower():
                 results.append(entry.to_dict())
@@ -401,12 +386,12 @@ def validate_blockchain():
     Returns:
         Validation status
     """
-    is_valid = blockchain.validate_chain()
+    is_valid = state.blockchain.validate_chain()
     return jsonify(
         {
             "valid": is_valid,
-            "blocks": len(blockchain.chain),
-            "pending_entries": len(blockchain.pending_entries),
+            "blocks": len(state.blockchain.chain),
+            "pending_entries": len(state.blockchain.pending_entries),
         }
     )
 
@@ -421,8 +406,8 @@ def get_pending_entries():
     """
     return jsonify(
         {
-            "count": len(blockchain.pending_entries),
-            "entries": [e.to_dict() for e in blockchain.pending_entries],
+            "count": len(state.blockchain.pending_entries),
+            "entries": [e.to_dict() for e in state.blockchain.pending_entries],
         }
     )
 
@@ -436,11 +421,11 @@ def get_stats():
         Comprehensive stats about the chain
     """
     # Count total entries across all blocks
-    total_entries = sum(len(block.entries) for block in blockchain.chain)
+    total_entries = sum(len(block.entries) for block in state.blockchain.chain)
 
     # Get unique authors
     authors = set()
-    for block in blockchain.chain:
+    for block in state.blockchain.chain:
         for entry in block.entries:
             authors.add(entry.author)
 
@@ -453,11 +438,11 @@ def get_stats():
 
     return jsonify(
         {
-            "blocks": len(blockchain.chain),
-            "pending_entries": len(blockchain.pending_entries),
+            "blocks": len(state.blockchain.chain),
+            "pending_entries": len(state.blockchain.pending_entries),
             "total_entries": total_entries,
             "unique_authors": len(authors),
-            "chain_valid": blockchain.validate_chain(),
+            "chain_valid": state.blockchain.validate_chain(),
             "features": features,
         }
     )

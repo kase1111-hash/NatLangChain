@@ -18,7 +18,8 @@ import time
 
 from flask import Blueprint, Response, jsonify
 
-from .state import blockchain, get_storage
+from . import state
+from .state import get_storage
 
 # Create the blueprint
 monitoring_bp = Blueprint("monitoring", __name__)
@@ -80,8 +81,8 @@ def health():
             "checks": {
                 "blockchain": {
                     "status": "ok",
-                    "blocks": len(blockchain.chain),
-                    "pending_entries": len(blockchain.pending_entries),
+                    "blocks": len(state.blockchain.chain),
+                    "pending_entries": len(state.blockchain.pending_entries),
                 },
                 "storage": _check_storage(),
                 "llm": {
@@ -116,7 +117,7 @@ def readiness():
 
     # Check blockchain
     try:
-        _ = len(blockchain.chain)
+        _ = len(state.blockchain.chain)
     except Exception as e:
         issues.append(f"blockchain: {e}")
 
@@ -160,11 +161,11 @@ def detailed_health():
                 "hostname": platform.node(),
             },
             "blockchain": {
-                "blocks": len(blockchain.chain),
-                "pending_entries": len(blockchain.pending_entries),
-                "difficulty": getattr(blockchain, "difficulty", 2),
-                "valid": blockchain.validate_chain()
-                if hasattr(blockchain, "validate_chain")
+                "blocks": len(state.blockchain.chain),
+                "pending_entries": len(state.blockchain.pending_entries),
+                "difficulty": getattr(state.blockchain, "difficulty", 2),
+                "valid": state.blockchain.validate_chain()
+                if hasattr(state.blockchain, "validate_chain")
                 else None,
             },
             "storage": _get_storage_info(),
@@ -228,12 +229,12 @@ def _update_dynamic_metrics():
         from monitoring import metrics
 
         # Blockchain metrics
-        metrics.set_gauge("blockchain_blocks_total", len(blockchain.chain))
-        metrics.set_gauge("blockchain_pending_entries", len(blockchain.pending_entries))
+        metrics.set_gauge("blockchain_blocks_total", len(state.blockchain.chain))
+        metrics.set_gauge("blockchain_pending_entries", len(state.blockchain.pending_entries))
 
         # Calculate total entries
         total_entries = sum(
-            len(block.entries) if hasattr(block, "entries") else 0 for block in blockchain.chain
+            len(block.entries) if hasattr(block, "entries") else 0 for block in state.blockchain.chain
         )
         metrics.set_gauge("blockchain_entries_total", total_entries)
 

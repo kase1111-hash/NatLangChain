@@ -11,12 +11,11 @@ Storage backends are pluggable - set STORAGE_BACKEND environment variable:
 - "memory": In-memory (for testing)
 """
 
+import threading
 from typing import Any
 
 # Import blockchain - always required
 from blockchain import NatLangChain
-
-# Import manager registry
 
 # ============================================================
 # Shared State
@@ -27,6 +26,44 @@ blockchain: NatLangChain = NatLangChain()
 
 # Storage backend (lazy initialized)
 _storage = None
+
+# ============================================================
+# Graceful Shutdown State
+# ============================================================
+
+_shutdown_event = threading.Event()
+_in_flight_requests = 0
+_request_lock = threading.Lock()
+
+
+def is_shutting_down() -> bool:
+    """Check if the server is in shutdown state."""
+    return _shutdown_event.is_set()
+
+
+def set_shutting_down():
+    """Signal that the server is shutting down."""
+    _shutdown_event.set()
+
+
+def track_request_start():
+    """Increment in-flight request counter."""
+    global _in_flight_requests
+    with _request_lock:
+        _in_flight_requests += 1
+
+
+def track_request_end():
+    """Decrement in-flight request counter."""
+    global _in_flight_requests
+    with _request_lock:
+        _in_flight_requests -= 1
+
+
+def get_in_flight_count() -> int:
+    """Get number of in-flight requests."""
+    with _request_lock:
+        return _in_flight_requests
 
 
 def get_storage():
