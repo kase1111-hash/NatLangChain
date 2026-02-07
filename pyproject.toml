@@ -116,22 +116,13 @@ production = [
     "gunicorn>=21.0.0",
 ]
 
-# Story Protocol SDK for IP licensing
-story-protocol = [
-    "story-protocol-python-sdk>=0.1.0",
-    "web3>=6.0.0",
-]
-
 # All optional features (including all LLM providers)
 all = [
-    "fido2>=1.1.0",  # Hardware security key support
     "redis>=4.0.0",
     "psycopg2-binary>=2.9.0",
     "gunicorn>=21.0.0",
     "openai>=1.0.0",
     "google-generativeai>=0.3.0",
-    "story-protocol-python-sdk>=0.1.0",
-    "web3>=6.0.0",
 ]
 
 [project.scripts]
@@ -288,35 +279,10 @@ unfixable = []
 "src/api/__init__.py" = ["F401"]
 "src/api/*.py" = ["F401", "E402"]  # Optional imports in API modules
 "src/blockchain.py" = ["F401"]  # Optional imports for entry quality
-"src/dispute.py" = ["F401"]
 "src/validator.py" = ["F401", "E741"]
-"src/mediator.py" = ["F401"]
-"src/natural_language_contracts.py" = ["F401"]
-"src/semantic_diff.py" = ["F401"]
 "src/semantic_search.py" = ["E402"]  # Import after try/except for optional dependency
-"src/cognitive_load.py" = ["E741"]  # Variable 'l' in list comprehensions
-"src/p2p_network.py" = ["F401", "F402"]  # Conditional imports and loop variable
-"src/llm_backends.py" = ["F401"]  # Conditional imports for LLM providers
-"src/llm_model_router.py" = ["F401"]  # Conditional imports for LLM providers
-"src/multi_model_consensus.py" = ["F401"]  # Conditional imports for LLM providers
-"src/scaling/*.py" = ["F401", "B027"]  # Re-exports and abstract methods
 "src/storage/*.py" = ["F401"]  # Re-exports and conditional imports
 "src/monitoring/*.py" = ["F401"]  # Conditional monitoring imports
-"src/boundary_protection.py" = ["F401", "E402"]  # Conditional imports
-"src/boundary_daemon.py" = ["F401"]  # Conditional imports
-"src/boundary_exceptions.py" = ["F401"]  # Re-exports
-"src/boundary_modes.py" = ["F401"]  # Conditional imports
-"src/boundary_siem.py" = ["F401"]  # Conditional imports
-"src/boundary_rbac_integration.py" = ["F401"]  # Conditional imports
-"src/security_enforcement.py" = ["F401"]  # Conditional imports
-"src/agent_security.py" = ["F401"]  # Conditional imports
-"src/external_daemon_client.py" = ["F401"]  # Conditional imports
-"src/gossip_protocol.py" = ["F401"]  # Re-exports
-"src/nat_traversal.py" = ["F401"]  # Re-exports
-"src/tracing.py" = ["F401"]  # Conditional imports for OpenTelemetry
-"src/cli.py" = ["F401"]  # Conditional imports
-"src/adaptive_cache.py" = ["F401"]  # Conditional imports
-"src/rbac.py" = ["F401"]  # Conditional imports
 
 [tool.ruff.lint.isort]
 known-first-party = ["blockchain", "api", "validator"]
@@ -406,25 +372,8 @@ module = [
     "blockchain",
     "validator",
     "semantic_search",
-    "semantic_diff",
-    "dialectic_consensus",
     "contract_parser",
     "contract_matcher",
-    "dispute",
-    "mediator",
-    "p2p_network",
-    "negotiation_engine",
-    "mobile_deployment",
-    "treasury",
     "encryption",
-    "temporal_fixity",
-    "semantic_oracles",
-    "multi_model_consensus",
-    "escalation_fork",
-    "observance_burn",
-    "anti_harassment",
-    "fido2_auth",
-    "zk_privacy",
-    "market_pricing",
 ]
 ignore_errors = true
