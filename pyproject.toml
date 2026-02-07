@@ -43,65 +43,17 @@ dependencies = [
     "sentence-transformers>=2.2.0",
     "numpy>=1.20.0",
     "cryptography>=41.0.0",
-    "requests>=2.28.0",  # For Ollama/llama.cpp HTTP clients
+    "requests>=2.28.0",
 ]
 
 [project.optional-dependencies]
-# Development dependencies
 dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
     "ruff>=0.1.0",
-    "bandit>=1.7.0",
-    "safety>=2.0.0",
-    "pre-commit>=3.0.0",
-    # Type checking
     "mypy>=1.8.0",
     "types-requests>=2.31.0",
     "types-Flask>=1.1.0",
-]
-
-# =============================================================================
-# LLM Provider Dependencies (Multi-Provider Consensus)
-# =============================================================================
-# These address the centralization risk: "Unlike PoW/PoS where anyone can
-# participate, LLM validation requires API access" - by supporting 6+ providers
-# including local options, any node can participate without cloud dependency.
-
-# OpenAI GPT-4/GPT-4o (cloud) - Breadth specialist
-openai = [
-    "openai>=1.0.0",
-]
-
-# Google Gemini (cloud) - Balanced capabilities
-gemini = [
-    "google-generativeai>=0.3.0",
-]
-
-# xAI Grok (cloud) - Logic specialist (uses OpenAI-compatible API)
-grok = [
-    "openai>=1.0.0",
-]
-
-# All cloud LLM providers
-llm-cloud = [
-    "openai>=1.0.0",
-    "google-generativeai>=0.3.0",
-]
-
-# All LLM providers (cloud + local support via requests)
-llm-all = [
-    "openai>=1.0.0",
-    "google-generativeai>=0.3.0",
-]
-
-# =============================================================================
-# Infrastructure Dependencies
-# =============================================================================
-
-# Redis support (distributed locking, caching, coordination)
-redis = [
-    "redis>=4.0.0",
 ]
 
 # PostgreSQL storage backend
@@ -109,20 +61,10 @@ postgres = [
     "psycopg2-binary>=2.9.0",
 ]
 
-# Production deployment (all scaling features + WSGI server)
+# Production deployment
 production = [
-    "redis>=4.0.0",
     "psycopg2-binary>=2.9.0",
     "gunicorn>=21.0.0",
-]
-
-# All optional features (including all LLM providers)
-all = [
-    "redis>=4.0.0",
-    "psycopg2-binary>=2.9.0",
-    "gunicorn>=21.0.0",
-    "openai>=1.0.0",
-    "google-generativeai>=0.3.0",
 ]
 
 [project.scripts]
@@ -143,11 +85,8 @@ packages = ["src"]
 [tool.hatch.build.targets.sdist]
 include = [
     "/src",
-    "/config",
     "/tests",
     "/README.md",
-    "/SPEC.md",
-    "/API.md",
 ]
 
 # =============================================================================
@@ -273,15 +212,12 @@ unfixable = []
 [tool.ruff.lint.per-file-ignores]
 "tests/*.py" = ["S101", "S105", "S106", "B011", "F401", "F402", "RUF059", "E741", "B015", "F841", "B007", "B027", "E402"]
 "run_server.py" = ["T201"]
-# Conditional imports in try/except blocks - used for optional dependencies
-"src/__init__.py" = ["F401"]  # Re-exports for package API
+"src/__init__.py" = ["F401"]
 "src/api/__init__.py" = ["F401"]
-"src/api/*.py" = ["F401", "E402"]  # Optional imports in API modules
-"src/blockchain.py" = ["F401"]  # Optional imports for entry quality
+"src/api/*.py" = ["F401", "E402"]
+"src/blockchain.py" = ["F401"]
 "src/validator.py" = ["F401", "E741"]
-"src/semantic_search.py" = ["E402"]  # Import after try/except for optional dependency
-"src/storage/*.py" = ["F401"]  # Re-exports and conditional imports
-"src/monitoring/*.py" = ["F401"]  # Conditional monitoring imports
+"src/semantic_search.py" = ["E402"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["blockchain", "api", "validator"]
@@ -365,7 +301,7 @@ check_untyped_defs = true
 warn_return_any = true
 disallow_incomplete_defs = true
 
-# Legacy modules - ignore errors (can be enabled incrementally)
+# Core modules - type check enabled (errors suppressed via disable_error_code above)
 [[tool.mypy.overrides]]
 module = [
     "blockchain",
@@ -375,4 +311,5 @@ module = [
     "contract_matcher",
     "encryption",
 ]
-ignore_errors = true
+ignore_errors = false
+check_untyped_defs = true

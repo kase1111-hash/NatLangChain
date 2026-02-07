@@ -53,7 +53,6 @@ services:
       - NATLANGCHAIN_REQUIRE_AUTH=false
     volumes:
       - ./src:/app/src:ro
-      - ./config:/app/config:ro
       - natlangchain-dev-data:/app/data
     profiles:
       - dev
