@@ -11,16 +11,22 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from blockchain import NatLangChain, NaturalLanguageEntry
 
-# Skip all tests if numpy/semantic_search is not available
+# Skip all tests if semantic search engine can't be initialized
+# (requires both the library AND a downloadable model)
+SEMANTIC_SEARCH_AVAILABLE = False
 try:
     from semantic_search import SemanticSearchEngine
 
+    _test_engine = SemanticSearchEngine()
     SEMANTIC_SEARCH_AVAILABLE = True
-except ImportError as e:
-    SEMANTIC_SEARCH_AVAILABLE = False
-    pytestmark = pytest.mark.skip(
-        reason=f"semantic_search module not available (numpy/sentence-transformers required): {e}"
-    )
+    del _test_engine
+except Exception:
+    pass
+
+pytestmark = pytest.mark.skipif(
+    not SEMANTIC_SEARCH_AVAILABLE,
+    reason="Semantic search unavailable (requires sentence-transformers and model download)",
+)
 
 
 def test_semantic_search():

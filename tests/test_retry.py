@@ -61,14 +61,8 @@ class TestRetryableErrors:
 class TestCircuitState:
     """Tests for CircuitState enum."""
 
-    def test_circuit_states_exist(self):
-        """Test all circuit states exist."""
-        assert CircuitState.CLOSED is not None
-        assert CircuitState.OPEN is not None
-        assert CircuitState.HALF_OPEN is not None
-
     def test_circuit_state_values(self):
-        """Test circuit state string values."""
+        """Test all three circuit states have expected string values."""
         assert CircuitState.CLOSED.value == "closed"
         assert CircuitState.OPEN.value == "open"
         assert CircuitState.HALF_OPEN.value == "half_open"
@@ -643,12 +637,12 @@ class TestRetryContext:
         with RetryContext(config=config) as ctx:
             assert ctx.config.max_retries == 5
 
-    def test_context_stats_tracking(self):
-        """Test that context tracks statistics."""
+    def test_context_stats_initialized(self):
+        """Test that context provides an initialized stats object."""
         with RetryContext() as ctx:
             ctx.execute(lambda: "result")
-        # Stats should be available
-        assert ctx.stats is not None
+        assert isinstance(ctx.stats, RetryStats)
+        assert ctx.stats.total_delay >= 0.0
 
 
 class TestConvenienceDecorators:

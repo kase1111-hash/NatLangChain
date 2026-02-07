@@ -170,7 +170,7 @@ class TestOpenAIProvider:
     def test_complete_success(self):
         """Test successful completion with mocked client."""
         try:
-            pass
+            import openai  # noqa: F401
         except ImportError:
             pytest.skip("openai package not installed")
 
