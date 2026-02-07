@@ -388,33 +388,9 @@ class ManagerRegistry:
 
     # Dispute and governance
     dispute_manager: Any = None
-    escalation_fork_manager: Any = None
-
-    # Economic features
-    observance_burn_manager: Any = None
-    anti_harassment_manager: Any = None
-    treasury: Any = None
-    permanence_endowment: Any = None  # Pay-once-store-forever system
-    anchoring_service: Any = None  # External blockchain anchoring
-
-    # Authentication and privacy
-    fido2_manager: Any = None
-    zk_privacy_manager: Any = None
-    identity_service: Any = None  # DID identity layer
-    composability_service: Any = None  # Cross-application data composability
-    compute_service: Any = None  # Privacy-preserving compute-to-data
-    revenue_service: Any = None  # Revenue sharing and royalties
 
     # Advanced features
     negotiation_engine: Any = None
-    market_pricing: Any = None
-    mobile_deployment: Any = None
-
-    # P2P network
-    p2p_network: Any = None
-
-    # Marketplace
-    marketplace_manager: Any = None
 
     def is_llm_enabled(self) -> bool:
         """Check if LLM-based features are available."""
@@ -423,42 +399,6 @@ class ManagerRegistry:
     def is_dispute_enabled(self) -> bool:
         """Check if dispute management is available."""
         return self.dispute_manager is not None
-
-    def is_economic_enabled(self) -> bool:
-        """Check if economic features (burn, treasury) are available."""
-        return self.treasury is not None
-
-    def is_permanence_enabled(self) -> bool:
-        """Check if permanence endowment is available."""
-        return self.permanence_endowment is not None
-
-    def is_anchoring_enabled(self) -> bool:
-        """Check if external anchoring is available."""
-        return self.anchoring_service is not None
-
-    def is_identity_enabled(self) -> bool:
-        """Check if DID identity service is available."""
-        return self.identity_service is not None
-
-    def is_composability_enabled(self) -> bool:
-        """Check if composability service is available."""
-        return self.composability_service is not None
-
-    def is_compute_enabled(self) -> bool:
-        """Check if compute-to-data service is available."""
-        return self.compute_service is not None
-
-    def is_revenue_enabled(self) -> bool:
-        """Check if revenue sharing service is available."""
-        return self.revenue_service is not None
-
-    def is_p2p_enabled(self) -> bool:
-        """Check if P2P network is available."""
-        return self.p2p_network is not None
-
-    def is_marketplace_enabled(self) -> bool:
-        """Check if marketplace is available."""
-        return self.marketplace_manager is not None
 
 
 # Global manager registry instance
