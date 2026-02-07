@@ -95,7 +95,7 @@ class SemanticSearchEngine:
 
         self._entries_cache = []
         self._embeddings_cache = None
-        self._cache_valid = False
+        self._cache_chain_length = 0  # Track chain length for incremental indexing
 
     def _extract_all_entries(self, blockchain: NatLangChain) -> list[dict[str, Any]]:
         """
@@ -128,7 +128,9 @@ class SemanticSearchEngine:
 
     def _build_embeddings_cache(self, blockchain: NatLangChain):
         """
-        Build cache of entries and their embeddings.
+        Build or incrementally update cache of entries and their embeddings.
+
+        Only encodes new entries when the chain has grown since the last call.
 
         Args:
             blockchain: The NatLangChain instance
@@ -136,32 +138,61 @@ class SemanticSearchEngine:
         Raises:
             EncodingError: If encoding fails
         """
-        self._entries_cache = self._extract_all_entries(blockchain)
+        current_chain_length = len(blockchain.chain)
 
-        # Generate embeddings for all content
-        content_list = [entry["content"] for entry in self._entries_cache]
+        # If chain hasn't changed, skip rebuild
+        if current_chain_length == self._cache_chain_length and self._embeddings_cache is not None:
+            return
 
-        if content_list:
-            try:
-                self._embeddings_cache = self.model.encode(content_list)
-            except RuntimeError as e:
-                # Common for out-of-memory errors
-                logger.error(
-                    "Failed to encode %d entries: %s. This may be due to memory constraints.",
-                    len(content_list),
-                    str(e),
-                )
-                raise EncodingError(
-                    f"Failed to encode entries: {e!s}. "
-                    f"Try reducing batch size or using a smaller model."
-                ) from e
-            except Exception as e:
-                logger.error("Unexpected error encoding entries: %s: %s", type(e).__name__, str(e))
-                raise EncodingError(f"Encoding failed: {type(e).__name__}: {e!s}") from e
-        else:
+        all_entries = self._extract_all_entries(blockchain)
+
+        if not all_entries:
+            self._entries_cache = []
             self._embeddings_cache = np.array([])
+            self._cache_chain_length = current_chain_length
+            return
 
-        self._cache_valid = True
+        # Incremental: only encode new entries if we already have a partial cache
+        cached_count = len(self._entries_cache)
+        if (
+            cached_count > 0
+            and self._embeddings_cache is not None
+            and len(self._embeddings_cache) > 0
+            and cached_count < len(all_entries)
+        ):
+            new_entries = all_entries[cached_count:]
+            new_content = [entry["content"] for entry in new_entries]
+            try:
+                new_embeddings = self.model.encode(new_content)
+                self._embeddings_cache = np.vstack([self._embeddings_cache, new_embeddings])
+                self._entries_cache = all_entries
+                self._cache_chain_length = current_chain_length
+                logger.info("Incrementally indexed %d new entries (total: %d)",
+                           len(new_entries), len(all_entries))
+                return
+            except Exception as e:
+                logger.warning("Incremental indexing failed, doing full rebuild: %s", e)
+
+        # Full rebuild
+        content_list = [entry["content"] for entry in all_entries]
+        try:
+            self._embeddings_cache = self.model.encode(content_list)
+        except RuntimeError as e:
+            logger.error(
+                "Failed to encode %d entries: %s. This may be due to memory constraints.",
+                len(content_list),
+                str(e),
+            )
+            raise EncodingError(
+                f"Failed to encode entries: {e!s}. "
+                f"Try reducing batch size or using a smaller model."
+            ) from e
+        except Exception as e:
+            logger.error("Unexpected error encoding entries: %s: %s", type(e).__name__, str(e))
+            raise EncodingError(f"Encoding failed: {type(e).__name__}: {e!s}") from e
+
+        self._entries_cache = all_entries
+        self._cache_chain_length = current_chain_length
 
     def search(
         self, blockchain: NatLangChain, query: str, top_k: int = 5, min_score: float = 0.0
@@ -190,7 +221,7 @@ class SemanticSearchEngine:
         if not query:
             raise ValueError("Query cannot be empty or whitespace only")
 
-        # Rebuild cache (in production, this would be smarter)
+        # Update cache incrementally (only encodes new entries)
         self._build_embeddings_cache(blockchain)
 
         if len(self._entries_cache) == 0:
