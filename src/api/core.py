@@ -155,14 +155,7 @@ def add_entry():
     validation_mode = data.get("validation_mode", "standard")
 
     if validate:
-        if validation_mode == "dialectic" and managers.dialectic_validator:
-            dialectic_result = managers.dialectic_validator.validate_entry(content, intent, author)
-            validation_result = {
-                "validation_mode": "dialectic",
-                "dialectic_validation": dialectic_result,
-                "overall_decision": dialectic_result.get("decision", "ERROR"),
-            }
-        elif managers.hybrid_validator:
+        if managers.hybrid_validator:
             validation_result = managers.hybrid_validator.validate(
                 content=content,
                 intent=intent,
@@ -455,22 +448,7 @@ def get_stats():
     features = {
         "llm_validation": managers.llm_validator is not None,
         "semantic_search": managers.search_engine is not None,
-        "drift_detection": managers.drift_detector is not None,
-        "dialectic_consensus": managers.dialectic_validator is not None,
-        "multi_model_consensus": managers.multi_model_consensus is not None,
         "contract_management": managers.contract_parser is not None,
-        "dispute_management": managers.dispute_manager is not None,
-        "temporal_fixity": managers.temporal_fixity is not None,
-        "semantic_oracles": managers.semantic_oracle is not None,
-        "escalation_forks": managers.escalation_fork_manager is not None,
-        "observance_burns": managers.observance_burn_manager is not None,
-        "anti_harassment": managers.anti_harassment_manager is not None,
-        "treasury": managers.treasury is not None,
-        "fido2_auth": managers.fido2_manager is not None,
-        "zk_privacy": managers.zk_privacy_manager is not None,
-        "negotiation": managers.negotiation_engine is not None,
-        "market_pricing": managers.market_pricing is not None,
-        "mobile_deployment": managers.mobile_deployment is not None,
     }
 
     return jsonify(

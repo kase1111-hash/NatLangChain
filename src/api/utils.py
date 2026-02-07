@@ -372,33 +372,17 @@ class ManagerRegistry:
     # LLM-based validators
     llm_validator: Any = None
     hybrid_validator: Any = None
-    drift_detector: Any = None
-    dialectic_validator: Any = None
-    multi_model_consensus: Any = None
 
-    # Search and semantic features
+    # Search
     search_engine: Any = None
-    temporal_fixity: Any = None
-    semantic_oracle: Any = None
-    circuit_breaker: Any = None
 
     # Contract management
     contract_parser: Any = None
     contract_matcher: Any = None
 
-    # Dispute and governance
-    dispute_manager: Any = None
-
-    # Advanced features
-    negotiation_engine: Any = None
-
     def is_llm_enabled(self) -> bool:
         """Check if LLM-based features are available."""
         return self.llm_validator is not None
-
-    def is_dispute_enabled(self) -> bool:
-        """Check if dispute management is available."""
-        return self.dispute_manager is not None
 
 
 # Global manager registry instance
