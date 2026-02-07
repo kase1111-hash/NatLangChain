@@ -1,0 +1,5 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.14, pytest-9.0.2, pluggy-1.6.0
+rootdir: /home/user/NatLangChain
+configfile: pyproject.toml
+plugins: cov-7.0.0, anyio-4.12.1
