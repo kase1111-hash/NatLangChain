@@ -172,13 +172,8 @@ def detailed_health():
                 "llm_validator": managers.llm_validator is not None,
                 "hybrid_validator": managers.hybrid_validator is not None,
                 "search_engine": managers.search_engine is not None,
-                "drift_detector": managers.drift_detector is not None,
-                "dialectic_validator": managers.dialectic_validator is not None,
                 "contract_parser": managers.contract_parser is not None,
                 "contract_matcher": managers.contract_matcher is not None,
-                "dispute_manager": managers.dispute_manager is not None,
-                "temporal_fixity": managers.temporal_fixity is not None,
-                "mobile_deployment": managers.mobile_deployment is not None,
             },
             "environment": {
                 "debug": os.getenv("FLASK_DEBUG", "false").lower() == "true",
