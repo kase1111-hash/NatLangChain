@@ -5,9 +5,12 @@ Core blockchain data structures and logic
 
 import hashlib
 import json
+import logging
 import time
 from datetime import datetime
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 # Validation decision constants
 VALIDATION_VALID = "VALID"
@@ -64,34 +67,21 @@ SANITIZE_MODE_WARN = "warn"  # Strip fields but include warning in response
 
 DEFAULT_SANITIZE_MODE = SANITIZE_MODE_STRIP
 
-# Asset tracking constants for double-spending prevention
-# Keywords that indicate asset transfer intent
-TRANSFER_INTENT_KEYWORDS = {
-    "transfer",
-    "transfers",
-    "transferring",
-    "transferred",
-    "sell",
-    "sells",
-    "selling",
-    "sold",
-    "give",
-    "gives",
-    "giving",
-    "gave",
-    "assign",
-    "assigns",
-    "assigning",
-    "assigned",
-    "convey",
-    "conveys",
-    "conveying",
-    "conveyed",
-    "grant",
-    "grants",
-    "granting",
-    "granted",
-}
+# Import intent classifier (LLM-based with keyword fallback)
+try:
+    from intent_classifier import IntentClassifier, TRANSFER_INTENT_KEYWORDS
+
+    INTENT_CLASSIFIER_AVAILABLE = True
+except ImportError:
+    INTENT_CLASSIFIER_AVAILABLE = False
+    TRANSFER_INTENT_KEYWORDS = {
+        "transfer", "transfers", "transferring", "transferred",
+        "sell", "sells", "selling", "sold",
+        "give", "gives", "giving", "gave",
+        "assign", "assigns", "assigning", "assigned",
+        "convey", "conveys", "conveying", "conveyed",
+        "grant", "grants", "granting", "granted",
+    }
 
 # Entry quality defaults (addresses chain bloat)
 DEFAULT_MAX_ENTRY_SIZE = 10000  # ~2500 words, sufficient for detailed contracts
@@ -1289,6 +1279,7 @@ class NatLangChain:
         quality_strict_mode: bool = DEFAULT_QUALITY_STRICT_MODE,
         enable_derivative_tracking: bool = True,
         derivative_registry: DerivativeRegistry | None = None,
+        intent_classifier: Any | None = None,
     ):
         """
         Initialize the blockchain with genesis block.
@@ -1334,6 +1325,8 @@ class NatLangChain:
                                        Default is True to enable intent evolution tracking.
             derivative_registry: Optional pre-configured DerivativeRegistry instance.
                                 If None and enable_derivative_tracking is True, a new registry is created.
+            intent_classifier: Optional IntentClassifier for LLM-based transfer detection.
+                              If None, keyword-based fallback is used.
         """
         self.chain: list[Block] = []
         self.pending_entries: list[NaturalLanguageEntry] = []
@@ -1377,6 +1370,9 @@ class NatLangChain:
         self._derivative_registry = self._init_derivative_registry(
             enable_derivative_tracking, derivative_registry
         )
+
+        # Initialize intent classifier for transfer detection
+        self._intent_classifier = intent_classifier
 
         self.create_genesis_block()
 
@@ -1678,10 +1674,8 @@ class NatLangChain:
         """
         Detect if an entry represents an asset transfer.
 
-        Looks for transfer intent via:
-        1. Explicit asset_id in metadata
-        2. Transfer keywords in intent or content
-        3. Recipient information in metadata
+        Uses LLM classification when an IntentClassifier is available,
+        otherwise falls back to keyword matching.
 
         Args:
             entry: The entry to analyze
@@ -1689,6 +1683,25 @@ class NatLangChain:
         Returns:
             Dict with is_transfer flag and extracted details
         """
+        # Use LLM-based classifier if available
+        if self._intent_classifier is not None:
+            try:
+                classification = self._intent_classifier.classify_transfer_intent(
+                    content=entry.content,
+                    intent=entry.intent,
+                    author=entry.author,
+                    metadata=entry.metadata,
+                )
+                return {
+                    "is_transfer": classification.get("is_transfer", False),
+                    "asset_id": classification.get("asset_id"),
+                    "from_owner": classification.get("from_owner", entry.author),
+                    "to_recipient": classification.get("to_recipient"),
+                }
+            except Exception:
+                pass  # Fall through to keyword detection
+
+        # Keyword fallback
         result = {
             "is_transfer": False,
             "asset_id": None,
@@ -1696,31 +1709,21 @@ class NatLangChain:
             "to_recipient": None,
         }
 
-        # Check for explicit asset_id in metadata
         asset_id = entry.metadata.get("asset_id") if entry.metadata else None
-
-        # Check for recipient in metadata
         recipient = None
         if entry.metadata:
             recipient = entry.metadata.get("recipient") or entry.metadata.get("to")
 
-        # Check for transfer keywords in intent
-        intent_lower = entry.intent.lower()
-        intent_words = set(intent_lower.split())
+        intent_words = set(entry.intent.lower().split())
+        content_words = set(entry.content.lower().split())
         has_transfer_intent = bool(intent_words & TRANSFER_INTENT_KEYWORDS)
-
-        # Check for transfer keywords in content
-        content_lower = entry.content.lower()
-        content_words = set(content_lower.split())
         has_transfer_content = bool(content_words & TRANSFER_INTENT_KEYWORDS)
 
-        # Determine if this is a transfer
         if asset_id and (has_transfer_intent or has_transfer_content):
             result["is_transfer"] = True
             result["asset_id"] = asset_id
             result["to_recipient"] = recipient
         elif asset_id and recipient:
-            # Has asset_id and recipient - likely a transfer even without keywords
             result["is_transfer"] = True
             result["asset_id"] = asset_id
             result["to_recipient"] = recipient
@@ -1816,6 +1819,8 @@ class NatLangChain:
             return None
         rate_check = self._rate_limiter.check_rate_limit(entry.author)
         if not rate_check["allowed"]:
+            logger.info("Entry rejected: rate limit exceeded for author=%s reason=%s",
+                       entry.author, rate_check["reason"])
             return {
                 "status": "rejected",
                 "message": rate_check["message"],
@@ -1832,6 +1837,8 @@ class NatLangChain:
             return None
         ts_check = self._validate_timestamp(entry)
         if not ts_check["is_valid"]:
+            logger.info("Entry rejected: invalid timestamp author=%s reason=%s",
+                       entry.author, ts_check["reason"])
             return {
                 "status": "rejected",
                 "message": ts_check["message"],
@@ -1849,6 +1856,8 @@ class NatLangChain:
             return None, None
         sanitize_result = self._sanitize_metadata(entry)
         if sanitize_result["rejected"]:
+            logger.info("Entry rejected: forbidden metadata author=%s fields=%s",
+                       entry.author, sanitize_result.get("forbidden_fields", []))
             rejection = {
                 "status": "rejected",
                 "message": sanitize_result["message"],
@@ -1924,6 +1933,8 @@ class NatLangChain:
             return None
         duplicate_check = self._check_duplicate(entry)
         if duplicate_check["is_duplicate"]:
+            logger.info("Entry rejected: duplicate detected author=%s fingerprint=%s",
+                       entry.author, duplicate_check["fingerprint"][:16])
             return {
                 "status": "rejected",
                 "message": "Entry rejected: duplicate detected (possible replay attack)",
@@ -1942,6 +1953,8 @@ class NatLangChain:
             return None, None
         asset_check = self._check_asset_transfer(entry)
         if not asset_check["allowed"]:
+            logger.warning("Entry rejected: double transfer attempt author=%s asset=%s",
+                          entry.author, asset_check.get("asset_id"))
             return {
                 "status": "rejected",
                 "message": asset_check["message"],
@@ -1960,9 +1973,20 @@ class NatLangChain:
         if not self.require_validation or skip_validation:
             return None
 
-        validation_result = self._validate_entry(entry)
+        try:
+            validation_result = self._validate_entry(entry)
+        except Exception as e:
+            logger.error("Validation pipeline error for author=%s: %s", entry.author, e)
+            return {
+                "status": "rejected",
+                "message": "Validation pipeline error",
+                "error": str(e),
+                "entry": entry.to_dict(),
+            }
 
         if validation_result["status"] == "error":
+            logger.warning("Entry validation error author=%s: %s",
+                          entry.author, validation_result.get("error"))
             return {
                 "status": "rejected",
                 "message": "Validation failed with error",
@@ -1973,6 +1997,8 @@ class NatLangChain:
         decision = validation_result.get("validation", {}).get("decision", "ERROR")
 
         if decision not in self._acceptable_decisions:
+            logger.info("Entry rejected: validation decision=%s author=%s",
+                       decision, entry.author)
             return {
                 "status": "rejected",
                 "message": f"Entry rejected: validation decision was {decision}",
@@ -2368,6 +2394,14 @@ class NatLangChain:
         if self.enable_derivative_tracking and self._derivative_registry:
             result["derivative_registry"] = self._derivative_registry.to_dict()
 
+        # Include asset registry if enabled
+        if self.enable_asset_tracking and self._asset_registry:
+            result["asset_registry"] = self._asset_registry.to_dict()
+
+        # Include entry fingerprints for deduplication persistence
+        if self._entry_fingerprints:
+            result["entry_fingerprints"] = self._entry_fingerprints
+
         return result
 
     @classmethod
@@ -2429,7 +2463,7 @@ class NatLangChain:
         chain._acceptable_decisions = {VALIDATION_VALID}
         chain.enable_deduplication = enable_deduplication
         chain.dedup_window_seconds = dedup_window_seconds
-        chain._entry_fingerprints = {}
+        chain._entry_fingerprints = data.get("entry_fingerprints", {})
         chain.enable_rate_limiting = enable_rate_limiting
         chain._rate_limiter = (
             EntryRateLimiter(
@@ -2446,12 +2480,24 @@ class NatLangChain:
         chain.enable_metadata_sanitization = enable_metadata_sanitization
         chain.metadata_sanitize_mode = metadata_sanitize_mode
         chain.forbidden_metadata_fields = forbidden_metadata_fields or FORBIDDEN_METADATA_FIELDS
-        chain.enable_asset_tracking = enable_asset_tracking
-        chain._asset_registry = (
-            asset_registry
-            if asset_registry
-            else (AssetRegistry() if enable_asset_tracking else None)
+        # Initialize quality checks (using defaults — these aren't serialized)
+        chain.enable_quality_checks = True
+        chain.max_entry_size = DEFAULT_MAX_ENTRY_SIZE
+        chain.min_entry_size = DEFAULT_MIN_ENTRY_SIZE
+        chain.quality_strict_mode = DEFAULT_QUALITY_STRICT_MODE
+        chain._quality_analyzer = chain._init_quality_analyzer(
+            True, DEFAULT_MAX_ENTRY_SIZE, DEFAULT_MIN_ENTRY_SIZE, DEFAULT_QUALITY_STRICT_MODE
         )
+
+        chain.enable_asset_tracking = enable_asset_tracking
+        if asset_registry:
+            chain._asset_registry = asset_registry
+        elif "asset_registry" in data and enable_asset_tracking:
+            chain._asset_registry = AssetRegistry.from_dict(data["asset_registry"])
+        else:
+            chain._asset_registry = (
+                AssetRegistry() if enable_asset_tracking else None
+            )
 
         # Initialize derivative tracking
         chain.enable_derivative_tracking = enable_derivative_tracking
@@ -2463,5 +2509,8 @@ class NatLangChain:
             chain._derivative_registry = (
                 DerivativeRegistry() if enable_derivative_tracking else None
             )
+
+        # Intent classifier (not serialized — initialized separately)
+        chain._intent_classifier = None
 
         return chain

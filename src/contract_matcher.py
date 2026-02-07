@@ -5,6 +5,7 @@ Enables autonomous contract matching and proposal generation
 """
 
 import json
+import logging
 import os
 from typing import Any
 
@@ -12,6 +13,8 @@ from anthropic import Anthropic
 
 from blockchain import NatLangChain, NaturalLanguageEntry
 from contract_parser import ContractParser
+
+logger = logging.getLogger(__name__)
 
 
 class ContractMatcher:
@@ -34,7 +37,7 @@ class ContractMatcher:
         if not self.api_key:
             raise ValueError("ANTHROPIC_API_KEY required for contract matching")
 
-        self.client = Anthropic(api_key=self.api_key)
+        self.client = Anthropic(api_key=self.api_key, timeout=30.0)
         self.model = "claude-3-5-sonnet-20241022"
         self.match_threshold = match_threshold
         self.parser = ContractParser(api_key)
@@ -206,7 +209,7 @@ Return JSON:
             return result
 
         except json.JSONDecodeError as e:
-            print(f"Match computation failed - JSON parsing error: {e}")
+            logger.warning("Match computation failed - JSON parsing error: %s", e)
             return {
                 "score": 0,
                 "compatibility": "",
@@ -215,7 +218,7 @@ Return JSON:
                 "reasoning": f"Failed to parse API response: {e!s}",
             }
         except ValueError as e:
-            print(f"Match computation failed - validation error: {e}")
+            logger.warning("Match computation failed - validation error: %s", e)
             return {
                 "score": 0,
                 "compatibility": "",
@@ -224,7 +227,7 @@ Return JSON:
                 "reasoning": f"API response validation failed: {e!s}",
             }
         except Exception as e:
-            print(f"Match computation failed - unexpected error: {e}")
+            logger.error("Match computation failed - unexpected error: %s", e)
             return {
                 "score": 0,
                 "compatibility": "",
@@ -353,7 +356,7 @@ Write in clear, contract-appropriate language."""
             return proposal
 
         except Exception as e:
-            print(f"Proposal generation failed: {e}")
+            logger.error("Proposal generation failed: %s", e)
             # Return a basic proposal
             return NaturalLanguageEntry(
                 content=f"[PROPOSAL: Match {match_result['score']}%] Match proposal between {pending.author} and {existing['author']}",
@@ -443,7 +446,7 @@ Return JSON:
             return result
 
         except json.JSONDecodeError as e:
-            print(f"Mediation failed - JSON parsing error: {e}")
+            logger.warning("Mediation failed - JSON parsing error: %s", e)
             return {
                 "points_of_agreement": [],
                 "differences": [],
@@ -453,7 +456,7 @@ Return JSON:
                 "revised_terms": {},
             }
         except ValueError as e:
-            print(f"Mediation failed - validation error: {e}")
+            logger.warning("Mediation failed - validation error: %s", e)
             return {
                 "points_of_agreement": [],
                 "differences": [],
@@ -463,7 +466,7 @@ Return JSON:
                 "revised_terms": {},
             }
         except Exception as e:
-            print(f"Mediation failed - unexpected error: {e}")
+            logger.error("Mediation failed - unexpected error: %s", e)
             return {
                 "points_of_agreement": [],
                 "differences": [],

@@ -5,11 +5,14 @@ Enables self-seeking live contracts with AI-mediated matching
 """
 
 import json
+import logging
 import os
 import re
 from typing import Any
 
 from anthropic import Anthropic
+
+logger = logging.getLogger(__name__)
 
 
 class ContractParser:
@@ -44,7 +47,7 @@ class ContractParser:
             api_key: Anthropic API key for LLM-based term extraction
         """
         self.api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
-        self.client = Anthropic(api_key=self.api_key) if self.api_key else None
+        self.client = Anthropic(api_key=self.api_key, timeout=30.0) if self.api_key else None
         self.model = "claude-3-5-sonnet-20241022"
 
     def is_contract(self, content: str) -> bool:
@@ -247,13 +250,13 @@ If a term is not present, omit it. Return {{}} if no clear terms found."""
             return terms if terms else None
 
         except json.JSONDecodeError as e:
-            print(f"LLM term extraction failed - JSON parsing error: {e}")
+            logger.warning("LLM term extraction failed - JSON parsing error: %s", e)
             return None
         except ValueError as e:
-            print(f"LLM term extraction failed - validation error: {e}")
+            logger.warning("LLM term extraction failed - validation error: %s", e)
             return None
         except Exception as e:
-            print(f"LLM term extraction failed - unexpected error: {e}")
+            logger.error("LLM term extraction failed - unexpected error: %s", e)
             return None
 
     def _extract_json_from_response(self, response_text: str) -> str:
@@ -369,13 +372,13 @@ Return JSON:
             return True, "Contract is clear and enforceable"
 
         except json.JSONDecodeError as e:
-            print(f"Contract validation failed - JSON parsing error: {e}")
+            logger.warning("Contract validation failed - JSON parsing error: %s", e)
             return False, f"JSON parsing error during validation: {e!s}"
         except ValueError as e:
-            print(f"Contract validation failed - validation error: {e}")
+            logger.warning("Contract validation failed - validation error: %s", e)
             return False, f"Validation error: {e!s}"
         except Exception as e:
-            print(f"Contract validation failed - unexpected error: {e}")
+            logger.error("Contract validation failed - unexpected error: %s", e)
             return False, f"Unexpected validation error: {e!s}"
 
     def format_contract(
