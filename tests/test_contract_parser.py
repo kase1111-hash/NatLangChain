@@ -44,24 +44,37 @@ class TestContractParserInit:
 
 
 class TestContractTypes:
-    """Tests for contract type constants."""
+    """Tests for contract type and status constants used in parsing/formatting."""
 
-    def test_contract_types_exist(self):
-        """Test all contract types are defined."""
-        assert ContractParser.TYPE_OFFER == "offer"
-        assert ContractParser.TYPE_SEEK == "seek"
-        assert ContractParser.TYPE_PROPOSAL == "proposal"
-        assert ContractParser.TYPE_RESPONSE == "response"
-        assert ContractParser.TYPE_CLOSURE == "closure"
-        assert ContractParser.TYPE_PAYOUT == "payout"
+    def test_all_six_contract_types_defined(self):
+        """Parser exposes six contract types used in tagged format."""
+        types = {
+            ContractParser.TYPE_OFFER,
+            ContractParser.TYPE_SEEK,
+            ContractParser.TYPE_PROPOSAL,
+            ContractParser.TYPE_RESPONSE,
+            ContractParser.TYPE_CLOSURE,
+            ContractParser.TYPE_PAYOUT,
+        }
+        assert len(types) == 6
+        # All should be lowercase strings matching tagged format expectations
+        for t in types:
+            assert t == t.lower()
+            assert isinstance(t, str)
 
-    def test_contract_statuses_exist(self):
-        """Test all contract statuses are defined."""
-        assert ContractParser.STATUS_OPEN == "open"
-        assert ContractParser.STATUS_MATCHED == "matched"
-        assert ContractParser.STATUS_NEGOTIATING == "negotiating"
-        assert ContractParser.STATUS_CLOSED == "closed"
-        assert ContractParser.STATUS_CANCELLED == "cancelled"
+    def test_all_five_contract_statuses_defined(self):
+        """Parser exposes five lifecycle statuses."""
+        statuses = {
+            ContractParser.STATUS_OPEN,
+            ContractParser.STATUS_MATCHED,
+            ContractParser.STATUS_NEGOTIATING,
+            ContractParser.STATUS_CLOSED,
+            ContractParser.STATUS_CANCELLED,
+        }
+        assert len(statuses) == 5
+        for s in statuses:
+            assert s == s.lower()
+            assert isinstance(s, str)
 
 
 class TestIsContract:

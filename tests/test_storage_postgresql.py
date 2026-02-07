@@ -29,7 +29,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 # Skip all tests if psycopg2 is not installed
 psycopg2_available = False
 try:
-    pass
+    import psycopg2  # noqa: F401
 
     psycopg2_available = True
 except ImportError:

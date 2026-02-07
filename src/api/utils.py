@@ -99,6 +99,9 @@ def validate_json_schema(
             return False, f"Missing required field: {field_name}"
         if not isinstance(data[field_name], expected_type):
             return False, f"Field '{field_name}' must be of type {expected_type.__name__}"
+        # Reject empty strings for required fields
+        if expected_type is str and not data[field_name].strip():
+            return False, f"Field '{field_name}' cannot be empty"
 
     # Check optional fields if present
     if optional_fields:
