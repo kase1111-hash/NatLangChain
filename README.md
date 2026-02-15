@@ -113,10 +113,11 @@ src/
 └── api/                 # Flask REST API (app factory pattern)
     ├── __init__.py      # create_app() factory
     ├── state.py         # Shared blockchain state
-    ├── core.py          # Chain, entry, mining, block endpoints
+    ├── core.py          # Chain, entry, mining, validation endpoints
     ├── search.py        # Semantic search endpoints
     ├── contracts.py     # Contract endpoints
-    ├── validation.py    # Validation endpoints
+    ├── derivatives.py   # Derivative tracking endpoints
+    ├── monitoring.py    # Health checks and metrics
     ├── utils.py         # Auth, rate limiting, schema validation
     └── ssrf_protection.py
 ```

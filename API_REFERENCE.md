@@ -169,6 +169,12 @@ Prometheus-compatible metrics.
 ### GET /metrics/json
 JSON format metrics.
 
+### GET /cluster/instances
+Get list of active API instances registered with the coordinator.
+
+### GET /cluster/info
+Get cluster coordination information (leader status, scaling config).
+
 ---
 
 ## Derivative Endpoints
