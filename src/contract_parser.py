@@ -93,20 +93,21 @@ class ContractParser:
         if re.search(r"\[CONTRACT:", content, re.IGNORECASE):
             return True
 
-        # Check for contract keywords
-        contract_keywords = [
-            "offer",
-            "seeking",
-            "contract for",
-            "proposal",
-            "terms:",
-            "fee:",
-            "escrow:",
-            "facilitation:",
+        # Check for contract keywords using word-boundary matching
+        # to avoid false positives like "offered" matching "offer"
+        contract_patterns = [
+            r"\boffer\b",
+            r"\bseeking\b",
+            r"\bcontract for\b",
+            r"\bproposal\b",
+            r"\bterms:",
+            r"\bfee:",
+            r"\bescrow:",
+            r"\bfacilitation:",
         ]
 
         content_lower = content.lower()
-        return any(keyword in content_lower for keyword in contract_keywords)
+        return any(re.search(pattern, content_lower) for pattern in contract_patterns)
 
     def parse_contract(self, content: str, use_llm: bool = True) -> dict[str, Any]:
         """

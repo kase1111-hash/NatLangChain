@@ -170,6 +170,10 @@ def add_entry():
     # Add to blockchain
     result = state.blockchain.add_entry(entry)
 
+    # Check if the blockchain rejected the entry (e.g., rate limit, duplicate, quality)
+    if result.get("status") in ("rejected", "needs_revision"):
+        return jsonify(result), 422
+
     # Auto-mine if requested
     auto_mine = data.get("auto_mine", False)
     mined_block = None
@@ -339,7 +343,7 @@ def get_entries_by_author(author: str):
     """
     entries = state.blockchain.get_entries_by_author(author)
     return jsonify(
-        {"author": author, "count": len(entries), "entries": [e.to_dict() for e in entries]}
+        {"author": author, "count": len(entries), "entries": entries}
     )
 
 
