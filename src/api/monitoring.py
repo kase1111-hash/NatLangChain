@@ -20,6 +20,7 @@ from flask import Blueprint, Response, jsonify
 
 from . import state
 from .state import get_storage
+from .utils import require_api_key as _require_api_key
 
 # Create the blueprint
 monitoring_bp = Blueprint("monitoring", __name__)
@@ -141,6 +142,7 @@ def readiness():
 
 
 @monitoring_bp.route("/health/detailed", methods=["GET"])
+@_require_api_key
 def detailed_health():
     """
     Detailed health check with system information.

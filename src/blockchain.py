@@ -2117,9 +2117,15 @@ class NatLangChain:
 
         return new_block
 
-    def validate_chain(self) -> bool:
+    def validate_chain(self, verify_pow: bool = True, difficulty: int = 1) -> bool:
         """
         Validate the entire blockchain for integrity.
+
+        Args:
+            verify_pow: Whether to verify proof-of-work on mined blocks
+            difficulty: Minimum difficulty (leading zeros) to verify. Defaults to 1,
+                       the minimum meaningful PoW. Pass a higher value if your chain
+                       was mined with a known higher difficulty.
 
         Returns:
             True if chain is valid, False otherwise
@@ -2135,6 +2141,12 @@ class NatLangChain:
             # Check chain linkage
             if current_block.previous_hash != previous_block.hash:
                 return False
+
+            # Verify proof-of-work: mined blocks must meet difficulty target
+            if verify_pow and current_block.entries:
+                target = "0" * difficulty
+                if not current_block.hash.startswith(target):
+                    return False
 
         return True
 

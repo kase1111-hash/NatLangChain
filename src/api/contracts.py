@@ -212,6 +212,7 @@ def post_contract():
 
 
 @contracts_bp.route("/list", methods=["GET"])
+@require_api_key
 def list_contracts():
     """
     List all contracts, optionally filtered by status or type.

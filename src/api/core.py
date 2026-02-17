@@ -30,6 +30,7 @@ core_bp = Blueprint("core", __name__)
 
 
 @core_bp.route("/chain", methods=["GET"])
+@require_api_key
 def get_chain():
     """
     Get the entire blockchain.
@@ -47,6 +48,7 @@ def get_chain():
 
 
 @core_bp.route("/chain/narrative", methods=["GET"])
+@require_api_key
 def get_narrative():
     """
     Get the full narrative history as human-readable text.
@@ -290,6 +292,7 @@ def mine_block():
 
 
 @core_bp.route("/block/<int:index>", methods=["GET"])
+@require_api_key
 def get_block(index: int):
     """
     Get a specific block by index.
@@ -310,6 +313,7 @@ def get_block(index: int):
 
 
 @core_bp.route("/block/latest", methods=["GET"])
+@require_api_key
 def get_latest_block():
     """
     Get the most recent block.
@@ -331,6 +335,7 @@ def get_latest_block():
 
 
 @core_bp.route("/entries/author/<author>", methods=["GET"])
+@require_api_key
 def get_entries_by_author(author: str):
     """
     Get all entries by a specific author.
@@ -348,6 +353,7 @@ def get_entries_by_author(author: str):
 
 
 @core_bp.route("/entries/search", methods=["GET"])
+@require_api_key
 def search_entries():
     """
     Search entries by content keyword.
@@ -401,6 +407,7 @@ def validate_blockchain():
 
 
 @core_bp.route("/pending", methods=["GET"])
+@require_api_key
 def get_pending_entries():
     """
     Get all pending (unmined) entries.

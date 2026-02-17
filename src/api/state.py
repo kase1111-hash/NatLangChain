@@ -57,7 +57,7 @@ def track_request_end():
     """Decrement in-flight request counter."""
     global _in_flight_requests
     with _request_lock:
-        _in_flight_requests -= 1
+        _in_flight_requests = max(0, _in_flight_requests - 1)
 
 
 def get_in_flight_count() -> int:

@@ -27,6 +27,7 @@ API_KEY_REQUIRED = os.getenv("NATLANGCHAIN_REQUIRE_AUTH", "true").lower() == "tr
 RATE_LIMIT_REQUESTS = int(os.getenv("RATE_LIMIT_REQUESTS", "100"))
 RATE_LIMIT_WINDOW = int(os.getenv("RATE_LIMIT_WINDOW", "60"))  # seconds
 rate_limit_store: dict[str, dict[str, Any]] = {}
+_rate_limit_last_cleanup: float = 0.0
 
 # Bounded parameters - max values for iteration parameters
 MAX_VALIDATORS = 10
@@ -230,6 +231,16 @@ def get_client_ip() -> str:
     )
 
 
+def _cleanup_rate_limit_store(store: dict, window: int, current_time: float) -> None:
+    """Remove expired entries from a rate limit store to prevent unbounded memory growth."""
+    expired_keys = [
+        k for k, v in store.items()
+        if current_time - v["window_start"] > window * 2
+    ]
+    for k in expired_keys:
+        del store[k]
+
+
 def check_rate_limit() -> dict[str, Any] | None:
     """
     Check if client has exceeded rate limit.
@@ -237,8 +248,14 @@ def check_rate_limit() -> dict[str, Any] | None:
     Returns:
         None if within limit, error dict if exceeded
     """
+    global _rate_limit_last_cleanup
     client_ip = get_client_ip()
     current_time = time.time()
+
+    # Periodic cleanup to prevent unbounded memory growth from IP rotation
+    if current_time - _rate_limit_last_cleanup > RATE_LIMIT_WINDOW:
+        _cleanup_rate_limit_store(rate_limit_store, RATE_LIMIT_WINDOW, current_time)
+        _rate_limit_last_cleanup = current_time
 
     if client_ip not in rate_limit_store:
         rate_limit_store[client_ip] = {"count": 0, "window_start": current_time}
@@ -269,6 +286,7 @@ def check_rate_limit() -> dict[str, Any] | None:
 LLM_RATE_LIMIT_REQUESTS = int(os.getenv("LLM_RATE_LIMIT_REQUESTS", "10"))
 LLM_RATE_LIMIT_WINDOW = int(os.getenv("LLM_RATE_LIMIT_WINDOW", "60"))  # seconds
 llm_rate_limit_store: dict[str, dict[str, Any]] = {}
+_llm_rate_limit_last_cleanup: float = 0.0
 
 
 def check_llm_rate_limit() -> dict[str, Any] | None:
@@ -279,8 +297,14 @@ def check_llm_rate_limit() -> dict[str, Any] | None:
     Returns:
         None if within limit, error dict if exceeded
     """
+    global _llm_rate_limit_last_cleanup
     client_ip = get_client_ip()
     current_time = time.time()
+
+    # Periodic cleanup to prevent unbounded memory growth from IP rotation
+    if current_time - _llm_rate_limit_last_cleanup > LLM_RATE_LIMIT_WINDOW:
+        _cleanup_rate_limit_store(llm_rate_limit_store, LLM_RATE_LIMIT_WINDOW, current_time)
+        _llm_rate_limit_last_cleanup = current_time
 
     if client_ip not in llm_rate_limit_store:
         llm_rate_limit_store[client_ip] = {"count": 0, "window_start": current_time}
