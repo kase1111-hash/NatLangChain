@@ -296,6 +296,14 @@ def respond_to_contract():
             }
         ), 400
 
+    # Validate types for index parameters
+    if not isinstance(to_block, int) or not isinstance(to_entry, int):
+        return jsonify({"error": "to_block and to_entry must be integers"}), 400
+
+    # Validate counter_terms type if provided
+    if "counter_terms" in data and not isinstance(data["counter_terms"], dict):
+        return jsonify({"error": "counter_terms must be a JSON object"}), 400
+
     # Get original entry
     if to_block < 0 or to_block >= len(state.blockchain.chain):
         return jsonify({"error": "Block not found"}), 404

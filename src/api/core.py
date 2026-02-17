@@ -114,10 +114,33 @@ def add_entry():
     author = data["author"]
     intent = data["intent"]
 
-    # Validate metadata size if provided
+    # Validate metadata size and structure if provided
     MAX_METADATA_LEN = 10000  # 10KB for metadata
+    MAX_METADATA_KEYS = 100  # Maximum number of top-level keys
+    MAX_METADATA_DEPTH = 5  # Maximum nesting depth
     metadata = data.get("metadata", {})
     if metadata:
+        # Validate key count to prevent resource exhaustion
+        if len(metadata) > MAX_METADATA_KEYS:
+            return jsonify(
+                {"error": "Metadata has too many keys", "max_keys": MAX_METADATA_KEYS}
+            ), 400
+
+        # Validate nesting depth
+        def _check_depth(obj, depth=1):
+            if depth > MAX_METADATA_DEPTH:
+                return False
+            if isinstance(obj, dict):
+                return all(_check_depth(v, depth + 1) for v in obj.values())
+            if isinstance(obj, list):
+                return all(_check_depth(v, depth + 1) for v in obj)
+            return True
+
+        if not _check_depth(metadata):
+            return jsonify(
+                {"error": "Metadata nesting too deep", "max_depth": MAX_METADATA_DEPTH}
+            ), 400
+
         try:
             metadata_str = json.dumps(metadata)
             if len(metadata_str) > MAX_METADATA_LEN:
