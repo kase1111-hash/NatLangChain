@@ -387,13 +387,14 @@ Respond in JSON format:
             Drift analysis
         """
         try:
+            safe_original = sanitize_prompt_input(original, MAX_CONTENT_LENGTH, "original")
+            safe_paraphrase = sanitize_prompt_input(paraphrase, MAX_CONTENT_LENGTH, "paraphrase")
+
             drift_prompt = f"""Compare these two texts for semantic equivalence:
 
-ORIGINAL:
-{original}
+{create_safe_prompt_section("ORIGINAL", safe_original, MAX_CONTENT_LENGTH)}
 
-PARAPHRASE:
-{paraphrase}
+{create_safe_prompt_section("PARAPHRASE", safe_paraphrase, MAX_CONTENT_LENGTH)}
 
 Assess whether they convey the same meaning. Respond in JSON:
 {{
@@ -443,13 +444,15 @@ Assess whether they convey the same meaning. Respond in JSON:
             Suggested clarifications
         """
         try:
+            safe_content = sanitize_prompt_input(content, MAX_CONTENT_LENGTH, "content")
+            safe_ambiguities = [sanitize_prompt_input(a, 1000, "ambiguity") for a in ambiguities]
+
             clarification_prompt = f"""The following entry has been flagged for ambiguity:
 
-CONTENT:
-{content}
+{create_safe_prompt_section("CONTENT", safe_content, MAX_CONTENT_LENGTH)}
 
 DETECTED AMBIGUITIES:
-{chr(10).join(f"- {amb}" for amb in ambiguities)}
+{chr(10).join(f"- {amb}" for amb in safe_ambiguities)}
 
 Generate specific clarification questions that would resolve these ambiguities. Respond in JSON:
 {{

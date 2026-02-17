@@ -57,7 +57,7 @@ def track_request_end():
     """Decrement in-flight request counter."""
     global _in_flight_requests
     with _request_lock:
-        _in_flight_requests -= 1
+        _in_flight_requests = max(0, _in_flight_requests - 1)
 
 
 def get_in_flight_count() -> int:
@@ -137,7 +137,7 @@ def create_entry_with_encryption(
     encrypted_metadata = metadata or {}
     if is_encryption_enabled() and encrypted_metadata:
         encrypted_metadata = encrypt_sensitive_fields(
-            encrypted_metadata, sensitive_keys=["private_notes", "internal_id", "contact_info"]
+            encrypted_metadata, additional_fields={"private_notes", "internal_id", "contact_info"}
         )
 
     return NaturalLanguageEntry(
@@ -160,7 +160,7 @@ def decrypt_entry_metadata(entry_dict: dict[str, Any]) -> dict[str, Any]:
 
     if entry_dict.get("metadata"):
         entry_dict["metadata"] = decrypt_sensitive_fields(
-            entry_dict["metadata"], sensitive_keys=["private_notes", "internal_id", "contact_info"]
+            entry_dict["metadata"]
         )
 
     return entry_dict

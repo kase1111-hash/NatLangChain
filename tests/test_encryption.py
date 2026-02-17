@@ -335,7 +335,7 @@ class TestHashingUtilities:
         value = "0x1234567890abcdef"
         hashed = hash_sensitive_value(value)
 
-        assert hashed.startswith("HASH:1:")
+        assert hashed.startswith("HASH:2:")
         assert value not in hashed
 
     def test_verify_correct_value(self):

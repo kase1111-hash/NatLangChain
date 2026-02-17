@@ -123,8 +123,7 @@ def _register_security_middleware(app):
         ):
             from . import state
 
-            if not state.is_shutting_down():
-                state.track_request_end()
+            state.track_request_end()
 
     @app.after_request
     def add_security_headers(response):

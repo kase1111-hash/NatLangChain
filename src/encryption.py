@@ -94,14 +94,26 @@ def _derive_key(password: str, salt: bytes) -> bytes:
     return kdf.derive(password.encode("utf-8"))
 
 
+MIN_KEY_LENGTH = 16  # Minimum passphrase length for adequate security
+
+
 def _get_encryption_key() -> str | None:
     """
     Get the encryption key from environment variable.
 
     Returns:
         The encryption key or None if not configured
+
+    Raises:
+        KeyDerivationError: If the key is too short
     """
-    return os.getenv(ENCRYPTION_KEY_ENV)
+    key = os.getenv(ENCRYPTION_KEY_ENV)
+    if key is not None and len(key) < MIN_KEY_LENGTH:
+        raise KeyDerivationError(
+            f"Encryption key too short (minimum {MIN_KEY_LENGTH} characters). "
+            "Use generate_encryption_key() to create a secure key."
+        )
+    return key
 
 
 def is_encryption_enabled() -> bool:
@@ -128,13 +140,18 @@ def generate_encryption_key() -> str:
     return base64.b64encode(key_bytes).decode("utf-8")
 
 
-def encrypt_data(data: str | bytes | dict[str, Any], key: str | None = None) -> str:
+def encrypt_data(
+    data: str | bytes | dict[str, Any], key: str | None = None, aad: bytes | None = None
+) -> str:
     """
     Encrypt data using AES-256-GCM.
 
     Args:
         data: Data to encrypt (string, bytes, or JSON-serializable dict)
         key: Optional encryption key. If not provided, uses environment variable.
+        aad: Optional additional authenticated data (AAD) for GCM authentication.
+             AAD is authenticated but not encrypted; the same AAD must be provided
+             during decryption.
 
     Returns:
         Base64-encoded encrypted data with format: ENCRYPTED_PREFIX + salt + iv + ciphertext
@@ -165,9 +182,9 @@ def encrypt_data(data: str | bytes | dict[str, Any], key: str | None = None) -> 
         # Derive key from password
         derived_key = _derive_key(encryption_key, salt)
 
-        # Encrypt using AES-256-GCM
+        # Encrypt using AES-256-GCM with optional AAD
         aesgcm = AESGCM(derived_key)
-        ciphertext = aesgcm.encrypt(iv, data_bytes, None)
+        ciphertext = aesgcm.encrypt(iv, data_bytes, aad)
 
         # Combine salt + iv + ciphertext and encode
         encrypted_blob = salt + iv + ciphertext
@@ -180,7 +197,8 @@ def encrypt_data(data: str | bytes | dict[str, Any], key: str | None = None) -> 
 
 
 def decrypt_data(
-    encrypted_data: str, key: str | None = None, return_type: str = "auto"
+    encrypted_data: str, key: str | None = None, return_type: str = "auto",
+    aad: bytes | None = None
 ) -> str | bytes | dict[str, Any]:
     """
     Decrypt AES-256-GCM encrypted data.
@@ -189,6 +207,8 @@ def decrypt_data(
         encrypted_data: Base64-encoded encrypted data with ENCRYPTED_PREFIX
         key: Optional decryption key. If not provided, uses environment variable.
         return_type: "auto", "str", "bytes", or "json"
+        aad: Optional additional authenticated data (AAD). Must match the AAD
+             used during encryption, or decryption will fail.
 
     Returns:
         Decrypted data as string, bytes, or dict based on return_type
@@ -223,9 +243,9 @@ def decrypt_data(
         # Derive key from password
         derived_key = _derive_key(encryption_key, salt)
 
-        # Decrypt using AES-256-GCM
+        # Decrypt using AES-256-GCM with optional AAD
         aesgcm = AESGCM(derived_key)
-        plaintext = aesgcm.decrypt(iv, ciphertext, None)
+        plaintext = aesgcm.decrypt(iv, ciphertext, aad)
 
         # Return in requested format
         if return_type == "bytes":
@@ -401,31 +421,46 @@ def decrypt_chain_data(encrypted_data: str, key: str | None = None) -> dict[str,
     return decrypt_data(encrypted_data, key, return_type="json")
 
 
+HASH_PBKDF2_ITERATIONS = 100_000  # iterations for hashing (less than encryption since one-way)
+
+
 def hash_sensitive_value(value: str, salt: str | None = None) -> str:
     """
     Create a one-way hash of a sensitive value for comparison/lookup.
     Useful for wallet addresses or identifiers that need to be searchable
     without storing the plain value.
 
+    Uses PBKDF2-HMAC-SHA256 for brute-force resistance (version 2).
+
     Args:
         value: Value to hash
         salt: Optional salt (uses random if not provided)
 
     Returns:
-        Salted hash in format "HASH:1:salt:hash"
+        Salted hash in format "HASH:2:salt:hash"
     """
     if salt is None:
         salt = secrets.token_hex(16)
 
-    hash_input = f"{salt}:{value}".encode()
-    hash_value = hashlib.sha256(hash_input).hexdigest()
+    salt_bytes = salt.encode("utf-8")
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt_bytes,
+        iterations=HASH_PBKDF2_ITERATIONS,
+        backend=default_backend(),
+    )
+    hash_bytes = kdf.derive(value.encode("utf-8"))
+    hash_value = hash_bytes.hex()
 
-    return f"HASH:1:{salt}:{hash_value}"
+    return f"HASH:2:{salt}:{hash_value}"
 
 
 def verify_hashed_value(value: str, hashed: str) -> bool:
     """
     Verify a value against its hash.
+
+    Supports both v1 (SHA-256) and v2 (PBKDF2) hash formats for backward compatibility.
 
     Args:
         value: Plain value to verify
@@ -434,21 +469,34 @@ def verify_hashed_value(value: str, hashed: str) -> bool:
     Returns:
         True if value matches hash
     """
-    if not hashed.startswith("HASH:1:"):
-        return False
-
     parts = hashed.split(":")
-    if len(parts) != 4:
+    if len(parts) != 4 or parts[0] != "HASH":
         return False
 
+    version = parts[1]
     salt = parts[2]
     expected_hash = parts[3]
 
-    hash_input = f"{salt}:{value}".encode()
-    actual_hash = hashlib.sha256(hash_input).hexdigest()
-
-    # Constant-time comparison
-    return secrets.compare_digest(actual_hash, expected_hash)
+    if version == "1":
+        # Legacy v1: single SHA-256
+        hash_input = f"{salt}:{value}".encode()
+        actual_hash = hashlib.sha256(hash_input).hexdigest()
+        return secrets.compare_digest(actual_hash, expected_hash)
+    elif version == "2":
+        # v2: PBKDF2-HMAC-SHA256
+        salt_bytes = salt.encode("utf-8")
+        kdf = PBKDF2HMAC(
+            algorithm=hashes.SHA256(),
+            length=32,
+            salt=salt_bytes,
+            iterations=HASH_PBKDF2_ITERATIONS,
+            backend=default_backend(),
+        )
+        hash_bytes = kdf.derive(value.encode("utf-8"))
+        actual_hash = hash_bytes.hex()
+        return secrets.compare_digest(actual_hash, expected_hash)
+    else:
+        return False
 
 
 # Export public API

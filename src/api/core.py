@@ -30,6 +30,7 @@ core_bp = Blueprint("core", __name__)
 
 
 @core_bp.route("/chain", methods=["GET"])
+@require_api_key
 def get_chain():
     """
     Get the entire blockchain.
@@ -47,6 +48,7 @@ def get_chain():
 
 
 @core_bp.route("/chain/narrative", methods=["GET"])
+@require_api_key
 def get_narrative():
     """
     Get the full narrative history as human-readable text.
@@ -112,10 +114,33 @@ def add_entry():
     author = data["author"]
     intent = data["intent"]
 
-    # Validate metadata size if provided
+    # Validate metadata size and structure if provided
     MAX_METADATA_LEN = 10000  # 10KB for metadata
+    MAX_METADATA_KEYS = 100  # Maximum number of top-level keys
+    MAX_METADATA_DEPTH = 5  # Maximum nesting depth
     metadata = data.get("metadata", {})
     if metadata:
+        # Validate key count to prevent resource exhaustion
+        if len(metadata) > MAX_METADATA_KEYS:
+            return jsonify(
+                {"error": "Metadata has too many keys", "max_keys": MAX_METADATA_KEYS}
+            ), 400
+
+        # Validate nesting depth
+        def _check_depth(obj, depth=1):
+            if depth > MAX_METADATA_DEPTH:
+                return False
+            if isinstance(obj, dict):
+                return all(_check_depth(v, depth + 1) for v in obj.values())
+            if isinstance(obj, list):
+                return all(_check_depth(v, depth + 1) for v in obj)
+            return True
+
+        if not _check_depth(metadata):
+            return jsonify(
+                {"error": "Metadata nesting too deep", "max_depth": MAX_METADATA_DEPTH}
+            ), 400
+
         try:
             metadata_str = json.dumps(metadata)
             if len(metadata_str) > MAX_METADATA_LEN:
@@ -169,6 +194,10 @@ def add_entry():
 
     # Add to blockchain
     result = state.blockchain.add_entry(entry)
+
+    # Check if the blockchain rejected the entry (e.g., rate limit, duplicate, quality)
+    if result.get("status") in ("rejected", "needs_revision"):
+        return jsonify(result), 422
 
     # Auto-mine if requested
     auto_mine = data.get("auto_mine", False)
@@ -286,6 +315,7 @@ def mine_block():
 
 
 @core_bp.route("/block/<int:index>", methods=["GET"])
+@require_api_key
 def get_block(index: int):
     """
     Get a specific block by index.
@@ -306,6 +336,7 @@ def get_block(index: int):
 
 
 @core_bp.route("/block/latest", methods=["GET"])
+@require_api_key
 def get_latest_block():
     """
     Get the most recent block.
@@ -327,6 +358,7 @@ def get_latest_block():
 
 
 @core_bp.route("/entries/author/<author>", methods=["GET"])
+@require_api_key
 def get_entries_by_author(author: str):
     """
     Get all entries by a specific author.
@@ -339,11 +371,12 @@ def get_entries_by_author(author: str):
     """
     entries = state.blockchain.get_entries_by_author(author)
     return jsonify(
-        {"author": author, "count": len(entries), "entries": [e.to_dict() for e in entries]}
+        {"author": author, "count": len(entries), "entries": entries}
     )
 
 
 @core_bp.route("/entries/search", methods=["GET"])
+@require_api_key
 def search_entries():
     """
     Search entries by content keyword.
@@ -397,6 +430,7 @@ def validate_blockchain():
 
 
 @core_bp.route("/pending", methods=["GET"])
+@require_api_key
 def get_pending_entries():
     """
     Get all pending (unmined) entries.

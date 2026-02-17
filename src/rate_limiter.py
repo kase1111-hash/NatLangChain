@@ -66,6 +66,7 @@ class RateLimitConfig:
 
     # Fallback behavior
     fallback_to_memory: bool = True  # Use memory if Redis fails
+    fail_open: bool = False  # If True, allow requests when rate limiter errors; if False, deny
 
     @classmethod
     def from_env(cls) -> "RateLimitConfig":
@@ -79,6 +80,7 @@ class RateLimitConfig:
             redis_prefix=os.getenv("RATE_LIMIT_REDIS_PREFIX", "natlangchain:ratelimit:"),
             redis_timeout=float(os.getenv("RATE_LIMIT_REDIS_TIMEOUT", "1.0")),
             fallback_to_memory=os.getenv("RATE_LIMIT_FALLBACK", "true").lower() == "true",
+            fail_open=os.getenv("RATE_LIMIT_FAIL_OPEN", "false").lower() == "true",
         )
 
 
@@ -379,14 +381,26 @@ class RateLimiter:
         except Exception as e:
             logger.error(f"Rate limit check failed: {e}")
 
-            # On error, allow the request (fail open)
-            return RateLimitResult(
-                exceeded=False,
-                remaining=effective_limit,
-                limit=effective_limit,
-                reset_at=time.time() + effective_window,
-                retry_after=0,
-            )
+            if self.config.fail_open:
+                # Fail open: allow the request when rate limiter errors
+                logger.warning("Rate limiter failing open - request allowed without limit check")
+                return RateLimitResult(
+                    exceeded=False,
+                    remaining=effective_limit,
+                    limit=effective_limit,
+                    reset_at=time.time() + effective_window,
+                    retry_after=0,
+                )
+            else:
+                # Fail closed: deny the request when rate limiter errors
+                logger.warning("Rate limiter failing closed - request denied due to limiter error")
+                return RateLimitResult(
+                    exceeded=True,
+                    remaining=0,
+                    limit=effective_limit,
+                    reset_at=time.time() + effective_window,
+                    retry_after=effective_window,
+                )
 
     def check_limit_multi(
         self, identifiers: list[str], limits: dict[str, int] | None = None
