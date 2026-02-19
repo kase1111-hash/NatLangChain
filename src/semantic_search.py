@@ -5,6 +5,7 @@ Integrated version with correct data structures
 """
 
 import logging
+import os
 from typing import Any
 
 import numpy as np
@@ -72,7 +73,12 @@ class SemanticSearchEngine:
         self.model_name = model_name
         try:
             logger.info("Loading sentence transformer model: %s", model_name)
-            self.model = SentenceTransformer(model_name)
+            # SECURITY: Use local cache to avoid runtime model downloads (Finding 3.2)
+            cache_dir = os.getenv("SENTENCE_TRANSFORMERS_HOME")
+            if cache_dir:
+                self.model = SentenceTransformer(model_name, cache_folder=cache_dir)
+            else:
+                self.model = SentenceTransformer(model_name)
             logger.info("Successfully loaded model: %s", model_name)
         except OSError as e:
             logger.error(

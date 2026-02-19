@@ -59,7 +59,13 @@ def get_narrative():
         Complete narrative of all entries
     """
     narrative = state.blockchain.get_full_narrative()
-    return narrative, 200, {"Content-Type": "text/plain; charset=utf-8"}
+    # SECURITY: Sanitize narrative output to prevent injection payload passthrough (Finding 2.2)
+    from sanitization import sanitize_output
+    narrative = sanitize_output(narrative)
+    return narrative, 200, {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Content-Disposition": "inline",
+    }
 
 
 @core_bp.route("/entry", methods=["POST"])
@@ -412,6 +418,7 @@ def search_entries():
 
 
 @core_bp.route("/validate/chain", methods=["GET"])
+@require_api_key
 def validate_blockchain():
     """
     Validate the entire blockchain integrity.
@@ -447,6 +454,7 @@ def get_pending_entries():
 
 
 @core_bp.route("/stats", methods=["GET"])
+@require_api_key
 def get_stats():
     """
     Get blockchain statistics.

@@ -9,6 +9,7 @@ import json
 import logging
 import os
 import re
+import unicodedata
 from typing import Any
 
 from anthropic import Anthropic
@@ -68,6 +69,9 @@ def sanitize_prompt_input(
     if not isinstance(text, str):
         text = str(text) if text is not None else ""
 
+    # SECURITY: Normalize Unicode to prevent confusable bypasses (Finding 1.2)
+    text = unicodedata.normalize("NFKC", text)
+
     # Truncate to max length
     if len(text) > max_length:
         text = text[:max_length] + f"... [TRUNCATED - exceeded {max_length} chars]"
@@ -76,9 +80,13 @@ def sanitize_prompt_input(
     text_lower = text.lower()
     for pattern in PROMPT_INJECTION_PATTERNS:
         if re.search(pattern, text_lower, re.IGNORECASE):
+            # SECURITY: Log matched pattern server-side only (Finding 9.5)
+            logger.warning(
+                "Prompt injection detected in %s: pattern=%s",
+                field_name, pattern,
+            )
             raise ValueError(
-                f"Potential prompt injection detected in {field_name}. "
-                f"Input contains suspicious pattern matching: {pattern}"
+                f"Input rejected for security reasons in field '{field_name}'."
             )
 
     # Escape delimiter-like sequences that could break prompt structure
@@ -255,6 +263,16 @@ Respond in JSON format:
             response_text = self._extract_json_from_response(response_text)
 
             result = json.loads(response_text)
+
+            # SECURITY: Validate LLM response schema (Finding 1.3)
+            VALID_DECISIONS = {"VALID", "NEEDS_CLARIFICATION", "INVALID"}
+            decision = result.get("decision", "")
+            if decision not in VALID_DECISIONS:
+                logger.warning("LLM returned invalid decision: %s", decision)
+                result["decision"] = "INVALID"
+                result["reasoning"] = f"Invalid decision '{decision}' replaced with INVALID"
+            if not isinstance(result.get("intent_match"), bool):
+                result["intent_match"] = False
 
             return {"status": "success", "validation": result}
 

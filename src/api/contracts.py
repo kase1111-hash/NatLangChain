@@ -44,6 +44,7 @@ def _check_contract_features():
 
 
 @contracts_bp.route("/parse", methods=["POST"])
+@require_api_key
 @rate_limit_llm
 def parse_contract_endpoint():
     """
