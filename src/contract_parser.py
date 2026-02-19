@@ -13,28 +13,22 @@ from typing import Any
 from anthropic import Anthropic
 
 # SECURITY: Import prompt injection prevention utilities
+# Primary: standalone sanitization module with zero dependencies (Finding 1.1)
+from sanitization import (
+    MAX_CONTENT_LENGTH,
+    create_safe_prompt_section,
+    sanitize_prompt_input,
+)
+
+# Optionally upgrade to full validator if available
 try:
     from validator import (
         MAX_CONTENT_LENGTH,
         create_safe_prompt_section,
         sanitize_prompt_input,
     )
-
-    _SANITIZATION_AVAILABLE = True
 except ImportError:
-    _SANITIZATION_AVAILABLE = False
-    MAX_CONTENT_LENGTH = 10000
-
-    def sanitize_prompt_input(text, max_length=10000, field_name="input"):
-        """Minimal fallback: truncate only."""
-        if not isinstance(text, str):
-            text = str(text) if text is not None else ""
-        return text[:max_length].strip()
-
-    def create_safe_prompt_section(label, content, max_length):
-        """Minimal fallback: basic delimiters."""
-        sanitized = sanitize_prompt_input(content, max_length, label)
-        return f"[BEGIN {label}]\n{sanitized}\n[END {label}]"
+    pass  # sanitization module already loaded above
 
 
 logger = logging.getLogger(__name__)

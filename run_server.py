@@ -113,6 +113,15 @@ def run_server():
     rate_limit_requests = int(os.getenv("RATE_LIMIT_REQUESTS", "100"))
     rate_limit_window = int(os.getenv("RATE_LIMIT_WINDOW", "60"))
 
+    # SECURITY: Refuse to start with debug mode AND auth disabled (Finding 6.3)
+    if debug and not api_key_required:
+        print("\n[SECURITY ERROR] Cannot start with FLASK_DEBUG=true and "
+              "NATLANGCHAIN_REQUIRE_AUTH=false simultaneously.")
+        print("This combination exposes the Werkzeug interactive debugger "
+              "without authentication, enabling remote code execution.")
+        print("Either disable debug mode or enable authentication.")
+        sys.exit(1)
+
     print(f"\n{'=' * 60}")
     print("NatLangChain API Server")
     print(f"{'=' * 60}")

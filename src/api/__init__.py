@@ -111,6 +111,17 @@ def _register_security_middleware(app):
             response.headers["Retry-After"] = str(rate_error.get("retry_after", 60))
             return response
 
+        # SECURITY: CSRF protection via Origin header validation (Finding 9.4)
+        if request.method in ("POST", "PUT", "DELETE"):
+            origin = request.headers.get("Origin")
+            if origin:
+                allowed_origins_str = os.getenv("CORS_ALLOWED_ORIGINS", "")
+                if allowed_origins_str and allowed_origins_str != "*":
+                    allowed_list = [o.strip() for o in allowed_origins_str.split(",")]
+                    if origin not in allowed_list:
+                        state.track_request_end()
+                        return jsonify({"error": "Origin not allowed"}), 403
+
         return None
 
     @app.teardown_request
@@ -152,7 +163,11 @@ def _register_security_middleware(app):
         allowed_origins_str = os.getenv("CORS_ALLOWED_ORIGINS", "")
 
         if allowed_origins_str == "*":
-            response.headers["Access-Control-Allow-Origin"] = "*"
+            # SECURITY: Wildcard CORS is not allowed (Finding 9.2)
+            import logging as _logging
+            _logging.getLogger(__name__).warning(
+                "CORS_ALLOWED_ORIGINS='*' is not supported. Ignoring wildcard."
+            )
         elif allowed_origins_str:
             request_origin = request.headers.get("Origin", "")
             allowed_list = [o.strip() for o in allowed_origins_str.split(",")]
@@ -164,6 +179,14 @@ def _register_security_middleware(app):
         response.headers["Access-Control-Allow-Headers"] = (
             "Content-Type, X-API-Key, Authorization"
         )
+
+        # SECURITY: Additional security headers (Finding 9.3)
+        response.headers["Referrer-Policy"] = "no-referrer"
+        response.headers["Permissions-Policy"] = (
+            "camera=(), microphone=(), geolocation=(), payment=()"
+        )
+        response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+        response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
 
         return response
 

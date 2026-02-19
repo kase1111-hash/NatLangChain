@@ -15,6 +15,15 @@ from blockchain import NatLangChain, NaturalLanguageEntry
 from contract_parser import ContractParser
 
 # SECURITY: Import prompt injection prevention utilities
+# Primary: standalone sanitization module with zero dependencies (Finding 1.1)
+from sanitization import (
+    MAX_CONTENT_LENGTH,
+    MAX_INTENT_LENGTH,
+    create_safe_prompt_section,
+    sanitize_prompt_input,
+)
+
+# Optionally upgrade to full validator if available
 try:
     from validator import (
         MAX_CONTENT_LENGTH,
@@ -22,23 +31,8 @@ try:
         create_safe_prompt_section,
         sanitize_prompt_input,
     )
-
-    _SANITIZATION_AVAILABLE = True
 except ImportError:
-    _SANITIZATION_AVAILABLE = False
-    MAX_CONTENT_LENGTH = 10000
-    MAX_INTENT_LENGTH = 1000
-
-    def sanitize_prompt_input(text, max_length=10000, field_name="input"):
-        """Minimal fallback: truncate only."""
-        if not isinstance(text, str):
-            text = str(text) if text is not None else ""
-        return text[:max_length].strip()
-
-    def create_safe_prompt_section(label, content, max_length):
-        """Minimal fallback: basic delimiters."""
-        sanitized = sanitize_prompt_input(content, max_length, label)
-        return f"[BEGIN {label}]\n{sanitized}\n[END {label}]"
+    pass  # sanitization module already loaded above
 
 
 MAX_AUTHOR_LENGTH = 200
@@ -177,12 +171,18 @@ class ContractMatcher:
                 if status != ContractParser.STATUS_OPEN:
                     continue
 
-                # Add to list with block info
+                # SECURITY: Re-sanitize stored content before LLM re-use (Finding 2.1)
                 open_contracts.append(
                     {
-                        "content": entry.content,
-                        "author": entry.author,
-                        "intent": entry.intent,
+                        "content": sanitize_prompt_input(
+                            entry.content, MAX_CONTENT_LENGTH, "stored_content"
+                        ),
+                        "author": sanitize_prompt_input(
+                            entry.author, MAX_AUTHOR_LENGTH, "stored_author"
+                        ),
+                        "intent": sanitize_prompt_input(
+                            entry.intent, MAX_INTENT_LENGTH, "stored_intent"
+                        ),
                         "metadata": entry.metadata,
                         "timestamp": entry.timestamp,
                         "block_index": block.index,
@@ -260,6 +260,16 @@ Return JSON:
                 result = json.loads(response_text)
             except json.JSONDecodeError as e:
                 raise ValueError(f"Failed to parse match result JSON: {e.msg} at position {e.pos}")
+
+            # SECURITY: Validate LLM response schema (Finding 1.3)
+            score = result.get("score", 0)
+            if not isinstance(score, (int, float)) or score < 0 or score > 100:
+                logger.warning("LLM returned invalid match score: %s", score)
+                result["score"] = 0
+            VALID_RECOMMENDATIONS = {"MATCH", "PARTIAL", "NO_MATCH"}
+            if result.get("recommendation") not in VALID_RECOMMENDATIONS:
+                logger.warning("LLM returned invalid recommendation: %s", result.get("recommendation"))
+                result["recommendation"] = "NO_MATCH"
 
             return result
 

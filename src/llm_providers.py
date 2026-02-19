@@ -24,10 +24,83 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
+import shutil
+from urllib.parse import urlparse
+
 import requests
 
 # Configure module-level logger
 logger = logging.getLogger(__name__)
+
+# SECURITY: Provider URL SSRF validation (Finding 6.2, 7.1)
+ALLOW_LOCAL_PROVIDERS = os.getenv("NATLANGCHAIN_ALLOW_LOCAL_PROVIDERS", "true").lower() == "true"
+_ALLOWED_PROVIDER_HOSTS_STR = os.getenv("NATLANGCHAIN_ALLOWED_PROVIDER_HOSTS", "")
+ALLOWED_PROVIDER_HOSTS = [
+    h.strip() for h in _ALLOWED_PROVIDER_HOSTS_STR.split(",") if h.strip()
+]
+
+
+def _validate_provider_url(url: str) -> tuple[bool, str | None]:
+    """
+    Validate provider URL against SSRF protections with local exception.
+
+    SECURITY: Prevents SSRF attacks via provider base URLs (Finding 6.2).
+    Allows localhost by default for local providers (configurable via
+    NATLANGCHAIN_ALLOW_LOCAL_PROVIDERS).
+
+    Also enforces optional host allowlist via NATLANGCHAIN_ALLOWED_PROVIDER_HOSTS
+    (Finding 7.1).
+    """
+    if not url:
+        return False, "Provider URL is required"
+
+    parsed = urlparse(url)
+    hostname = parsed.hostname or ""
+
+    # Check optional host allowlist (Finding 7.1)
+    if ALLOWED_PROVIDER_HOSTS:
+        if hostname not in ALLOWED_PROVIDER_HOSTS:
+            return False, (
+                f"Provider host '{hostname}' not in allowed list. "
+                f"Allowed: {ALLOWED_PROVIDER_HOSTS}"
+            )
+        return True, None
+
+    # Allow localhost for local provider usage
+    if ALLOW_LOCAL_PROVIDERS and hostname in ("localhost", "127.0.0.1", "::1"):
+        return True, None
+
+    # Full SSRF validation for non-local URLs
+    try:
+        from api.ssrf_protection import validate_url_for_ssrf
+        return validate_url_for_ssrf(url)
+    except ImportError:
+        # If ssrf_protection not importable, at least block obvious dangerous hosts
+        if hostname in ("169.254.169.254", "metadata.google.internal"):
+            return False, f"Access to host '{hostname}' is blocked for security reasons"
+        return True, None
+
+# SECURITY: Allowlist of permitted llama.cpp binary paths (Finding 6.1)
+ALLOWED_CLI_PATHS = {
+    "llama-cli",
+    "/usr/local/bin/llama-cli",
+    "/usr/bin/llama-cli",
+    "/opt/llama.cpp/llama-cli",
+}
+
+# SECURITY: Maximum prompt size for CLI subprocess invocation (Finding 6.1)
+MAX_CLI_PROMPT_LENGTH = 100_000  # 100KB
+
+
+def _validate_cli_path(cli_path: str) -> str:
+    """Validate cli_path against allowlist. Returns resolved path or raises ValueError."""
+    resolved = shutil.which(cli_path) or cli_path
+    if cli_path not in ALLOWED_CLI_PATHS and resolved not in ALLOWED_CLI_PATHS:
+        raise ValueError(
+            f"CLI path '{cli_path}' is not in the allowed list. "
+            f"Allowed paths: {sorted(ALLOWED_CLI_PATHS)}"
+        )
+    return resolved
 
 
 class ProviderType(Enum):
@@ -64,7 +137,7 @@ class ProviderConfig:
     strength: ProviderStrength
     weight: float = 1.0
     model_id: str = ""
-    api_key: str | None = None
+    api_key: str | None = field(default=None, repr=False)
     base_url: str | None = None
     timeout: int = 30
     max_retries: int = 3
@@ -664,8 +737,17 @@ class OllamaProvider(LLMProvider):
             )
         super().__init__(config)
 
+        # SECURITY: Validate base URL against SSRF protections (Finding 6.2)
+        if self.config.base_url:
+            is_safe, error_msg = _validate_provider_url(self.config.base_url)
+            if not is_safe:
+                logger.error("Ollama base URL failed SSRF validation: %s", error_msg)
+                self.config.enabled = False
+
     def is_available(self) -> bool:
         """Check if Ollama server is running and model is available."""
+        if not self.config.enabled:
+            return False
         try:
             response = requests.get(
                 f"{self.config.base_url}/api/tags",
@@ -785,8 +867,17 @@ class LlamaCppProvider(LLMProvider):
         super().__init__(config)
         self._use_server = self.config.extra_params.get("use_server", True)
 
+        # SECURITY: Validate base URL against SSRF protections (Finding 6.2)
+        if self.config.base_url:
+            is_safe, error_msg = _validate_provider_url(self.config.base_url)
+            if not is_safe:
+                logger.error("llama.cpp base URL failed SSRF validation: %s", error_msg)
+                self.config.enabled = False
+
     def is_available(self) -> bool:
         """Check if llama.cpp is available (server or CLI)."""
+        if not self.config.enabled:
+            return False
         # Try server mode first
         if self._use_server:
             try:
@@ -805,6 +896,12 @@ class LlamaCppProvider(LLMProvider):
 
         # Try CLI mode
         cli_path = self.config.extra_params.get("cli_path", "llama-cli")
+        # SECURITY: Validate cli_path against allowlist (Finding 6.1)
+        try:
+            cli_path = _validate_cli_path(cli_path)
+        except ValueError:
+            logger.warning("llama.cpp CLI path '%s' not in allowlist", cli_path)
+            return False
         try:
             result = subprocess.run(
                 [cli_path, "--version"],
@@ -888,6 +985,26 @@ class LlamaCppProvider(LLMProvider):
         """Complete using llama.cpp CLI directly."""
         start_time = time.time()
         cli_path = self.config.extra_params.get("cli_path", "llama-cli")
+
+        # SECURITY: Validate cli_path against allowlist (Finding 6.1)
+        try:
+            cli_path = _validate_cli_path(cli_path)
+        except ValueError as e:
+            return LLMResponse(
+                success=False,
+                error=str(e),
+                provider=self.name,
+                model=self.config.model_id,
+            )
+
+        # SECURITY: Enforce prompt size limit for subprocess (Finding 6.1)
+        if len(prompt) > MAX_CLI_PROMPT_LENGTH:
+            return LLMResponse(
+                success=False,
+                error=f"Prompt exceeds maximum CLI length ({MAX_CLI_PROMPT_LENGTH} chars)",
+                provider=self.name,
+                model=self.config.model_id,
+            )
 
         try:
             result = subprocess.run(

@@ -2,7 +2,11 @@
 # Generated: 2025-12-31
 #
 # This file contains exact versions for reproducible builds.
-# Update by running: pip-compile requirements.in -o requirements-lock.txt
+# Update by running: pip-compile --generate-hashes requirements.in -o requirements-lock.txt
+#
+# SECURITY (Finding 3.1): For production deployments, regenerate this file
+# with hash pinning using: pip-compile --generate-hashes requirements.in -o requirements-lock.txt
+# Then update the Dockerfile to use: pip install --require-hashes -r requirements-lock.txt
 #
 # Install: pip install -r requirements-lock.txt
 

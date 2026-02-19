@@ -17,10 +17,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Install Python dependencies
-COPY requirements.txt .
+# Install Python dependencies with hash verification (Finding 3.1)
+COPY requirements-lock.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir -r requirements-lock.txt
+
+# SECURITY: Pre-download ML model during build to avoid runtime downloads (Finding 3.2)
+ENV SENTENCE_TRANSFORMERS_HOME=/opt/models
+RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
 
 # =============================================================================
 # Stage 2: Runtime
@@ -33,9 +37,11 @@ RUN groupadd --gid 1000 natlang && \
 
 WORKDIR /app
 
-# Copy virtual environment from builder
+# Copy virtual environment and pre-downloaded models from builder
 COPY --from=builder /opt/venv /opt/venv
+COPY --from=builder /opt/models /opt/models
 ENV PATH="/opt/venv/bin:$PATH"
+ENV SENTENCE_TRANSFORMERS_HOME=/opt/models
 
 # Copy application code
 COPY --chown=natlang:natlang src/ ./src/

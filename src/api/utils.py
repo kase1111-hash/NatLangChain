@@ -367,12 +367,11 @@ def require_api_key(f):
             ), 401
 
         if not API_KEY:
-            return jsonify(
-                {
-                    "error": "Server API key not configured",
-                    "hint": "Set NATLANGCHAIN_API_KEY environment variable",
-                }
-            ), 503
+            import logging as _logging
+            _logging.getLogger(__name__).error(
+                "Authentication service unavailable: NATLANGCHAIN_API_KEY not configured"
+            )
+            return jsonify({"error": "Authentication service unavailable"}), 503
 
         if not secrets.compare_digest(provided_key, API_KEY):
             return jsonify({"error": "Invalid API key"}), 403
