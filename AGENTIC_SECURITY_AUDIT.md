@@ -33,14 +33,12 @@
 ### 1.2 Default-Deny Permissions / Least Privilege
 
 - [x] **No default root/admin execution** — Dockerfile creates non-root user `natlang` (UID 1000) and runs as that user. Docker Compose production service does the same.
-- [ ] **Capabilities declared per-module** — No `permissions.manifest` file exists. Modules do not explicitly declare required capabilities (file read, network, shell).
+- [x] **Capabilities declared per-module** — `src/module_manifest.py` provides YAML-based capability manifests (`src/manifests/*.yaml`) for all 17 modules. Each manifest declares network endpoints, filesystem paths, shell commands, and external packages. Validated at startup.
 - [x] **Filesystem access scoped** — Data directory explicitly created at `/app/data`. No arbitrary filesystem access patterns found.
 - [x] **Network access scoped** — SSRF protection (`src/api/ssrf_protection.py`) blocks internal IPs, metadata endpoints, and cloud service URLs. Provider URLs validated via `_validate_provider_url()`. Trusted proxy list configurable.
 - [x] **Destructive operations gated** — Authentication required on all mutation endpoints (`@require_api_key`). Rate limiting applied to LLM operations. Debug mode + no-auth combination blocked at startup.
 
-`Status:` **PARTIAL** — Missing formal capability manifest system. Network/filesystem scoping is good.
-
-**Gap:** Create a `permissions.manifest` or equivalent for each module declaring required capabilities.
+`Status:` **PASS** — All items compliant. Capability manifest system implemented.
 
 ---
 
@@ -193,7 +191,7 @@
 | Tier | Section | Status | Risk |
 |------|---------|--------|------|
 | **1** | 1.1 Credential Storage | **PASS** | LOW |
-| **1** | 1.2 Least Privilege | **PARTIAL** | MEDIUM |
+| **1** | 1.2 Least Privilege | **PASS** | LOW |
 | **1** | 1.3 Cryptographic Identity | **PARTIAL** | LOW |
 | **2** | 2.1 Input Classification | **PASS** | LOW |
 | **2** | 2.2 Memory Integrity | **PARTIAL** | MEDIUM |
@@ -205,7 +203,7 @@
 | **3** | 3.4 Vibe-Code Gate | **PASS** | LOW |
 | **3** | 3.5 Coordination Boundaries | **PARTIAL** | LOW |
 
-**Overall: 6 PASS, 6 PARTIAL, 0 FAIL**
+**Overall: 7 PASS, 5 PARTIAL, 0 FAIL**
 
 ---
 
@@ -223,7 +221,7 @@
 
 4. **Memory Trust Levels (2.2)** — Add `trust_level` field to `NaturalLanguageEntry` (values: `human_verified`, `agent_generated`, `external_sourced`). Store untrusted entries in separate partition.
 
-5. **Capability Declaration (1.2)** — Formalize per-module capability declarations. Enforce at runtime via wrapper functions.
+5. ~~**Capability Declaration (1.2)**~~ — **DONE.** Covered by module manifest system (item 3). All 17 modules have YAML manifests declaring network, filesystem, shell, and package capabilities.
 
 6. **Mutual Agent Authentication (3.2)** — Define challenge-response protocol for inter-agent communication using NatLangChain-backed identity.
 
