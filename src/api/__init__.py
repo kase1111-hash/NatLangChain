@@ -190,6 +190,79 @@ def _register_security_middleware(app):
 
         return response
 
+    @app.after_request
+    def scan_outbound_secrets(response):
+        """SECURITY (Audit 2.3): Scan outbound responses for leaked secrets."""
+        import logging as _logging
+
+        _secret_logger = _logging.getLogger("natlangchain.secret_scanner")
+
+        try:
+            from secret_scanner import (
+                _is_scanning_enabled,
+                _scan_mode,
+                redact_secrets_in_dict,
+                scan_response_body,
+            )
+        except ImportError:
+            return response  # Module not available, skip
+
+        if not _is_scanning_enabled():
+            return response
+
+        # Only scan JSON responses (most likely to contain leaked secrets)
+        content_type = response.content_type or ""
+        if "json" not in content_type.lower():
+            return response
+
+        # Skip error responses and empty bodies
+        if response.status_code >= 400 or not response.data:
+            return response
+
+        scan_result = scan_response_body(response.data, content_type)
+
+        if scan_result.has_secrets:
+            for detection in scan_result.detections:
+                _secret_logger.warning(
+                    "SECRET DETECTED in outbound response: pattern=%s location=%s preview=%s",
+                    detection["pattern"],
+                    detection["location"],
+                    detection["preview"],
+                )
+
+            mode = _scan_mode()
+
+            if mode == "block":
+                # Block the entire response
+                _secret_logger.warning(
+                    "BLOCKED outbound response due to %d detected secret(s)",
+                    len(scan_result.detections),
+                )
+                blocked = jsonify({
+                    "error": "Response blocked by secret scanner",
+                    "message": "The response contained potentially sensitive credentials and has been blocked.",
+                    "detections_count": len(scan_result.detections),
+                })
+                blocked.status_code = 500
+                return blocked
+
+            else:
+                # Redact mode (default): replace secrets in the response body
+                import json as _json
+
+                try:
+                    data = _json.loads(response.data)
+                    redacted_data = redact_secrets_in_dict(data)
+                    response.data = _json.dumps(redacted_data).encode("utf-8")
+                    _secret_logger.info(
+                        "Redacted %d secret(s) from outbound response",
+                        len(scan_result.detections),
+                    )
+                except (ValueError, _json.JSONDecodeError):
+                    pass  # If we can't parse, leave as-is (scan already logged)
+
+        return response
+
 
 def _register_error_handlers(app):
     """Register error handlers for common HTTP errors."""
@@ -276,3 +349,38 @@ def init_managers(api_key=None):
             pass
 
         print("LLM-based features initialized")
+
+    # Initialize cryptographic agent identity (Audit 1.3)
+    try:
+        from identity import AgentIdentity
+
+        identity = AgentIdentity.from_environment()
+        if identity:
+            from . import state
+            state.agent_identity = identity
+            print(f"Agent identity loaded: fingerprint={identity.fingerprint}")
+        else:
+            print("Agent identity not configured (set NATLANGCHAIN_IDENTITY_ENABLED=true)")
+    except ImportError:
+        print("Warning: identity module not available")
+
+    # Load module manifests (Audit 2.4)
+    try:
+        from module_manifest import load_all_manifests, registry
+
+        count = load_all_manifests()
+        if count > 0:
+            print(f"Module manifests loaded: {count} modules registered")
+            report = registry.audit_report()
+            totals = report["totals"]
+            print(
+                f"  Capabilities declared: "
+                f"{totals['network_endpoints']} network, "
+                f"{totals['filesystem_paths']} filesystem, "
+                f"{totals['shell_commands']} shell, "
+                f"{totals['external_packages']} packages"
+            )
+        else:
+            print("No module manifests found (check NATLANGCHAIN_MANIFEST_DIR)")
+    except ImportError:
+        print("Warning: module_manifest module not available")

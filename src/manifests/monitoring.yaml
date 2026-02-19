@@ -1,0 +1,8 @@
+module: monitoring
+version: "1.0"
+description: "Monitoring — metrics collection, structured logging, request middleware"
+capabilities:
+  network: []
+  filesystem: []
+  shell: []
+  packages: []

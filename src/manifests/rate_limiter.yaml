@@ -1,0 +1,13 @@
+module: rate_limiter
+version: "1.0"
+description: "Rate limiting — in-memory and Redis-backed request throttling"
+capabilities:
+  network:
+    - endpoint: "$REDIS_URL"
+      protocol: "redis"
+      purpose: "Redis connection for distributed rate limiting"
+  filesystem: []
+  shell: []
+  packages:
+    - name: "redis"
+      purpose: "Redis client for distributed rate limits (optional)"

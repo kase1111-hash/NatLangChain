@@ -1,0 +1,15 @@
+module: semantic_search
+version: "1.0"
+description: "Semantic search — sentence embeddings for blockchain entry similarity"
+capabilities:
+  network: []
+  filesystem:
+    - path: "$SENTENCE_TRANSFORMERS_HOME"
+      access: "readwrite"
+      purpose: "Model cache directory for sentence-transformers"
+  shell: []
+  packages:
+    - name: "sentence_transformers"
+      purpose: "Sentence embedding models"
+    - name: "numpy"
+      purpose: "Vector similarity calculations"

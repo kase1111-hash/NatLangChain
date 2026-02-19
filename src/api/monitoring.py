@@ -367,3 +367,25 @@ def _serialize_instance_info(info) -> dict | None:
         "started_at": info.started_at,
         "is_leader": info.is_leader,
     }
+
+
+# ============================================================
+# Module Manifest Endpoints (Audit 2.4)
+# ============================================================
+
+
+@monitoring_bp.route("/security/manifests", methods=["GET"])
+@_require_api_key
+def module_manifests():
+    """
+    Module manifest audit report.
+
+    Returns all loaded manifests, declared capabilities, and any violations.
+    Requires API key authentication.
+    """
+    try:
+        from module_manifest import get_audit_report
+
+        return jsonify(get_audit_report())
+    except ImportError:
+        return jsonify({"error": "Module manifest system not available"}), 503

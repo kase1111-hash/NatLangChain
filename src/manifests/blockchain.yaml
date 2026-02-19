@@ -1,0 +1,8 @@
+module: blockchain
+version: "1.0"
+description: "Core blockchain data structures — entries, blocks, and hash chain"
+capabilities:
+  network: []
+  filesystem: []
+  shell: []
+  packages: []

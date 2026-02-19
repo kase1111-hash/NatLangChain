@@ -1,0 +1,16 @@
+module: intent_classifier
+version: "1.0"
+description: "Intent classification for blockchain entries via LLM"
+capabilities:
+  network:
+    - endpoint: "api.anthropic.com"
+      protocol: "https"
+      purpose: "LLM intent classification via Claude API"
+  filesystem:
+    - path: "$ANTHROPIC_API_KEY"
+      access: "read"
+      purpose: "API key from environment variable"
+  shell: []
+  packages:
+    - name: "anthropic"
+      purpose: "Anthropic Claude API client"

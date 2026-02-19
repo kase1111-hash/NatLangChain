@@ -1,0 +1,8 @@
+module: llm_metrics
+version: "1.0"
+description: "LLM call latency and usage metrics collection"
+capabilities:
+  network: []
+  filesystem: []
+  shell: []
+  packages: []

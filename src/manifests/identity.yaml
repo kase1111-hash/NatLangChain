@@ -1,0 +1,16 @@
+module: identity
+version: "1.0"
+description: "Cryptographic agent identity — Ed25519 keypair signing and verification"
+capabilities:
+  network: []
+  filesystem:
+    - path: "$NATLANGCHAIN_IDENTITY_KEYSTORE"
+      access: "readwrite"
+      purpose: "Ed25519 keystore file for agent identity"
+    - path: "$NATLANGCHAIN_IDENTITY_PASSPHRASE"
+      access: "read"
+      purpose: "Keystore passphrase from environment variable"
+  shell: []
+  packages:
+    - name: "cryptography"
+      purpose: "Ed25519 key generation, signing, and verification"

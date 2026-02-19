@@ -427,13 +427,35 @@ def validate_blockchain():
         Validation status
     """
     is_valid = state.blockchain.validate_chain()
-    return jsonify(
-        {
-            "valid": is_valid,
-            "blocks": len(state.blockchain.chain),
-            "pending_entries": len(state.blockchain.pending_entries),
-        }
-    )
+
+    # Verify entry signatures across the chain (Audit 1.3)
+    sig_stats = {"total_entries": 0, "signed": 0, "verified": 0, "unsigned": 0, "invalid": 0}
+    try:
+        from identity import verify_entry_signature
+        for block in state.blockchain.chain:
+            for entry in block.entries:
+                sig_stats["total_entries"] += 1
+                result = verify_entry_signature(entry.to_dict())
+                if result["signed"]:
+                    sig_stats["signed"] += 1
+                    if result["verified"]:
+                        sig_stats["verified"] += 1
+                    else:
+                        sig_stats["invalid"] += 1
+                else:
+                    sig_stats["unsigned"] += 1
+    except ImportError:
+        sig_stats = None
+
+    response = {
+        "valid": is_valid,
+        "blocks": len(state.blockchain.chain),
+        "pending_entries": len(state.blockchain.pending_entries),
+    }
+    if sig_stats is not None:
+        response["signatures"] = sig_stats
+
+    return jsonify(response)
 
 
 @core_bp.route("/pending", methods=["GET"])
@@ -472,10 +494,19 @@ def get_stats():
             authors.add(entry.author)
 
     # Feature availability
+    manifest_count = 0
+    try:
+        from module_manifest import registry
+        manifest_count = len(registry.manifests)
+    except ImportError:
+        pass
+
     features = {
         "llm_validation": managers.llm_validator is not None,
         "semantic_search": managers.search_engine is not None,
         "contract_management": managers.contract_parser is not None,
+        "identity_signing": state.agent_identity is not None,
+        "module_manifests": manifest_count,
     }
 
     return jsonify(
