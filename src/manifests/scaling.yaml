@@ -1,0 +1,13 @@
+module: scaling
+version: "1.0"
+description: "Horizontal scaling — distributed locking, caching, and coordination"
+capabilities:
+  network:
+    - endpoint: "$REDIS_URL"
+      protocol: "redis"
+      purpose: "Redis connection for distributed locking and caching"
+  filesystem: []
+  shell: []
+  packages:
+    - name: "redis"
+      purpose: "Redis client for distributed operations (optional)"

@@ -1,0 +1,16 @@
+module: storage
+version: "1.0"
+description: "Storage backends — JSON file, PostgreSQL, and in-memory"
+capabilities:
+  network:
+    - endpoint: "$DATABASE_URL"
+      protocol: "postgresql"
+      purpose: "PostgreSQL database connection (optional)"
+  filesystem:
+    - path: "$CHAIN_DATA_FILE"
+      access: "readwrite"
+      purpose: "JSON file storage for blockchain data"
+  shell: []
+  packages:
+    - name: "psycopg2"
+      purpose: "PostgreSQL database driver (optional)"

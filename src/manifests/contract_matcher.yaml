@@ -1,0 +1,16 @@
+module: contract_matcher
+version: "1.0"
+description: "Contract matching — finds compatible contracts using LLM scoring"
+capabilities:
+  network:
+    - endpoint: "api.anthropic.com"
+      protocol: "https"
+      purpose: "LLM matching via Claude API"
+  filesystem:
+    - path: "$ANTHROPIC_API_KEY"
+      access: "read"
+      purpose: "API key from environment variable"
+  shell: []
+  packages:
+    - name: "anthropic"
+      purpose: "Anthropic Claude API client"

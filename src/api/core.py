@@ -494,11 +494,19 @@ def get_stats():
             authors.add(entry.author)
 
     # Feature availability
+    manifest_count = 0
+    try:
+        from module_manifest import registry
+        manifest_count = len(registry.manifests)
+    except ImportError:
+        pass
+
     features = {
         "llm_validation": managers.llm_validator is not None,
         "semantic_search": managers.search_engine is not None,
         "contract_management": managers.contract_parser is not None,
         "identity_signing": state.agent_identity is not None,
+        "module_manifests": manifest_count,
     }
 
     return jsonify(

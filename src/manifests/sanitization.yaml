@@ -1,0 +1,8 @@
+module: sanitization
+version: "1.0"
+description: "Input sanitization — prompt injection detection and Unicode normalization"
+capabilities:
+  network: []
+  filesystem: []
+  shell: []
+  packages: []

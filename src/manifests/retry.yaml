@@ -1,0 +1,8 @@
+module: retry
+version: "1.0"
+description: "Retry decorator with exponential backoff for transient failures"
+capabilities:
+  network: []
+  filesystem: []
+  shell: []
+  packages: []

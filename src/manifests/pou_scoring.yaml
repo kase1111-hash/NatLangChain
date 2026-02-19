@@ -1,0 +1,8 @@
+module: pou_scoring
+version: "1.0"
+description: "Proof of Understanding scoring — evaluates LLM comprehension quality"
+capabilities:
+  network: []
+  filesystem: []
+  shell: []
+  packages: []

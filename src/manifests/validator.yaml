@@ -1,0 +1,18 @@
+module: validator
+version: "1.0"
+description: "LLM-based entry validation — Proof of Understanding and hybrid validation"
+capabilities:
+  network:
+    - endpoint: "api.anthropic.com"
+      protocol: "https"
+      purpose: "LLM validation via Claude API"
+  filesystem:
+    - path: "$ANTHROPIC_API_KEY"
+      access: "read"
+      purpose: "API key from environment variable"
+  shell: []
+  packages:
+    - name: "anthropic"
+      purpose: "Anthropic Claude API client"
+    - name: "httpx"
+      purpose: "HTTP timeout configuration"

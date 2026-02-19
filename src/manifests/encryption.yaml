@@ -1,0 +1,16 @@
+module: encryption
+version: "1.0"
+description: "AES-256-GCM field-level encryption for sensitive blockchain data"
+capabilities:
+  network: []
+  filesystem:
+    - path: "$NATLANGCHAIN_ENCRYPTION_KEY"
+      access: "read"
+      purpose: "Encryption key from environment variable"
+    - path: "$NATLANGCHAIN_KEYSTORE_PATH"
+      access: "readwrite"
+      purpose: "Encrypted keystore file"
+  shell: []
+  packages:
+    - name: "cryptography"
+      purpose: "AES-256-GCM encryption and PBKDF2 key derivation"

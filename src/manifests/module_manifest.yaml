@@ -1,0 +1,13 @@
+module: module_manifest
+version: "1.0"
+description: "Module manifest system — capability declarations and enforcement"
+capabilities:
+  network: []
+  filesystem:
+    - path: "$NATLANGCHAIN_MANIFEST_DIR"
+      access: "read"
+      purpose: "Read manifest YAML files at startup"
+  shell: []
+  packages:
+    - name: "yaml"
+      purpose: "Parse YAML manifest files"

@@ -100,15 +100,15 @@
 ### 2.4 Skill/Module Signing and Sandboxing
 
 - [ ] **All skills/modules cryptographically signed** — No code signing system. Python modules loaded via standard imports.
-- [ ] **Manifest required** — No module manifest declaring network endpoints, file access, or shell commands.
+- [x] **Manifest required** — `src/module_manifest.py` implements per-module capability manifests in YAML format (`src/manifests/*.yaml`). Each module declares network endpoints, filesystem paths, shell commands, and external packages. 17 manifests cover all modules. Loaded at startup via `load_all_manifests()`. Enforcement mode available via `NATLANGCHAIN_MANIFEST_ENFORCE=true`.
 - [ ] **Skills run in sandbox** — No sandboxing for dynamically loaded modules. Subprocess execution for llama.cpp has path allowlist (Finding 6.1 fix) but no general sandbox.
 - [ ] **Update diff review** — No automated diff review for module updates.
 - [x] **No silent network calls** — Provider URLs validated against SSRF protection. LLM API calls logged with latency metrics via `llm_metrics`.
-- [ ] **Skill provenance tracking** — No tracking of where modules are sourced or their version history.
+- [x] **Skill provenance tracking** — Module manifests declare all external dependencies with purpose annotations. `/security/manifests` audit endpoint exposes all declared capabilities and violations at runtime.
 
-`Status:` **FAIL** — No module signing, manifest, or sandboxing system. Network call monitoring is present.
+`Status:` **PARTIAL** — Module manifest system implemented with per-module capability declarations, import validation, and audit reporting. Code signing and runtime sandboxing remain as future work.
 
-**Gap:** This is a larger architectural investment. For immediate mitigation, add module import allowlist and manifest system.
+**Remaining gap:** Add cryptographic code signing for modules and runtime sandboxing for untrusted code.
 
 ---
 
@@ -198,14 +198,14 @@
 | **2** | 2.1 Input Classification | **PASS** | LOW |
 | **2** | 2.2 Memory Integrity | **PARTIAL** | MEDIUM |
 | **2** | 2.3 Outbound Secret Scanning | **PASS** | LOW |
-| **2** | 2.4 Skill/Module Signing | **FAIL** | HIGH |
+| **2** | 2.4 Skill/Module Signing | **PARTIAL** | MEDIUM |
 | **3** | 3.1 Audit Trail | **PARTIAL** | LOW |
 | **3** | 3.2 Mutual Auth | **PARTIAL** | MEDIUM |
 | **3** | 3.3 Anti-C2 | **PASS** | LOW |
 | **3** | 3.4 Vibe-Code Gate | **PASS** | LOW |
 | **3** | 3.5 Coordination Boundaries | **PARTIAL** | LOW |
 
-**Overall: 6 PASS, 5 PARTIAL, 1 FAIL**
+**Overall: 6 PASS, 6 PARTIAL, 0 FAIL**
 
 ---
 
@@ -217,7 +217,7 @@
 
 2. ~~**Outbound Secret Scanning (2.3)**~~ — **DONE.** `src/secret_scanner.py` implements regex + Shannon entropy detection for 10 credential patterns (Anthropic, OpenAI, AWS, Google, GitHub, Bearer, PEM, hex, base64). Wired into Flask `after_request` pipeline with configurable redact/block modes. Blockchain hash fields excluded from scanning.
 
-3. **Module Manifest System (2.4)** — Create `permissions.manifest` format declaring network endpoints, file paths, and shell access per module. Build loader that validates manifests at import time.
+3. ~~**Module Manifest System (2.4)**~~ — **DONE.** `src/module_manifest.py` implements YAML-based capability manifests in `src/manifests/`. 17 modules covered with declarations for network endpoints, filesystem paths, shell commands, and external packages. Import validation and audit endpoint (`/security/manifests`) included. Enforcement mode via `NATLANGCHAIN_MANIFEST_ENFORCE=true`.
 
 ### Near-term (MEDIUM risk items)
 

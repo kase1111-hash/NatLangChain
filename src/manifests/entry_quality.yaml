@@ -1,0 +1,8 @@
+module: entry_quality
+version: "1.0"
+description: "Entry quality scoring — heuristic analysis of blockchain entry content"
+capabilities:
+  network: []
+  filesystem: []
+  shell: []
+  packages: []

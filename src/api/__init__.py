@@ -363,3 +363,24 @@ def init_managers(api_key=None):
             print("Agent identity not configured (set NATLANGCHAIN_IDENTITY_ENABLED=true)")
     except ImportError:
         print("Warning: identity module not available")
+
+    # Load module manifests (Audit 2.4)
+    try:
+        from module_manifest import load_all_manifests, registry
+
+        count = load_all_manifests()
+        if count > 0:
+            print(f"Module manifests loaded: {count} modules registered")
+            report = registry.audit_report()
+            totals = report["totals"]
+            print(
+                f"  Capabilities declared: "
+                f"{totals['network_endpoints']} network, "
+                f"{totals['filesystem_paths']} filesystem, "
+                f"{totals['shell_commands']} shell, "
+                f"{totals['external_packages']} packages"
+            )
+        else:
+            print("No module manifests found (check NATLANGCHAIN_MANIFEST_DIR)")
+    except ImportError:
+        print("Warning: module_manifest module not available")

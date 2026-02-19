@@ -1,0 +1,8 @@
+module: api.ssrf_protection
+version: "1.0"
+description: "SSRF protection — blocks requests to internal IPs and cloud metadata endpoints"
+capabilities:
+  network: []
+  filesystem: []
+  shell: []
+  packages: []

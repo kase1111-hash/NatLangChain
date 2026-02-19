@@ -1,0 +1,16 @@
+module: contract_parser
+version: "1.0"
+description: "Natural language contract parsing via LLM"
+capabilities:
+  network:
+    - endpoint: "api.anthropic.com"
+      protocol: "https"
+      purpose: "LLM contract parsing via Claude API"
+  filesystem:
+    - path: "$ANTHROPIC_API_KEY"
+      access: "read"
+      purpose: "API key from environment variable"
+  shell: []
+  packages:
+    - name: "anthropic"
+      purpose: "Anthropic Claude API client"
