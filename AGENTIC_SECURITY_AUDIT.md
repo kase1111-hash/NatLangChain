@@ -88,14 +88,12 @@
 
 ### 2.3 Outbound Secret Scanning
 
-- [ ] **All outbound messages scanned for secrets** — No outbound secret scanning module found. HTTP responses from the API are not scanned for credential leakage.
-- [ ] **Constitutional rule enforced: agents never transmit credentials** — No hardcoded rule preventing credential transmission in agent outputs.
+- [x] **All outbound messages scanned for secrets** — `src/secret_scanner.py` implements outbound secret scanning with regex patterns for known credential formats (Anthropic, OpenAI, AWS, Google, GitHub, Bearer tokens, PEM private keys) plus entropy-based detection for hex and base64 secrets. Wired into Flask `after_request` pipeline in `src/api/__init__.py`.
+- [x] **Constitutional rule enforced: agents never transmit credentials** — Scan mode configurable via `NATLANGCHAIN_SECRET_SCAN_MODE`: `redact` (default, replaces secrets with `[SECRET_REDACTED]`) or `block` (rejects entire response with 500). Enabled by default via `NATLANGCHAIN_SECRET_SCANNING=true`.
 - [x] **Outbound content logging** — `src/monitoring/logging.py` implements `redact_sensitive_data()` that sanitizes log output for API keys, tokens, private keys, emails, credit card numbers, and wallet addresses. `ProviderConfig.api_key` has `repr=False`.
-- [ ] **Alert on detection** — No alerting mechanism for attempted credential leakage.
+- [x] **Alert on detection** — All secret detections logged via `natlangchain.secret_scanner` logger with pattern name, location, and safe preview (first/last 4 chars only). Blocked responses logged at WARNING level.
 
-`Status:` **FAIL** — Log sanitization exists but no active outbound secret scanning on API responses or LLM outputs.
-
-**Gap:** Build `SecretScanner` module with regex + entropy detection for known credential patterns. Wire into response pipeline.
+`Status:` **PASS** — Full outbound secret scanning implemented with regex + entropy detection, response redaction/blocking, and audit logging. Blockchain hash fields excluded to prevent false positives.
 
 ---
 
@@ -199,7 +197,7 @@
 | **1** | 1.3 Cryptographic Identity | **PARTIAL** | LOW |
 | **2** | 2.1 Input Classification | **PASS** | LOW |
 | **2** | 2.2 Memory Integrity | **PARTIAL** | MEDIUM |
-| **2** | 2.3 Outbound Secret Scanning | **FAIL** | HIGH |
+| **2** | 2.3 Outbound Secret Scanning | **PASS** | LOW |
 | **2** | 2.4 Skill/Module Signing | **FAIL** | HIGH |
 | **3** | 3.1 Audit Trail | **PARTIAL** | LOW |
 | **3** | 3.2 Mutual Auth | **PARTIAL** | MEDIUM |
@@ -207,7 +205,7 @@
 | **3** | 3.4 Vibe-Code Gate | **PASS** | LOW |
 | **3** | 3.5 Coordination Boundaries | **PARTIAL** | LOW |
 
-**Overall: 5 PASS, 5 PARTIAL, 2 FAIL**
+**Overall: 6 PASS, 5 PARTIAL, 1 FAIL**
 
 ---
 
@@ -217,7 +215,7 @@
 
 1. ~~**Cryptographic Agent Identity (1.3)**~~ — **DONE.** `src/identity.py` implements Ed25519 keypair generation, signing, and verification. Entries automatically signed when identity is configured. Chain validation verifies all signatures.
 
-2. **Outbound Secret Scanning (2.3)** — Build `SecretScanner` module with regex patterns for known credential formats (OpenAI `sk-*`, Anthropic `sk-ant-*`, AWS `AKIA*`, PEM headers, high-entropy strings). Wire into API response pipeline.
+2. ~~**Outbound Secret Scanning (2.3)**~~ — **DONE.** `src/secret_scanner.py` implements regex + Shannon entropy detection for 10 credential patterns (Anthropic, OpenAI, AWS, Google, GitHub, Bearer, PEM, hex, base64). Wired into Flask `after_request` pipeline with configurable redact/block modes. Blockchain hash fields excluded from scanning.
 
 3. **Module Manifest System (2.4)** — Create `permissions.manifest` format declaring network endpoints, file paths, and shell access per module. Build loader that validates manifests at import time.
 
