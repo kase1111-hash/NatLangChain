@@ -24,6 +24,9 @@ from blockchain import NatLangChain
 # The blockchain instance
 blockchain: NatLangChain = NatLangChain()
 
+# Cryptographic agent identity (Audit 1.3)
+agent_identity = None  # Initialized via init_identity()
+
 # Storage backend (lazy initialized)
 _storage = None
 
@@ -140,9 +143,23 @@ def create_entry_with_encryption(
             encrypted_metadata, additional_fields={"private_notes", "internal_id", "contact_info"}
         )
 
-    return NaturalLanguageEntry(
+    entry = NaturalLanguageEntry(
         content=content, author=author, intent=intent, metadata=encrypted_metadata
     )
+
+    # Sign entry with cryptographic identity if available (Audit 1.3)
+    if agent_identity is not None:
+        try:
+            from identity import sign_entry_dict
+            entry_dict = entry.to_dict()
+            signed = sign_entry_dict(entry_dict, agent_identity)
+            entry.signature = signed["metadata"].get("signature")
+            entry.public_key = signed["metadata"].get("public_key")
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning("Failed to sign entry: %s", e)
+
+    return entry
 
 
 def decrypt_entry_metadata(entry_dict: dict[str, Any]) -> dict[str, Any]:

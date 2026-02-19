@@ -1137,6 +1137,10 @@ class NaturalLanguageEntry:
         self.validation_status = "pending"
         self.validation_paraphrases = []
 
+        # Cryptographic identity fields (Audit 1.3)
+        self.signature = None  # Base64-encoded Ed25519 signature
+        self.public_key = None  # Base64-encoded signer public key
+
         # Derivative tracking fields
         self.parent_refs = parent_refs or []
         self.derivative_type = derivative_type
@@ -1156,6 +1160,12 @@ class NaturalLanguageEntry:
             "validation_status": self.validation_status,
             "validation_paraphrases": self.validation_paraphrases,
         }
+
+        # Include cryptographic identity fields if present (Audit 1.3)
+        if self.signature:
+            result["signature"] = self.signature
+        if self.public_key:
+            result["public_key"] = self.public_key
 
         # Include derivative fields if present
         if self.parent_refs:
@@ -1179,6 +1189,9 @@ class NaturalLanguageEntry:
         entry.timestamp = data.get("timestamp", entry.timestamp)
         entry.validation_status = data.get("validation_status", "pending")
         entry.validation_paraphrases = data.get("validation_paraphrases", [])
+        # Restore cryptographic identity fields (Audit 1.3)
+        entry.signature = data.get("signature")
+        entry.public_key = data.get("public_key")
         return entry
 
 

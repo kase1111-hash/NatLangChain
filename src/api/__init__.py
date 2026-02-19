@@ -276,3 +276,17 @@ def init_managers(api_key=None):
             pass
 
         print("LLM-based features initialized")
+
+    # Initialize cryptographic agent identity (Audit 1.3)
+    try:
+        from identity import AgentIdentity
+
+        identity = AgentIdentity.from_environment()
+        if identity:
+            from . import state
+            state.agent_identity = identity
+            print(f"Agent identity loaded: fingerprint={identity.fingerprint}")
+        else:
+            print("Agent identity not configured (set NATLANGCHAIN_IDENTITY_ENABLED=true)")
+    except ImportError:
+        print("Warning: identity module not available")

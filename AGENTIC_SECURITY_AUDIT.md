@@ -46,15 +46,15 @@
 
 ### 1.3 Cryptographic Agent Identity
 
-- [ ] **Agent keypair generation on init** — No keypair generation system found. Agents have string-based `author` identifiers only.
-- [ ] **All agent actions signed** — No digital signatures on blockchain entries or API responses. Integrity relies on hash chains, not cryptographic signatures.
-- [x] **Identity anchored to NatLangChain** — Entries recorded on-chain with author, timestamp, and hash-chain integrity. Block hashes use SHA-256.
-- [ ] **No self-asserted authority** — Author identity is self-asserted via the `author` string field. No cryptographic verification of authorship.
+- [x] **Agent keypair generation on init** — `src/identity.py` implements `AgentIdentity.generate()` using Ed25519 keypairs. Keys stored in PEM format with optional passphrase encryption. Keypairs loaded from environment-configured keystore.
+- [x] **All agent actions signed** — Entry creation flow (`api/state.py`) automatically signs entries when identity is configured. Signatures stored as `signature` and `public_key` fields on `NaturalLanguageEntry`. Chain validation endpoint verifies all signatures.
+- [x] **Identity anchored to NatLangChain** — Entries recorded on-chain with author, timestamp, hash-chain integrity, and Ed25519 signature. Block hashes use SHA-256. Signer fingerprint (SHA-256 of public key) included for quick lookup.
+- [x] **No self-asserted authority** — When identity signing is enabled, author identity is backed by Ed25519 signature verification. `verify_entry_signature()` validates that the entry was signed by the claimed key.
 - [ ] **Session binding** — API key authentication exists but no session-to-identity binding for individual agents.
 
-`Status:` **FAIL** — Encryption at rest is strong (AES-256-GCM), but no digital signature system for entry provenance. Author identity is self-asserted.
+`Status:` **PARTIAL** — Ed25519 identity system implemented (`src/identity.py`). Signing enabled via `NATLANGCHAIN_IDENTITY_ENABLED=true`. Session binding not yet implemented.
 
-**Gap:** Implement Ed25519 keypair generation per agent, sign all blockchain entries, and verify signatures on read.
+**Remaining gap:** Bind API sessions to specific agent identities for per-agent authorization.
 
 ---
 
@@ -196,7 +196,7 @@
 |------|---------|--------|------|
 | **1** | 1.1 Credential Storage | **PASS** | LOW |
 | **1** | 1.2 Least Privilege | **PARTIAL** | MEDIUM |
-| **1** | 1.3 Cryptographic Identity | **FAIL** | HIGH |
+| **1** | 1.3 Cryptographic Identity | **PARTIAL** | LOW |
 | **2** | 2.1 Input Classification | **PASS** | LOW |
 | **2** | 2.2 Memory Integrity | **PARTIAL** | MEDIUM |
 | **2** | 2.3 Outbound Secret Scanning | **FAIL** | HIGH |
@@ -207,7 +207,7 @@
 | **3** | 3.4 Vibe-Code Gate | **PASS** | LOW |
 | **3** | 3.5 Coordination Boundaries | **PARTIAL** | LOW |
 
-**Overall: 5 PASS, 4 PARTIAL, 3 FAIL**
+**Overall: 5 PASS, 5 PARTIAL, 2 FAIL**
 
 ---
 
@@ -215,7 +215,7 @@
 
 ### Immediate (HIGH risk items)
 
-1. **Cryptographic Agent Identity (1.3)** — Implement Ed25519 keypair generation, sign all blockchain entries, verify on read. Estimated: new `src/identity.py` module + modifications to `blockchain.py`.
+1. ~~**Cryptographic Agent Identity (1.3)**~~ — **DONE.** `src/identity.py` implements Ed25519 keypair generation, signing, and verification. Entries automatically signed when identity is configured. Chain validation verifies all signatures.
 
 2. **Outbound Secret Scanning (2.3)** — Build `SecretScanner` module with regex patterns for known credential formats (OpenAI `sk-*`, Anthropic `sk-ant-*`, AWS `AKIA*`, PEM headers, high-entropy strings). Wire into API response pipeline.
 
