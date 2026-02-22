@@ -222,7 +222,9 @@ class ProofOfUnderstanding:
             Validation result with paraphrase and assessment
         """
         try:
-            # SECURITY: Sanitize all user inputs to prevent prompt injection
+            # Wrap each user-supplied field in labeled delimiters so the LLM
+            # can distinguish structure from content — prevents injection where
+            # an entry's text tries to override the validation prompt
             safe_author = create_safe_prompt_section("AUTHOR", author, MAX_AUTHOR_LENGTH)
             safe_intent = create_safe_prompt_section("STATED_INTENT", intent, MAX_INTENT_LENGTH)
             safe_content = create_safe_prompt_section("ENTRY_CONTENT", content, MAX_CONTENT_LENGTH)
@@ -293,7 +295,7 @@ Respond in JSON format:
                     "reasoning": f"Response validation failed: {e!s}",
                 },
             }
-        except Exception as e:
+        except (RuntimeError, KeyError, TypeError) as e:
             logger.error("Unexpected validation error: %s", e)
             return {
                 "status": "error",
@@ -441,7 +443,7 @@ Assess whether they convey the same meaning. Respond in JSON:
                 "semantically_equivalent": None,
                 "drift_score": None,
             }
-        except Exception as e:
+        except (RuntimeError, KeyError, TypeError) as e:
             return {
                 "error": f"Unexpected error: {e!s}",
                 "semantically_equivalent": None,
@@ -497,7 +499,7 @@ Generate specific clarification questions that would resolve these ambiguities. 
                 "clarification_questions": [],
                 "suggested_rewording": None,
             }
-        except Exception as e:
+        except (RuntimeError, KeyError, TypeError) as e:
             return {
                 "error": f"Unexpected error: {e!s}",
                 "clarification_questions": [],
@@ -535,7 +537,7 @@ class HybridValidator:
                 self._term_registry = get_registry()
             except ImportError:
                 self._term_registry = None
-            except Exception:
+            except (RuntimeError, ValueError):
                 self._term_registry = None
         return self._term_registry
 
@@ -584,7 +586,7 @@ class HybridValidator:
 
             result["valid"] = len(result["issues"]) == 0
 
-        except Exception as e:
+        except (ValueError, KeyError, TypeError) as e:
             result["warnings"].append(f"Term validation encountered error: {e!s}")
 
         return result
@@ -593,11 +595,15 @@ class HybridValidator:
         """
         Perform basic symbolic/rule-based validation.
 
+        Runs cheap checks before the expensive LLM call so obviously-bad
+        entries get rejected without burning API credits.
+
         Checks:
         - Content is not empty
         - Content meets minimum length
         - No obvious malicious patterns
         - Basic structural validity
+        # TODO: add language detection to reject gibberish inputs early
 
         Args:
             content: Entry content
@@ -732,7 +738,7 @@ class HybridValidator:
         try:
             scorer = PoUScorer(validator_id="hybrid_validator")
             return scorer.get_validator_response(pou_data, contract_content, contract_clauses)
-        except Exception as e:
+        except (ValueError, RuntimeError) as e:
             return {
                 "status": "error",
                 "message": f"PoU validation failed: {e!s}",

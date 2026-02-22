@@ -296,7 +296,7 @@ If a term is not present, omit it. Return {{}} if no clear terms found."""
         except ValueError as e:
             logger.warning("LLM term extraction failed - validation error: %s", e)
             return None
-        except Exception as e:
+        except (ValueError, RuntimeError, KeyError) as e:
             logger.error("LLM term extraction failed - unexpected error: %s", e)
             return None
 
@@ -410,7 +410,7 @@ Return JSON:
         except ValueError as e:
             logger.warning("Contract validation failed - validation error: %s", e)
             return False, f"Validation error: {e!s}"
-        except Exception as e:
+        except (ValueError, RuntimeError) as e:
             logger.error("Contract validation failed - unexpected error: %s", e)
             return False, f"Unexpected validation error: {e!s}"
 

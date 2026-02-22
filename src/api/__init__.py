@@ -12,9 +12,12 @@ Blueprints:
 - monitoring: Health, metrics, cluster endpoints
 """
 
+import logging
 import os
 
 from flask import Flask, jsonify, request
+
+logger = logging.getLogger(__name__)
 
 
 def create_app(testing=False):
@@ -145,7 +148,8 @@ def _register_security_middleware(app):
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
         response.headers["Pragma"] = "no-cache"
 
-        # SECURITY: Content Security Policy — restrictive defaults for API
+        # CSP set to deny-all because this is a pure JSON API with no HTML rendering.
+        # If a frontend is added later, these must be relaxed per-route.
         response.headers["Content-Security-Policy"] = (
             "default-src 'none'; "
             "frame-ancestors 'none'; "
@@ -324,9 +328,9 @@ def init_managers(api_key=None):
         from semantic_search import SemanticSearchEngine
 
         managers.search_engine = SemanticSearchEngine()
-        print("Semantic search engine initialized")
-    except Exception as e:
-        print(f"Warning: Could not initialize semantic search: {e}")
+        logger.info("Semantic search engine initialized")
+    except (ImportError, OSError, RuntimeError) as e:
+        logger.warning("Could not initialize semantic search: %s", e)
 
     # Initialize LLM-based features if API key available
     if api_key and api_key != "your_api_key_here":
@@ -335,9 +339,9 @@ def init_managers(api_key=None):
 
             managers.llm_validator = ProofOfUnderstanding(api_key)
             managers.hybrid_validator = HybridValidator(managers.llm_validator)
-            print("LLM validators initialized")
-        except Exception as e:
-            print(f"Warning: Could not initialize LLM validators: {e}")
+            logger.info("LLM validators initialized")
+        except (ImportError, ValueError, RuntimeError) as e:
+            logger.warning("Could not initialize LLM validators: %s", e)
 
         try:
             from contract_matcher import ContractMatcher
@@ -345,10 +349,10 @@ def init_managers(api_key=None):
 
             managers.contract_parser = ContractParser(api_key)
             managers.contract_matcher = ContractMatcher(api_key)
-        except Exception:
+        except (ImportError, ValueError, RuntimeError):
             pass
 
-        print("LLM-based features initialized")
+        logger.info("LLM-based features initialized")
 
     # Initialize cryptographic agent identity (Audit 1.3)
     try:

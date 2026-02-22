@@ -119,7 +119,7 @@ def readiness():
     # Check blockchain
     try:
         _ = len(state.blockchain.chain)
-    except Exception as e:
+    except (AttributeError, RuntimeError) as e:
         issues.append(f"blockchain: {e}")
 
     # Check storage
@@ -127,7 +127,7 @@ def readiness():
         storage = get_storage()
         if not storage.is_available():
             issues.append("storage: not available")
-    except Exception as e:
+    except (OSError, RuntimeError) as e:
         issues.append(f"storage: {e}")
 
     if issues:
@@ -194,7 +194,7 @@ def _get_version() -> str:
         from importlib.metadata import version
 
         return version("natlangchain")
-    except Exception:
+    except (ImportError, ValueError):
         return "0.1.0"
 
 
@@ -208,7 +208,7 @@ def _check_storage() -> dict:
             "available": available,
             "backend": storage.__class__.__name__,
         }
-    except Exception as e:
+    except (OSError, RuntimeError) as e:
         return {
             "status": "error",
             "available": False,
@@ -221,7 +221,7 @@ def _get_storage_info() -> dict:
     try:
         storage = get_storage()
         return storage.get_info()
-    except Exception as e:
+    except (OSError, RuntimeError) as e:
         return {"error": str(e)}
 
 
@@ -252,7 +252,7 @@ def _update_dynamic_metrics():
                     metrics.set_gauge("storage_entry_count", info["entry_count"])
             else:
                 metrics.set_gauge("storage_available", 0)
-        except Exception:
+        except (OSError, RuntimeError):
             metrics.set_gauge("storage_available", 0)
 
     except ImportError:

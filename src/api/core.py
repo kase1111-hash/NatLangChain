@@ -388,20 +388,20 @@ def search_entries():
     Search entries by content keyword.
 
     Query params:
-        q: Search query
+        query: Search query (also accepts 'q' for backward compatibility)
         limit: Maximum results (default 10)
 
     Returns:
         Matching entries
     """
-    query = request.args.get("q", "")
+    query = request.args.get("query", "") or request.args.get("q", "")
     limit = request.args.get("limit", DEFAULT_PAGE_LIMIT, type=int)
 
     # Bound the limit
     limit, _ = validate_pagination_params(limit)
 
     if not query:
-        return jsonify({"error": "Query parameter 'q' required"}), 400
+        return jsonify({"error": "Query parameter 'query' required"}), 400
 
     # Simple keyword search across all entries
     results = []

@@ -171,9 +171,10 @@ class TestEntryLifecyclePipeline:
         result = response.get_json()
 
         # With auto_mine, entry should be mined immediately
-        # Check for block info in response
-        if "block" in result or "mined_block" in result:
-            assert True  # Entry was auto-mined
+        if "block" in result:
+            assert isinstance(result["block"], dict)
+        elif "mined_block" in result:
+            assert isinstance(result["mined_block"], dict)
 
     def test_entry_validation_flow(self, client, auth_headers):
         """Test: Entry validation before mining."""

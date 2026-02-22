@@ -6,6 +6,7 @@ Core blockchain data structures and logic
 import hashlib
 import json
 import logging
+import threading
 import time
 from datetime import datetime
 from typing import Any
@@ -24,14 +25,17 @@ ACCEPTABLE_DECISIONS = {VALIDATION_VALID}
 # Default deduplication window in seconds (1 hour)
 DEFAULT_DEDUP_WINDOW_SECONDS = 3600
 
-# Rate limiting defaults
+# Rate limiting defaults — tuned for a single-node demo; production would
+# need per-endpoint limits backed by Redis (see _deferred/src/rate_limiter.py)
+# TODO: make rate limits configurable per-endpoint instead of globally
 DEFAULT_RATE_LIMIT_WINDOW_SECONDS = 60  # 1 minute window
 DEFAULT_MAX_ENTRIES_PER_AUTHOR = 10  # Max entries per author per window
 DEFAULT_MAX_GLOBAL_ENTRIES = 100  # Max total entries per window
 
-# Timestamp validation defaults
-DEFAULT_MAX_TIMESTAMP_DRIFT_SECONDS = 300  # 5 minutes max drift from current time
-DEFAULT_MAX_FUTURE_DRIFT_SECONDS = 60  # 1 minute max future drift (clock skew tolerance)
+# Timestamp validation defaults — 5 min drift handles NTP-synced nodes;
+# 1 min future drift accommodates minor clock skew without allowing replay
+DEFAULT_MAX_TIMESTAMP_DRIFT_SECONDS = 300
+DEFAULT_MAX_FUTURE_DRIFT_SECONDS = 60
 
 # Metadata sanitization constants
 # These fields are reserved for system use and should not be set by users
@@ -1225,6 +1229,8 @@ class Block:
         Calculate the cryptographic hash of this block.
         Combines traditional cryptographic security with linguistic content.
         """
+        # sort_keys=True ensures deterministic serialization so the same
+        # block content always produces the same hash regardless of dict ordering
         block_data = {
             "index": self.index,
             "timestamp": self.timestamp,
@@ -1233,6 +1239,7 @@ class Block:
             "nonce": self.nonce,
         }
         block_string = json.dumps(block_data, sort_keys=True)
+        # SHA-256 chosen for wide tooling support; not trying to be Bitcoin-hard
         return hashlib.sha256(block_string.encode()).hexdigest()
 
     def to_dict(self) -> dict[str, Any]:
@@ -1386,6 +1393,9 @@ class NatLangChain:
 
         # Initialize intent classifier for transfer detection
         self._intent_classifier = intent_classifier
+
+        # Lock to prevent concurrent mining race conditions
+        self._mining_lock = threading.Lock()
 
         self.create_genesis_block()
 
@@ -1711,7 +1721,7 @@ class NatLangChain:
                     "from_owner": classification.get("from_owner", entry.author),
                     "to_recipient": classification.get("to_recipient"),
                 }
-            except Exception:
+            except (ValueError, KeyError):
                 pass  # Fall through to keyword detection
 
         # Keyword fallback
@@ -1988,7 +1998,7 @@ class NatLangChain:
 
         try:
             validation_result = self._validate_entry(entry)
-        except Exception as e:
+        except (ValueError, RuntimeError) as e:
             logger.error("Validation pipeline error for author=%s: %s", entry.author, e)
             return {
                 "status": "rejected",
@@ -2080,55 +2090,59 @@ class NatLangChain:
         Returns:
             The newly mined block or None if no pending entries
         """
-        if not self.pending_entries:
-            return None
+        with self._mining_lock:
+            if not self.pending_entries:
+                return None
 
-        new_block = Block(
-            index=len(self.chain),
-            entries=self.pending_entries.copy(),
-            previous_hash=self.get_latest_block().hash,
-        )
+            new_block = Block(
+                index=len(self.chain),
+                entries=self.pending_entries.copy(),
+                previous_hash=self.get_latest_block().hash,
+            )
 
-        # Simple proof of work
-        target = "0" * difficulty
-        while not new_block.hash.startswith(target):
-            new_block.nonce += 1
-            new_block.hash = new_block.calculate_hash()
+            # Proof of work: iterate nonces until hash has `difficulty` leading zeros.
+            # This is intentionally simple — the goal is demonstrating PoW mechanics,
+            # not competing with production mining difficulty.
+            # TODO: add timeout to prevent runaway mining at high difficulty
+            target = "0" * difficulty
+            while not new_block.hash.startswith(target):
+                new_block.nonce += 1
+                new_block.hash = new_block.calculate_hash()
 
-        self.chain.append(new_block)
+            self.chain.append(new_block)
 
-        # Complete any pending asset transfers for mined entries
-        if self.enable_asset_tracking and self._asset_registry is not None:
-            for entry in self.pending_entries:
-                transfer_info = self._detect_asset_transfer(entry)
-                if transfer_info["is_transfer"]:
-                    fingerprint = compute_entry_fingerprint(
-                        entry.content, entry.author, entry.intent
-                    )
-                    self._asset_registry.complete_transfer(
-                        asset_id=transfer_info["asset_id"], fingerprint=fingerprint
-                    )
+            # Complete any pending asset transfers for mined entries
+            if self.enable_asset_tracking and self._asset_registry is not None:
+                for entry in self.pending_entries:
+                    transfer_info = self._detect_asset_transfer(entry)
+                    if transfer_info["is_transfer"]:
+                        fingerprint = compute_entry_fingerprint(
+                            entry.content, entry.author, entry.intent
+                        )
+                        self._asset_registry.complete_transfer(
+                            asset_id=transfer_info["asset_id"], fingerprint=fingerprint
+                        )
 
-        # Register derivative relationships for mined entries
-        if self.enable_derivative_tracking and self._derivative_registry is not None:
-            block_index = new_block.index
-            for entry_index, entry in enumerate(self.pending_entries):
-                if entry.is_derivative() and entry.parent_refs:
-                    self._derivative_registry.register_derivative(
-                        child_block=block_index,
-                        child_entry=entry_index,
-                        parent_refs=entry.parent_refs,
-                        derivative_type=entry.derivative_type or DERIVATIVE_TYPE_REFERENCE,
-                        child_metadata={
-                            "author": entry.author,
-                            "intent": entry.intent,
-                            "timestamp": entry.timestamp,
-                        },
-                    )
+            # Register derivative relationships for mined entries
+            if self.enable_derivative_tracking and self._derivative_registry is not None:
+                block_index = new_block.index
+                for entry_index, entry in enumerate(self.pending_entries):
+                    if entry.is_derivative() and entry.parent_refs:
+                        self._derivative_registry.register_derivative(
+                            child_block=block_index,
+                            child_entry=entry_index,
+                            parent_refs=entry.parent_refs,
+                            derivative_type=entry.derivative_type or DERIVATIVE_TYPE_REFERENCE,
+                            child_metadata={
+                                "author": entry.author,
+                                "intent": entry.intent,
+                                "timestamp": entry.timestamp,
+                            },
+                        )
 
-        self.pending_entries = []
+            self.pending_entries = []
 
-        return new_block
+            return new_block
 
     def validate_chain(self, verify_pow: bool = True, difficulty: int = 1) -> bool:
         """

@@ -13,6 +13,8 @@ Tests cover:
 import sys
 from pathlib import Path
 
+import pytest
+
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
@@ -483,7 +485,7 @@ class TestBindingPoURecord:
         )
         fingerprint = scorer.generate_fingerprint("content", "contract")
 
-        try:
+        with pytest.raises(ValueError, match="(?i)non-verified"):
             BindingPoURecord(
                 contract_id="test-001",
                 signer_id="alice",
@@ -492,9 +494,6 @@ class TestBindingPoURecord:
                 fingerprint=fingerprint,
                 bound_at="2025-12-24T00:00:00Z",
             )
-            assert False, "Should have raised ValueError"
-        except ValueError as e:
-            assert "non-verified" in str(e).lower()
 
     def test_binding_record_to_dict(self):
         """Binding record should serialize correctly"""

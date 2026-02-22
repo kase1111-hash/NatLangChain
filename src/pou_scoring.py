@@ -649,7 +649,7 @@ class PoUScorer:
                 .get("acceptance", {})
                 .get("timestamp", datetime.utcnow().isoformat() + "Z"),
             )
-        except Exception as e:
+        except (ValueError, RuntimeError, KeyError) as e:
             # Return error result
             return PoUValidationResult(
                 submission=PoUSubmission(

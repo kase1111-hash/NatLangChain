@@ -148,7 +148,9 @@ class PostgreSQLStorage(StorageBackend):
             raise StorageConnectionError(f"Failed to connect to PostgreSQL: {e}")
 
     def _get_conn(self):
-        """Get a connection from the pool (thread-safe)."""
+        """Get a connection from the pool (thread-safe).
+        # TODO: add connection health check / reconnect on stale connections
+        """
         with self._lock:
             if self._pool is None:
                 raise StorageConnectionError("Connection pool not initialized")
@@ -167,7 +169,7 @@ class PostgreSQLStorage(StorageBackend):
             with conn.cursor() as cur:
                 cur.execute(CREATE_TABLES_SQL)
             conn.commit()
-        except Exception as e:
+        except (OSError, ValueError) as e:
             conn.rollback()
             raise StorageConnectionError(f"Failed to create tables: {e}")
         finally:
@@ -248,7 +250,7 @@ class PostgreSQLStorage(StorageBackend):
                     "difficulty": difficulty,
                 }
 
-        except Exception as e:
+        except (OSError, KeyError, ValueError) as e:
             raise StorageReadError(f"Failed to load chain: {e}")
         finally:
             self._put_conn(conn)
@@ -376,7 +378,7 @@ class PostgreSQLStorage(StorageBackend):
 
             conn.commit()
 
-        except Exception as e:
+        except (OSError, ValueError) as e:
             conn.rollback()
             raise StorageWriteError(f"Failed to save chain: {e}")
         finally:
@@ -447,7 +449,7 @@ class PostgreSQLStorage(StorageBackend):
 
             conn.commit()
 
-        except Exception as e:
+        except (OSError, ValueError) as e:
             conn.rollback()
             raise StorageWriteError(f"Failed to save block: {e}")
         finally:
@@ -461,7 +463,7 @@ class PostgreSQLStorage(StorageBackend):
             with conn.cursor() as cur:
                 cur.execute("SELECT 1")
             return True
-        except Exception:
+        except (OSError, RuntimeError):
             return False
         finally:
             if conn is not None:

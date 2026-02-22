@@ -494,3 +494,52 @@ class TestComputeFingerprint:
         fp = compute_entry_fingerprint("test", "author", "intent")
         assert isinstance(fp, str)
         int(fp, 16)  # Should not raise — valid hex
+
+
+# ============================================================
+# Parametrized Boundary Tests
+# ============================================================
+
+class TestEntryBoundaryConditions:
+    @pytest.mark.parametrize("content", [
+        "a",
+        "x" * 10_000,
+        "Hello\nWorld\n",
+        "Unicode: \u00e9\u00e8\u00ea \u2603 \u2764\ufe0f",
+        "   leading/trailing whitespace   ",
+    ])
+    def test_add_entry_various_content(self, content):
+        chain = _make_chain()
+        result = chain.add_entry(_make_entry(content=content))
+        assert result["status"] == "pending"
+        assert chain.pending_entries[0].content == content
+
+    @pytest.mark.parametrize("author", [
+        "a",
+        "alice",
+        "user-with-dashes",
+        "user_with_underscores",
+        "CamelCaseUser",
+    ])
+    def test_add_entry_various_authors(self, author):
+        chain = _make_chain()
+        result = chain.add_entry(_make_entry(author=author))
+        assert result["status"] == "pending"
+        assert chain.pending_entries[0].author == author
+
+    @pytest.mark.parametrize("count", [1, 2, 10])
+    def test_mine_with_varying_entry_counts(self, count):
+        chain = _make_chain()
+        for i in range(count):
+            chain.add_entry(_make_entry(content=f"Entry {i}"))
+        block = chain.mine_pending_entries(difficulty=1)
+        assert block is not None
+        assert len(block.entries) == count
+        assert len(chain.pending_entries) == 0
+
+    @pytest.mark.parametrize("difficulty", [1, 2, 3])
+    def test_mine_with_varying_difficulty(self, difficulty):
+        chain = _make_chain()
+        chain.add_entry(_make_entry())
+        block = chain.mine_pending_entries(difficulty=difficulty)
+        assert block.hash.startswith("0" * difficulty)

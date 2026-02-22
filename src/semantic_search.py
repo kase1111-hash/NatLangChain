@@ -54,12 +54,16 @@ class SemanticSearchEngine:
     Example: Searching for "worker unrest" will match entries about "labor disputes"
     """
 
+    # TODO: warm model on startup to avoid first-request latency spike
+    # TODO: add explicit model cleanup on shutdown to free GPU/CPU memory
     def __init__(self, model_name: str = "all-MiniLM-L6-v2"):
         """
         Initialize the semantic search engine.
 
         Args:
-            model_name: Sentence transformer model to use for embeddings
+            model_name: Sentence transformer model to use for embeddings.
+                        all-MiniLM-L6-v2 chosen for its balance of speed (~80ms/query)
+                        and quality (good enough for contract-level similarity).
 
         Raises:
             ModelLoadError: If the model cannot be loaded
@@ -91,7 +95,7 @@ class SemanticSearchEngine:
                 f"Failed to load sentence transformer model '{model_name}': {e!s}. "
                 f"Check that the model name is correct and you have network access."
             ) from e
-        except Exception as e:
+        except (TypeError, ImportError) as e:
             logger.error(
                 "Unexpected error loading model '%s': %s: %s", model_name, type(e).__name__, str(e)
             )
@@ -176,7 +180,7 @@ class SemanticSearchEngine:
                 logger.info("Incrementally indexed %d new entries (total: %d)",
                            len(new_entries), len(all_entries))
                 return
-            except Exception as e:
+            except (ValueError, RuntimeError) as e:
                 logger.warning("Incremental indexing failed, doing full rebuild: %s", e)
 
         # Full rebuild
@@ -193,7 +197,7 @@ class SemanticSearchEngine:
                 f"Failed to encode entries: {e!s}. "
                 f"Try reducing batch size or using a smaller model."
             ) from e
-        except Exception as e:
+        except (TypeError, RuntimeError) as e:
             logger.error("Unexpected error encoding entries: %s: %s", type(e).__name__, str(e))
             raise EncodingError(f"Encoding failed: {type(e).__name__}: {e!s}") from e
 
@@ -236,7 +240,7 @@ class SemanticSearchEngine:
         # Generate query embedding with error handling
         try:
             query_embedding = self.model.encode([query])
-        except Exception as e:
+        except (RuntimeError, TypeError) as e:
             logger.error("Failed to encode search query: %s: %s", type(e).__name__, str(e))
             raise EncodingError(f"Failed to encode query: {e!s}") from e
 
@@ -324,7 +328,7 @@ class SemanticSearchEngine:
         try:
             corpus_embeddings = self.model.encode(corpus)
             query_embedding = self.model.encode([query])
-        except Exception as e:
+        except (RuntimeError, TypeError) as e:
             logger.error("Failed to encode during field search: %s: %s", type(e).__name__, str(e))
             raise EncodingError(f"Encoding failed: {e!s}") from e
 

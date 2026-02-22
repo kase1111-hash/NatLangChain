@@ -36,9 +36,11 @@ def semantic_search():
         List of semantically similar entries
     """
     if not managers.search_engine:
-        return jsonify(
-            {"error": "Semantic search not available", "reason": "Search engine not initialized"}
-        ), 503
+        response = jsonify(
+            {"error": "Semantic search not available", "code": "SERVICE_UNAVAILABLE", "reason": "Search engine not initialized"}
+        )
+        response.headers["Retry-After"] = "30"
+        return response, 503
 
     data = request.get_json()
 
@@ -62,7 +64,7 @@ def semantic_search():
 
         return jsonify({"query": query, "field": field, "count": len(results), "results": results})
 
-    except Exception:
+    except (ValueError, RuntimeError):
         return jsonify({"error": "Search failed", "reason": "Internal error occurred"}), 500
 
 
@@ -83,7 +85,9 @@ def find_similar():
         List of similar entries
     """
     if not managers.search_engine:
-        return jsonify({"error": "Semantic search not available"}), 503
+        response = jsonify({"error": "Semantic search not available", "code": "SERVICE_UNAVAILABLE"})
+        response.headers["Retry-After"] = "30"
+        return response, 503
 
     data = request.get_json()
 
@@ -101,5 +105,5 @@ def find_similar():
 
         return jsonify({"content": content, "count": len(results), "similar_entries": results})
 
-    except Exception:
+    except (ValueError, RuntimeError):
         return jsonify({"error": "Search failed", "reason": "Internal error occurred"}), 500
