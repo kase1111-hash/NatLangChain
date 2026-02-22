@@ -324,7 +324,7 @@ def retry_with_backoff(
 
                     return result
 
-                except Exception as e:
+                except Exception as e:  # broad catch intentional: retry decorator must handle any exception
                     last_exception = e
 
                     # Check if retryable
@@ -415,7 +415,7 @@ def retry_call(
 
             return result
 
-        except Exception as e:
+        except Exception as e:  # broad catch intentional: retry decorator must handle any exception
             last_exception = e
             error_str = str(e)
 

@@ -493,7 +493,7 @@ class TestLLMExtractTerms:
         """Test LLM extraction handles API errors gracefully."""
         mock_client = MagicMock()
         mock_anthropic_class.return_value = mock_client
-        mock_client.messages.create.side_effect = Exception("API Error")
+        mock_client.messages.create.side_effect = RuntimeError("API Error")
 
         parser = ContractParser(api_key="test-key")
         result = parser._llm_extract_terms("Contract content")

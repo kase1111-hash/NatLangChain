@@ -156,7 +156,7 @@ class JSONFileStorage(StorageBackend):
                 raise StorageReadError(f"Permission denied: {self.file_path}") from e
             except json.JSONDecodeError as e:
                 raise StorageReadError(f"Invalid JSON format: {e}") from e
-            except Exception as e:
+            except (TypeError, ValueError) as e:
                 raise StorageReadError(f"Failed to load chain: {e}") from e
 
     def save_chain(self, chain_data: dict[str, Any]) -> None:
@@ -212,7 +212,7 @@ class JSONFileStorage(StorageBackend):
                 raise StorageWriteError(f"Permission denied: {self.file_path}") from e
             except OSError as e:
                 raise StorageWriteError(f"OS error: {e}") from e
-            except Exception as e:
+            except (TypeError, ValueError) as e:
                 raise StorageWriteError(f"Failed to save chain: {e}") from e
 
     def is_available(self) -> bool:
@@ -228,7 +228,7 @@ class JSONFileStorage(StorageBackend):
             if not os.path.exists(directory):
                 return False
             return os.access(directory, os.W_OK)
-        except Exception:
+        except (OSError, ValueError):
             return False
 
     def get_info(self) -> dict[str, Any]:

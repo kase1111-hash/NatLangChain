@@ -291,7 +291,7 @@ Return JSON:
                 "recommendation": "NO_MATCH",
                 "reasoning": f"API response validation failed: {e!s}",
             }
-        except Exception as e:
+        except (ValueError, RuntimeError, KeyError) as e:
             logger.error("Match computation failed - unexpected error: %s", e)
             return {
                 "score": 0,
@@ -416,7 +416,7 @@ Write in clear, contract-appropriate language."""
 
             return proposal
 
-        except Exception as e:
+        except (ValueError, RuntimeError, KeyError) as e:
             logger.error("Proposal generation failed: %s", e)
             # Return a basic proposal
             return NaturalLanguageEntry(
@@ -519,7 +519,7 @@ Return JSON:
                 "reasoning": f"Validation error: {e!s}",
                 "revised_terms": {},
             }
-        except Exception as e:
+        except (ValueError, RuntimeError) as e:
             logger.error("Mediation failed - unexpected error: %s", e)
             return {
                 "points_of_agreement": [],

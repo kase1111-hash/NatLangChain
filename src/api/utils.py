@@ -7,6 +7,7 @@ used across all API blueprints.
 
 import os
 import secrets
+import threading
 import time
 from dataclasses import dataclass
 from functools import wraps
@@ -24,9 +25,12 @@ API_KEY = os.getenv("NATLANGCHAIN_API_KEY", None)
 API_KEY_REQUIRED = os.getenv("NATLANGCHAIN_REQUIRE_AUTH", "true").lower() == "true"
 
 # Rate limiting configuration
+# FIXME: in-process dict won't share state across gunicorn workers;
+#        swap for Redis-backed rate limiter in multi-process deployments
 RATE_LIMIT_REQUESTS = int(os.getenv("RATE_LIMIT_REQUESTS", "100"))
 RATE_LIMIT_WINDOW = int(os.getenv("RATE_LIMIT_WINDOW", "60"))  # seconds
 rate_limit_store: dict[str, dict[str, Any]] = {}
+_rate_limit_lock = threading.Lock()
 _rate_limit_last_cleanup: float = 0.0
 
 # Bounded parameters - max values for iteration parameters
@@ -131,6 +135,7 @@ def error_response(
     status_code: int = 400,
     details: str | None = None,
     field: str | None = None,
+    code: str | None = None,
 ) -> tuple:
     """
     Create a standardized error response.
@@ -143,11 +148,15 @@ def error_response(
         status_code: HTTP status code
         details: Additional context (optional, must be safe to expose)
         field: The field that caused the error (optional)
+        code: Machine-readable error code (optional)
 
     Returns:
         Tuple of (Flask response dict, status_code)
     """
     response = {"error": error}
+
+    if code:
+        response["code"] = code
 
     if details:
         response["details"] = details
@@ -165,6 +174,7 @@ def validation_error(field: str, message: str) -> tuple:
         status_code=400,
         details=message,
         field=field,
+        code="VALIDATION_FAILED",
     )
 
 
@@ -173,6 +183,7 @@ def not_found_error(resource: str) -> tuple:
     return error_response(
         error=f"{resource} not found",
         status_code=404,
+        code="NOT_FOUND",
     )
 
 
@@ -184,16 +195,19 @@ def internal_error() -> tuple:
     return error_response(
         error="Internal error occurred",
         status_code=500,
+        code="INTERNAL_ERROR",
     )
 
 
 def service_unavailable_error(service: str, reason: str | None = None) -> tuple:
-    """Create a standardized service unavailable error response."""
-    return error_response(
-        error=f"{service} not available",
-        status_code=503,
-        details=reason,
-    )
+    """Create a standardized service unavailable error response with Retry-After."""
+    body = {"error": f"{service} not available", "code": "SERVICE_UNAVAILABLE"}
+    if reason:
+        body["details"] = reason
+    response = jsonify(body)
+    response.status_code = 503
+    response.headers["Retry-After"] = "30"
+    return response, 503
 
 
 # ============================================================
@@ -252,30 +266,32 @@ def check_rate_limit() -> dict[str, Any] | None:
     client_ip = get_client_ip()
     current_time = time.time()
 
-    # Periodic cleanup to prevent unbounded memory growth from IP rotation
-    if current_time - _rate_limit_last_cleanup > RATE_LIMIT_WINDOW:
-        _cleanup_rate_limit_store(rate_limit_store, RATE_LIMIT_WINDOW, current_time)
-        _rate_limit_last_cleanup = current_time
+    with _rate_limit_lock:
+        # Periodic cleanup to prevent unbounded memory growth from IP rotation
+        if current_time - _rate_limit_last_cleanup > RATE_LIMIT_WINDOW:
+            _cleanup_rate_limit_store(rate_limit_store, RATE_LIMIT_WINDOW, current_time)
+            _rate_limit_last_cleanup = current_time
 
-    if client_ip not in rate_limit_store:
-        rate_limit_store[client_ip] = {"count": 0, "window_start": current_time}
+        if client_ip not in rate_limit_store:
+            rate_limit_store[client_ip] = {"count": 0, "window_start": current_time}
 
-    client_data = rate_limit_store[client_ip]
+        client_data = rate_limit_store[client_ip]
 
-    # Reset window if expired
-    if current_time - client_data["window_start"] > RATE_LIMIT_WINDOW:
-        client_data["count"] = 0
-        client_data["window_start"] = current_time
+        # Reset window if expired
+        if current_time - client_data["window_start"] > RATE_LIMIT_WINDOW:
+            client_data["count"] = 0
+            client_data["window_start"] = current_time
 
-    # Check limit
-    if client_data["count"] >= RATE_LIMIT_REQUESTS:
-        return {
-            "error": "Rate limit exceeded",
-            "retry_after": int(RATE_LIMIT_WINDOW - (current_time - client_data["window_start"])),
-        }
+        # Check limit
+        if client_data["count"] >= RATE_LIMIT_REQUESTS:
+            return {
+                "error": "Rate limit exceeded",
+                "code": "RATE_LIMITED",
+                "retry_after": int(RATE_LIMIT_WINDOW - (current_time - client_data["window_start"])),
+            }
 
-    client_data["count"] += 1
-    return None
+        client_data["count"] += 1
+        return None
 
 
 # ============================================================
@@ -286,6 +302,7 @@ def check_rate_limit() -> dict[str, Any] | None:
 LLM_RATE_LIMIT_REQUESTS = int(os.getenv("LLM_RATE_LIMIT_REQUESTS", "10"))
 LLM_RATE_LIMIT_WINDOW = int(os.getenv("LLM_RATE_LIMIT_WINDOW", "60"))  # seconds
 llm_rate_limit_store: dict[str, dict[str, Any]] = {}
+_llm_rate_limit_lock = threading.Lock()
 _llm_rate_limit_last_cleanup: float = 0.0
 
 
@@ -301,31 +318,33 @@ def check_llm_rate_limit() -> dict[str, Any] | None:
     client_ip = get_client_ip()
     current_time = time.time()
 
-    # Periodic cleanup to prevent unbounded memory growth from IP rotation
-    if current_time - _llm_rate_limit_last_cleanup > LLM_RATE_LIMIT_WINDOW:
-        _cleanup_rate_limit_store(llm_rate_limit_store, LLM_RATE_LIMIT_WINDOW, current_time)
-        _llm_rate_limit_last_cleanup = current_time
+    with _llm_rate_limit_lock:
+        # Periodic cleanup to prevent unbounded memory growth from IP rotation
+        if current_time - _llm_rate_limit_last_cleanup > LLM_RATE_LIMIT_WINDOW:
+            _cleanup_rate_limit_store(llm_rate_limit_store, LLM_RATE_LIMIT_WINDOW, current_time)
+            _llm_rate_limit_last_cleanup = current_time
 
-    if client_ip not in llm_rate_limit_store:
-        llm_rate_limit_store[client_ip] = {"count": 0, "window_start": current_time}
+        if client_ip not in llm_rate_limit_store:
+            llm_rate_limit_store[client_ip] = {"count": 0, "window_start": current_time}
 
-    client_data = llm_rate_limit_store[client_ip]
+        client_data = llm_rate_limit_store[client_ip]
 
-    # Reset window if expired
-    if current_time - client_data["window_start"] > LLM_RATE_LIMIT_WINDOW:
-        client_data["count"] = 0
-        client_data["window_start"] = current_time
+        # Reset window if expired
+        if current_time - client_data["window_start"] > LLM_RATE_LIMIT_WINDOW:
+            client_data["count"] = 0
+            client_data["window_start"] = current_time
 
-    # Check limit
-    if client_data["count"] >= LLM_RATE_LIMIT_REQUESTS:
-        return {
-            "error": "LLM rate limit exceeded",
-            "message": "Too many requests to LLM-backed endpoints",
-            "retry_after": int(LLM_RATE_LIMIT_WINDOW - (current_time - client_data["window_start"])),
-        }
+        # Check limit
+        if client_data["count"] >= LLM_RATE_LIMIT_REQUESTS:
+            return {
+                "error": "LLM rate limit exceeded",
+                "code": "LLM_RATE_LIMITED",
+                "message": "Too many requests to LLM-backed endpoints",
+                "retry_after": int(LLM_RATE_LIMIT_WINDOW - (current_time - client_data["window_start"])),
+            }
 
-    client_data["count"] += 1
-    return None
+        client_data["count"] += 1
+        return None
 
 
 def rate_limit_llm(f):

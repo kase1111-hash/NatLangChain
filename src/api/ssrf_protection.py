@@ -130,7 +130,7 @@ def validate_url_for_ssrf(url: str) -> tuple[bool, str | None]:
 
     try:
         parsed = urlparse(url)
-    except Exception as e:
+    except (OSError, ValueError) as e:
         return False, f"Invalid URL format: {e}"
 
     # Check scheme
@@ -173,7 +173,7 @@ def validate_url_for_ssrf(url: str) -> tuple[bool, str | None]:
     except socket.gaierror as e:
         # DNS resolution failed - could be malicious, block it
         return False, f"DNS resolution failed for host '{hostname}': {e}"
-    except Exception as e:
+    except (OSError, ValueError) as e:
         return False, f"Failed to validate host '{hostname}': {e}"
 
     return True, None

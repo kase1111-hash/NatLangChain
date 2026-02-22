@@ -93,7 +93,7 @@ class IntentClassifier:
                 from anthropic import Anthropic
                 self._client = Anthropic(api_key=self.api_key, timeout=30.0)
                 self.model = "claude-3-5-sonnet-20241022"
-            except Exception as e:
+            except (ValueError, RuntimeError, KeyError) as e:
                 logger.warning("Could not initialize Anthropic client for intent classification: %s", e)
                 self._client = None
 
@@ -134,7 +134,7 @@ class IntentClassifier:
 
         try:
             return self._classify_with_llm(content, intent, author, metadata)
-        except Exception as e:
+        except (ValueError, RuntimeError) as e:
             logger.warning("LLM intent classification failed, using keyword fallback: %s", e)
             return _keyword_fallback(content, intent, metadata)
 

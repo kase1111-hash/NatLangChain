@@ -191,7 +191,7 @@ class AgentIdentity:
             payload = _canonical_entry_payload(entry_dict)
             public_key.verify(signature, payload)
             return True
-        except Exception as e:
+        except (ValueError, OSError) as e:
             logger.warning("Signature verification failed: %s", e)
             return False
 
@@ -218,7 +218,7 @@ class AgentIdentity:
         try:
             public_key_bytes = base64.b64decode(public_key_b64)
             return AgentIdentity.verify_entry(entry_dict, signature_b64, public_key_bytes)
-        except Exception as e:
+        except (ValueError, OSError) as e:
             logger.warning("Signature verification failed (b64 decode): %s", e)
             return False
 
@@ -312,7 +312,7 @@ class AgentIdentity:
         passphrase = os.getenv(IDENTITY_PASSPHRASE_ENV)
         try:
             return cls.load(keystore_path, passphrase=passphrase)
-        except Exception as e:
+        except (ValueError, OSError, KeyError) as e:
             logger.error("Failed to load identity from %s: %s", keystore_path, e)
             return None
 

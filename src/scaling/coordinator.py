@@ -177,7 +177,7 @@ class InstanceCoordinator:
             try:
                 self._send_heartbeat()
                 self._try_become_leader()
-            except Exception:
+            except Exception:  # broad catch intentional: background thread must not crash
                 pass  # Ignore errors in background thread
             time.sleep(self._heartbeat_interval)
 
@@ -248,7 +248,7 @@ class InstanceCoordinator:
                         info = self._deserialize_instance(data)
                         if info.is_healthy(self._instance_timeout):
                             instances.append(info)
-                    except Exception:
+                    except (ValueError, KeyError):
                         pass
             if cursor == 0:
                 break
@@ -337,7 +337,7 @@ class InstanceCoordinator:
         if data:
             try:
                 return self._deserialize_instance(data)
-            except Exception:
+            except (ValueError, KeyError):
                 pass
 
         return None

@@ -11,11 +11,14 @@ Storage backends are pluggable - set STORAGE_BACKEND environment variable:
 - "memory": In-memory (for testing)
 """
 
+import logging
 import threading
 from typing import Any
 
 # Import blockchain - always required
 from blockchain import NatLangChain
+
+logger = logging.getLogger(__name__)
 
 # ============================================================
 # Shared State
@@ -155,9 +158,8 @@ def create_entry_with_encryption(
             signed = sign_entry_dict(entry_dict, agent_identity)
             entry.signature = signed["metadata"].get("signature")
             entry.public_key = signed["metadata"].get("public_key")
-        except Exception as e:
-            import logging
-            logging.getLogger(__name__).warning("Failed to sign entry: %s", e)
+        except (ImportError, ValueError, OSError) as e:
+            logger.warning("Failed to sign entry: %s", e)
 
     return entry
 
@@ -201,16 +203,16 @@ def load_chain():
         data = storage.load_chain()
 
         if data is None:
-            print("No existing chain data found. Starting fresh.")
+            logger.info("No existing chain data found. Starting fresh.")
             return
 
         blockchain = NatLangChain.from_dict(data)
-        print(f"Loaded blockchain with {len(blockchain.chain)} blocks")
-        print(f"Storage backend: {storage.__class__.__name__}")
+        logger.info("Loaded blockchain with %d blocks", len(blockchain.chain))
+        logger.info("Storage backend: %s", storage.__class__.__name__)
 
-    except Exception as e:
-        print(f"Warning: Error loading chain: {e}")
-        print("Starting with empty blockchain")
+    except (OSError, KeyError, ValueError) as e:
+        logger.warning("Error loading chain: %s", e)
+        logger.info("Starting with empty blockchain")
 
 
 def save_chain():
@@ -225,8 +227,8 @@ def save_chain():
         storage = get_storage()
         storage.save_chain(blockchain.to_dict())
 
-    except Exception as e:
-        print(f"Warning: Error saving chain: {e}")
+    except (OSError, ValueError) as e:
+        logger.warning("Error saving chain: %s", e)
 
 
 def get_storage_info() -> dict[str, Any]:
@@ -239,7 +241,7 @@ def get_storage_info() -> dict[str, Any]:
     try:
         storage = get_storage()
         return storage.get_info()
-    except Exception as e:
+    except (OSError, ValueError, RuntimeError) as e:
         return {
             "error": str(e),
             "available": False,

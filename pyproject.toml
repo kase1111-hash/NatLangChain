@@ -67,8 +67,9 @@ production = [
     "gunicorn>=21.0.0",
 ]
 
-[project.scripts]
-natlangchain = "src.cli:main"
+# CLI entry point deferred — src/cli.py moved to _deferred/
+# [project.scripts]
+# natlangchain = "src.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/kase1111-hash/NatLangChain"

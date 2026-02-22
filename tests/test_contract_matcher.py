@@ -244,7 +244,7 @@ class TestComputeMatch:
 
         mock_client = MagicMock()
         mock_anthropic.return_value = mock_client
-        mock_client.messages.create.side_effect = Exception("API Error")
+        mock_client.messages.create.side_effect = RuntimeError("API Error")
 
         matcher = ContractMatcher(api_key="test-key")
         result = matcher._compute_match(
@@ -406,7 +406,7 @@ class TestGenerateProposal:
 
         mock_client = MagicMock()
         mock_anthropic.return_value = mock_client
-        mock_client.messages.create.side_effect = Exception("API Error")
+        mock_client.messages.create.side_effect = RuntimeError("API Error")
 
         matcher = ContractMatcher(api_key="test-key")
 
@@ -463,7 +463,7 @@ class TestMediateNegotiation:
 
         mock_client = MagicMock()
         mock_anthropic.return_value = mock_client
-        mock_client.messages.create.side_effect = Exception("API Error")
+        mock_client.messages.create.side_effect = RuntimeError("API Error")
 
         matcher = ContractMatcher(api_key="test-key")
 

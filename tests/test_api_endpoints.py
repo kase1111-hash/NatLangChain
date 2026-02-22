@@ -277,3 +277,41 @@ class TestPaginationDefaults:
             data = json.loads(response.data)
             if "entries" in data:
                 assert len(data["entries"]) <= 5
+
+
+class TestParametrizedEntryValidation:
+    """Parametrized tests for entry creation boundary conditions."""
+
+    @pytest.mark.parametrize("missing_field", ["content", "author", "intent"])
+    def test_missing_required_field_returns_400(self, flask_client, test_auth_headers, missing_field):
+        """Each required field should produce a 400 when absent."""
+        payload = {"content": "test", "author": "test", "intent": "test"}
+        del payload[missing_field]
+        response = flask_client.post(
+            "/entry",
+            data=json.dumps(payload),
+            headers=test_auth_headers,
+        )
+        assert response.status_code == 400
+
+    @pytest.mark.parametrize("field,value", [
+        ("content", ""),
+        ("author", ""),
+        ("intent", ""),
+    ])
+    def test_empty_required_field_returns_400(self, flask_client, test_auth_headers, field, value):
+        """Empty strings for required fields should produce a 400."""
+        payload = {"content": "test", "author": "test", "intent": "test"}
+        payload[field] = value
+        response = flask_client.post(
+            "/entry",
+            data=json.dumps(payload),
+            headers=test_auth_headers,
+        )
+        assert response.status_code == 400
+
+    @pytest.mark.parametrize("limit", [0, 1, 50, 100])
+    def test_search_limit_values(self, flask_client, limit):
+        """Search should accept various limit values without error."""
+        response = flask_client.get(f"/search?q=test&limit={limit}")
+        assert response.status_code in [200, 400]

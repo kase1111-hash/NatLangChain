@@ -1,203 +1,233 @@
-# Security Remediation Implementation Plan
+# Vibe-Check Audit v2.0 - Remediation Plan
 
 ## Overview
 
-Fix all 19 distinct security findings (2 critical, 7 high, 6 medium, 4 low) identified in `SECURITY_REVIEW.md`. Changes span 14 files across 7 implementation phases, sequenced by dependencies.
+Address all actionable findings from `VIBE_CHECK_AUDIT.md` across 8 phases, ordered by priority and dependency. Total: ~22 discrete changes across ~15 files.
 
 ---
 
-## Phase 1 — Independent Quick Fixes (no dependencies, can be parallelized)
+## Phase 1: Dead Code & Broken References [HIGH]
 
-### Step 1: Fix docker-compose auth default [5.1 CRITICAL]
-**File:** `docker-compose.yml` line 23
-- Change `NATLANGCHAIN_REQUIRE_AUTH=${NATLANGCHAIN_REQUIRE_AUTH:-false}` → `:-true`
-- Also remove `FLASK_DEBUG` from the production service environment block (relates to 6.3)
+### 1.1 Move orphaned `src/llm_providers.py` to `_deferred/src/`
+- **Issue:** 1,298 lines implementing multi-provider LLM abstraction — never imported anywhere
+- **Action:** `git mv src/llm_providers.py _deferred/src/llm_providers.py`
+- **Note:** The `requests` dependency is still used by `api/ssrf_protection.py`, so it stays in pyproject.toml
 
-### Step 2: Secure subprocess execution [6.1 CRITICAL]
-**File:** `src/llm_providers.py`
-- Add `ALLOWED_CLI_PATHS` allowlist constant and `MAX_CLI_PROMPT_LENGTH = 100_000`
-- Add `_validate_cli_path()` function that checks against the allowlist
-- Apply validation in `LlamaCppProvider._complete_cli()` before `subprocess.run()`
-- Apply validation in `LlamaCppProvider.is_available()` before the CLI version check
+### 1.2 Move orphaned `src/rate_limiter.py` to `_deferred/src/`
+- **Issue:** 530 lines implementing distributed rate limiter — never imported (blockchain.py has its own `EntryRateLimiter`)
+- **Action:** `git mv src/rate_limiter.py _deferred/src/rate_limiter.py`
 
-### Step 3: Add missing auth decorators [9.1 HIGH]
-**Files:** `src/api/core.py`, `src/api/contracts.py`
-- Add `@require_api_key` to `/validate/chain` endpoint (core.py:414)
-- Add `@require_api_key` to `/stats` endpoint (core.py:449)
-- Add `@require_api_key` to `/contract/parse` endpoint (contracts.py:46), placed before `@rate_limit_llm`
-
-### Step 4: Add missing security headers [9.3 LOW]
-**File:** `src/api/__init__.py` (in `add_security_headers`)
-- Add `Referrer-Policy: no-referrer`
-- Add `Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()`
-- Add `Cross-Origin-Opener-Policy: same-origin`
-- Add `Cross-Origin-Resource-Policy: same-origin`
-
-### Step 5: Remove API key config hint from error [5.2 LOW]
-**File:** `src/api/utils.py` lines 369-375
-- Replace the `"hint": "Set NATLANGCHAIN_API_KEY environment variable"` with a generic `"Authentication service unavailable"` message
-- Log the configuration detail server-side only
-
-### Step 6: Add repr protection to ProviderConfig [5.3 LOW]
-**File:** `src/llm_providers.py` line 67
-- Change `api_key: str | None = None` → `api_key: str | None = field(default=None, repr=False)`
-
-### Step 7: Add Flask debug mode startup guard [6.3 HIGH]
-**File:** `run_server.py`
-- After the `debug` and `api_key_required` variables are computed, add a guard that refuses to start if both `FLASK_DEBUG=true` and `NATLANGCHAIN_REQUIRE_AUTH=false`
-- Print a clear error explaining the security risk and `sys.exit(1)`
+### 1.3 Fix broken entry point in `pyproject.toml`
+- **Issue:** `[project.scripts] natlangchain = "src.cli:main"` references `src/cli.py` which was moved to `_deferred/`
+- **Action:** Comment out the `[project.scripts]` section with a note that CLI is deferred, or remove it entirely
 
 ---
 
-## Phase 2 — Create Standalone Sanitization Module (foundation for Phases 3-4)
+## Phase 2: Configuration Hygiene [HIGH]
 
-### Step 8: Create `src/sanitization.py` [1.1 HIGH, 1.2 MEDIUM, 9.5 LOW]
-**New file:** `src/sanitization.py`
-- Extract `PROMPT_INJECTION_PATTERNS`, `sanitize_prompt_input()`, and `create_safe_prompt_section()` into a standalone module with **zero external dependencies** (no Flask, no anthropic, no validator imports)
-- Add `unicodedata.normalize("NFKC", text)` before pattern matching [1.2]
-- Change the injection detection `raise ValueError` to log the matched pattern server-side and raise a generic message: `"Input rejected for security reasons"` [9.5]
-- Add `sanitize_output()` function that strips injection patterns from output text without raising errors (replaces matches with `[FILTERED]`)
-- Add `validate_llm_response_field()` helper for schema enforcement
+### 2.1 Remove/fix ghost config vars in `.env.example`
+- **`HOST`** — truly unused, remove it
+- **`PORT`** — IS used (`scaling/coordinator.py:86`) — keep but add clarifying comment
+- **`FLASK_DEBUG`** — IS read (`api/monitoring.py:182`) for status reporting — keep but clarify it doesn't enable Flask debug mode
+- **`CHAIN_DATA_FILE`** — IS used (`storage/__init__.py:60`) — keep, it's correct
 
-### Step 9: Update imports in contract_parser.py and contract_matcher.py [1.1]
-**Files:** `src/contract_parser.py` lines 16-37, `src/contract_matcher.py` lines 17-41
-- Change primary import to `from sanitization import ...`
-- Keep `from validator import ...` as optional upgrade (try/except with pass)
-- Delete the inline fallback functions entirely
+### 2.2 Document all undocumented env vars in `.env.example`
+Add sections for the following env vars that are consumed by active code but not documented:
 
-### Step 10: Apply Unicode normalization in validator.py [1.2]
-**File:** `src/validator.py` line 69
-- Add `import unicodedata` at top
-- Add `text = unicodedata.normalize("NFKC", text)` at the start of `sanitize_prompt_input()`
+**Retry tuning:**
+- `RETRY_EXPONENTIAL_BASE` (default: 2.0)
+- `RETRY_JITTER` (default: 0.1)
 
-### Step 11: Fix injection error message in validator.py [9.5]
-**File:** `src/validator.py` lines 79-82
-- Log the matched pattern via `logger.warning()`
-- Change the `ValueError` message to `"Input rejected for security reasons in field '{field_name}'."`
+**Secret scanning:**
+- `NATLANGCHAIN_SECRET_SCANNING` (default: true)
+- `NATLANGCHAIN_SECRET_SCAN_MODE` (default: redact)
 
----
+**Semantic search:**
+- `SENTENCE_TRANSFORMERS_HOME` (default: system cache)
 
-## Phase 3 — Memory Poisoning Fixes (depends on Phase 2)
+**Cryptographic identity:**
+- `NATLANGCHAIN_IDENTITY_ENABLED` (default: false)
+- `NATLANGCHAIN_IDENTITY_REQUIRE_SIGNATURES` (default: false)
+- `NATLANGCHAIN_IDENTITY_KEYSTORE` (path)
+- `NATLANGCHAIN_IDENTITY_PASSPHRASE` (secret)
 
-### Step 12: Re-sanitize stored entries before LLM re-use [2.1 HIGH]
-**File:** `src/contract_matcher.py`
-- In `_get_open_contracts()`, wrap `entry.content`, `entry.author`, and `entry.intent` with `sanitize_prompt_input()` when building the open_contracts list
-- This adds defense-in-depth on top of the existing sanitization in `_compute_match` and `_generate_proposal`
+**API pagination:**
+- `NATLANGCHAIN_DEFAULT_PAGE_LIMIT` (default: 100)
+- `NATLANGCHAIN_MAX_PAGE_LIMIT` (default: 1000)
+- `NATLANGCHAIN_DEFAULT_HISTORY_LIMIT` (default: 50)
 
-### Step 13: Sanitize narrative output [2.2 MEDIUM]
-**File:** `src/api/core.py` lines 61-62
-- After `state.blockchain.get_full_narrative()`, apply `sanitize_output()` from the sanitization module
-- Add `Content-Disposition: inline` header to the response
+**LLM rate limiting:**
+- `LLM_RATE_LIMIT_REQUESTS` (default: 10)
+- `LLM_RATE_LIMIT_WINDOW` (default: 60)
 
----
+**CORS & security:**
+- `CORS_ALLOWED_ORIGINS` (comma-separated)
+- `NATLANGCHAIN_ENABLE_HSTS` (default: false)
+- `NATLANGCHAIN_TRUSTED_PROXIES` (comma-separated IPs)
 
-## Phase 4 — Provider SSRF Hardening
+**Infrastructure:**
+- `DATABASE_URL` (PostgreSQL connection string)
+- `REDIS_URL` (for scaling features)
+- `STORAGE_BACKEND` (already documented, but add to appropriate section)
 
-### Step 14: Add SSRF validation to provider URLs [6.2 HIGH, 7.1 MEDIUM]
-**File:** `src/llm_providers.py`
-- Add `_validate_provider_url()` function that:
-  - Imports `validate_url_for_ssrf` from `api.ssrf_protection`
-  - Allows `localhost`/`127.0.0.1` when `NATLANGCHAIN_ALLOW_LOCAL_PROVIDERS=true` (default: true, since local providers are a core feature)
-  - Blocks all other private/internal IPs
-- Call this validation in `OllamaProvider.__init__()` and `LlamaCppProvider.__init__()`
-- If validation fails, set `self.config.enabled = False` and log a warning
-- Add optional `NATLANGCHAIN_ALLOWED_PROVIDER_HOSTS` environment variable for production allowlisting [7.1]
+**Module manifests:**
+- `NATLANGCHAIN_MANIFEST_DIR` (default: manifests/)
+- `NATLANGCHAIN_MANIFEST_ENFORCE` (default: false)
 
 ---
 
-## Phase 5 — CORS and CSRF Hardening (do together)
+## Phase 3: Error Handling Tightening [MEDIUM]
 
-### Step 15: Remove wildcard CORS support [9.2 MEDIUM]
-**File:** `src/api/__init__.py` lines 154-155
-- Replace the `if allowed_origins_str == "*":` branch with a warning log and no `Access-Control-Allow-Origin` header
-- Keep the explicit origin list branch unchanged
+### 3.1 Replace broad `except Exception` with typed exceptions
+76 broad catches across 22 files. Prioritize by file (highest count first):
 
-### Step 16: Add CSRF Origin header validation [9.4 MEDIUM]
-**File:** `src/api/__init__.py` (in `before_request_security`)
-- For `POST`/`PUT`/`DELETE` requests, check the `Origin` header
-- If `CORS_ALLOWED_ORIGINS` is configured and the request has an `Origin` header, verify it's in the allowed list
-- Return 403 if origin is not allowed
+| File | Count | Approach |
+|------|-------|----------|
+| `api/monitoring.py` | 6 | Catch `KeyError`, `OSError`, `RuntimeError` per context |
+| `validator.py` | 6 | Catch `anthropic.APIError`, `json.JSONDecodeError`, `KeyError` |
+| `semantic_search.py` | 5 | Catch `ModelLoadError`, `EncodingError`, `RuntimeError` |
+| `storage/postgresql.py` | 5 | Catch `psycopg2.Error`, `ConnectionError` |
+| `api/state.py` | 4 | Catch `StorageError`, `OSError` |
+| `api/contracts.py` | 3 | Catch `anthropic.APIError`, `ValueError` |
+| `api/__init__.py` | 3 | Catch `ImportError`, `ValueError` |
+| `scaling/coordinator.py` | 3 | Catch `ConnectionError`, `redis.RedisError` |
+| `storage/json_file.py` | 3 | Catch `OSError`, `json.JSONDecodeError` |
+| Remaining 13 files | 1-2 each | Case-by-case typed replacement |
 
----
+**Scope note:** Some `except Exception` catches are legitimate top-level safety nets (e.g., API error handlers). Those should get a `# broad catch intentional: last-resort handler` comment rather than being replaced.
 
-## Phase 6 — LLM Response Schema Validation
-
-### Step 17: Validate LLM response schemas [1.3 MEDIUM]
-**Files:** `src/validator.py`, `src/contract_matcher.py`
-- In `validator.py` after `json.loads(response_text)` (line 257):
-  - Validate `decision` field is in `{"VALID", "NEEDS_CLARIFICATION", "INVALID"}`; default to `"INVALID"` if not
-  - Validate `intent_match` is a boolean; default to `False` if not
-- In `contract_matcher.py` after match score parsing:
-  - Validate `score` is numeric in range [0, 100]; default to 0 if not
-  - Validate `recommendation` is in `{"MATCH", "PARTIAL", "NO_MATCH"}`; default to `"NO_MATCH"` if not
+### 3.2 Replace `print()` with `logging` in `state.py`
+- **Lines 204, 208-209, 212-213, 228-229** — replace all `print()` calls with `logger.info()` / `logger.warning()`
+- Add `logger = logging.getLogger(__name__)` at module top
 
 ---
 
-## Phase 7 — Supply Chain Hardening (Docker changes)
+## Phase 4: Fix Broken Entry Point & API Consistency [MEDIUM]
 
-### Step 18: Pin dependencies with hashes [3.1 HIGH]
-**Files:** `requirements-lock.txt`, `Dockerfile`
-- Regenerate `requirements-lock.txt` with hash annotations (using `pip-compile --generate-hashes` or equivalent)
-- Update Dockerfile to: `pip install --no-cache-dir --require-hashes -r requirements-lock.txt`
+### 4.1 Standardize API query parameter naming
+- **Issue:** `/entries/search` uses `q` (`core.py:397`) while `/search/semantic` uses `query` (`search.py:48`)
+- **Action:** Rename `q` → `query` in `/entries/search` for consistency. Update error message at line 404 accordingly.
+- **Backward compat:** Add deprecation support — accept both `query` and `q`, log a deprecation warning for `q`
 
-### Step 19: Pre-download and pin ML model [3.2 HIGH]
-**Files:** `Dockerfile`, `src/semantic_search.py`
-- In Dockerfile builder stage, add `SENTENCE_TRANSFORMERS_HOME=/opt/models` and pre-download the `all-MiniLM-L6-v2` model
-- Copy `/opt/models` from builder to runtime stage
-- In `semantic_search.py`, pass `cache_folder` from env var to `SentenceTransformer()` so it uses the bundled model
+### 4.2 Standardize API success response shapes
+- **Issue:** Some endpoints return `{"status": "success", ...}`, others return direct objects
+- **Action:** Audit all endpoints and document the two patterns. For new/modified endpoints, prefer the `{"status": "success", "data": {...}}` envelope. Do not break existing clients by changing stable endpoints.
+
+---
+
+## Phase 5: Test Quality Improvements [MEDIUM]
+
+### 5.1 Fix trivial assertions
+- **`test_e2e_blockchain_pipelines.py:176`** — `assert True` inside an if-block is a no-op. Replace with an actual check on the response data, e.g., assert the block/mined_block key has expected structure.
+- **`test_pou_scoring.py:495`** — `assert False, "Should have raised"` is a manual pytest.raises. Replace with `with pytest.raises(ValueError, match="non-verified"):`.
+
+### 5.2 Add `@pytest.mark.parametrize` to key test areas
+Add parametrized tests to cover boundary conditions in 3-4 high-value areas:
+- **Blockchain entry validation** — parametrize content length limits, missing fields, special characters
+- **Rate limiting** — parametrize request counts at/near threshold
+- **Encryption** — parametrize key lengths, empty data, large data
+- **Semantic search** — parametrize query edge cases (empty, very long, special chars)
+
+Target: ~10-15 new parametrized test cases across 3-4 test files.
+
+---
+
+## Phase 6: Thread Safety & Resource Management [LOW]
+
+### 6.1 Add lock around mining operation
+- **Issue:** `mine_pending_entries()` clears `pending_entries` after block creation, leaving a race window
+- **Action:** Add a `threading.Lock` (`_mining_lock`) to `NatLangChain` class, acquired around the mine operation
+
+### 6.2 Add lock to rate limit store
+- **Issue:** `_rate_limit_store` in `api/utils.py` is a plain dict with no lock
+- **Action:** Add `threading.Lock` around rate limit store reads/writes
+
+### 6.3 Add sentence-transformers model cleanup
+- **Issue:** No explicit cleanup when app shuts down
+- **Action:** Add model cleanup to the existing graceful shutdown hook in `state.py`
+
+---
+
+## Phase 7: Error UX Improvements [LOW]
+
+### 7.1 Add consistent `Retry-After` to all 503 responses
+- Audit all 503 responses and add `Retry-After` header where missing (especially LLM-unavailable paths)
+
+### 7.2 Add machine-readable error codes
+- Define error code enum/constants (e.g., `VALIDATION_FAILED`, `RATE_LIMITED`, `LLM_UNAVAILABLE`, `NOT_FOUND`)
+- Add `"code"` field to error JSON responses: `{"error": "message", "code": "RATE_LIMITED"}`
+- Start with API boundary errors; internal errors can be added incrementally
+
+---
+
+## Phase 8: Authenticity & Comment Quality [LOW]
+
+### 8.1 Add WHY comments to complex logic
+Replace ~10-15 of the most opaque WHAT comments with WHY comments in:
+- `blockchain.py` — hash computation choices, mining difficulty logic
+- `validator.py` — prompt construction rationale, scoring thresholds
+- `encryption.py` — algorithm/parameter choices (why AES-256-GCM, why 1M PBKDF2 iterations)
+- `api/__init__.py` — security header choices
+
+### 8.2 Add TODO/FIXME markers for known limitations
+Add realistic TODO markers for documented gaps:
+- `# TODO: parametrize rate limit per-endpoint (currently global)`
+- `# TODO: add connection pooling for PostgreSQL storage`
+- `# FIXME: mining is not atomic under concurrent writes (see Phase 6)`
+- `# TODO: model warm-up on startup to avoid first-request latency`
 
 ---
 
 ## Dependency Graph
 
 ```
-Phase 1: [5.1] [6.1] [9.1] [9.3] [5.2] [5.3] [6.3]  ← all independent
-    ↓
-Phase 2: [1.1] → creates src/sanitization.py
-         [1.2] [9.5] → included in sanitization.py + validator.py
-    ↓
-Phase 3: [2.1] [2.2] ← depends on sanitization.py existing
-    ↓ (parallel with Phase 3)
-Phase 4: [6.2] [7.1] ← depends on ssrf_protection.py (already exists)
-    ↓ (parallel with Phases 3-4)
-Phase 5: [9.2] [9.4] ← do together for consistency
-    ↓ (parallel with Phase 5)
-Phase 6: [1.3] ← standalone
-    ↓
-Phase 7: [3.1] [3.2] ← Docker rebuild, do last since it requires generating lock file
+Phase 1 ← no dependencies (do first, removes 1,828 lines of noise)
+  ↓
+Phase 2 ← depends on Phase 1 (env vars from moved modules should NOT be documented)
+  ↓
+Phase 3 ← independent, can parallel with Phase 2
+Phase 4 ← independent
+Phase 5 ← independent
+  ↓
+Phase 6 ← can parallel with Phases 3-5
+Phase 7 ← can parallel with Phase 6
+Phase 8 ← do last (cosmetic, lowest risk)
 ```
 
 ---
 
 ## Files Modified Summary
 
-| File | Findings | Phase |
-|------|----------|-------|
-| `docker-compose.yml` | 5.1, 6.3 | 1 |
-| `src/llm_providers.py` | 6.1, 5.3, 6.2, 7.1 | 1, 4 |
-| `src/api/core.py` | 9.1, 2.2 | 1, 3 |
-| `src/api/contracts.py` | 9.1 | 1 |
-| `src/api/__init__.py` | 9.3, 9.2, 9.4 | 1, 5 |
-| `src/api/utils.py` | 5.2 | 1 |
-| `run_server.py` | 6.3 | 1 |
-| `src/sanitization.py` (NEW) | 1.1, 1.2, 2.2, 9.5 | 2 |
-| `src/validator.py` | 1.2, 9.5, 1.3 | 2, 6 |
-| `src/contract_parser.py` | 1.1 | 2 |
-| `src/contract_matcher.py` | 1.1, 2.1, 1.3 | 2, 3, 6 |
-| `src/semantic_search.py` | 3.2 | 7 |
-| `Dockerfile` | 3.1, 3.2 | 7 |
-| `requirements-lock.txt` | 3.1 | 7 |
+| File | Changes | Phase |
+|------|---------|-------|
+| `src/llm_providers.py` | Move to `_deferred/` | 1 |
+| `src/rate_limiter.py` | Move to `_deferred/` | 1 |
+| `pyproject.toml` | Remove broken entry point | 1 |
+| `.env.example` | Remove HOST, add ~20 env vars | 2 |
+| `src/api/state.py` | print→logging, typed exceptions | 3 |
+| `src/api/monitoring.py` | Typed exceptions | 3 |
+| `src/validator.py` | Typed exceptions | 3 |
+| `src/semantic_search.py` | Typed exceptions | 3 |
+| `src/storage/postgresql.py` | Typed exceptions | 3 |
+| ~13 other src/ files | Typed exceptions (1-3 each) | 3 |
+| `src/api/core.py` | `q`→`query`, response consistency | 4 |
+| `tests/test_e2e_blockchain_pipelines.py` | Fix `assert True` | 5 |
+| `tests/test_pou_scoring.py` | Fix `assert False` | 5 |
+| 3-4 test files | Add parametrize | 5 |
+| `src/blockchain.py` | Mining lock, WHY comments, TODOs | 6, 8 |
+| `src/api/utils.py` | Rate limit lock | 6 |
+| Multiple API files | Retry-After, error codes | 7 |
 
-**Total:** 1 new file, 13 modified files
+**Total:** ~2 moved files, ~20-25 modified files
 
 ---
 
 ## Testing Strategy
 
 After each phase:
-1. Run `python -m pytest tests/` to verify no regressions
-2. For Phase 1 changes: verify auth is now required on previously-unprotected endpoints
-3. For Phase 2-3: verify prompt injection detection works with Unicode confusables, verify narrative endpoint strips injection patterns
-4. For Phase 4: verify SSRF validation on provider URLs (test with private IPs)
-5. For Phase 5: verify wildcard CORS is rejected, verify Origin header validation
-6. For Phase 7: verify Docker build succeeds with hash-pinned dependencies
+1. Run `python -m pytest tests/` — verify zero regressions
+2. Phase 1: Verify no import errors after moving dead modules
+3. Phase 3: Verify error handling still works (existing tests cover this)
+4. Phase 4: Verify both `q` and `query` work on `/entries/search`
+5. Phase 5: Run new parametrized tests pass
+6. Phase 6: Stress test mining under concurrent requests (manual or load test)

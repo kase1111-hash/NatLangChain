@@ -192,7 +192,7 @@ def encrypt_data(
 
         return ENCRYPTED_PREFIX + encoded
 
-    except Exception as e:
+    except (ValueError, TypeError, OSError) as e:
         raise EncryptionError(f"Encryption failed: {e!s}") from e
 
 
@@ -269,7 +269,7 @@ def decrypt_data(
 
     except EncryptionError:
         raise
-    except Exception as e:
+    except (ValueError, TypeError, OSError) as e:
         raise EncryptionError(f"Decryption failed: {e!s}") from e
 
 

@@ -74,7 +74,7 @@ def parse_contract_endpoint():
     try:
         parsed = managers.contract_parser.parse_contract(content)
         return jsonify({"status": "success", "parsed": parsed})
-    except Exception:
+    except (ValueError, RuntimeError):
         return jsonify({"error": "Failed to parse contract", "details": "Internal error occurred"}), 500
 
 
@@ -122,7 +122,7 @@ def match_contracts():
                 "count": len(matches),
             }
         )
-    except Exception:
+    except (ValueError, RuntimeError):
         return jsonify({"error": "Failed to find matches", "details": "Internal error occurred"}), 500
 
 
@@ -208,7 +208,7 @@ def post_contract():
 
         return jsonify(response), 201
 
-    except Exception:
+    except (ValueError, RuntimeError):
         return jsonify({"error": "Contract posting failed", "reason": "Internal error occurred"}), 500
 
 

@@ -252,7 +252,7 @@ class ManifestRegistry:
                     manifest.capability_summary,
                 )
 
-            except Exception as e:
+            except (OSError, ValueError, KeyError) as e:
                 logger.error("Failed to load manifest %s: %s", yaml_file, e)
 
         return count
