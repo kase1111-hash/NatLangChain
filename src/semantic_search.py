@@ -266,11 +266,19 @@ class SemanticSearchEngine:
         sorted_indices = valid_indices[np.argsort(similarities[valid_indices])[::-1]]
         top_indices = sorted_indices[:top_k]
 
-        # Build results
+        # Build results with trust-level annotations
         results = []
         for idx in top_indices:
+            entry = self._entries_cache[idx]
             results.append(
-                {"score": round(float(similarities[idx]), 4), "entry": self._entries_cache[idx]}
+                {
+                    "score": round(float(similarities[idx]), 4),
+                    "entry": entry,
+                    "trust_indicators": {
+                        "is_signed": bool(entry.get("metadata", {}).get("signature")),
+                        "validation_status": entry.get("validation_status", "unknown"),
+                    },
+                }
             )
 
         return results

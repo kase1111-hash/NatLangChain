@@ -18,7 +18,7 @@ sentence-transformers>=2.2.0
 numpy>=1.20.0
 
 # Encryption at rest
-cryptography>=41.0.0
+cryptography>=43.0.0
 
 # LLM provider HTTP clients (Ollama, llama.cpp)
 requests>=2.28.0

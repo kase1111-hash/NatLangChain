@@ -1,233 +1,270 @@
-# Vibe-Check Audit v2.0 - Remediation Plan
+# Remediation Plan — Agentic Security Audit v3.0 Findings
 
-## Overview
+## Updated Assessment
 
-Address all actionable findings from `VIBE_CHECK_AUDIT.md` across 8 phases, ordered by priority and dependency. Total: ~22 discrete changes across ~15 files.
+After deeper investigation, several findings are **partially addressed**:
+- CI/CD pipeline exists (`.github/workflows/ci.yml`) but security checks use `continue-on-error: true`
+- Lock file exists (`requirements-lock.txt`) with `cryptography==43.0.3` but isn't enforced in builds
+- Redis-backed rate limiter exists in `_deferred/src/rate_limiter.py` but isn't integrated
 
----
-
-## Phase 1: Dead Code & Broken References [HIGH]
-
-### 1.1 Move orphaned `src/llm_providers.py` to `_deferred/src/`
-- **Issue:** 1,298 lines implementing multi-provider LLM abstraction — never imported anywhere
-- **Action:** `git mv src/llm_providers.py _deferred/src/llm_providers.py`
-- **Note:** The `requests` dependency is still used by `api/ssrf_protection.py`, so it stays in pyproject.toml
-
-### 1.2 Move orphaned `src/rate_limiter.py` to `_deferred/src/`
-- **Issue:** 530 lines implementing distributed rate limiter — never imported (blockchain.py has its own `EntryRateLimiter`)
-- **Action:** `git mv src/rate_limiter.py _deferred/src/rate_limiter.py`
-
-### 1.3 Fix broken entry point in `pyproject.toml`
-- **Issue:** `[project.scripts] natlangchain = "src.cli:main"` references `src/cli.py` which was moved to `_deferred/`
-- **Action:** Comment out the `[project.scripts]` section with a note that CLI is deferred, or remove it entirely
+This changes the plan from "build from scratch" to "tighten and integrate existing work."
 
 ---
 
-## Phase 2: Configuration Hygiene [HIGH]
+## Fix 1: Update cryptography Version Floor [Finding #7 — LOW]
 
-### 2.1 Remove/fix ghost config vars in `.env.example`
-- **`HOST`** — truly unused, remove it
-- **`PORT`** — IS used (`scaling/coordinator.py:86`) — keep but add clarifying comment
-- **`FLASK_DEBUG`** — IS read (`api/monitoring.py:182`) for status reporting — keep but clarify it doesn't enable Flask debug mode
-- **`CHAIN_DATA_FILE`** — IS used (`storage/__init__.py:60`) — keep, it's correct
+**Problem:** `cryptography>=41.0.0` allows installing a version 3 major releases behind.
 
-### 2.2 Document all undocumented env vars in `.env.example`
-Add sections for the following env vars that are consumed by active code but not documented:
+**Files:** `pyproject.toml` (line 46), `requirements.txt` (line 22)
 
-**Retry tuning:**
-- `RETRY_EXPONENTIAL_BASE` (default: 2.0)
-- `RETRY_JITTER` (default: 0.1)
-
-**Secret scanning:**
-- `NATLANGCHAIN_SECRET_SCANNING` (default: true)
-- `NATLANGCHAIN_SECRET_SCAN_MODE` (default: redact)
-
-**Semantic search:**
-- `SENTENCE_TRANSFORMERS_HOME` (default: system cache)
-
-**Cryptographic identity:**
-- `NATLANGCHAIN_IDENTITY_ENABLED` (default: false)
-- `NATLANGCHAIN_IDENTITY_REQUIRE_SIGNATURES` (default: false)
-- `NATLANGCHAIN_IDENTITY_KEYSTORE` (path)
-- `NATLANGCHAIN_IDENTITY_PASSPHRASE` (secret)
-
-**API pagination:**
-- `NATLANGCHAIN_DEFAULT_PAGE_LIMIT` (default: 100)
-- `NATLANGCHAIN_MAX_PAGE_LIMIT` (default: 1000)
-- `NATLANGCHAIN_DEFAULT_HISTORY_LIMIT` (default: 50)
-
-**LLM rate limiting:**
-- `LLM_RATE_LIMIT_REQUESTS` (default: 10)
-- `LLM_RATE_LIMIT_WINDOW` (default: 60)
-
-**CORS & security:**
-- `CORS_ALLOWED_ORIGINS` (comma-separated)
-- `NATLANGCHAIN_ENABLE_HSTS` (default: false)
-- `NATLANGCHAIN_TRUSTED_PROXIES` (comma-separated IPs)
-
-**Infrastructure:**
-- `DATABASE_URL` (PostgreSQL connection string)
-- `REDIS_URL` (for scaling features)
-- `STORAGE_BACKEND` (already documented, but add to appropriate section)
-
-**Module manifests:**
-- `NATLANGCHAIN_MANIFEST_DIR` (default: manifests/)
-- `NATLANGCHAIN_MANIFEST_ENFORCE` (default: false)
+**Changes:**
+- `cryptography>=41.0.0` → `cryptography>=43.0.0` in both files
+- Lock file already has `cryptography==43.0.3` — no change needed there
 
 ---
 
-## Phase 3: Error Handling Tightening [MEDIUM]
+## Fix 2: Remove Test Credential [Finding #8 — LOW]
 
-### 3.1 Replace broad `except Exception` with typed exceptions
-76 broad catches across 22 files. Prioritize by file (highest count first):
+**Problem:** Hardcoded `password="pass"` in deferred test file.
 
-| File | Count | Approach |
-|------|-------|----------|
-| `api/monitoring.py` | 6 | Catch `KeyError`, `OSError`, `RuntimeError` per context |
-| `validator.py` | 6 | Catch `anthropic.APIError`, `json.JSONDecodeError`, `KeyError` |
-| `semantic_search.py` | 5 | Catch `ModelLoadError`, `EncodingError`, `RuntimeError` |
-| `storage/postgresql.py` | 5 | Catch `psycopg2.Error`, `ConnectionError` |
-| `api/state.py` | 4 | Catch `StorageError`, `OSError` |
-| `api/contracts.py` | 3 | Catch `anthropic.APIError`, `ValueError` |
-| `api/__init__.py` | 3 | Catch `ImportError`, `ValueError` |
-| `scaling/coordinator.py` | 3 | Catch `ConnectionError`, `redis.RedisError` |
-| `storage/json_file.py` | 3 | Catch `OSError`, `json.JSONDecodeError` |
-| Remaining 13 files | 1-2 each | Case-by-case typed replacement |
+**File:** `_deferred/tests/test_nat_traversal.py`
 
-**Scope note:** Some `except Exception` catches are legitimate top-level safety nets (e.g., API error handlers). Those should get a `# broad catch intentional: last-resort handler` comment rather than being replaced.
-
-### 3.2 Replace `print()` with `logging` in `state.py`
-- **Lines 204, 208-209, 212-213, 228-229** — replace all `print()` calls with `logger.info()` / `logger.warning()`
-- Add `logger = logging.getLogger(__name__)` at module top
+**Changes:**
+- Add test constants at top of file:
+  ```python
+  # Test-only credentials for TURN server mock — not real credentials
+  TEST_TURN_USERNAME = "test_user"
+  TEST_TURN_PASSWORD = "test_credential_placeholder"
+  ```
+- Replace hardcoded `username="user", password="pass"` with the constants throughout the file
 
 ---
 
-## Phase 4: Fix Broken Entry Point & API Consistency [MEDIUM]
+## Fix 3: Enforce Lock File in CI Builds [Finding #4 — MEDIUM]
 
-### 4.1 Standardize API query parameter naming
-- **Issue:** `/entries/search` uses `q` (`core.py:397`) while `/search/semantic` uses `query` (`search.py:48`)
-- **Action:** Rename `q` → `query` in `/entries/search` for consistency. Update error message at line 404 accordingly.
-- **Backward compat:** Add deprecation support — accept both `query` and `q`, log a deprecation warning for `q`
+**Problem:** `requirements-lock.txt` exists with pinned versions but CI installs from `requirements.txt` (unpinned).
 
-### 4.2 Standardize API success response shapes
-- **Issue:** Some endpoints return `{"status": "success", ...}`, others return direct objects
-- **Action:** Audit all endpoints and document the two patterns. For new/modified endpoints, prefer the `{"status": "success", "data": {...}}` envelope. Do not break existing clients by changing stable endpoints.
+**File:** `.github/workflows/ci.yml`
 
----
-
-## Phase 5: Test Quality Improvements [MEDIUM]
-
-### 5.1 Fix trivial assertions
-- **`test_e2e_blockchain_pipelines.py:176`** — `assert True` inside an if-block is a no-op. Replace with an actual check on the response data, e.g., assert the block/mined_block key has expected structure.
-- **`test_pou_scoring.py:495`** — `assert False, "Should have raised"` is a manual pytest.raises. Replace with `with pytest.raises(ValueError, match="non-verified"):`.
-
-### 5.2 Add `@pytest.mark.parametrize` to key test areas
-Add parametrized tests to cover boundary conditions in 3-4 high-value areas:
-- **Blockchain entry validation** — parametrize content length limits, missing fields, special characters
-- **Rate limiting** — parametrize request counts at/near threshold
-- **Encryption** — parametrize key lengths, empty data, large data
-- **Semantic search** — parametrize query edge cases (empty, very long, special chars)
-
-Target: ~10-15 new parametrized test cases across 3-4 test files.
+**Changes:**
+- In the `build` job (line 390): change `pip install -r requirements.txt` → `pip install -r requirements-lock.txt`
+- In the `security` job (line 188): change `pip-audit -r requirements.txt` → `pip-audit -r requirements-lock.txt`
+- In the `security` job (line 184): change `safety check -r requirements.txt` → `safety check -r requirements-lock.txt`
+- Keep `requirements.txt` in `test` and `lint` jobs for development flexibility (floor pins are fine for test matrix)
 
 ---
 
-## Phase 6: Thread Safety & Resource Management [LOW]
+## Fix 4: Harden CI Security Gates [Finding #5 — MEDIUM]
 
-### 6.1 Add lock around mining operation
-- **Issue:** `mine_pending_entries()` clears `pending_entries` after block creation, leaving a race window
-- **Action:** Add a `threading.Lock` (`_mining_lock`) to `NatLangChain` class, acquired around the mine operation
+**Problem:** All security job steps use `continue-on-error: true` — they never block merges.
 
-### 6.2 Add lock to rate limit store
-- **Issue:** `_rate_limit_store` in `api/utils.py` is a plain dict with no lock
-- **Action:** Add `threading.Lock` around rate limit store reads/writes
+**File:** `.github/workflows/ci.yml`
 
-### 6.3 Add sentence-transformers model cleanup
-- **Issue:** No explicit cleanup when app shuts down
-- **Action:** Add model cleanup to the existing graceful shutdown hook in `state.py`
-
----
-
-## Phase 7: Error UX Improvements [LOW]
-
-### 7.1 Add consistent `Retry-After` to all 503 responses
-- Audit all 503 responses and add `Retry-After` header where missing (especially LLM-unavailable paths)
-
-### 7.2 Add machine-readable error codes
-- Define error code enum/constants (e.g., `VALIDATION_FAILED`, `RATE_LIMITED`, `LLM_UNAVAILABLE`, `NOT_FOUND`)
-- Add `"code"` field to error JSON responses: `{"error": "message", "code": "RATE_LIMITED"}`
-- Start with API boundary errors; internal errors can be added incrementally
+**Changes:**
+- **Remove** `continue-on-error: true` from `pip-audit` step (line 189) — known vulnerable deps must block
+- **Remove** `continue-on-error: true` from Bandit step (line 181) — security lint violations must block
+- **Keep** `continue-on-error: true` on Safety check (known for false positives on transitive deps)
+- **Keep** `continue-on-error: true` on Trivy SARIF upload (external service, shouldn't block on upload failure)
+- **Remove** `continue-on-error: true` from `mypy` in type-check job (line 90)
+- **Remove** `continue-on-error: true` from `isort` in lint job (line 57)
 
 ---
 
-## Phase 8: Authenticity & Comment Quality [LOW]
+## Fix 5: Cross-Entry Prompt Injection Defense [Finding #3 — MEDIUM]
 
-### 8.1 Add WHY comments to complex logic
-Replace ~10-15 of the most opaque WHAT comments with WHY comments in:
-- `blockchain.py` — hash computation choices, mining difficulty logic
-- `validator.py` — prompt construction rationale, scoring thresholds
-- `encryption.py` — algorithm/parameter choices (why AES-256-GCM, why 1M PBKDF2 iterations)
-- `api/__init__.py` — security header choices
+**Problem:** When matching contracts, entries from different users are composed into one LLM prompt. A coordinated multi-entry injection (split across entries) could bypass per-entry sanitization.
 
-### 8.2 Add TODO/FIXME markers for known limitations
-Add realistic TODO markers for documented gaps:
-- `# TODO: parametrize rate limit per-endpoint (currently global)`
-- `# TODO: add connection pooling for PostgreSQL storage`
-- `# FIXME: mining is not atomic under concurrent writes (see Phase 6)`
-- `# TODO: model warm-up on startup to avoid first-request latency`
+**Files:** `src/sanitization.py`, `src/contract_matcher.py`
 
----
+**Changes in `src/sanitization.py`:**
+Add a new function `validate_composed_sections()`:
+```python
+def validate_composed_sections(
+    sections: list[tuple[str, str]],
+) -> None:
+    """
+    Validate that composed prompt sections don't contain cross-boundary
+    injection attempts.
 
-## Dependency Graph
+    Args:
+        sections: List of (label, content) tuples that will be composed
+                  into a single prompt.
 
-```
-Phase 1 ← no dependencies (do first, removes 1,828 lines of noise)
-  ↓
-Phase 2 ← depends on Phase 1 (env vars from moved modules should NOT be documented)
-  ↓
-Phase 3 ← independent, can parallel with Phase 2
-Phase 4 ← independent
-Phase 5 ← independent
-  ↓
-Phase 6 ← can parallel with Phases 3-5
-Phase 7 ← can parallel with Phase 6
-Phase 8 ← do last (cosmetic, lowest risk)
+    Raises:
+        ValueError: If cross-entry injection is detected.
+    """
+    all_labels = {label for label, _ in sections}
+
+    for label, content in sections:
+        content_lower = content.lower()
+        # Check if any entry references another entry's delimiters
+        for other_label in all_labels:
+            if other_label == label:
+                continue
+            if other_label.lower() in content_lower:
+                raise ValueError(
+                    f"Input rejected: cross-section reference detected in '{label}'"
+                )
+
+        # Check for delimiter forgery: [END ...] or [BEGIN ...] patterns
+        if re.search(r"\[(BEGIN|END)\s+\w+", content, re.IGNORECASE):
+            raise ValueError(
+                f"Input rejected: delimiter pattern detected in '{label}'"
+            )
+
+    # Run injection detection on concatenated content
+    combined = " ".join(content for _, content in sections)
+    combined_lower = combined.lower()
+    for pattern in PROMPT_INJECTION_PATTERNS:
+        if re.search(pattern, combined_lower, re.IGNORECASE):
+            raise ValueError(
+                "Input rejected: injection pattern detected in composed prompt"
+            )
 ```
 
+**Changes in `src/contract_matcher.py` `_compute_match()`** (around line 218):
+After individual sanitization (line 223), before building the prompt, add:
+```python
+from sanitization import validate_composed_sections
+
+validate_composed_sections([
+    ("CONTRACT_A_CONTENT", safe_content1),
+    ("CONTRACT_A_INTENT", safe_intent1),
+    ("CONTRACT_B_CONTENT", safe_content2),
+    ("CONTRACT_B_INTENT", safe_intent2),
+])
+```
+
+Wrap in try/except ValueError → return score 0 with "rejected by security check" reasoning.
+
+Apply the same pattern to `_generate_proposal()` and `_mediate_negotiation()` if they also compose multi-entry prompts.
+
 ---
 
-## Files Modified Summary
+## Fix 6: Multi-Key Authentication with Expiry [Finding #1 — MEDIUM]
 
-| File | Changes | Phase |
-|------|---------|-------|
-| `src/llm_providers.py` | Move to `_deferred/` | 1 |
-| `src/rate_limiter.py` | Move to `_deferred/` | 1 |
-| `pyproject.toml` | Remove broken entry point | 1 |
-| `.env.example` | Remove HOST, add ~20 env vars | 2 |
-| `src/api/state.py` | print→logging, typed exceptions | 3 |
-| `src/api/monitoring.py` | Typed exceptions | 3 |
-| `src/validator.py` | Typed exceptions | 3 |
-| `src/semantic_search.py` | Typed exceptions | 3 |
-| `src/storage/postgresql.py` | Typed exceptions | 3 |
-| ~13 other src/ files | Typed exceptions (1-3 each) | 3 |
-| `src/api/core.py` | `q`→`query`, response consistency | 4 |
-| `tests/test_e2e_blockchain_pipelines.py` | Fix `assert True` | 5 |
-| `tests/test_pou_scoring.py` | Fix `assert False` | 5 |
-| 3-4 test files | Add parametrize | 5 |
-| `src/blockchain.py` | Mining lock, WHY comments, TODOs | 6, 8 |
-| `src/api/utils.py` | Rate limit lock | 6 |
-| Multiple API files | Retry-After, error codes | 7 |
+**Problem:** Single static `NATLANGCHAIN_API_KEY` with no rotation mechanism.
 
-**Total:** ~2 moved files, ~20-25 modified files
+**File:** `src/api/utils.py`
+
+**Changes:**
+1. Add key parsing function above `require_api_key()`:
+```python
+def _parse_api_keys() -> list[tuple[str, str | None]]:
+    """
+    Parse API keys from environment.
+    Supports NATLANGCHAIN_API_KEYS (comma-separated, optional expiry).
+    Format: key1:2026-06-01,key2:2026-12-31,key3
+
+    Returns list of (key, expiry_date_str_or_None).
+    """
+    keys_str = os.getenv("NATLANGCHAIN_API_KEYS", "")
+    if keys_str:
+        keys = []
+        for entry in keys_str.split(","):
+            entry = entry.strip()
+            if ":" in entry:
+                key, expiry = entry.rsplit(":", 1)
+                keys.append((key, expiry))
+            else:
+                keys.append((entry, None))
+        return keys
+
+    # Fallback to single legacy key
+    single = os.getenv("NATLANGCHAIN_API_KEY")
+    if single:
+        return [(single, None)]
+    return []
+```
+
+2. Replace `API_KEY = os.getenv(...)` with:
+```python
+_API_KEYS = _parse_api_keys()
+```
+
+3. Update `require_api_key()` to iterate over `_API_KEYS`, checking each with `secrets.compare_digest()` and rejecting expired keys (compare `expiry` against `datetime.date.today()`).
+
+4. Update `.env.example` to document the new `NATLANGCHAIN_API_KEYS` variable.
+
+---
+
+## Fix 7: Integrate Redis-Backed Rate Limiter [Finding #2 — MEDIUM]
+
+**Problem:** In-process rate limiter doesn't share state across gunicorn workers.
+
+**Files:** `_deferred/src/rate_limiter.py` → `src/rate_limiter.py`, `src/api/utils.py`
+
+**Changes:**
+1. Copy `_deferred/src/rate_limiter.py` → `src/rate_limiter.py` (replacing the existing simpler version that was already moved to deferred in a prior audit)
+2. In `src/api/utils.py`:
+   - Import `RateLimiter`, `RateLimitConfig` from `rate_limiter`
+   - Replace the inline `rate_limit_store` dict, `_rate_limit_lock`, `check_rate_limit()` with:
+     ```python
+     _rate_limiter = RateLimiter(RateLimitConfig.from_env())
+
+     def check_rate_limit() -> dict[str, Any] | None:
+         client_ip = get_client_ip()
+         result = _rate_limiter.check_limit(client_ip)
+         if result.exceeded:
+             return {
+                 "error": "Rate limit exceeded",
+                 "code": "RATE_LIMITED",
+                 "retry_after": result.retry_after,
+             }
+         return None
+     ```
+   - Same pattern for LLM rate limiter (separate `RateLimiter` instance with stricter config)
+   - Remove the FIXME comment
+   - Function signatures remain the same — no downstream changes needed
+
+---
+
+## Fix 8: Trust-Level Annotations in Search Results [Finding #6 — LOW]
+
+**Problem:** Search results return all entries equally with no trust indication.
+
+**File:** `src/semantic_search.py`
+
+**Changes in `search()` method** (around line 270):
+Add trust indicators to each result:
+```python
+entry = self._entries_cache[idx]
+results.append({
+    "score": round(float(similarities[idx]), 4),
+    "entry": entry,
+    "trust_indicators": {
+        "is_signed": bool(entry.get("metadata", {}).get("signature")),
+        "validation_status": entry.get("validation_status", "unknown"),
+    },
+})
+```
+
+This is metadata enrichment only — no filtering or re-ranking. Consumers decide how to use it.
+
+---
+
+## Implementation Order
+
+| Step | Fix | Finding | Risk | Effort |
+|------|-----|---------|------|--------|
+| 1 | Fix 1: Update cryptography version | #7 LOW | Low | ~2 lines |
+| 2 | Fix 2: Remove test credential | #8 LOW | Low | ~5 lines |
+| 3 | Fix 3: Enforce lock file in CI | #4 MEDIUM | Low | ~3 lines |
+| 4 | Fix 4: Harden CI security gates | #5 MEDIUM | Low | ~5 lines removed |
+| 5 | Fix 5: Cross-entry injection defense | #3 MEDIUM | Medium | ~40 lines added |
+| 6 | Fix 6: Multi-key auth with expiry | #1 MEDIUM | Medium | ~50 lines added |
+| 7 | Fix 7: Integrate Redis rate limiter | #2 MEDIUM | Medium | ~30 lines changed |
+| 8 | Fix 8: Trust-level annotations | #6 LOW | Low | ~10 lines |
+
+**Total:** ~8 files modified, ~140 lines added/changed.
 
 ---
 
 ## Testing Strategy
 
-After each phase:
-1. Run `python -m pytest tests/` — verify zero regressions
-2. Phase 1: Verify no import errors after moving dead modules
-3. Phase 3: Verify error handling still works (existing tests cover this)
-4. Phase 4: Verify both `q` and `query` work on `/entries/search`
-5. Phase 5: Run new parametrized tests pass
-6. Phase 6: Stress test mining under concurrent requests (manual or load test)
+After all changes:
+1. `python -m pytest tests/ -v` — verify zero regressions
+2. Verify `require_api_key()` accepts valid keys, rejects expired keys (add unit test)
+3. Verify `validate_composed_sections()` catches cross-entry injection (add unit test)
+4. Verify rate limiter initializes with both memory and Redis backends
+5. Verify search results include `trust_indicators` field
