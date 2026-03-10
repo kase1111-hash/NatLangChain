@@ -62,16 +62,21 @@ class TestSTUNServer:
         assert server.port == 3478
 
 
+# Test-only credentials for TURN server mock — not real credentials
+TEST_TURN_USERNAME = "test_user"
+TEST_TURN_PASSWORD = "test_credential_placeholder"
+
+
 class TestTURNServer:
     """Tests for TURNServer data class."""
 
     def test_from_uri_basic(self):
         """Test parsing basic TURN URI."""
-        server = TURNServer.from_uri("turn:turn.example.com:3478", username="user", password="pass")
+        server = TURNServer.from_uri("turn:turn.example.com:3478", username=TEST_TURN_USERNAME, password=TEST_TURN_PASSWORD)
         assert server.host == "turn.example.com"
         assert server.port == 3478
-        assert server.username == "user"
-        assert server.password == "pass"
+        assert server.username == TEST_TURN_USERNAME
+        assert server.password == TEST_TURN_PASSWORD
         assert server.transport == "udp"
 
     def test_from_uri_with_transport(self):

@@ -5,6 +5,7 @@ This module contains common utilities, decorators, and helpers
 used across all API blueprints.
 """
 
+import datetime
 import os
 import secrets
 import threading
@@ -19,19 +20,57 @@ from flask import jsonify, request
 # Security Configuration
 # ============================================================
 
-# API Key for authentication (set via environment or generate secure default)
-API_KEY = os.getenv("NATLANGCHAIN_API_KEY", None)
+
+def _parse_api_keys() -> list[tuple[str, str | None]]:
+    """
+    Parse API keys from environment.
+    Supports NATLANGCHAIN_API_KEYS (comma-separated, optional expiry).
+    Format: key1:2026-06-01,key2:2026-12-31,key3
+
+    Falls back to singular NATLANGCHAIN_API_KEY for backward compatibility.
+
+    Returns list of (key, expiry_date_str_or_None).
+    """
+    keys_str = os.getenv("NATLANGCHAIN_API_KEYS", "")
+    if keys_str:
+        keys = []
+        for entry in keys_str.split(","):
+            entry = entry.strip()
+            if not entry:
+                continue
+            if ":" in entry:
+                key, expiry = entry.rsplit(":", 1)
+                keys.append((key, expiry))
+            else:
+                keys.append((entry, None))
+        return keys
+
+    # Fallback to single legacy key
+    single = os.getenv("NATLANGCHAIN_API_KEY")
+    if single:
+        return [(single, None)]
+    return []
+
+
+_API_KEYS = _parse_api_keys()
 # SECURITY: Default to requiring authentication for production safety
 API_KEY_REQUIRED = os.getenv("NATLANGCHAIN_REQUIRE_AUTH", "true").lower() == "true"
 
-# Rate limiting configuration
-# FIXME: in-process dict won't share state across gunicorn workers;
-#        swap for Redis-backed rate limiter in multi-process deployments
-RATE_LIMIT_REQUESTS = int(os.getenv("RATE_LIMIT_REQUESTS", "100"))
-RATE_LIMIT_WINDOW = int(os.getenv("RATE_LIMIT_WINDOW", "60"))  # seconds
-rate_limit_store: dict[str, dict[str, Any]] = {}
-_rate_limit_lock = threading.Lock()
-_rate_limit_last_cleanup: float = 0.0
+# Rate limiting: uses Redis-backed distributed rate limiter when configured,
+# with automatic fallback to in-memory for single-instance deployments.
+from rate_limiter import RateLimiter, RateLimitConfig
+
+_rate_limiter = RateLimiter(RateLimitConfig.from_env())
+
+# LLM endpoints use stricter rate limits
+_llm_rate_limit_config = RateLimitConfig(
+    backend=os.getenv("RATE_LIMIT_BACKEND", "memory"),
+    requests_per_window=int(os.getenv("LLM_RATE_LIMIT_REQUESTS", "10")),
+    window_seconds=int(os.getenv("LLM_RATE_LIMIT_WINDOW", "60")),
+    redis_url=os.getenv("RATE_LIMIT_REDIS_URL", "redis://localhost:6379/0"),
+    redis_prefix=os.getenv("RATE_LIMIT_REDIS_PREFIX", "natlangchain:ratelimit:") + "llm:",
+)
+_llm_rate_limiter = RateLimiter(_llm_rate_limit_config)
 
 # Bounded parameters - max values for iteration parameters
 MAX_VALIDATORS = 10
@@ -245,65 +284,23 @@ def get_client_ip() -> str:
     )
 
 
-def _cleanup_rate_limit_store(store: dict, window: int, current_time: float) -> None:
-    """Remove expired entries from a rate limit store to prevent unbounded memory growth."""
-    expired_keys = [
-        k for k, v in store.items()
-        if current_time - v["window_start"] > window * 2
-    ]
-    for k in expired_keys:
-        del store[k]
-
-
 def check_rate_limit() -> dict[str, Any] | None:
     """
     Check if client has exceeded rate limit.
+    Uses distributed Redis-backed rate limiter when configured.
 
     Returns:
         None if within limit, error dict if exceeded
     """
-    global _rate_limit_last_cleanup
     client_ip = get_client_ip()
-    current_time = time.time()
-
-    with _rate_limit_lock:
-        # Periodic cleanup to prevent unbounded memory growth from IP rotation
-        if current_time - _rate_limit_last_cleanup > RATE_LIMIT_WINDOW:
-            _cleanup_rate_limit_store(rate_limit_store, RATE_LIMIT_WINDOW, current_time)
-            _rate_limit_last_cleanup = current_time
-
-        if client_ip not in rate_limit_store:
-            rate_limit_store[client_ip] = {"count": 0, "window_start": current_time}
-
-        client_data = rate_limit_store[client_ip]
-
-        # Reset window if expired
-        if current_time - client_data["window_start"] > RATE_LIMIT_WINDOW:
-            client_data["count"] = 0
-            client_data["window_start"] = current_time
-
-        # Check limit
-        if client_data["count"] >= RATE_LIMIT_REQUESTS:
-            return {
-                "error": "Rate limit exceeded",
-                "code": "RATE_LIMITED",
-                "retry_after": int(RATE_LIMIT_WINDOW - (current_time - client_data["window_start"])),
-            }
-
-        client_data["count"] += 1
-        return None
-
-
-# ============================================================
-# Rate Limiting for LLM Endpoints
-# ============================================================
-
-# Stricter rate limits for expensive LLM-backed operations
-LLM_RATE_LIMIT_REQUESTS = int(os.getenv("LLM_RATE_LIMIT_REQUESTS", "10"))
-LLM_RATE_LIMIT_WINDOW = int(os.getenv("LLM_RATE_LIMIT_WINDOW", "60"))  # seconds
-llm_rate_limit_store: dict[str, dict[str, Any]] = {}
-_llm_rate_limit_lock = threading.Lock()
-_llm_rate_limit_last_cleanup: float = 0.0
+    result = _rate_limiter.check_limit(client_ip)
+    if result.exceeded:
+        return {
+            "error": "Rate limit exceeded",
+            "code": "RATE_LIMITED",
+            "retry_after": result.retry_after,
+        }
+    return None
 
 
 def check_llm_rate_limit() -> dict[str, Any] | None:
@@ -314,37 +311,16 @@ def check_llm_rate_limit() -> dict[str, Any] | None:
     Returns:
         None if within limit, error dict if exceeded
     """
-    global _llm_rate_limit_last_cleanup
     client_ip = get_client_ip()
-    current_time = time.time()
-
-    with _llm_rate_limit_lock:
-        # Periodic cleanup to prevent unbounded memory growth from IP rotation
-        if current_time - _llm_rate_limit_last_cleanup > LLM_RATE_LIMIT_WINDOW:
-            _cleanup_rate_limit_store(llm_rate_limit_store, LLM_RATE_LIMIT_WINDOW, current_time)
-            _llm_rate_limit_last_cleanup = current_time
-
-        if client_ip not in llm_rate_limit_store:
-            llm_rate_limit_store[client_ip] = {"count": 0, "window_start": current_time}
-
-        client_data = llm_rate_limit_store[client_ip]
-
-        # Reset window if expired
-        if current_time - client_data["window_start"] > LLM_RATE_LIMIT_WINDOW:
-            client_data["count"] = 0
-            client_data["window_start"] = current_time
-
-        # Check limit
-        if client_data["count"] >= LLM_RATE_LIMIT_REQUESTS:
-            return {
-                "error": "LLM rate limit exceeded",
-                "code": "LLM_RATE_LIMITED",
-                "message": "Too many requests to LLM-backed endpoints",
-                "retry_after": int(LLM_RATE_LIMIT_WINDOW - (current_time - client_data["window_start"])),
-            }
-
-        client_data["count"] += 1
-        return None
+    result = _llm_rate_limiter.check_limit(client_ip)
+    if result.exceeded:
+        return {
+            "error": "LLM rate limit exceeded",
+            "code": "LLM_RATE_LIMITED",
+            "message": "Too many requests to LLM-backed endpoints",
+            "retry_after": result.retry_after,
+        }
+    return None
 
 
 def rate_limit_llm(f):
@@ -370,7 +346,12 @@ def rate_limit_llm(f):
 
 
 def require_api_key(f):
-    """Decorator to require API key authentication."""
+    """Decorator to require API key authentication.
+
+    Supports multiple keys via NATLANGCHAIN_API_KEYS env var with optional
+    expiry dates (format: key1:2026-06-01,key2:2026-12-31,key3).
+    Falls back to single NATLANGCHAIN_API_KEY for backward compatibility.
+    """
 
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -385,17 +366,36 @@ def require_api_key(f):
                 {"error": "API key required", "hint": "Provide API key in X-API-Key header"}
             ), 401
 
-        if not API_KEY:
+        if not _API_KEYS:
             import logging as _logging
             _logging.getLogger(__name__).error(
-                "Authentication service unavailable: NATLANGCHAIN_API_KEY not configured"
+                "Authentication service unavailable: no API keys configured"
             )
             return jsonify({"error": "Authentication service unavailable"}), 503
 
-        if not secrets.compare_digest(provided_key, API_KEY):
-            return jsonify({"error": "Invalid API key"}), 403
+        today = datetime.date.today()
+        for key, expiry in _API_KEYS:
+            if not secrets.compare_digest(provided_key, key):
+                continue
+            # Key matched — check expiry
+            if expiry:
+                try:
+                    expiry_date = datetime.date.fromisoformat(expiry)
+                    if today > expiry_date:
+                        import logging as _logging
+                        _logging.getLogger(__name__).warning(
+                            "Expired API key used (expiry: %s)", expiry,
+                        )
+                        continue  # Expired — try next key
+                except ValueError:
+                    import logging as _logging
+                    _logging.getLogger(__name__).warning(
+                        "API key has invalid expiry format: %s", expiry,
+                    )
+                    continue  # Invalid expiry format — reject this key
+            return f(*args, **kwargs)
 
-        return f(*args, **kwargs)
+        return jsonify({"error": "Invalid API key"}), 403
 
     return decorated_function
 

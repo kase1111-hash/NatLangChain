@@ -116,6 +116,61 @@ def create_safe_prompt_section(label: str, content: str, max_length: int) -> str
 [END {label}]"""
 
 
+def validate_composed_sections(
+    sections: list[tuple[str, str]],
+) -> None:
+    """
+    Validate that composed prompt sections don't contain cross-boundary
+    injection attempts. When multiple user-provided entries are composed
+    into a single LLM prompt, a coordinated split-payload attack could
+    bypass per-entry sanitization.
+
+    Args:
+        sections: List of (label, content) tuples that will be composed
+                  into a single prompt.
+
+    Raises:
+        ValueError: If cross-entry injection is detected.
+    """
+    all_labels = {label for label, _ in sections}
+
+    for label, content in sections:
+        content_lower = content.lower()
+        # Check if any entry references another entry's delimiter labels
+        for other_label in all_labels:
+            if other_label == label:
+                continue
+            if other_label.lower() in content_lower:
+                logger.warning(
+                    "Cross-section reference detected: '%s' found in section '%s'",
+                    other_label, label,
+                )
+                raise ValueError(
+                    f"Input rejected: cross-section reference detected in '{label}'"
+                )
+
+        # Check for delimiter forgery: [END ...] or [BEGIN ...] patterns
+        if re.search(r"\[(BEGIN|END)\s+\w+", content, re.IGNORECASE):
+            logger.warning(
+                "Delimiter pattern detected in section '%s'", label,
+            )
+            raise ValueError(
+                f"Input rejected: delimiter pattern detected in '{label}'"
+            )
+
+    # Run injection detection on concatenated content (catches split payloads)
+    combined = " ".join(content for _, content in sections)
+    combined_lower = combined.lower()
+    for pattern in PROMPT_INJECTION_PATTERNS:
+        if re.search(pattern, combined_lower, re.IGNORECASE):
+            logger.warning(
+                "Injection pattern detected in composed prompt: pattern=%s", pattern,
+            )
+            raise ValueError(
+                "Input rejected: injection pattern detected in composed prompt"
+            )
+
+
 def sanitize_output(text: str) -> str:
     """
     Sanitize output content to prevent injection payload passthrough.
