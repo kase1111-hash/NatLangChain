@@ -9,7 +9,7 @@ This blueprint handles semantic search:
 from flask import Blueprint, jsonify, request
 
 from . import state
-from .utils import managers, rate_limit_llm
+from .utils import managers, rate_limit_llm, require_api_key
 
 # Create the blueprint
 search_bp = Blueprint("search", __name__)
@@ -19,6 +19,7 @@ search_bp = Blueprint("search", __name__)
 
 
 @search_bp.route("/search/semantic", methods=["POST"])
+@require_api_key
 @rate_limit_llm
 def semantic_search():
     """
@@ -69,6 +70,7 @@ def semantic_search():
 
 
 @search_bp.route("/search/similar", methods=["POST"])
+@require_api_key
 @rate_limit_llm
 def find_similar():
     """
