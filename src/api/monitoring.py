@@ -265,6 +265,7 @@ def _update_dynamic_metrics():
 
 
 @monitoring_bp.route("/cluster/instances", methods=["GET"])
+@_require_api_key
 def cluster_instances():
     """
     Get list of active API instances.
@@ -310,6 +311,7 @@ def cluster_instances():
 
 
 @monitoring_bp.route("/cluster/info", methods=["GET"])
+@_require_api_key
 def cluster_info():
     """
     Get cluster coordination information.

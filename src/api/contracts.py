@@ -79,6 +79,7 @@ def parse_contract_endpoint():
 
 
 @contracts_bp.route("/match", methods=["POST"])
+@require_api_key
 @rate_limit_llm
 def match_contracts():
     """

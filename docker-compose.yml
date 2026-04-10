@@ -35,6 +35,15 @@ services:
 
   # =============================================================================
   # Development Server (with hot reload)
+  #
+  # SECURITY: The dev profile intentionally binds to loopback only
+  # (127.0.0.1) to avoid exposing the development server on the host
+  # network. FLASK_DEBUG is disabled by default because Werkzeug's
+  # interactive debugger allows remote code execution. Authentication
+  # is required by default; provide NATLANGCHAIN_API_KEY via .env for
+  # local testing. Do NOT combine FLASK_DEBUG=true with
+  # NATLANGCHAIN_REQUIRE_AUTH=false — run_server.py will refuse to
+  # start in that configuration.
   # =============================================================================
   natlangchain-dev:
     build:
@@ -42,14 +51,15 @@ services:
       dockerfile: Dockerfile
     container_name: natlangchain-dev
     ports:
-      - "${PORT:-5000}:5000"
+      - "127.0.0.1:${PORT:-5000}:5000"
     environment:
       - HOST=0.0.0.0
       - PORT=5000
-      - FLASK_DEBUG=true
+      - FLASK_DEBUG=${FLASK_DEBUG:-false}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - CHAIN_DATA_FILE=/app/data/chain_data.json
-      - NATLANGCHAIN_REQUIRE_AUTH=false
+      - NATLANGCHAIN_API_KEY=${NATLANGCHAIN_API_KEY:-}
+      - NATLANGCHAIN_REQUIRE_AUTH=${NATLANGCHAIN_REQUIRE_AUTH:-true}
     volumes:
       - ./src:/app/src:ro
       - natlangchain-dev-data:/app/data

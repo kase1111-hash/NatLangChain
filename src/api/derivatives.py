@@ -70,6 +70,7 @@ def _validate_entry_ref(block_index: int, entry_index: int):
 
 
 @derivatives_bp.route("/types", methods=["GET"])
+@require_api_key
 def get_derivative_types():
     """
     Get all valid derivative types.
@@ -93,6 +94,7 @@ def get_derivative_types():
 
 
 @derivatives_bp.route("/<int:block_index>/<int:entry_index>", methods=["GET"])
+@require_api_key
 def get_derivatives(block_index: int, entry_index: int):
     """
     Get all derivatives of a specific entry.
@@ -134,6 +136,7 @@ def get_derivatives(block_index: int, entry_index: int):
 
 
 @derivatives_bp.route("/<int:block_index>/<int:entry_index>/lineage", methods=["GET"])
+@require_api_key
 def get_lineage(block_index: int, entry_index: int):
     """
     Get the full ancestry/lineage of an entry.
@@ -172,6 +175,7 @@ def get_lineage(block_index: int, entry_index: int):
 
 
 @derivatives_bp.route("/<int:block_index>/<int:entry_index>/tree", methods=["GET"])
+@require_api_key
 def get_derivation_tree(block_index: int, entry_index: int):
     """
     Get the complete derivation tree for an entry.
@@ -209,6 +213,7 @@ def get_derivation_tree(block_index: int, entry_index: int):
 
 
 @derivatives_bp.route("/<int:block_index>/<int:entry_index>/status", methods=["GET"])
+@require_api_key
 def get_derivative_status(block_index: int, entry_index: int):
     """
     Get derivative status for an entry.
