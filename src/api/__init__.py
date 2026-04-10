@@ -324,12 +324,16 @@ def init_managers(api_key=None):
     from .utils import managers
 
     # Initialize semantic search (doesn't require API key)
+    # SECURITY: Broad catch is intentional — semantic search is an optional
+    # feature and any failure here (ImportError, model download errors,
+    # custom ModelLoadError, etc.) must degrade gracefully rather than
+    # crash server startup and deny service.
     try:
         from semantic_search import SemanticSearchEngine
 
         managers.search_engine = SemanticSearchEngine()
         logger.info("Semantic search engine initialized")
-    except (ImportError, OSError, RuntimeError) as e:
+    except Exception as e:  # noqa: BLE001 — intentional broad catch
         logger.warning("Could not initialize semantic search: %s", e)
 
     # Initialize LLM-based features if API key available
