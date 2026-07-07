@@ -19,6 +19,7 @@ import os
 import secrets
 from typing import Any
 
+from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -269,6 +270,10 @@ def decrypt_data(
 
     except EncryptionError:
         raise
+    except InvalidTag as e:
+        raise EncryptionError(
+            "Decryption failed: authentication tag mismatch (wrong key, wrong AAD, or corrupted data)"
+        ) from e
     except (ValueError, TypeError, OSError) as e:
         raise EncryptionError(f"Decryption failed: {e!s}") from e
 

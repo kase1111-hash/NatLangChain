@@ -2552,4 +2552,7 @@ class NatLangChain:
         # Intent classifier (not serialized — initialized separately)
         chain._intent_classifier = None
 
+        # Lock to prevent concurrent mining race conditions
+        chain._mining_lock = threading.Lock()
+
         return chain

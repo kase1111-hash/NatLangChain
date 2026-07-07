@@ -21,6 +21,8 @@ os.environ["NATLANGCHAIN_API_KEY"] = "test-api-key-12345"
 os.environ["NATLANGCHAIN_REQUIRE_AUTH"] = "false"
 os.environ["RATE_LIMIT_REQUESTS"] = "10000"
 os.environ["RATE_LIMIT_WINDOW"] = "1"
+os.environ["LLM_RATE_LIMIT_REQUESTS"] = "10000"
+os.environ["LLM_RATE_LIMIT_WINDOW"] = "1"
 
 
 @pytest.fixture(scope="function")
