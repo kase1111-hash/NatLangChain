@@ -348,6 +348,24 @@ class TestSerialization:
         restored = NatLangChain.from_dict(data, require_validation=False)
         assert restored.validate_chain() is True
 
+    def test_restored_chain_can_mine(self):
+        """Regression: from_dict must fully initialize the instance (e.g. _mining_lock)
+        so a chain loaded from storage can mine pending entries."""
+        chain = _make_chain()
+        chain.add_entry(_make_entry(content="Pending entry awaiting mining"))
+        data = chain.to_dict()
+        restored = NatLangChain.from_dict(data, require_validation=False)
+        block = restored.mine_pending_entries(difficulty=1)
+        assert block is not None
+        assert len(restored.pending_entries) == 0
+
+    def test_restored_chain_has_all_init_attributes(self):
+        """from_dict must not leave any __init__-set attribute missing."""
+        chain = _make_chain()
+        restored = NatLangChain.from_dict(chain.to_dict(), require_validation=False)
+        missing = set(vars(chain)) - set(vars(restored))
+        assert missing == set()
+
     def test_from_dict_with_missing_pending(self):
         """from_dict should handle missing pending_entries gracefully."""
         chain = _make_chain()
