@@ -9,3 +9,6 @@ dist/
 build/
 .pytest_cache/
 node_modules/
+
+# Scratch chain data written by simulation runs (reports in results/ are kept)
+simulations/run/

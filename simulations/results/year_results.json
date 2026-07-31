@@ -1,0 +1,6226 @@
+{
+  "config": {
+    "days": 365,
+    "seed": 20260101,
+    "difficulty": 2,
+    "base_entries_per_day": 38,
+    "growth_rate": 0.55,
+    "snapshot_every": 7,
+    "restart_every": 30,
+    "audit_every": 91,
+    "workdir": "/tmp/claude-0/-home-user-NatLangChain/475580ac-cd00-56ad-b464-eecc79b3050d/scratchpad/year_final",
+    "rewrite_probe_blocks": 40
+  },
+  "wall_clock_seconds": 280.23,
+  "simulated_span": {
+    "days": 365,
+    "start": "2026-01-01",
+    "end": "2026-12-20"
+  },
+  "throughput": {
+    "submitted": 14896,
+    "accepted": 13997,
+    "rejected": 899,
+    "acceptance_rate": 0.9396,
+    "entries_on_chain": 14112,
+    "blocks": 366,
+    "mean_entries_per_block": 38.6,
+    "peak_day_submitted": 109,
+    "peak_pending_queue": 119
+  },
+  "mining": {
+    "mean_seconds": 0.0502,
+    "median_seconds": 0.033,
+    "max_seconds": 0.422,
+    "total_seconds": 18.33,
+    "mean_nonce": 233.0,
+    "max_nonce": 1485,
+    "difficulty": 2
+  },
+  "rejections": {
+    "validation:INVALID": 446,
+    "validation:NEEDS_CLARIFICATION": 416,
+    "double_transfer": 37
+  },
+  "validation_decisions": {
+    "INVALID": 446,
+    "NEEDS_CLARIFICATION": 416
+  },
+  "traffic_classes": {
+    "clean": {
+      "submitted": 14034,
+      "accepted": 13997,
+      "rejected": 37
+    },
+    "ambiguous": {
+      "submitted": 416,
+      "accepted": 0,
+      "rejected": 416
+    },
+    "flagged": {
+      "submitted": 446,
+      "accepted": 0,
+      "rejected": 446
+    }
+  },
+  "audits": [
+    {
+      "day": 91,
+      "blocks": 92,
+      "entries": 3040,
+      "chain_valid": true,
+      "validate_seconds": 0.0177,
+      "narrative_seconds": 0.0031,
+      "narrative_chars": 1751582,
+      "author_query_seconds": 0.0002,
+      "author_query_hits": 105,
+      "intent_query_seconds": 0.0009,
+      "intent_query_hits": 681,
+      "fingerprints_held": 101,
+      "assets_tracked": 18,
+      "transfers_pending": 0,
+      "derivative_links": 1174
+    },
+    {
+      "day": 182,
+      "blocks": 183,
+      "entries": 6273,
+      "chain_valid": true,
+      "validate_seconds": 0.0374,
+      "narrative_seconds": 0.0108,
+      "narrative_chars": 3620290,
+      "author_query_seconds": 0.0006,
+      "author_query_hits": 135,
+      "intent_query_seconds": 0.0023,
+      "intent_query_hits": 1444,
+      "fingerprints_held": 2,
+      "assets_tracked": 38,
+      "transfers_pending": 0,
+      "derivative_links": 2492
+    },
+    {
+      "day": 273,
+      "blocks": 274,
+      "entries": 10003,
+      "chain_valid": true,
+      "validate_seconds": 0.0599,
+      "narrative_seconds": 0.0143,
+      "narrative_chars": 5773195,
+      "author_query_seconds": 0.001,
+      "author_query_hits": 205,
+      "intent_query_seconds": 0.0516,
+      "intent_query_hits": 2345,
+      "fingerprints_held": 2,
+      "assets_tracked": 57,
+      "transfers_pending": 0,
+      "derivative_links": 4045
+    },
+    {
+      "day": 364,
+      "blocks": 365,
+      "entries": 14047,
+      "chain_valid": true,
+      "validate_seconds": 0.0867,
+      "narrative_seconds": 0.0218,
+      "narrative_chars": 8102434,
+      "author_query_seconds": 0.0015,
+      "author_query_hits": 287,
+      "intent_query_seconds": 0.0073,
+      "intent_query_hits": 3401,
+      "fingerprints_held": 2,
+      "assets_tracked": 75,
+      "transfers_pending": 0,
+      "derivative_links": 5812
+    },
+    {
+      "day": 365,
+      "blocks": 366,
+      "entries": 14112,
+      "chain_valid": true,
+      "validate_seconds": 0.086,
+      "narrative_seconds": 0.0228,
+      "narrative_chars": 8140487,
+      "author_query_seconds": 0.0017,
+      "author_query_hits": 396,
+      "intent_query_seconds": 0.0072,
+      "intent_query_hits": 3420,
+      "fingerprints_held": 3,
+      "assets_tracked": 76,
+      "transfers_pending": 0,
+      "derivative_links": 5836
+    }
+  ],
+  "snapshots": [
+    {
+      "day": 7,
+      "blocks": 8,
+      "entries": 198,
+      "bytes": 14962,
+      "raw_json_bytes": 156586,
+      "save_seconds": 0.003
+    },
+    {
+      "day": 14,
+      "blocks": 15,
+      "entries": 419,
+      "bytes": 32023,
+      "raw_json_bytes": 348564,
+      "save_seconds": 0.007
+    },
+    {
+      "day": 21,
+      "blocks": 22,
+      "entries": 625,
+      "bytes": 47829,
+      "raw_json_bytes": 519083,
+      "save_seconds": 0.0101
+    },
+    {
+      "day": 28,
+      "blocks": 29,
+      "entries": 837,
+      "bytes": 63829,
+      "raw_json_bytes": 695669,
+      "save_seconds": 0.0138
+    },
+    {
+      "day": 35,
+      "blocks": 36,
+      "entries": 1046,
+      "bytes": 79623,
+      "raw_json_bytes": 871389,
+      "save_seconds": 0.0169
+    },
+    {
+      "day": 42,
+      "blocks": 43,
+      "entries": 1262,
+      "bytes": 97393,
+      "raw_json_bytes": 1061400,
+      "save_seconds": 0.0205
+    },
+    {
+      "day": 49,
+      "blocks": 50,
+      "entries": 1481,
+      "bytes": 114329,
+      "raw_json_bytes": 1245927,
+      "save_seconds": 0.0239
+    },
+    {
+      "day": 56,
+      "blocks": 57,
+      "entries": 1721,
+      "bytes": 132175,
+      "raw_json_bytes": 1449490,
+      "save_seconds": 0.0291
+    },
+    {
+      "day": 63,
+      "blocks": 64,
+      "entries": 1929,
+      "bytes": 148081,
+      "raw_json_bytes": 1623436,
+      "save_seconds": 0.0307
+    },
+    {
+      "day": 70,
+      "blocks": 71,
+      "entries": 2142,
+      "bytes": 164245,
+      "raw_json_bytes": 1801792,
+      "save_seconds": 0.0336
+    },
+    {
+      "day": 77,
+      "blocks": 78,
+      "entries": 2395,
+      "bytes": 183171,
+      "raw_json_bytes": 2014726,
+      "save_seconds": 0.0374
+    },
+    {
+      "day": 84,
+      "blocks": 85,
+      "entries": 2618,
+      "bytes": 199994,
+      "raw_json_bytes": 2202848,
+      "save_seconds": 0.0427
+    },
+    {
+      "day": 91,
+      "blocks": 92,
+      "entries": 3040,
+      "bytes": 230282,
+      "raw_json_bytes": 2536698,
+      "save_seconds": 0.0486
+    },
+    {
+      "day": 98,
+      "blocks": 99,
+      "entries": 3287,
+      "bytes": 245370,
+      "raw_json_bytes": 2739063,
+      "save_seconds": 0.0543
+    },
+    {
+      "day": 105,
+      "blocks": 106,
+      "entries": 3504,
+      "bytes": 262198,
+      "raw_json_bytes": 2926185,
+      "save_seconds": 0.0607
+    },
+    {
+      "day": 112,
+      "blocks": 113,
+      "entries": 3746,
+      "bytes": 279972,
+      "raw_json_bytes": 3130387,
+      "save_seconds": 0.063
+    },
+    {
+      "day": 119,
+      "blocks": 120,
+      "entries": 4010,
+      "bytes": 299986,
+      "raw_json_bytes": 3349967,
+      "save_seconds": 0.0692
+    },
+    {
+      "day": 126,
+      "blocks": 127,
+      "entries": 4265,
+      "bytes": 319014,
+      "raw_json_bytes": 3564179,
+      "save_seconds": 0.0682
+    },
+    {
+      "day": 133,
+      "blocks": 134,
+      "entries": 4474,
+      "bytes": 335266,
+      "raw_json_bytes": 3739747,
+      "save_seconds": 0.0767
+    },
+    {
+      "day": 140,
+      "blocks": 141,
+      "entries": 4706,
+      "bytes": 352916,
+      "raw_json_bytes": 3930841,
+      "save_seconds": 0.0777
+    },
+    {
+      "day": 147,
+      "blocks": 148,
+      "entries": 4955,
+      "bytes": 371827,
+      "raw_json_bytes": 4137813,
+      "save_seconds": 0.085
+    },
+    {
+      "day": 154,
+      "blocks": 155,
+      "entries": 5190,
+      "bytes": 388882,
+      "raw_json_bytes": 4337571,
+      "save_seconds": 0.0917
+    },
+    {
+      "day": 161,
+      "blocks": 162,
+      "entries": 5428,
+      "bytes": 406878,
+      "raw_json_bytes": 4548000,
+      "save_seconds": 0.0918
+    },
+    {
+      "day": 168,
+      "blocks": 169,
+      "entries": 5670,
+      "bytes": 424781,
+      "raw_json_bytes": 4758978,
+      "save_seconds": 0.0929
+    },
+    {
+      "day": 175,
+      "blocks": 176,
+      "entries": 5930,
+      "bytes": 445117,
+      "raw_json_bytes": 4981324,
+      "save_seconds": 0.1044
+    },
+    {
+      "day": 182,
+      "blocks": 183,
+      "entries": 6273,
+      "bytes": 471308,
+      "raw_json_bytes": 5275086,
+      "save_seconds": 0.1062
+    },
+    {
+      "day": 189,
+      "blocks": 190,
+      "entries": 6542,
+      "bytes": 491865,
+      "raw_json_bytes": 5509159,
+      "save_seconds": 0.1073
+    },
+    {
+      "day": 196,
+      "blocks": 197,
+      "entries": 6813,
+      "bytes": 511933,
+      "raw_json_bytes": 5735780,
+      "save_seconds": 0.115
+    },
+    {
+      "day": 203,
+      "blocks": 204,
+      "entries": 7075,
+      "bytes": 531301,
+      "raw_json_bytes": 5960997,
+      "save_seconds": 0.1146
+    },
+    {
+      "day": 210,
+      "blocks": 211,
+      "entries": 7320,
+      "bytes": 550493,
+      "raw_json_bytes": 6169820,
+      "save_seconds": 0.124
+    },
+    {
+      "day": 217,
+      "blocks": 218,
+      "entries": 7602,
+      "bytes": 570492,
+      "raw_json_bytes": 6411972,
+      "save_seconds": 0.1423
+    },
+    {
+      "day": 224,
+      "blocks": 225,
+      "entries": 7883,
+      "bytes": 592338,
+      "raw_json_bytes": 6651761,
+      "save_seconds": 0.1479
+    },
+    {
+      "day": 231,
+      "blocks": 232,
+      "entries": 8179,
+      "bytes": 615756,
+      "raw_json_bytes": 6899345,
+      "save_seconds": 0.136
+    },
+    {
+      "day": 238,
+      "blocks": 239,
+      "entries": 8480,
+      "bytes": 637510,
+      "raw_json_bytes": 7150595,
+      "save_seconds": 0.1416
+    },
+    {
+      "day": 245,
+      "blocks": 246,
+      "entries": 8760,
+      "bytes": 658422,
+      "raw_json_bytes": 7385708,
+      "save_seconds": 0.1446
+    },
+    {
+      "day": 252,
+      "blocks": 253,
+      "entries": 9054,
+      "bytes": 681694,
+      "raw_json_bytes": 7639967,
+      "save_seconds": 0.1564
+    },
+    {
+      "day": 259,
+      "blocks": 260,
+      "entries": 9339,
+      "bytes": 703397,
+      "raw_json_bytes": 7888705,
+      "save_seconds": 0.1626
+    },
+    {
+      "day": 266,
+      "blocks": 267,
+      "entries": 9625,
+      "bytes": 724588,
+      "raw_json_bytes": 8131636,
+      "save_seconds": 0.1641
+    },
+    {
+      "day": 273,
+      "blocks": 274,
+      "entries": 10003,
+      "bytes": 753347,
+      "raw_json_bytes": 8452360,
+      "save_seconds": 0.1713
+    },
+    {
+      "day": 280,
+      "blocks": 281,
+      "entries": 10287,
+      "bytes": 774443,
+      "raw_json_bytes": 8696267,
+      "save_seconds": 0.1734
+    },
+    {
+      "day": 287,
+      "blocks": 288,
+      "entries": 10578,
+      "bytes": 795838,
+      "raw_json_bytes": 8948137,
+      "save_seconds": 0.1926
+    },
+    {
+      "day": 294,
+      "blocks": 295,
+      "entries": 10877,
+      "bytes": 819088,
+      "raw_json_bytes": 9207830,
+      "save_seconds": 0.1879
+    },
+    {
+      "day": 301,
+      "blocks": 302,
+      "entries": 11145,
+      "bytes": 838584,
+      "raw_json_bytes": 9435298,
+      "save_seconds": 0.1882
+    },
+    {
+      "day": 308,
+      "blocks": 309,
+      "entries": 11486,
+      "bytes": 865270,
+      "raw_json_bytes": 9724880,
+      "save_seconds": 0.193
+    },
+    {
+      "day": 315,
+      "blocks": 316,
+      "entries": 11762,
+      "bytes": 884909,
+      "raw_json_bytes": 9960603,
+      "save_seconds": 0.2742
+    },
+    {
+      "day": 322,
+      "blocks": 323,
+      "entries": 12089,
+      "bytes": 908789,
+      "raw_json_bytes": 10237876,
+      "save_seconds": 0.2022
+    },
+    {
+      "day": 329,
+      "blocks": 330,
+      "entries": 12394,
+      "bytes": 932764,
+      "raw_json_bytes": 10507228,
+      "save_seconds": 0.2129
+    },
+    {
+      "day": 336,
+      "blocks": 337,
+      "entries": 12697,
+      "bytes": 954338,
+      "raw_json_bytes": 10767952,
+      "save_seconds": 0.2244
+    },
+    {
+      "day": 343,
+      "blocks": 344,
+      "entries": 13004,
+      "bytes": 979156,
+      "raw_json_bytes": 11038096,
+      "save_seconds": 0.2558
+    },
+    {
+      "day": 350,
+      "blocks": 351,
+      "entries": 13309,
+      "bytes": 1002544,
+      "raw_json_bytes": 11303117,
+      "save_seconds": 0.2246
+    },
+    {
+      "day": 357,
+      "blocks": 358,
+      "entries": 13613,
+      "bytes": 1025092,
+      "raw_json_bytes": 11562000,
+      "save_seconds": 0.2291
+    },
+    {
+      "day": 364,
+      "blocks": 365,
+      "entries": 14047,
+      "bytes": 1055524,
+      "raw_json_bytes": 11930556,
+      "save_seconds": 0.2504
+    }
+  ],
+  "restarts": [
+    {
+      "day": 30,
+      "blocks": 31,
+      "entries": 904,
+      "load_seconds": 0.0136,
+      "chain_valid": true,
+      "head_hash_match": true,
+      "ownership_match": true,
+      "pending_transfers_match": true,
+      "derivatives_match": true,
+      "fingerprints_match": true,
+      "transfer_history_preserved": true,
+      "quality_config_preserved": true
+    },
+    {
+      "day": 60,
+      "blocks": 61,
+      "entries": 1865,
+      "load_seconds": 0.0287,
+      "chain_valid": true,
+      "head_hash_match": true,
+      "ownership_match": true,
+      "pending_transfers_match": true,
+      "derivatives_match": true,
+      "fingerprints_match": true,
+      "transfer_history_preserved": true,
+      "quality_config_preserved": true
+    },
+    {
+      "day": 90,
+      "blocks": 91,
+      "entries": 2921,
+      "load_seconds": 0.0475,
+      "chain_valid": true,
+      "head_hash_match": true,
+      "ownership_match": true,
+      "pending_transfers_match": true,
+      "derivatives_match": true,
+      "fingerprints_match": true,
+      "transfer_history_preserved": true,
+      "quality_config_preserved": true
+    },
+    {
+      "day": 120,
+      "blocks": 121,
+      "entries": 4050,
+      "load_seconds": 0.0654,
+      "chain_valid": true,
+      "head_hash_match": true,
+      "ownership_match": true,
+      "pending_transfers_match": true,
+      "derivatives_match": true,
+      "fingerprints_match": true,
+      "transfer_history_preserved": true,
+      "quality_config_preserved": true
+    },
+    {
+      "day": 150,
+      "blocks": 151,
+      "entries": 5071,
+      "load_seconds": 0.0804,
+      "chain_valid": true,
+      "head_hash_match": true,
+      "ownership_match": true,
+      "pending_transfers_match": true,
+      "derivatives_match": true,
+      "fingerprints_match": true,
+      "transfer_history_preserved": true,
+      "quality_config_preserved": true
+    },
+    {
+      "day": 180,
+      "blocks": 181,
+      "entries": 6221,
+      "load_seconds": 0.159,
+      "chain_valid": true,
+      "head_hash_match": true,
+      "ownership_match": true,
+      "pending_transfers_match": true,
+      "derivatives_match": true,
+      "fingerprints_match": true,
+      "transfer_history_preserved": true,
+      "quality_config_preserved": true
+    },
+    {
+      "day": 210,
+      "blocks": 211,
+      "entries": 7320,
+      "load_seconds": 0.1163,
+      "chain_valid": true,
+      "head_hash_match": true,
+      "ownership_match": true,
+      "pending_transfers_match": true,
+      "derivatives_match": true,
+      "fingerprints_match": true,
+      "transfer_history_preserved": true,
+      "quality_config_preserved": true
+    },
+    {
+      "day": 240,
+      "blocks": 241,
+      "entries": 8583,
+      "load_seconds": 0.1408,
+      "chain_valid": true,
+      "head_hash_match": true,
+      "ownership_match": true,
+      "pending_transfers_match": true,
+      "derivatives_match": true,
+      "fingerprints_match": true,
+      "transfer_history_preserved": true,
+      "quality_config_preserved": true
+    },
+    {
+      "day": 270,
+      "blocks": 271,
+      "entries": 9857,
+      "load_seconds": 0.1576,
+      "chain_valid": true,
+      "head_hash_match": true,
+      "ownership_match": true,
+      "pending_transfers_match": true,
+      "derivatives_match": true,
+      "fingerprints_match": true,
+      "transfer_history_preserved": true,
+      "quality_config_preserved": true
+    },
+    {
+      "day": 300,
+      "blocks": 301,
+      "entries": 11130,
+      "load_seconds": 0.1866,
+      "chain_valid": true,
+      "head_hash_match": true,
+      "ownership_match": true,
+      "pending_transfers_match": true,
+      "derivatives_match": true,
+      "fingerprints_match": true,
+      "transfer_history_preserved": true,
+      "quality_config_preserved": true
+    },
+    {
+      "day": 330,
+      "blocks": 331,
+      "entries": 12446,
+      "load_seconds": 0.211,
+      "chain_valid": true,
+      "head_hash_match": true,
+      "ownership_match": true,
+      "pending_transfers_match": true,
+      "derivatives_match": true,
+      "fingerprints_match": true,
+      "transfer_history_preserved": true,
+      "quality_config_preserved": true
+    },
+    {
+      "day": 360,
+      "blocks": 361,
+      "entries": 13798,
+      "load_seconds": 0.3,
+      "chain_valid": true,
+      "head_hash_match": true,
+      "ownership_match": true,
+      "pending_transfers_match": true,
+      "derivatives_match": true,
+      "fingerprints_match": true,
+      "transfer_history_preserved": true,
+      "quality_config_preserved": true
+    }
+  ],
+  "incidents": [
+    {
+      "day": 23,
+      "name": "replay_within_dedup_window",
+      "expectation": "an identical resubmission inside the 1h window is rejected as a duplicate",
+      "outcome": "first=pending, replay=rejected/duplicate",
+      "passed": true,
+      "detail": "",
+      "data": {}
+    },
+    {
+      "day": 24,
+      "name": "replay_of_still_pending_entry",
+      "expectation": "replaying an entry that is still in the pending queue is rejected cleanly",
+      "outcome": "first=pending; replay one hour later=rejected/duplicate",
+      "passed": true,
+      "detail": "",
+      "data": {
+        "crashed": false,
+        "error": null,
+        "fault": null
+      }
+    },
+    {
+      "day": 47,
+      "name": "backdating_45_days",
+      "expectation": "an entry stamped 45 days in the past is rejected",
+      "outcome": "rejected/invalid_timestamp",
+      "passed": true,
+      "detail": "",
+      "data": {
+        "drift_seconds": null
+      }
+    },
+    {
+      "day": 48,
+      "name": "future_dating_6_hours",
+      "expectation": "an entry stamped 6 hours in the future is rejected",
+      "outcome": "rejected/invalid_timestamp",
+      "passed": true,
+      "detail": "",
+      "data": {}
+    },
+    {
+      "day": 61,
+      "name": "metadata_spoofing",
+      "expectation": "reserved metadata fields are stripped, legitimate fields survive",
+      "outcome": "stripped 4/4 reserved fields; legitimate_field kept=True",
+      "passed": true,
+      "detail": "",
+      "data": {
+        "remaining_metadata": {
+          "legitimate_field": "keep me"
+        }
+      }
+    },
+    {
+      "day": 90,
+      "name": "sybil_flood_120_entries",
+      "expectation": "a 120-entry burst from one author in one instant is rate limited",
+      "outcome": "10 accepted, 110 rejected ({'rate_limit': 110})",
+      "passed": true,
+      "detail": "",
+      "data": {
+        "accepted": 10,
+        "rejected": 110,
+        "max_per_author": 10,
+        "reasons": {
+          "rate_limit": 110
+        }
+      }
+    },
+    {
+      "day": 91,
+      "name": "global_flood_200_entries_80_authors",
+      "expectation": "a coordinated 200-entry burst is capped by the global rate limit",
+      "outcome": "99 accepted, 29 rejected ({'rate_limit': 29}); global cap is 100 per 60s",
+      "passed": true,
+      "detail": "",
+      "data": {
+        "accepted": 99,
+        "rejected": 29,
+        "max_global": 100
+      }
+    },
+    {
+      "day": 118,
+      "name": "double_spend_same_queue",
+      "expectation": "selling the same asset twice before mining is rejected",
+      "outcome": "first=pending, second=rejected/double_transfer",
+      "passed": true,
+      "detail": "",
+      "data": {}
+    },
+    {
+      "day": 119,
+      "name": "transfer_by_non_owner",
+      "expectation": "a non-owner cannot transfer a registered asset",
+      "outcome": "rejected/double_transfer; owner still solstice_electronics",
+      "passed": true,
+      "detail": "",
+      "data": {}
+    },
+    {
+      "day": 150,
+      "name": "chain_bloat_oversized_entry",
+      "expectation": "an entry of 50,869 characters is refused",
+      "outcome": "rejected/quality_check_failed (quality score 0.12999999999999998)",
+      "passed": true,
+      "detail": "",
+      "data": {
+        "size": 50869
+      }
+    },
+    {
+      "day": 151,
+      "name": "undersized_entry",
+      "expectation": "a two-character entry is refused",
+      "outcome": "rejected/quality_check_failed",
+      "passed": true,
+      "detail": "",
+      "data": {}
+    },
+    {
+      "day": 181,
+      "name": "silent_content_tamper",
+      "expectation": "editing mined prose breaks the block hash and is detected",
+      "outcome": "clone valid before=True, tamper detected=True, valid after restore=True",
+      "passed": true,
+      "detail": "",
+      "data": {
+        "tampered_block": 90
+      }
+    },
+    {
+      "day": 182,
+      "name": "tamper_with_self_rehash",
+      "expectation": "rehashing the tampered block still fails linkage and proof-of-work",
+      "outcome": "detected=True; linkage broken=True; proof-of-work broken=True",
+      "passed": true,
+      "detail": "",
+      "data": {
+        "tampered_block": 91
+      }
+    },
+    {
+      "day": 210,
+      "name": "action_intent_mismatch",
+      "expectation": "a restriction action filed under a profile-update intent is rejected",
+      "outcome": "rejected/INVALID",
+      "passed": true,
+      "detail": "",
+      "data": {}
+    },
+    {
+      "day": 211,
+      "name": "action_mismatch_punctuation_evasion",
+      "expectation": "the same restriction action is still caught when the verb ends a sentence",
+      "outcome": "rejected/INVALID",
+      "passed": true,
+      "detail": "",
+      "data": {
+        "accepted": false
+      }
+    },
+    {
+      "day": 240,
+      "name": "adversarial_language",
+      "expectation": "a rights-waiver clause is rejected by Proof of Understanding",
+      "outcome": "rejected/INVALID",
+      "passed": true,
+      "detail": "",
+      "data": {}
+    },
+    {
+      "day": 255,
+      "name": "asset_lock_leak_after_validation_failure",
+      "expectation": "a rejected transfer releases its asset reservation so the owner can retry",
+      "outcome": "rejected=rejected/INVALID; reservation still held=False; clean retry=pending/None",
+      "passed": true,
+      "detail": "",
+      "data": {
+        "reservation_leaked": false,
+        "retry_blocked": false,
+        "pending_transfer": {
+          "from": "tallgrass_textiles",
+          "to": "silverpine_packaging",
+          "fingerprint": "8a25fc49793d6d3f3404d14ffa79b831f20c25d443c649fec7840873dd6a80e1",
+          "timestamp": 1788534255.7662733
+        }
+      }
+    },
+    {
+      "day": 270,
+      "name": "history_rewrite_cost",
+      "expectation": "rewriting mined history should be computationally prohibitive",
+      "outcome": "rewrote 40 blocks in 1.78s (44 ms/block); rewritten chain passes validate_chain=True; whole-chain rewrite would take about 12.0s on one core",
+      "passed": false,
+      "detail": "",
+      "data": {
+        "depth": 40,
+        "rewrite_seconds": 1.776,
+        "seconds_per_block": 0.0444,
+        "full_chain_estimate_seconds": 11.99,
+        "difficulty": 2,
+        "rewritten_chain_validates": true
+      }
+    },
+    {
+      "day": 300,
+      "name": "encrypted_persistence",
+      "expectation": "a chain written with encryption at rest can be read back",
+      "outcome": "compressed: round-trip ok; uncompressed: round-trip ok",
+      "passed": true,
+      "detail": "",
+      "data": {
+        "recovered": {
+          "compressed": true,
+          "uncompressed": true
+        }
+      }
+    },
+    {
+      "day": 330,
+      "name": "concurrent_submit_and_mine",
+      "expectation": "every entry accepted while a block is being mined is still on the chain or still pending",
+      "outcome": "190 accepted overall (40 of them during proof-of-work), 150 on chain, 40 pending, 0 unaccounted for; chain valid=True",
+      "passed": true,
+      "detail": "",
+      "data": {
+        "accepted": 190,
+        "accepted_during_mining": 40,
+        "on_chain": 150,
+        "pending": 40,
+        "lost": 0,
+        "errors": []
+      }
+    },
+    {
+      "day": 345,
+      "name": "dedup_fingerprint_growth",
+      "expectation": "the fingerprint registry stays bounded rather than growing with the chain",
+      "outcome": "3 fingerprints held against 13052 chain entries (window 3600s)",
+      "passed": true,
+      "detail": "",
+      "data": {
+        "fingerprints": 3,
+        "entries": 13052
+      }
+    }
+  ],
+  "engine_faults": {
+    "count": 0,
+    "distinct": [],
+    "samples": []
+  },
+  "final_audit": {
+    "blocks": 366,
+    "entries": 14112,
+    "chain_valid": true,
+    "validate_seconds": 0.0853,
+    "hashes_consistent": true,
+    "linkage_consistent": true,
+    "proof_of_work_consistent": true,
+    "roundtrip_identical": true,
+    "asset_ownership_mismatches": [],
+    "assets_tracked": 76,
+    "transfers_completed": 689,
+    "transfers_stuck_pending": 0,
+    "derivative_links": 5836,
+    "dangling_derivatives": [],
+    "duplicate_entries_on_chain": 0,
+    "entries_missing_validation": 0,
+    "narrative_chars": 8140487,
+    "head_hash": "0034655a72a5bf54d2512fa34c9296a5157d98ab591f54d887aae307f1485c20"
+  },
+  "notes": [
+    "Genesis block created at virtual 2026-01-01 with hash 1e08f7f8396fe809.",
+    "Proof-of-work at difficulty 2 provides no meaningful rewrite resistance. A tampered copy of a full year of history re-mines and passes validate_chain() in roughly 12.0 seconds on a single core. With no peer network or fork-choice rule in the core engine, nothing else distinguishes the rewritten chain from the original."
+  ],
+  "days": [
+    {
+      "day": 1,
+      "date": "2026-01-01",
+      "submitted": 29,
+      "accepted": 27,
+      "rejected": 2,
+      "block_index": 1,
+      "block_entries": 27,
+      "mine_seconds": 0.01136486799987324,
+      "nonce": 86,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2
+      }
+    },
+    {
+      "day": 2,
+      "date": "2026-01-01",
+      "submitted": 35,
+      "accepted": 34,
+      "rejected": 1,
+      "block_index": 2,
+      "block_entries": 34,
+      "mine_seconds": 0.034113545999844064,
+      "nonce": 192,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 3,
+      "date": "2026-01-02",
+      "submitted": 38,
+      "accepted": 38,
+      "rejected": 0,
+      "block_index": 3,
+      "block_entries": 38,
+      "mine_seconds": 0.00677513100026772,
+      "nonce": 30,
+      "rejections": {}
+    },
+    {
+      "day": 4,
+      "date": "2026-01-03",
+      "submitted": 39,
+      "accepted": 37,
+      "rejected": 2,
+      "block_index": 4,
+      "block_entries": 37,
+      "mine_seconds": 0.03497775699997874,
+      "nonce": 173,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2
+      }
+    },
+    {
+      "day": 5,
+      "date": "2026-01-04",
+      "submitted": 41,
+      "accepted": 37,
+      "rejected": 4,
+      "block_index": 5,
+      "block_entries": 37,
+      "mine_seconds": 0.17860027400001854,
+      "nonce": 935,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2,
+        "validation:INVALID": 2
+      }
+    },
+    {
+      "day": 6,
+      "date": "2026-01-05",
+      "submitted": 11,
+      "accepted": 10,
+      "rejected": 1,
+      "block_index": 6,
+      "block_entries": 10,
+      "mine_seconds": 0.02586828300036359,
+      "nonce": 469,
+      "rejections": {
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 7,
+      "date": "2026-01-06",
+      "submitted": 15,
+      "accepted": 14,
+      "rejected": 1,
+      "block_index": 7,
+      "block_entries": 14,
+      "mine_seconds": 0.047522369000034814,
+      "nonce": 611,
+      "rejections": {
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 8,
+      "date": "2026-01-07",
+      "submitted": 35,
+      "accepted": 34,
+      "rejected": 1,
+      "block_index": 8,
+      "block_entries": 34,
+      "mine_seconds": 0.050078512000254705,
+      "nonce": 256,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 9,
+      "date": "2026-01-08",
+      "submitted": 44,
+      "accepted": 42,
+      "rejected": 2,
+      "block_index": 9,
+      "block_entries": 42,
+      "mine_seconds": 0.11209741000038775,
+      "nonce": 495,
+      "rejections": {
+        "double_transfer": 2
+      }
+    },
+    {
+      "day": 10,
+      "date": "2026-01-09",
+      "submitted": 46,
+      "accepted": 41,
+      "rejected": 5,
+      "block_index": 10,
+      "block_entries": 41,
+      "mine_seconds": 0.005763050000041403,
+      "nonce": 23,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1,
+        "double_transfer": 1,
+        "validation:INVALID": 3
+      }
+    },
+    {
+      "day": 11,
+      "date": "2026-01-10",
+      "submitted": 37,
+      "accepted": 32,
+      "rejected": 5,
+      "block_index": 11,
+      "block_entries": 32,
+      "mine_seconds": 0.037195351000264054,
+      "nonce": 214,
+      "rejections": {
+        "validation:INVALID": 2,
+        "validation:NEEDS_CLARIFICATION": 3
+      }
+    },
+    {
+      "day": 12,
+      "date": "2026-01-11",
+      "submitted": 46,
+      "accepted": 46,
+      "rejected": 0,
+      "block_index": 12,
+      "block_entries": 46,
+      "mine_seconds": 0.06699153000045044,
+      "nonce": 265,
+      "rejections": {}
+    },
+    {
+      "day": 13,
+      "date": "2026-01-12",
+      "submitted": 14,
+      "accepted": 13,
+      "rejected": 1,
+      "block_index": 13,
+      "block_entries": 13,
+      "mine_seconds": 0.017445274999772664,
+      "nonce": 235,
+      "rejections": {
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 14,
+      "date": "2026-01-13",
+      "submitted": 14,
+      "accepted": 13,
+      "rejected": 1,
+      "block_index": 14,
+      "block_entries": 13,
+      "mine_seconds": 0.01646290600001521,
+      "nonce": 228,
+      "rejections": {
+        "double_transfer": 1
+      }
+    },
+    {
+      "day": 15,
+      "date": "2026-01-14",
+      "submitted": 33,
+      "accepted": 31,
+      "rejected": 2,
+      "block_index": 15,
+      "block_entries": 31,
+      "mine_seconds": 0.03779796500020893,
+      "nonce": 230,
+      "rejections": {
+        "validation:INVALID": 1,
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 16,
+      "date": "2026-01-15",
+      "submitted": 36,
+      "accepted": 32,
+      "rejected": 4,
+      "block_index": 16,
+      "block_entries": 32,
+      "mine_seconds": 0.015537363000021287,
+      "nonce": 86,
+      "rejections": {
+        "validation:INVALID": 3,
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 17,
+      "date": "2026-01-16",
+      "submitted": 45,
+      "accepted": 42,
+      "rejected": 3,
+      "block_index": 17,
+      "block_entries": 42,
+      "mine_seconds": 0.044737069999882806,
+      "nonce": 184,
+      "rejections": {
+        "validation:INVALID": 1,
+        "double_transfer": 1,
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 18,
+      "date": "2026-01-17",
+      "submitted": 38,
+      "accepted": 37,
+      "rejected": 1,
+      "block_index": 18,
+      "block_entries": 37,
+      "mine_seconds": 0.055782253999950626,
+      "nonce": 278,
+      "rejections": {
+        "double_transfer": 1
+      }
+    },
+    {
+      "day": 19,
+      "date": "2026-01-18",
+      "submitted": 42,
+      "accepted": 38,
+      "rejected": 4,
+      "block_index": 19,
+      "block_entries": 38,
+      "mine_seconds": 0.0472877420002078,
+      "nonce": 227,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2,
+        "double_transfer": 2
+      }
+    },
+    {
+      "day": 20,
+      "date": "2026-01-19",
+      "submitted": 11,
+      "accepted": 10,
+      "rejected": 1,
+      "block_index": 20,
+      "block_entries": 10,
+      "mine_seconds": 0.005923972000346112,
+      "nonce": 101,
+      "rejections": {
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 21,
+      "date": "2026-01-20",
+      "submitted": 17,
+      "accepted": 16,
+      "rejected": 1,
+      "block_index": 21,
+      "block_entries": 16,
+      "mine_seconds": 0.02654466700005287,
+      "nonce": 310,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 22,
+      "date": "2026-01-21",
+      "submitted": 35,
+      "accepted": 34,
+      "rejected": 1,
+      "block_index": 22,
+      "block_entries": 34,
+      "mine_seconds": 0.050074482999661996,
+      "nonce": 275,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 23,
+      "date": "2026-01-22",
+      "submitted": 48,
+      "accepted": 47,
+      "rejected": 1,
+      "block_index": 23,
+      "block_entries": 48,
+      "mine_seconds": 0.002648779000082868,
+      "nonce": 8,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 24,
+      "date": "2026-01-23",
+      "submitted": 36,
+      "accepted": 31,
+      "rejected": 5,
+      "block_index": 24,
+      "block_entries": 32,
+      "mine_seconds": 0.010169889000280818,
+      "nonce": 60,
+      "rejections": {
+        "validation:INVALID": 4,
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 25,
+      "date": "2026-01-24",
+      "submitted": 39,
+      "accepted": 36,
+      "rejected": 3,
+      "block_index": 25,
+      "block_entries": 36,
+      "mine_seconds": 0.029029763999915303,
+      "nonce": 142,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 26,
+      "date": "2026-01-25",
+      "submitted": 43,
+      "accepted": 39,
+      "rejected": 4,
+      "block_index": 26,
+      "block_entries": 39,
+      "mine_seconds": 0.016511178000200744,
+      "nonce": 76,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2,
+        "validation:INVALID": 2
+      }
+    },
+    {
+      "day": 27,
+      "date": "2026-01-26",
+      "submitted": 15,
+      "accepted": 14,
+      "rejected": 1,
+      "block_index": 27,
+      "block_entries": 14,
+      "mine_seconds": 0.01262049900014972,
+      "nonce": 155,
+      "rejections": {
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 28,
+      "date": "2026-01-27",
+      "submitted": 11,
+      "accepted": 9,
+      "rejected": 2,
+      "block_index": 28,
+      "block_entries": 9,
+      "mine_seconds": 0.0019268900000497524,
+      "nonce": 32,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 29,
+      "date": "2026-01-27",
+      "submitted": 32,
+      "accepted": 31,
+      "rejected": 1,
+      "block_index": 29,
+      "block_entries": 31,
+      "mine_seconds": 0.01911481900015133,
+      "nonce": 115,
+      "rejections": {
+        "double_transfer": 1
+      }
+    },
+    {
+      "day": 30,
+      "date": "2026-01-28",
+      "submitted": 40,
+      "accepted": 36,
+      "rejected": 4,
+      "block_index": 30,
+      "block_entries": 36,
+      "mine_seconds": 0.017872609999812994,
+      "nonce": 88,
+      "rejections": {
+        "validation:INVALID": 1,
+        "double_transfer": 1,
+        "validation:NEEDS_CLARIFICATION": 2
+      }
+    },
+    {
+      "day": 31,
+      "date": "2026-01-29",
+      "submitted": 49,
+      "accepted": 47,
+      "rejected": 2,
+      "block_index": 31,
+      "block_entries": 47,
+      "mine_seconds": 0.024865439000222977,
+      "nonce": 96,
+      "rejections": {
+        "validation:INVALID": 2
+      }
+    },
+    {
+      "day": 32,
+      "date": "2026-01-30",
+      "submitted": 35,
+      "accepted": 34,
+      "rejected": 1,
+      "block_index": 32,
+      "block_entries": 34,
+      "mine_seconds": 0.01370414900020478,
+      "nonce": 69,
+      "rejections": {
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 33,
+      "date": "2026-01-31",
+      "submitted": 39,
+      "accepted": 38,
+      "rejected": 1,
+      "block_index": 33,
+      "block_entries": 38,
+      "mine_seconds": 0.020314937000421196,
+      "nonce": 94,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 34,
+      "date": "2026-02-01",
+      "submitted": 11,
+      "accepted": 10,
+      "rejected": 1,
+      "block_index": 34,
+      "block_entries": 10,
+      "mine_seconds": 0.019708489000095142,
+      "nonce": 327,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 35,
+      "date": "2026-02-02",
+      "submitted": 13,
+      "accepted": 13,
+      "rejected": 0,
+      "block_index": 35,
+      "block_entries": 13,
+      "mine_seconds": 0.031245026000306098,
+      "nonce": 414,
+      "rejections": {}
+    },
+    {
+      "day": 36,
+      "date": "2026-02-03",
+      "submitted": 36,
+      "accepted": 34,
+      "rejected": 2,
+      "block_index": 36,
+      "block_entries": 34,
+      "mine_seconds": 0.05781576200024574,
+      "nonce": 305,
+      "rejections": {
+        "validation:INVALID": 1,
+        "double_transfer": 1
+      }
+    },
+    {
+      "day": 37,
+      "date": "2026-02-04",
+      "submitted": 33,
+      "accepted": 31,
+      "rejected": 2,
+      "block_index": 37,
+      "block_entries": 31,
+      "mine_seconds": 0.003864214999794058,
+      "nonce": 20,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 38,
+      "date": "2026-02-05",
+      "submitted": 46,
+      "accepted": 44,
+      "rejected": 2,
+      "block_index": 38,
+      "block_entries": 44,
+      "mine_seconds": 0.06864488999963214,
+      "nonce": 276,
+      "rejections": {
+        "validation:INVALID": 2
+      }
+    },
+    {
+      "day": 39,
+      "date": "2026-02-06",
+      "submitted": 38,
+      "accepted": 33,
+      "rejected": 5,
+      "block_index": 39,
+      "block_entries": 33,
+      "mine_seconds": 0.05240531799972814,
+      "nonce": 278,
+      "rejections": {
+        "double_transfer": 3,
+        "validation:NEEDS_CLARIFICATION": 1,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 40,
+      "date": "2026-02-07",
+      "submitted": 46,
+      "accepted": 44,
+      "rejected": 2,
+      "block_index": 40,
+      "block_entries": 44,
+      "mine_seconds": 0.09486992399979499,
+      "nonce": 384,
+      "rejections": {
+        "validation:INVALID": 2
+      }
+    },
+    {
+      "day": 41,
+      "date": "2026-02-08",
+      "submitted": 15,
+      "accepted": 15,
+      "rejected": 0,
+      "block_index": 41,
+      "block_entries": 15,
+      "mine_seconds": 0.018592833999719005,
+      "nonce": 216,
+      "rejections": {}
+    },
+    {
+      "day": 42,
+      "date": "2026-02-09",
+      "submitted": 16,
+      "accepted": 15,
+      "rejected": 1,
+      "block_index": 42,
+      "block_entries": 15,
+      "mine_seconds": 0.044295515999692725,
+      "nonce": 505,
+      "rejections": {
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 43,
+      "date": "2026-02-10",
+      "submitted": 42,
+      "accepted": 39,
+      "rejected": 3,
+      "block_index": 43,
+      "block_entries": 39,
+      "mine_seconds": 0.1446654920000583,
+      "nonce": 664,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 3
+      }
+    },
+    {
+      "day": 44,
+      "date": "2026-02-11",
+      "submitted": 49,
+      "accepted": 45,
+      "rejected": 4,
+      "block_index": 44,
+      "block_entries": 45,
+      "mine_seconds": 0.08192343700011406,
+      "nonce": 340,
+      "rejections": {
+        "validation:INVALID": 2,
+        "validation:NEEDS_CLARIFICATION": 2
+      }
+    },
+    {
+      "day": 45,
+      "date": "2026-02-12",
+      "submitted": 48,
+      "accepted": 46,
+      "rejected": 2,
+      "block_index": 45,
+      "block_entries": 46,
+      "mine_seconds": 0.05437239100001534,
+      "nonce": 206,
+      "rejections": {
+        "double_transfer": 1,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 46,
+      "date": "2026-02-13",
+      "submitted": 42,
+      "accepted": 41,
+      "rejected": 1,
+      "block_index": 46,
+      "block_entries": 41,
+      "mine_seconds": 0.11409878199992818,
+      "nonce": 509,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 47,
+      "date": "2026-02-14",
+      "submitted": 30,
+      "accepted": 27,
+      "rejected": 3,
+      "block_index": 47,
+      "block_entries": 27,
+      "mine_seconds": 0.137123660999805,
+      "nonce": 894,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1,
+        "validation:INVALID": 2
+      }
+    },
+    {
+      "day": 48,
+      "date": "2026-02-15",
+      "submitted": 11,
+      "accepted": 11,
+      "rejected": 0,
+      "block_index": 48,
+      "block_entries": 11,
+      "mine_seconds": 0.001810730000215699,
+      "nonce": 24,
+      "rejections": {}
+    },
+    {
+      "day": 49,
+      "date": "2026-02-16",
+      "submitted": 11,
+      "accepted": 10,
+      "rejected": 1,
+      "block_index": 49,
+      "block_entries": 10,
+      "mine_seconds": 0.013093084000047384,
+      "nonce": 232,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 50,
+      "date": "2026-02-17",
+      "submitted": 47,
+      "accepted": 46,
+      "rejected": 1,
+      "block_index": 50,
+      "block_entries": 46,
+      "mine_seconds": 0.061843633000080445,
+      "nonce": 244,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 51,
+      "date": "2026-02-18",
+      "submitted": 47,
+      "accepted": 45,
+      "rejected": 2,
+      "block_index": 51,
+      "block_entries": 45,
+      "mine_seconds": 0.1331959280000774,
+      "nonce": 563,
+      "rejections": {
+        "validation:INVALID": 1,
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 52,
+      "date": "2026-02-19",
+      "submitted": 48,
+      "accepted": 42,
+      "rejected": 6,
+      "block_index": 52,
+      "block_entries": 42,
+      "mine_seconds": 0.01065653600016958,
+      "nonce": 43,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 6
+      }
+    },
+    {
+      "day": 53,
+      "date": "2026-02-20",
+      "submitted": 45,
+      "accepted": 45,
+      "rejected": 0,
+      "block_index": 53,
+      "block_entries": 45,
+      "mine_seconds": 0.2053259330000401,
+      "nonce": 858,
+      "rejections": {}
+    },
+    {
+      "day": 54,
+      "date": "2026-02-21",
+      "submitted": 39,
+      "accepted": 38,
+      "rejected": 1,
+      "block_index": 54,
+      "block_entries": 38,
+      "mine_seconds": 0.022406025000236696,
+      "nonce": 108,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 55,
+      "date": "2026-02-22",
+      "submitted": 12,
+      "accepted": 12,
+      "rejected": 0,
+      "block_index": 55,
+      "block_entries": 12,
+      "mine_seconds": 0.006227009000213002,
+      "nonce": 93,
+      "rejections": {}
+    },
+    {
+      "day": 56,
+      "date": "2026-02-22",
+      "submitted": 12,
+      "accepted": 12,
+      "rejected": 0,
+      "block_index": 56,
+      "block_entries": 12,
+      "mine_seconds": 0.003965417000017624,
+      "nonce": 54,
+      "rejections": {}
+    },
+    {
+      "day": 57,
+      "date": "2026-02-23",
+      "submitted": 33,
+      "accepted": 29,
+      "rejected": 4,
+      "block_index": 57,
+      "block_entries": 29,
+      "mine_seconds": 0.03760606200012262,
+      "nonce": 244,
+      "rejections": {
+        "validation:INVALID": 3,
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 58,
+      "date": "2026-02-24",
+      "submitted": 38,
+      "accepted": 36,
+      "rejected": 2,
+      "block_index": 58,
+      "block_entries": 36,
+      "mine_seconds": 0.033003729000029125,
+      "nonce": 156,
+      "rejections": {
+        "validation:INVALID": 1,
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 59,
+      "date": "2026-02-25",
+      "submitted": 43,
+      "accepted": 39,
+      "rejected": 4,
+      "block_index": 59,
+      "block_entries": 39,
+      "mine_seconds": 0.02861269999993965,
+      "nonce": 134,
+      "rejections": {
+        "validation:INVALID": 1,
+        "validation:NEEDS_CLARIFICATION": 2,
+        "double_transfer": 1
+      }
+    },
+    {
+      "day": 60,
+      "date": "2026-02-26",
+      "submitted": 42,
+      "accepted": 40,
+      "rejected": 2,
+      "block_index": 60,
+      "block_entries": 40,
+      "mine_seconds": 0.07350525299989386,
+      "nonce": 333,
+      "rejections": {
+        "validation:INVALID": 2
+      }
+    },
+    {
+      "day": 61,
+      "date": "2026-02-27",
+      "submitted": 42,
+      "accepted": 40,
+      "rejected": 2,
+      "block_index": 61,
+      "block_entries": 41,
+      "mine_seconds": 0.004690708999987692,
+      "nonce": 18,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2
+      }
+    },
+    {
+      "day": 62,
+      "date": "2026-02-28",
+      "submitted": 14,
+      "accepted": 12,
+      "rejected": 2,
+      "block_index": 62,
+      "block_entries": 12,
+      "mine_seconds": 0.010253989999910118,
+      "nonce": 143,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 63,
+      "date": "2026-03-01",
+      "submitted": 12,
+      "accepted": 11,
+      "rejected": 1,
+      "block_index": 63,
+      "block_entries": 11,
+      "mine_seconds": 0.047626893000142445,
+      "nonce": 750,
+      "rejections": {
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 64,
+      "date": "2026-03-02",
+      "submitted": 36,
+      "accepted": 36,
+      "rejected": 0,
+      "block_index": 64,
+      "block_entries": 36,
+      "mine_seconds": 0.2880777989998933,
+      "nonce": 1485,
+      "rejections": {}
+    },
+    {
+      "day": 65,
+      "date": "2026-03-03",
+      "submitted": 46,
+      "accepted": 40,
+      "rejected": 6,
+      "block_index": 65,
+      "block_entries": 40,
+      "mine_seconds": 0.015576569000131713,
+      "nonce": 68,
+      "rejections": {
+        "validation:INVALID": 3,
+        "validation:NEEDS_CLARIFICATION": 2,
+        "double_transfer": 1
+      }
+    },
+    {
+      "day": 66,
+      "date": "2026-03-04",
+      "submitted": 37,
+      "accepted": 35,
+      "rejected": 2,
+      "block_index": 66,
+      "block_entries": 35,
+      "mine_seconds": 0.006928579000032187,
+      "nonce": 35,
+      "rejections": {
+        "validation:INVALID": 1,
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 67,
+      "date": "2026-03-05",
+      "submitted": 32,
+      "accepted": 30,
+      "rejected": 2,
+      "block_index": 67,
+      "block_entries": 30,
+      "mine_seconds": 0.03367712599992956,
+      "nonce": 205,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 68,
+      "date": "2026-03-06",
+      "submitted": 47,
+      "accepted": 42,
+      "rejected": 5,
+      "block_index": 68,
+      "block_entries": 42,
+      "mine_seconds": 0.0901363709999714,
+      "nonce": 392,
+      "rejections": {
+        "validation:INVALID": 4,
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 69,
+      "date": "2026-03-07",
+      "submitted": 15,
+      "accepted": 15,
+      "rejected": 0,
+      "block_index": 69,
+      "block_entries": 15,
+      "mine_seconds": 0.045260826000230736,
+      "nonce": 514,
+      "rejections": {}
+    },
+    {
+      "day": 70,
+      "date": "2026-03-08",
+      "submitted": 18,
+      "accepted": 15,
+      "rejected": 3,
+      "block_index": 70,
+      "block_entries": 15,
+      "mine_seconds": 0.014690259999952104,
+      "nonce": 169,
+      "rejections": {
+        "validation:INVALID": 2,
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 71,
+      "date": "2026-03-09",
+      "submitted": 50,
+      "accepted": 46,
+      "rejected": 4,
+      "block_index": 71,
+      "block_entries": 46,
+      "mine_seconds": 0.0700200239998594,
+      "nonce": 277,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 4
+      }
+    },
+    {
+      "day": 72,
+      "date": "2026-03-10",
+      "submitted": 47,
+      "accepted": 43,
+      "rejected": 4,
+      "block_index": 72,
+      "block_entries": 43,
+      "mine_seconds": 0.026763165999909688,
+      "nonce": 110,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1,
+        "validation:INVALID": 2,
+        "double_transfer": 1
+      }
+    },
+    {
+      "day": 73,
+      "date": "2026-03-11",
+      "submitted": 41,
+      "accepted": 38,
+      "rejected": 3,
+      "block_index": 73,
+      "block_entries": 38,
+      "mine_seconds": 0.019936538999900222,
+      "nonce": 98,
+      "rejections": {
+        "validation:INVALID": 2,
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 74,
+      "date": "2026-03-12",
+      "submitted": 49,
+      "accepted": 48,
+      "rejected": 1,
+      "block_index": 74,
+      "block_entries": 48,
+      "mine_seconds": 0.06100243299988506,
+      "nonce": 237,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 75,
+      "date": "2026-03-13",
+      "submitted": 52,
+      "accepted": 50,
+      "rejected": 2,
+      "block_index": 75,
+      "block_entries": 50,
+      "mine_seconds": 0.005724858000121458,
+      "nonce": 18,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2
+      }
+    },
+    {
+      "day": 76,
+      "date": "2026-03-14",
+      "submitted": 17,
+      "accepted": 17,
+      "rejected": 0,
+      "block_index": 76,
+      "block_entries": 17,
+      "mine_seconds": 0.04890666399978727,
+      "nonce": 528,
+      "rejections": {}
+    },
+    {
+      "day": 77,
+      "date": "2026-03-15",
+      "submitted": 13,
+      "accepted": 11,
+      "rejected": 2,
+      "block_index": 77,
+      "block_entries": 11,
+      "mine_seconds": 0.00042035500018755556,
+      "nonce": 3,
+      "rejections": {
+        "validation:INVALID": 2
+      }
+    },
+    {
+      "day": 78,
+      "date": "2026-03-16",
+      "submitted": 32,
+      "accepted": 29,
+      "rejected": 3,
+      "block_index": 78,
+      "block_entries": 29,
+      "mine_seconds": 0.04919430099971578,
+      "nonce": 310,
+      "rejections": {
+        "validation:INVALID": 3
+      }
+    },
+    {
+      "day": 79,
+      "date": "2026-03-17",
+      "submitted": 38,
+      "accepted": 37,
+      "rejected": 1,
+      "block_index": 79,
+      "block_entries": 37,
+      "mine_seconds": 0.011927981000098953,
+      "nonce": 57,
+      "rejections": {
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 80,
+      "date": "2026-03-18",
+      "submitted": 43,
+      "accepted": 39,
+      "rejected": 4,
+      "block_index": 80,
+      "block_entries": 39,
+      "mine_seconds": 0.02052288899994892,
+      "nonce": 96,
+      "rejections": {
+        "validation:INVALID": 1,
+        "validation:NEEDS_CLARIFICATION": 2,
+        "double_transfer": 1
+      }
+    },
+    {
+      "day": 81,
+      "date": "2026-03-19",
+      "submitted": 50,
+      "accepted": 47,
+      "rejected": 3,
+      "block_index": 81,
+      "block_entries": 47,
+      "mine_seconds": 0.06473144799974762,
+      "nonce": 254,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 82,
+      "date": "2026-03-20",
+      "submitted": 50,
+      "accepted": 47,
+      "rejected": 3,
+      "block_index": 82,
+      "block_entries": 47,
+      "mine_seconds": 0.024686134999683418,
+      "nonce": 93,
+      "rejections": {
+        "validation:INVALID": 2,
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 83,
+      "date": "2026-03-21",
+      "submitted": 13,
+      "accepted": 13,
+      "rejected": 0,
+      "block_index": 83,
+      "block_entries": 13,
+      "mine_seconds": 0.01904933500009065,
+      "nonce": 276,
+      "rejections": {}
+    },
+    {
+      "day": 84,
+      "date": "2026-03-21",
+      "submitted": 12,
+      "accepted": 11,
+      "rejected": 1,
+      "block_index": 84,
+      "block_entries": 11,
+      "mine_seconds": 0.005261088000224845,
+      "nonce": 79,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 85,
+      "date": "2026-03-22",
+      "submitted": 33,
+      "accepted": 32,
+      "rejected": 1,
+      "block_index": 85,
+      "block_entries": 32,
+      "mine_seconds": 0.007034252000266861,
+      "nonce": 36,
+      "rejections": {
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 86,
+      "date": "2026-03-23",
+      "submitted": 36,
+      "accepted": 36,
+      "rejected": 0,
+      "block_index": 86,
+      "block_entries": 36,
+      "mine_seconds": 0.034497686000122485,
+      "nonce": 163,
+      "rejections": {}
+    },
+    {
+      "day": 87,
+      "date": "2026-03-24",
+      "submitted": 34,
+      "accepted": 31,
+      "rejected": 3,
+      "block_index": 87,
+      "block_entries": 31,
+      "mine_seconds": 0.005608410000149888,
+      "nonce": 29,
+      "rejections": {
+        "validation:INVALID": 3
+      }
+    },
+    {
+      "day": 88,
+      "date": "2026-03-25",
+      "submitted": 101,
+      "accepted": 95,
+      "rejected": 6,
+      "block_index": 88,
+      "block_entries": 95,
+      "mine_seconds": 0.3499060389999613,
+      "nonce": 660,
+      "rejections": {
+        "validation:INVALID": 5,
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 89,
+      "date": "2026-03-26",
+      "submitted": 83,
+      "accepted": 77,
+      "rejected": 6,
+      "block_index": 89,
+      "block_entries": 77,
+      "mine_seconds": 0.06622058399989328,
+      "nonce": 150,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 3,
+        "double_transfer": 2,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 90,
+      "date": "2026-03-27",
+      "submitted": 24,
+      "accepted": 22,
+      "rejected": 2,
+      "block_index": 90,
+      "block_entries": 32,
+      "mine_seconds": 0.006807264000144642,
+      "nonce": 38,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2
+      }
+    },
+    {
+      "day": 91,
+      "date": "2026-03-28",
+      "submitted": 24,
+      "accepted": 20,
+      "rejected": 4,
+      "block_index": 91,
+      "block_entries": 119,
+      "mine_seconds": 0.13435385599996152,
+      "nonce": 254,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 3,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 92,
+      "date": "2026-03-29",
+      "submitted": 51,
+      "accepted": 50,
+      "rejected": 1,
+      "block_index": 92,
+      "block_entries": 50,
+      "mine_seconds": 0.024188278000110586,
+      "nonce": 83,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 93,
+      "date": "2026-03-30",
+      "submitted": 35,
+      "accepted": 34,
+      "rejected": 1,
+      "block_index": 93,
+      "block_entries": 34,
+      "mine_seconds": 0.08561563900002511,
+      "nonce": 459,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 94,
+      "date": "2026-03-31",
+      "submitted": 46,
+      "accepted": 42,
+      "rejected": 4,
+      "block_index": 94,
+      "block_entries": 42,
+      "mine_seconds": 0.03447816199968656,
+      "nonce": 149,
+      "rejections": {
+        "validation:INVALID": 3,
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 95,
+      "date": "2026-04-01",
+      "submitted": 49,
+      "accepted": 47,
+      "rejected": 2,
+      "block_index": 95,
+      "block_entries": 47,
+      "mine_seconds": 0.007372108999788907,
+      "nonce": 24,
+      "rejections": {
+        "validation:INVALID": 1,
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 96,
+      "date": "2026-04-02",
+      "submitted": 53,
+      "accepted": 47,
+      "rejected": 6,
+      "block_index": 96,
+      "block_entries": 47,
+      "mine_seconds": 0.037484276999748545,
+      "nonce": 129,
+      "rejections": {
+        "validation:INVALID": 5,
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 97,
+      "date": "2026-04-03",
+      "submitted": 15,
+      "accepted": 15,
+      "rejected": 0,
+      "block_index": 97,
+      "block_entries": 15,
+      "mine_seconds": 0.025330338000003394,
+      "nonce": 285,
+      "rejections": {}
+    },
+    {
+      "day": 98,
+      "date": "2026-04-04",
+      "submitted": 13,
+      "accepted": 12,
+      "rejected": 1,
+      "block_index": 98,
+      "block_entries": 12,
+      "mine_seconds": 0.011564080999960424,
+      "nonce": 140,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 99,
+      "date": "2026-04-05",
+      "submitted": 48,
+      "accepted": 45,
+      "rejected": 3,
+      "block_index": 99,
+      "block_entries": 45,
+      "mine_seconds": 0.09670616499988682,
+      "nonce": 363,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 100,
+      "date": "2026-04-06",
+      "submitted": 33,
+      "accepted": 29,
+      "rejected": 4,
+      "block_index": 100,
+      "block_entries": 29,
+      "mine_seconds": 0.004460994000055507,
+      "nonce": 22,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1,
+        "validation:INVALID": 3
+      }
+    },
+    {
+      "day": 101,
+      "date": "2026-04-07",
+      "submitted": 39,
+      "accepted": 39,
+      "rejected": 0,
+      "block_index": 101,
+      "block_entries": 39,
+      "mine_seconds": 0.005700130000150239,
+      "nonce": 23,
+      "rejections": {}
+    },
+    {
+      "day": 102,
+      "date": "2026-04-08",
+      "submitted": 46,
+      "accepted": 42,
+      "rejected": 4,
+      "block_index": 102,
+      "block_entries": 42,
+      "mine_seconds": 0.20881238399988433,
+      "nonce": 822,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 3,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 103,
+      "date": "2026-04-09",
+      "submitted": 42,
+      "accepted": 38,
+      "rejected": 4,
+      "block_index": 103,
+      "block_entries": 38,
+      "mine_seconds": 0.008332330999564874,
+      "nonce": 35,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2,
+        "validation:INVALID": 2
+      }
+    },
+    {
+      "day": 104,
+      "date": "2026-04-10",
+      "submitted": 11,
+      "accepted": 11,
+      "rejected": 0,
+      "block_index": 104,
+      "block_entries": 11,
+      "mine_seconds": 0.012775985999724071,
+      "nonce": 178,
+      "rejections": {}
+    },
+    {
+      "day": 105,
+      "date": "2026-04-11",
+      "submitted": 14,
+      "accepted": 13,
+      "rejected": 1,
+      "block_index": 105,
+      "block_entries": 13,
+      "mine_seconds": 0.033039205000022775,
+      "nonce": 414,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 106,
+      "date": "2026-04-12",
+      "submitted": 40,
+      "accepted": 39,
+      "rejected": 1,
+      "block_index": 106,
+      "block_entries": 39,
+      "mine_seconds": 0.04615781299980881,
+      "nonce": 203,
+      "rejections": {
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 107,
+      "date": "2026-04-13",
+      "submitted": 51,
+      "accepted": 48,
+      "rejected": 3,
+      "block_index": 107,
+      "block_entries": 48,
+      "mine_seconds": 0.0013714510000681912,
+      "nonce": 2,
+      "rejections": {
+        "validation:INVALID": 2,
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 108,
+      "date": "2026-04-14",
+      "submitted": 53,
+      "accepted": 51,
+      "rejected": 2,
+      "block_index": 108,
+      "block_entries": 51,
+      "mine_seconds": 0.02723896700035766,
+      "nonce": 93,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2
+      }
+    },
+    {
+      "day": 109,
+      "date": "2026-04-15",
+      "submitted": 40,
+      "accepted": 36,
+      "rejected": 4,
+      "block_index": 109,
+      "block_entries": 36,
+      "mine_seconds": 0.013693055000203458,
+      "nonce": 67,
+      "rejections": {
+        "validation:INVALID": 2,
+        "validation:NEEDS_CLARIFICATION": 2
+      }
+    },
+    {
+      "day": 110,
+      "date": "2026-04-16",
+      "submitted": 48,
+      "accepted": 43,
+      "rejected": 5,
+      "block_index": 110,
+      "block_entries": 43,
+      "mine_seconds": 0.0030317900000227382,
+      "nonce": 10,
+      "rejections": {
+        "validation:INVALID": 2,
+        "validation:NEEDS_CLARIFICATION": 3
+      }
+    },
+    {
+      "day": 111,
+      "date": "2026-04-17",
+      "submitted": 13,
+      "accepted": 13,
+      "rejected": 0,
+      "block_index": 111,
+      "block_entries": 13,
+      "mine_seconds": 0.03876633600020796,
+      "nonce": 516,
+      "rejections": {}
+    },
+    {
+      "day": 112,
+      "date": "2026-04-18",
+      "submitted": 15,
+      "accepted": 12,
+      "rejected": 3,
+      "block_index": 112,
+      "block_entries": 12,
+      "mine_seconds": 0.007735476999641833,
+      "nonce": 104,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1,
+        "validation:INVALID": 2
+      }
+    },
+    {
+      "day": 113,
+      "date": "2026-04-18",
+      "submitted": 40,
+      "accepted": 37,
+      "rejected": 3,
+      "block_index": 113,
+      "block_entries": 37,
+      "mine_seconds": 0.0746064629997818,
+      "nonce": 255,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 114,
+      "date": "2026-04-19",
+      "submitted": 47,
+      "accepted": 46,
+      "rejected": 1,
+      "block_index": 114,
+      "block_entries": 46,
+      "mine_seconds": 0.04890804099977686,
+      "nonce": 183,
+      "rejections": {
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 115,
+      "date": "2026-04-20",
+      "submitted": 48,
+      "accepted": 46,
+      "rejected": 2,
+      "block_index": 115,
+      "block_entries": 46,
+      "mine_seconds": 0.0910553149997213,
+      "nonce": 342,
+      "rejections": {
+        "validation:INVALID": 1,
+        "double_transfer": 1
+      }
+    },
+    {
+      "day": 116,
+      "date": "2026-04-21",
+      "submitted": 55,
+      "accepted": 54,
+      "rejected": 1,
+      "block_index": 116,
+      "block_entries": 54,
+      "mine_seconds": 0.1424597420000282,
+      "nonce": 482,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 117,
+      "date": "2026-04-22",
+      "submitted": 55,
+      "accepted": 53,
+      "rejected": 2,
+      "block_index": 117,
+      "block_entries": 53,
+      "mine_seconds": 0.017050949999884324,
+      "nonce": 56,
+      "rejections": {
+        "validation:INVALID": 1,
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 118,
+      "date": "2026-04-23",
+      "submitted": 11,
+      "accepted": 11,
+      "rejected": 0,
+      "block_index": 118,
+      "block_entries": 12,
+      "mine_seconds": 0.012200055999983306,
+      "nonce": 162,
+      "rejections": {}
+    },
+    {
+      "day": 119,
+      "date": "2026-04-24",
+      "submitted": 19,
+      "accepted": 16,
+      "rejected": 3,
+      "block_index": 119,
+      "block_entries": 16,
+      "mine_seconds": 0.032400341000084154,
+      "nonce": 337,
+      "rejections": {
+        "validation:INVALID": 1,
+        "validation:NEEDS_CLARIFICATION": 2
+      }
+    },
+    {
+      "day": 120,
+      "date": "2026-04-25",
+      "submitted": 40,
+      "accepted": 40,
+      "rejected": 0,
+      "block_index": 120,
+      "block_entries": 40,
+      "mine_seconds": 0.01723541399996975,
+      "nonce": 73,
+      "rejections": {}
+    },
+    {
+      "day": 121,
+      "date": "2026-04-26",
+      "submitted": 54,
+      "accepted": 48,
+      "rejected": 6,
+      "block_index": 121,
+      "block_entries": 48,
+      "mine_seconds": 0.003943148999951518,
+      "nonce": 11,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 3,
+        "validation:INVALID": 3
+      }
+    },
+    {
+      "day": 122,
+      "date": "2026-04-27",
+      "submitted": 50,
+      "accepted": 46,
+      "rejected": 4,
+      "block_index": 122,
+      "block_entries": 46,
+      "mine_seconds": 0.0380456130001221,
+      "nonce": 146,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 4
+      }
+    },
+    {
+      "day": 123,
+      "date": "2026-04-28",
+      "submitted": 41,
+      "accepted": 40,
+      "rejected": 1,
+      "block_index": 123,
+      "block_entries": 40,
+      "mine_seconds": 0.11138670099990122,
+      "nonce": 505,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 124,
+      "date": "2026-04-29",
+      "submitted": 53,
+      "accepted": 50,
+      "rejected": 3,
+      "block_index": 124,
+      "block_entries": 50,
+      "mine_seconds": 0.05934290499999406,
+      "nonce": 222,
+      "rejections": {
+        "validation:INVALID": 1,
+        "validation:NEEDS_CLARIFICATION": 2
+      }
+    },
+    {
+      "day": 125,
+      "date": "2026-04-30",
+      "submitted": 19,
+      "accepted": 19,
+      "rejected": 0,
+      "block_index": 125,
+      "block_entries": 19,
+      "mine_seconds": 0.005439941000076942,
+      "nonce": 49,
+      "rejections": {}
+    },
+    {
+      "day": 126,
+      "date": "2026-05-01",
+      "submitted": 16,
+      "accepted": 12,
+      "rejected": 4,
+      "block_index": 126,
+      "block_entries": 12,
+      "mine_seconds": 0.03585122300000876,
+      "nonce": 520,
+      "rejections": {
+        "validation:INVALID": 3,
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 127,
+      "date": "2026-05-02",
+      "submitted": 39,
+      "accepted": 35,
+      "rejected": 4,
+      "block_index": 127,
+      "block_entries": 35,
+      "mine_seconds": 0.05526445399982549,
+      "nonce": 289,
+      "rejections": {
+        "validation:INVALID": 4
+      }
+    },
+    {
+      "day": 128,
+      "date": "2026-05-03",
+      "submitted": 34,
+      "accepted": 32,
+      "rejected": 2,
+      "block_index": 128,
+      "block_entries": 32,
+      "mine_seconds": 0.17438152099975923,
+      "nonce": 937,
+      "rejections": {
+        "validation:INVALID": 1,
+        "double_transfer": 1
+      }
+    },
+    {
+      "day": 129,
+      "date": "2026-05-04",
+      "submitted": 40,
+      "accepted": 37,
+      "rejected": 3,
+      "block_index": 129,
+      "block_entries": 37,
+      "mine_seconds": 0.05753961200025515,
+      "nonce": 270,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 3
+      }
+    },
+    {
+      "day": 130,
+      "date": "2026-05-05",
+      "submitted": 38,
+      "accepted": 35,
+      "rejected": 3,
+      "block_index": 130,
+      "block_entries": 35,
+      "mine_seconds": 0.05144055400023717,
+      "nonce": 242,
+      "rejections": {
+        "validation:INVALID": 1,
+        "validation:NEEDS_CLARIFICATION": 2
+      }
+    },
+    {
+      "day": 131,
+      "date": "2026-05-06",
+      "submitted": 40,
+      "accepted": 38,
+      "rejected": 2,
+      "block_index": 131,
+      "block_entries": 38,
+      "mine_seconds": 0.012683142999776464,
+      "nonce": 59,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2
+      }
+    },
+    {
+      "day": 132,
+      "date": "2026-05-07",
+      "submitted": 15,
+      "accepted": 15,
+      "rejected": 0,
+      "block_index": 132,
+      "block_entries": 15,
+      "mine_seconds": 0.03544924300013008,
+      "nonce": 388,
+      "rejections": {}
+    },
+    {
+      "day": 133,
+      "date": "2026-05-08",
+      "submitted": 17,
+      "accepted": 17,
+      "rejected": 0,
+      "block_index": 133,
+      "block_entries": 17,
+      "mine_seconds": 0.033721621000040614,
+      "nonce": 349,
+      "rejections": {}
+    },
+    {
+      "day": 134,
+      "date": "2026-05-09",
+      "submitted": 48,
+      "accepted": 42,
+      "rejected": 6,
+      "block_index": 134,
+      "block_entries": 42,
+      "mine_seconds": 0.0947018870001557,
+      "nonce": 416,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1,
+        "validation:INVALID": 5
+      }
+    },
+    {
+      "day": 135,
+      "date": "2026-05-10",
+      "submitted": 37,
+      "accepted": 35,
+      "rejected": 2,
+      "block_index": 135,
+      "block_entries": 35,
+      "mine_seconds": 0.011797600000136299,
+      "nonce": 57,
+      "rejections": {
+        "validation:INVALID": 2
+      }
+    },
+    {
+      "day": 136,
+      "date": "2026-05-11",
+      "submitted": 52,
+      "accepted": 49,
+      "rejected": 3,
+      "block_index": 136,
+      "block_entries": 49,
+      "mine_seconds": 0.1128579080000236,
+      "nonce": 425,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 137,
+      "date": "2026-05-12",
+      "submitted": 43,
+      "accepted": 40,
+      "rejected": 3,
+      "block_index": 137,
+      "block_entries": 40,
+      "mine_seconds": 0.03357581299997037,
+      "nonce": 154,
+      "rejections": {
+        "validation:INVALID": 2,
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 138,
+      "date": "2026-05-13",
+      "submitted": 38,
+      "accepted": 37,
+      "rejected": 1,
+      "block_index": 138,
+      "block_entries": 37,
+      "mine_seconds": 0.07654650999984369,
+      "nonce": 385,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 139,
+      "date": "2026-05-14",
+      "submitted": 19,
+      "accepted": 17,
+      "rejected": 2,
+      "block_index": 139,
+      "block_entries": 17,
+      "mine_seconds": 0.0018580250002742105,
+      "nonce": 15,
+      "rejections": {
+        "validation:INVALID": 1,
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 140,
+      "date": "2026-05-15",
+      "submitted": 13,
+      "accepted": 12,
+      "rejected": 1,
+      "block_index": 140,
+      "block_entries": 12,
+      "mine_seconds": 0.008257863999915571,
+      "nonce": 122,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 141,
+      "date": "2026-05-16",
+      "submitted": 51,
+      "accepted": 45,
+      "rejected": 6,
+      "block_index": 141,
+      "block_entries": 45,
+      "mine_seconds": 0.030428616999870428,
+      "nonce": 109,
+      "rejections": {
+        "validation:INVALID": 5,
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 142,
+      "date": "2026-05-17",
+      "submitted": 43,
+      "accepted": 43,
+      "rejected": 0,
+      "block_index": 142,
+      "block_entries": 43,
+      "mine_seconds": 0.22091059300009874,
+      "nonce": 940,
+      "rejections": {}
+    },
+    {
+      "day": 143,
+      "date": "2026-05-17",
+      "submitted": 41,
+      "accepted": 38,
+      "rejected": 3,
+      "block_index": 143,
+      "block_entries": 38,
+      "mine_seconds": 0.08305361899965646,
+      "nonce": 399,
+      "rejections": {
+        "validation:INVALID": 1,
+        "validation:NEEDS_CLARIFICATION": 2
+      }
+    },
+    {
+      "day": 144,
+      "date": "2026-05-18",
+      "submitted": 45,
+      "accepted": 42,
+      "rejected": 3,
+      "block_index": 144,
+      "block_entries": 42,
+      "mine_seconds": 0.02771007199999076,
+      "nonce": 109,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 3
+      }
+    },
+    {
+      "day": 145,
+      "date": "2026-05-19",
+      "submitted": 51,
+      "accepted": 49,
+      "rejected": 2,
+      "block_index": 145,
+      "block_entries": 49,
+      "mine_seconds": 0.18171784600008323,
+      "nonce": 652,
+      "rejections": {
+        "validation:INVALID": 2
+      }
+    },
+    {
+      "day": 146,
+      "date": "2026-05-20",
+      "submitted": 17,
+      "accepted": 15,
+      "rejected": 2,
+      "block_index": 146,
+      "block_entries": 15,
+      "mine_seconds": 0.0018238239999845973,
+      "nonce": 19,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2
+      }
+    },
+    {
+      "day": 147,
+      "date": "2026-05-21",
+      "submitted": 18,
+      "accepted": 17,
+      "rejected": 1,
+      "block_index": 147,
+      "block_entries": 17,
+      "mine_seconds": 0.02893770399987261,
+      "nonce": 286,
+      "rejections": {
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 148,
+      "date": "2026-05-22",
+      "submitted": 47,
+      "accepted": 45,
+      "rejected": 2,
+      "block_index": 148,
+      "block_entries": 45,
+      "mine_seconds": 0.06099373500001093,
+      "nonce": 220,
+      "rejections": {
+        "validation:INVALID": 1,
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 149,
+      "date": "2026-05-23",
+      "submitted": 42,
+      "accepted": 40,
+      "rejected": 2,
+      "block_index": 149,
+      "block_entries": 40,
+      "mine_seconds": 0.13895675200001278,
+      "nonce": 602,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1,
+        "double_transfer": 1
+      }
+    },
+    {
+      "day": 150,
+      "date": "2026-05-24",
+      "submitted": 38,
+      "accepted": 31,
+      "rejected": 7,
+      "block_index": 150,
+      "block_entries": 31,
+      "mine_seconds": 0.06328595000013593,
+      "nonce": 330,
+      "rejections": {
+        "validation:INVALID": 5,
+        "validation:NEEDS_CLARIFICATION": 2
+      }
+    },
+    {
+      "day": 151,
+      "date": "2026-05-25",
+      "submitted": 47,
+      "accepted": 47,
+      "rejected": 0,
+      "block_index": 151,
+      "block_entries": 47,
+      "mine_seconds": 0.0034547979998933442,
+      "nonce": 11,
+      "rejections": {}
+    },
+    {
+      "day": 152,
+      "date": "2026-05-26",
+      "submitted": 47,
+      "accepted": 45,
+      "rejected": 2,
+      "block_index": 152,
+      "block_entries": 45,
+      "mine_seconds": 0.05741179799997553,
+      "nonce": 206,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 153,
+      "date": "2026-05-27",
+      "submitted": 14,
+      "accepted": 14,
+      "rejected": 0,
+      "block_index": 153,
+      "block_entries": 14,
+      "mine_seconds": 0.06046676899995873,
+      "nonce": 658,
+      "rejections": {}
+    },
+    {
+      "day": 154,
+      "date": "2026-05-28",
+      "submitted": 13,
+      "accepted": 13,
+      "rejected": 0,
+      "block_index": 154,
+      "block_entries": 13,
+      "mine_seconds": 0.0021428679997370637,
+      "nonce": 24,
+      "rejections": {}
+    },
+    {
+      "day": 155,
+      "date": "2026-05-29",
+      "submitted": 58,
+      "accepted": 55,
+      "rejected": 3,
+      "block_index": 155,
+      "block_entries": 55,
+      "mine_seconds": 0.04637915900002554,
+      "nonce": 143,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1,
+        "validation:INVALID": 2
+      }
+    },
+    {
+      "day": 156,
+      "date": "2026-05-30",
+      "submitted": 39,
+      "accepted": 37,
+      "rejected": 2,
+      "block_index": 156,
+      "block_entries": 37,
+      "mine_seconds": 0.09386927900004594,
+      "nonce": 437,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 157,
+      "date": "2026-05-31",
+      "submitted": 39,
+      "accepted": 36,
+      "rejected": 3,
+      "block_index": 157,
+      "block_entries": 36,
+      "mine_seconds": 0.03312620600036098,
+      "nonce": 165,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2,
+        "double_transfer": 1
+      }
+    },
+    {
+      "day": 158,
+      "date": "2026-06-01",
+      "submitted": 47,
+      "accepted": 43,
+      "rejected": 4,
+      "block_index": 158,
+      "block_entries": 43,
+      "mine_seconds": 0.030330948000028002,
+      "nonce": 119,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2,
+        "validation:INVALID": 2
+      }
+    },
+    {
+      "day": 159,
+      "date": "2026-06-02",
+      "submitted": 37,
+      "accepted": 34,
+      "rejected": 3,
+      "block_index": 159,
+      "block_entries": 34,
+      "mine_seconds": 0.03517096499990657,
+      "nonce": 174,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1,
+        "validation:INVALID": 2
+      }
+    },
+    {
+      "day": 160,
+      "date": "2026-06-03",
+      "submitted": 16,
+      "accepted": 14,
+      "rejected": 2,
+      "block_index": 160,
+      "block_entries": 14,
+      "mine_seconds": 0.01051709099965592,
+      "nonce": 134,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 161,
+      "date": "2026-06-04",
+      "submitted": 19,
+      "accepted": 19,
+      "rejected": 0,
+      "block_index": 161,
+      "block_entries": 19,
+      "mine_seconds": 0.12581428100020275,
+      "nonce": 733,
+      "rejections": {}
+    },
+    {
+      "day": 162,
+      "date": "2026-06-05",
+      "submitted": 49,
+      "accepted": 47,
+      "rejected": 2,
+      "block_index": 162,
+      "block_entries": 47,
+      "mine_seconds": 0.025190916000155994,
+      "nonce": 91,
+      "rejections": {
+        "validation:INVALID": 1,
+        "double_transfer": 1
+      }
+    },
+    {
+      "day": 163,
+      "date": "2026-06-06",
+      "submitted": 42,
+      "accepted": 38,
+      "rejected": 4,
+      "block_index": 163,
+      "block_entries": 38,
+      "mine_seconds": 0.017538354999942385,
+      "nonce": 75,
+      "rejections": {
+        "validation:INVALID": 1,
+        "validation:NEEDS_CLARIFICATION": 3
+      }
+    },
+    {
+      "day": 164,
+      "date": "2026-06-07",
+      "submitted": 39,
+      "accepted": 38,
+      "rejected": 1,
+      "block_index": 164,
+      "block_entries": 38,
+      "mine_seconds": 0.004474415000004228,
+      "nonce": 18,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 165,
+      "date": "2026-06-08",
+      "submitted": 53,
+      "accepted": 50,
+      "rejected": 3,
+      "block_index": 165,
+      "block_entries": 50,
+      "mine_seconds": 0.06398014200021862,
+      "nonce": 240,
+      "rejections": {
+        "validation:INVALID": 1,
+        "validation:NEEDS_CLARIFICATION": 1,
+        "double_transfer": 1
+      }
+    },
+    {
+      "day": 166,
+      "date": "2026-06-09",
+      "submitted": 44,
+      "accepted": 42,
+      "rejected": 2,
+      "block_index": 166,
+      "block_entries": 42,
+      "mine_seconds": 0.018773359000078926,
+      "nonce": 75,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 167,
+      "date": "2026-06-10",
+      "submitted": 14,
+      "accepted": 13,
+      "rejected": 1,
+      "block_index": 167,
+      "block_entries": 13,
+      "mine_seconds": 0.006287201000304776,
+      "nonce": 75,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 168,
+      "date": "2026-06-11",
+      "submitted": 16,
+      "accepted": 14,
+      "rejected": 2,
+      "block_index": 168,
+      "block_entries": 14,
+      "mine_seconds": 0.01720294599999761,
+      "nonce": 198,
+      "rejections": {
+        "validation:INVALID": 2
+      }
+    },
+    {
+      "day": 169,
+      "date": "2026-06-12",
+      "submitted": 45,
+      "accepted": 38,
+      "rejected": 7,
+      "block_index": 169,
+      "block_entries": 38,
+      "mine_seconds": 0.055608859000130906,
+      "nonce": 258,
+      "rejections": {
+        "validation:INVALID": 5,
+        "validation:NEEDS_CLARIFICATION": 2
+      }
+    },
+    {
+      "day": 170,
+      "date": "2026-06-13",
+      "submitted": 54,
+      "accepted": 49,
+      "rejected": 5,
+      "block_index": 170,
+      "block_entries": 49,
+      "mine_seconds": 0.015162464000241016,
+      "nonce": 50,
+      "rejections": {
+        "validation:INVALID": 2,
+        "validation:NEEDS_CLARIFICATION": 3
+      }
+    },
+    {
+      "day": 171,
+      "date": "2026-06-14",
+      "submitted": 48,
+      "accepted": 45,
+      "rejected": 3,
+      "block_index": 171,
+      "block_entries": 45,
+      "mine_seconds": 0.12106011000014405,
+      "nonce": 487,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1,
+        "validation:INVALID": 2
+      }
+    },
+    {
+      "day": 172,
+      "date": "2026-06-15",
+      "submitted": 42,
+      "accepted": 41,
+      "rejected": 1,
+      "block_index": 172,
+      "block_entries": 41,
+      "mine_seconds": 0.009797702000014397,
+      "nonce": 41,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 173,
+      "date": "2026-06-16",
+      "submitted": 55,
+      "accepted": 53,
+      "rejected": 2,
+      "block_index": 173,
+      "block_entries": 53,
+      "mine_seconds": 0.06829222199985452,
+      "nonce": 247,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2
+      }
+    },
+    {
+      "day": 174,
+      "date": "2026-06-17",
+      "submitted": 20,
+      "accepted": 20,
+      "rejected": 0,
+      "block_index": 174,
+      "block_entries": 20,
+      "mine_seconds": 0.03377775799981464,
+      "nonce": 299,
+      "rejections": {}
+    },
+    {
+      "day": 175,
+      "date": "2026-06-17",
+      "submitted": 16,
+      "accepted": 14,
+      "rejected": 2,
+      "block_index": 175,
+      "block_entries": 14,
+      "mine_seconds": 0.006528162999984488,
+      "nonce": 67,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 176,
+      "date": "2026-06-18",
+      "submitted": 42,
+      "accepted": 39,
+      "rejected": 3,
+      "block_index": 176,
+      "block_entries": 39,
+      "mine_seconds": 0.042196945999876334,
+      "nonce": 197,
+      "rejections": {
+        "validation:INVALID": 2,
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 177,
+      "date": "2026-06-19",
+      "submitted": 57,
+      "accepted": 54,
+      "rejected": 3,
+      "block_index": 177,
+      "block_entries": 54,
+      "mine_seconds": 0.052778807999857236,
+      "nonce": 179,
+      "rejections": {
+        "validation:INVALID": 1,
+        "validation:NEEDS_CLARIFICATION": 2
+      }
+    },
+    {
+      "day": 178,
+      "date": "2026-06-20",
+      "submitted": 53,
+      "accepted": 49,
+      "rejected": 4,
+      "block_index": 178,
+      "block_entries": 49,
+      "mine_seconds": 0.056946412999877793,
+      "nonce": 209,
+      "rejections": {
+        "validation:INVALID": 3,
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 179,
+      "date": "2026-06-21",
+      "submitted": 83,
+      "accepted": 76,
+      "rejected": 7,
+      "block_index": 179,
+      "block_entries": 76,
+      "mine_seconds": 0.12761042699958125,
+      "nonce": 312,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 3,
+        "validation:INVALID": 4
+      }
+    },
+    {
+      "day": 180,
+      "date": "2026-06-22",
+      "submitted": 76,
+      "accepted": 73,
+      "rejected": 3,
+      "block_index": 180,
+      "block_entries": 73,
+      "mine_seconds": 0.36780121399988275,
+      "nonce": 900,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 181,
+      "date": "2026-06-23",
+      "submitted": 32,
+      "accepted": 29,
+      "rejected": 3,
+      "block_index": 181,
+      "block_entries": 29,
+      "mine_seconds": 0.014783380000153556,
+      "nonce": 87,
+      "rejections": {
+        "validation:INVALID": 2,
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 182,
+      "date": "2026-06-24",
+      "submitted": 24,
+      "accepted": 23,
+      "rejected": 1,
+      "block_index": 182,
+      "block_entries": 23,
+      "mine_seconds": 0.04605605699998705,
+      "nonce": 339,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 183,
+      "date": "2026-06-25",
+      "submitted": 54,
+      "accepted": 51,
+      "rejected": 3,
+      "block_index": 183,
+      "block_entries": 51,
+      "mine_seconds": 0.0011632850000751205,
+      "nonce": 1,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 184,
+      "date": "2026-06-26",
+      "submitted": 46,
+      "accepted": 40,
+      "rejected": 6,
+      "block_index": 184,
+      "block_entries": 40,
+      "mine_seconds": 0.02006869299975733,
+      "nonce": 90,
+      "rejections": {
+        "validation:INVALID": 4,
+        "validation:NEEDS_CLARIFICATION": 2
+      }
+    },
+    {
+      "day": 185,
+      "date": "2026-06-27",
+      "submitted": 61,
+      "accepted": 58,
+      "rejected": 3,
+      "block_index": 185,
+      "block_entries": 58,
+      "mine_seconds": 0.05132157500020185,
+      "nonce": 135,
+      "rejections": {
+        "validation:INVALID": 1,
+        "validation:NEEDS_CLARIFICATION": 2
+      }
+    },
+    {
+      "day": 186,
+      "date": "2026-06-28",
+      "submitted": 37,
+      "accepted": 36,
+      "rejected": 1,
+      "block_index": 186,
+      "block_entries": 36,
+      "mine_seconds": 0.004137430999890057,
+      "nonce": 17,
+      "rejections": {
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 187,
+      "date": "2026-06-29",
+      "submitted": 59,
+      "accepted": 51,
+      "rejected": 8,
+      "block_index": 187,
+      "block_entries": 51,
+      "mine_seconds": 0.08318006500030606,
+      "nonce": 289,
+      "rejections": {
+        "validation:INVALID": 7,
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 188,
+      "date": "2026-06-30",
+      "submitted": 20,
+      "accepted": 17,
+      "rejected": 3,
+      "block_index": 188,
+      "block_entries": 17,
+      "mine_seconds": 0.0020524350002233405,
+      "nonce": 18,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 3
+      }
+    },
+    {
+      "day": 189,
+      "date": "2026-07-01",
+      "submitted": 17,
+      "accepted": 16,
+      "rejected": 1,
+      "block_index": 189,
+      "block_entries": 16,
+      "mine_seconds": 0.024173080999844387,
+      "nonce": 253,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 190,
+      "date": "2026-07-02",
+      "submitted": 55,
+      "accepted": 52,
+      "rejected": 3,
+      "block_index": 190,
+      "block_entries": 52,
+      "mine_seconds": 0.057675256000038644,
+      "nonce": 192,
+      "rejections": {
+        "validation:INVALID": 3
+      }
+    },
+    {
+      "day": 191,
+      "date": "2026-07-03",
+      "submitted": 50,
+      "accepted": 50,
+      "rejected": 0,
+      "block_index": 191,
+      "block_entries": 50,
+      "mine_seconds": 0.061951880999913556,
+      "nonce": 223,
+      "rejections": {}
+    },
+    {
+      "day": 192,
+      "date": "2026-07-04",
+      "submitted": 42,
+      "accepted": 40,
+      "rejected": 2,
+      "block_index": 192,
+      "block_entries": 40,
+      "mine_seconds": 0.12555911599974934,
+      "nonce": 471,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 193,
+      "date": "2026-07-05",
+      "submitted": 61,
+      "accepted": 56,
+      "rejected": 5,
+      "block_index": 193,
+      "block_entries": 56,
+      "mine_seconds": 0.054659940999954415,
+      "nonce": 175,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2,
+        "validation:INVALID": 3
+      }
+    },
+    {
+      "day": 194,
+      "date": "2026-07-06",
+      "submitted": 47,
+      "accepted": 45,
+      "rejected": 2,
+      "block_index": 194,
+      "block_entries": 45,
+      "mine_seconds": 0.013678640999842173,
+      "nonce": 48,
+      "rejections": {
+        "validation:INVALID": 2
+      }
+    },
+    {
+      "day": 195,
+      "date": "2026-07-07",
+      "submitted": 19,
+      "accepted": 16,
+      "rejected": 3,
+      "block_index": 195,
+      "block_entries": 16,
+      "mine_seconds": 0.006953881000299589,
+      "nonce": 66,
+      "rejections": {
+        "validation:INVALID": 2,
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 196,
+      "date": "2026-07-08",
+      "submitted": 13,
+      "accepted": 12,
+      "rejected": 1,
+      "block_index": 196,
+      "block_entries": 12,
+      "mine_seconds": 0.0026500140002099215,
+      "nonce": 34,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 197,
+      "date": "2026-07-09",
+      "submitted": 49,
+      "accepted": 44,
+      "rejected": 5,
+      "block_index": 197,
+      "block_entries": 44,
+      "mine_seconds": 0.03277996999986499,
+      "nonce": 131,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 4,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 198,
+      "date": "2026-07-10",
+      "submitted": 49,
+      "accepted": 43,
+      "rejected": 6,
+      "block_index": 198,
+      "block_entries": 43,
+      "mine_seconds": 0.09309539700007008,
+      "nonce": 387,
+      "rejections": {
+        "validation:INVALID": 3,
+        "validation:NEEDS_CLARIFICATION": 3
+      }
+    },
+    {
+      "day": 199,
+      "date": "2026-07-11",
+      "submitted": 54,
+      "accepted": 52,
+      "rejected": 2,
+      "block_index": 199,
+      "block_entries": 52,
+      "mine_seconds": 0.07534192200000689,
+      "nonce": 268,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 200,
+      "date": "2026-07-12",
+      "submitted": 42,
+      "accepted": 38,
+      "rejected": 4,
+      "block_index": 200,
+      "block_entries": 38,
+      "mine_seconds": 0.028931006000220805,
+      "nonce": 127,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2,
+        "validation:INVALID": 2
+      }
+    },
+    {
+      "day": 201,
+      "date": "2026-07-13",
+      "submitted": 53,
+      "accepted": 52,
+      "rejected": 1,
+      "block_index": 201,
+      "block_entries": 52,
+      "mine_seconds": 0.06057967500009909,
+      "nonce": 214,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 202,
+      "date": "2026-07-14",
+      "submitted": 16,
+      "accepted": 16,
+      "rejected": 0,
+      "block_index": 202,
+      "block_entries": 16,
+      "mine_seconds": 0.013568122999913612,
+      "nonce": 145,
+      "rejections": {}
+    },
+    {
+      "day": 203,
+      "date": "2026-07-15",
+      "submitted": 20,
+      "accepted": 17,
+      "rejected": 3,
+      "block_index": 203,
+      "block_entries": 17,
+      "mine_seconds": 0.03424876000008226,
+      "nonce": 342,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 3
+      }
+    },
+    {
+      "day": 204,
+      "date": "2026-07-16",
+      "submitted": 40,
+      "accepted": 37,
+      "rejected": 3,
+      "block_index": 204,
+      "block_entries": 37,
+      "mine_seconds": 0.014589806000003591,
+      "nonce": 68,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1,
+        "validation:INVALID": 2
+      }
+    },
+    {
+      "day": 205,
+      "date": "2026-07-17",
+      "submitted": 62,
+      "accepted": 59,
+      "rejected": 3,
+      "block_index": 205,
+      "block_entries": 59,
+      "mine_seconds": 0.09607748200005517,
+      "nonce": 304,
+      "rejections": {
+        "validation:INVALID": 2,
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 206,
+      "date": "2026-07-18",
+      "submitted": 43,
+      "accepted": 41,
+      "rejected": 2,
+      "block_index": 206,
+      "block_entries": 41,
+      "mine_seconds": 0.08767042599993147,
+      "nonce": 397,
+      "rejections": {
+        "validation:INVALID": 1,
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 207,
+      "date": "2026-07-19",
+      "submitted": 38,
+      "accepted": 35,
+      "rejected": 3,
+      "block_index": 207,
+      "block_entries": 35,
+      "mine_seconds": 0.0017575970000507368,
+      "nonce": 6,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1,
+        "validation:INVALID": 2
+      }
+    },
+    {
+      "day": 208,
+      "date": "2026-07-20",
+      "submitted": 41,
+      "accepted": 41,
+      "rejected": 0,
+      "block_index": 208,
+      "block_entries": 41,
+      "mine_seconds": 0.02334814699997878,
+      "nonce": 102,
+      "rejections": {}
+    },
+    {
+      "day": 209,
+      "date": "2026-07-21",
+      "submitted": 16,
+      "accepted": 14,
+      "rejected": 2,
+      "block_index": 209,
+      "block_entries": 14,
+      "mine_seconds": 0.004107813999780774,
+      "nonce": 47,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 210,
+      "date": "2026-07-21",
+      "submitted": 18,
+      "accepted": 18,
+      "rejected": 0,
+      "block_index": 210,
+      "block_entries": 18,
+      "mine_seconds": 0.002095172000281309,
+      "nonce": 17,
+      "rejections": {}
+    },
+    {
+      "day": 211,
+      "date": "2026-07-22",
+      "submitted": 44,
+      "accepted": 43,
+      "rejected": 1,
+      "block_index": 211,
+      "block_entries": 43,
+      "mine_seconds": 0.008215686000312417,
+      "nonce": 32,
+      "rejections": {
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 212,
+      "date": "2026-07-23",
+      "submitted": 56,
+      "accepted": 54,
+      "rejected": 2,
+      "block_index": 212,
+      "block_entries": 54,
+      "mine_seconds": 0.0408969610002714,
+      "nonce": 131,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 213,
+      "date": "2026-07-24",
+      "submitted": 62,
+      "accepted": 60,
+      "rejected": 2,
+      "block_index": 213,
+      "block_entries": 60,
+      "mine_seconds": 0.03341281499979232,
+      "nonce": 97,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2
+      }
+    },
+    {
+      "day": 214,
+      "date": "2026-07-25",
+      "submitted": 60,
+      "accepted": 56,
+      "rejected": 4,
+      "block_index": 214,
+      "block_entries": 56,
+      "mine_seconds": 0.10700472700000319,
+      "nonce": 331,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 4
+      }
+    },
+    {
+      "day": 215,
+      "date": "2026-07-26",
+      "submitted": 47,
+      "accepted": 42,
+      "rejected": 5,
+      "block_index": 215,
+      "block_entries": 42,
+      "mine_seconds": 0.056354223000198544,
+      "nonce": 243,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 3,
+        "validation:INVALID": 2
+      }
+    },
+    {
+      "day": 216,
+      "date": "2026-07-27",
+      "submitted": 13,
+      "accepted": 13,
+      "rejected": 0,
+      "block_index": 216,
+      "block_entries": 13,
+      "mine_seconds": 0.013441546000194649,
+      "nonce": 153,
+      "rejections": {}
+    },
+    {
+      "day": 217,
+      "date": "2026-07-28",
+      "submitted": 15,
+      "accepted": 14,
+      "rejected": 1,
+      "block_index": 217,
+      "block_entries": 14,
+      "mine_seconds": 0.046638925000024756,
+      "nonce": 510,
+      "rejections": {
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 218,
+      "date": "2026-07-29",
+      "submitted": 61,
+      "accepted": 58,
+      "rejected": 3,
+      "block_index": 218,
+      "block_entries": 58,
+      "mine_seconds": 0.0014253989997996541,
+      "nonce": 1,
+      "rejections": {
+        "validation:INVALID": 3
+      }
+    },
+    {
+      "day": 219,
+      "date": "2026-07-30",
+      "submitted": 40,
+      "accepted": 39,
+      "rejected": 1,
+      "block_index": 219,
+      "block_entries": 39,
+      "mine_seconds": 0.032761739999841666,
+      "nonce": 142,
+      "rejections": {
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 220,
+      "date": "2026-07-31",
+      "submitted": 62,
+      "accepted": 59,
+      "rejected": 3,
+      "block_index": 220,
+      "block_entries": 59,
+      "mine_seconds": 0.020648958000037965,
+      "nonce": 58,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 221,
+      "date": "2026-08-01",
+      "submitted": 45,
+      "accepted": 40,
+      "rejected": 5,
+      "block_index": 221,
+      "block_entries": 40,
+      "mine_seconds": 0.04014791300005527,
+      "nonce": 166,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2,
+        "validation:INVALID": 3
+      }
+    },
+    {
+      "day": 222,
+      "date": "2026-08-02",
+      "submitted": 53,
+      "accepted": 52,
+      "rejected": 1,
+      "block_index": 222,
+      "block_entries": 52,
+      "mine_seconds": 0.1700826699998288,
+      "nonce": 578,
+      "rejections": {
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 223,
+      "date": "2026-08-03",
+      "submitted": 14,
+      "accepted": 12,
+      "rejected": 2,
+      "block_index": 223,
+      "block_entries": 12,
+      "mine_seconds": 0.012521255000137899,
+      "nonce": 164,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 224,
+      "date": "2026-08-04",
+      "submitted": 21,
+      "accepted": 21,
+      "rejected": 0,
+      "block_index": 224,
+      "block_entries": 21,
+      "mine_seconds": 0.015621953999925609,
+      "nonce": 113,
+      "rejections": {}
+    },
+    {
+      "day": 225,
+      "date": "2026-08-05",
+      "submitted": 54,
+      "accepted": 50,
+      "rejected": 4,
+      "block_index": 225,
+      "block_entries": 50,
+      "mine_seconds": 0.004654607999782456,
+      "nonce": 13,
+      "rejections": {
+        "validation:INVALID": 4
+      }
+    },
+    {
+      "day": 226,
+      "date": "2026-08-06",
+      "submitted": 48,
+      "accepted": 45,
+      "rejected": 3,
+      "block_index": 226,
+      "block_entries": 45,
+      "mine_seconds": 0.048227222000150505,
+      "nonce": 167,
+      "rejections": {
+        "validation:INVALID": 2,
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 227,
+      "date": "2026-08-07",
+      "submitted": 61,
+      "accepted": 61,
+      "rejected": 0,
+      "block_index": 227,
+      "block_entries": 61,
+      "mine_seconds": 0.020337549000032595,
+      "nonce": 58,
+      "rejections": {}
+    },
+    {
+      "day": 228,
+      "date": "2026-08-08",
+      "submitted": 54,
+      "accepted": 51,
+      "rejected": 3,
+      "block_index": 228,
+      "block_entries": 51,
+      "mine_seconds": 0.007358929000019998,
+      "nonce": 24,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 229,
+      "date": "2026-08-09",
+      "submitted": 57,
+      "accepted": 53,
+      "rejected": 4,
+      "block_index": 229,
+      "block_entries": 53,
+      "mine_seconds": 0.04856997400020191,
+      "nonce": 162,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2,
+        "validation:INVALID": 2
+      }
+    },
+    {
+      "day": 230,
+      "date": "2026-08-10",
+      "submitted": 22,
+      "accepted": 19,
+      "rejected": 3,
+      "block_index": 230,
+      "block_entries": 19,
+      "mine_seconds": 0.01839299099992786,
+      "nonce": 165,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2,
+        "double_transfer": 1
+      }
+    },
+    {
+      "day": 231,
+      "date": "2026-08-11",
+      "submitted": 21,
+      "accepted": 17,
+      "rejected": 4,
+      "block_index": 231,
+      "block_entries": 17,
+      "mine_seconds": 0.012091490999864618,
+      "nonce": 123,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2,
+        "validation:INVALID": 2
+      }
+    },
+    {
+      "day": 232,
+      "date": "2026-08-12",
+      "submitted": 61,
+      "accepted": 56,
+      "rejected": 5,
+      "block_index": 232,
+      "block_entries": 56,
+      "mine_seconds": 0.04700329299976147,
+      "nonce": 144,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 4,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 233,
+      "date": "2026-08-13",
+      "submitted": 61,
+      "accepted": 55,
+      "rejected": 6,
+      "block_index": 233,
+      "block_entries": 55,
+      "mine_seconds": 0.02601653300007456,
+      "nonce": 83,
+      "rejections": {
+        "validation:INVALID": 5,
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 234,
+      "date": "2026-08-14",
+      "submitted": 59,
+      "accepted": 54,
+      "rejected": 5,
+      "block_index": 234,
+      "block_entries": 54,
+      "mine_seconds": 0.26125874900026247,
+      "nonce": 800,
+      "rejections": {
+        "validation:INVALID": 5
+      }
+    },
+    {
+      "day": 235,
+      "date": "2026-08-15",
+      "submitted": 49,
+      "accepted": 48,
+      "rejected": 1,
+      "block_index": 235,
+      "block_entries": 48,
+      "mine_seconds": 0.042299285999888525,
+      "nonce": 158,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 236,
+      "date": "2026-08-16",
+      "submitted": 54,
+      "accepted": 52,
+      "rejected": 2,
+      "block_index": 236,
+      "block_entries": 52,
+      "mine_seconds": 0.06043535000026168,
+      "nonce": 210,
+      "rejections": {
+        "double_transfer": 1,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 237,
+      "date": "2026-08-17",
+      "submitted": 19,
+      "accepted": 18,
+      "rejected": 1,
+      "block_index": 237,
+      "block_entries": 18,
+      "mine_seconds": 0.07944731999987198,
+      "nonce": 746,
+      "rejections": {
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 238,
+      "date": "2026-08-18",
+      "submitted": 19,
+      "accepted": 18,
+      "rejected": 1,
+      "block_index": 238,
+      "block_entries": 18,
+      "mine_seconds": 0.018962097999974503,
+      "nonce": 187,
+      "rejections": {
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 239,
+      "date": "2026-08-19",
+      "submitted": 55,
+      "accepted": 51,
+      "rejected": 4,
+      "block_index": 239,
+      "block_entries": 51,
+      "mine_seconds": 0.05740222900021763,
+      "nonce": 199,
+      "rejections": {
+        "validation:INVALID": 3,
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 240,
+      "date": "2026-08-20",
+      "submitted": 56,
+      "accepted": 52,
+      "rejected": 4,
+      "block_index": 240,
+      "block_entries": 52,
+      "mine_seconds": 0.12616814300008627,
+      "nonce": 418,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 3,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 241,
+      "date": "2026-08-21",
+      "submitted": 50,
+      "accepted": 48,
+      "rejected": 2,
+      "block_index": 241,
+      "block_entries": 48,
+      "mine_seconds": 0.17298066500006826,
+      "nonce": 648,
+      "rejections": {
+        "validation:INVALID": 1,
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 242,
+      "date": "2026-08-22",
+      "submitted": 61,
+      "accepted": 59,
+      "rejected": 2,
+      "block_index": 242,
+      "block_entries": 59,
+      "mine_seconds": 0.03641104100006487,
+      "nonce": 114,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2
+      }
+    },
+    {
+      "day": 243,
+      "date": "2026-08-23",
+      "submitted": 40,
+      "accepted": 40,
+      "rejected": 0,
+      "block_index": 243,
+      "block_entries": 40,
+      "mine_seconds": 0.17782484899998963,
+      "nonce": 773,
+      "rejections": {}
+    },
+    {
+      "day": 244,
+      "date": "2026-08-23",
+      "submitted": 15,
+      "accepted": 15,
+      "rejected": 0,
+      "block_index": 244,
+      "block_entries": 15,
+      "mine_seconds": 0.004382340000120166,
+      "nonce": 46,
+      "rejections": {}
+    },
+    {
+      "day": 245,
+      "date": "2026-08-24",
+      "submitted": 16,
+      "accepted": 15,
+      "rejected": 1,
+      "block_index": 245,
+      "block_entries": 15,
+      "mine_seconds": 0.006906749999870954,
+      "nonce": 73,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 246,
+      "date": "2026-08-25",
+      "submitted": 58,
+      "accepted": 58,
+      "rejected": 0,
+      "block_index": 246,
+      "block_entries": 58,
+      "mine_seconds": 0.07179186600023968,
+      "nonce": 222,
+      "rejections": {}
+    },
+    {
+      "day": 247,
+      "date": "2026-08-26",
+      "submitted": 44,
+      "accepted": 44,
+      "rejected": 0,
+      "block_index": 247,
+      "block_entries": 44,
+      "mine_seconds": 0.01031759699981194,
+      "nonce": 39,
+      "rejections": {}
+    },
+    {
+      "day": 248,
+      "date": "2026-08-27",
+      "submitted": 58,
+      "accepted": 54,
+      "rejected": 4,
+      "block_index": 248,
+      "block_entries": 54,
+      "mine_seconds": 0.09799782199979745,
+      "nonce": 320,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 4
+      }
+    },
+    {
+      "day": 249,
+      "date": "2026-08-28",
+      "submitted": 47,
+      "accepted": 45,
+      "rejected": 2,
+      "block_index": 249,
+      "block_entries": 45,
+      "mine_seconds": 0.009808022999550303,
+      "nonce": 37,
+      "rejections": {
+        "double_transfer": 2
+      }
+    },
+    {
+      "day": 250,
+      "date": "2026-08-29",
+      "submitted": 61,
+      "accepted": 56,
+      "rejected": 5,
+      "block_index": 250,
+      "block_entries": 56,
+      "mine_seconds": 0.060554649000096106,
+      "nonce": 200,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2,
+        "validation:INVALID": 3
+      }
+    },
+    {
+      "day": 251,
+      "date": "2026-08-30",
+      "submitted": 17,
+      "accepted": 15,
+      "rejected": 2,
+      "block_index": 251,
+      "block_entries": 15,
+      "mine_seconds": 0.014174445999742602,
+      "nonce": 155,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2
+      }
+    },
+    {
+      "day": 252,
+      "date": "2026-08-31",
+      "submitted": 22,
+      "accepted": 22,
+      "rejected": 0,
+      "block_index": 252,
+      "block_entries": 22,
+      "mine_seconds": 0.11387378800009174,
+      "nonce": 924,
+      "rejections": {}
+    },
+    {
+      "day": 253,
+      "date": "2026-09-01",
+      "submitted": 59,
+      "accepted": 51,
+      "rejected": 8,
+      "block_index": 253,
+      "block_entries": 51,
+      "mine_seconds": 0.061657547000322666,
+      "nonce": 217,
+      "rejections": {
+        "validation:INVALID": 6,
+        "validation:NEEDS_CLARIFICATION": 2
+      }
+    },
+    {
+      "day": 254,
+      "date": "2026-09-02",
+      "submitted": 64,
+      "accepted": 61,
+      "rejected": 3,
+      "block_index": 254,
+      "block_entries": 61,
+      "mine_seconds": 0.01864229000011619,
+      "nonce": 52,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 255,
+      "date": "2026-09-03",
+      "submitted": 49,
+      "accepted": 45,
+      "rejected": 4,
+      "block_index": 255,
+      "block_entries": 46,
+      "mine_seconds": 0.029417818000183615,
+      "nonce": 116,
+      "rejections": {
+        "validation:INVALID": 2,
+        "validation:NEEDS_CLARIFICATION": 2
+      }
+    },
+    {
+      "day": 256,
+      "date": "2026-09-04",
+      "submitted": 50,
+      "accepted": 48,
+      "rejected": 2,
+      "block_index": 256,
+      "block_entries": 48,
+      "mine_seconds": 0.044426861999909306,
+      "nonce": 156,
+      "rejections": {
+        "validation:INVALID": 1,
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 257,
+      "date": "2026-09-05",
+      "submitted": 52,
+      "accepted": 50,
+      "rejected": 2,
+      "block_index": 257,
+      "block_entries": 50,
+      "mine_seconds": 0.036027853999712534,
+      "nonce": 121,
+      "rejections": {
+        "validation:INVALID": 1,
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 258,
+      "date": "2026-09-06",
+      "submitted": 16,
+      "accepted": 14,
+      "rejected": 2,
+      "block_index": 258,
+      "block_entries": 14,
+      "mine_seconds": 0.007557587000064814,
+      "nonce": 85,
+      "rejections": {
+        "validation:INVALID": 1,
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 259,
+      "date": "2026-09-07",
+      "submitted": 15,
+      "accepted": 15,
+      "rejected": 0,
+      "block_index": 259,
+      "block_entries": 15,
+      "mine_seconds": 0.06372088600028292,
+      "nonce": 703,
+      "rejections": {}
+    },
+    {
+      "day": 260,
+      "date": "2026-09-08",
+      "submitted": 63,
+      "accepted": 61,
+      "rejected": 2,
+      "block_index": 260,
+      "block_entries": 61,
+      "mine_seconds": 0.09913823000033517,
+      "nonce": 291,
+      "rejections": {
+        "validation:INVALID": 2
+      }
+    },
+    {
+      "day": 261,
+      "date": "2026-09-09",
+      "submitted": 57,
+      "accepted": 54,
+      "rejected": 3,
+      "block_index": 261,
+      "block_entries": 54,
+      "mine_seconds": 0.0066854359997705615,
+      "nonce": 20,
+      "rejections": {
+        "validation:INVALID": 3
+      }
+    },
+    {
+      "day": 262,
+      "date": "2026-09-10",
+      "submitted": 40,
+      "accepted": 36,
+      "rejected": 4,
+      "block_index": 262,
+      "block_entries": 36,
+      "mine_seconds": 0.03468861999999717,
+      "nonce": 168,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 3,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 263,
+      "date": "2026-09-11",
+      "submitted": 45,
+      "accepted": 45,
+      "rejected": 0,
+      "block_index": 263,
+      "block_entries": 45,
+      "mine_seconds": 0.019500435999816546,
+      "nonce": 77,
+      "rejections": {}
+    },
+    {
+      "day": 264,
+      "date": "2026-09-12",
+      "submitted": 60,
+      "accepted": 56,
+      "rejected": 4,
+      "block_index": 264,
+      "block_entries": 56,
+      "mine_seconds": 0.06448062599974946,
+      "nonce": 192,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2,
+        "validation:INVALID": 2
+      }
+    },
+    {
+      "day": 265,
+      "date": "2026-09-13",
+      "submitted": 15,
+      "accepted": 13,
+      "rejected": 2,
+      "block_index": 265,
+      "block_entries": 13,
+      "mine_seconds": 0.005024992000016937,
+      "nonce": 63,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2
+      }
+    },
+    {
+      "day": 266,
+      "date": "2026-09-14",
+      "submitted": 22,
+      "accepted": 21,
+      "rejected": 1,
+      "block_index": 266,
+      "block_entries": 21,
+      "mine_seconds": 0.04293172699999559,
+      "nonce": 356,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 267,
+      "date": "2026-09-15",
+      "submitted": 47,
+      "accepted": 44,
+      "rejected": 3,
+      "block_index": 267,
+      "block_entries": 44,
+      "mine_seconds": 0.036811768999996275,
+      "nonce": 149,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 268,
+      "date": "2026-09-16",
+      "submitted": 49,
+      "accepted": 46,
+      "rejected": 3,
+      "block_index": 268,
+      "block_entries": 46,
+      "mine_seconds": 0.02847079200000735,
+      "nonce": 109,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1,
+        "validation:INVALID": 2
+      }
+    },
+    {
+      "day": 269,
+      "date": "2026-09-17",
+      "submitted": 41,
+      "accepted": 38,
+      "rejected": 3,
+      "block_index": 269,
+      "block_entries": 38,
+      "mine_seconds": 0.04866056299988486,
+      "nonce": 232,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 270,
+      "date": "2026-09-18",
+      "submitted": 109,
+      "accepted": 104,
+      "rejected": 5,
+      "block_index": 270,
+      "block_entries": 104,
+      "mine_seconds": 0.42195004299992434,
+      "nonce": 742,
+      "rejections": {
+        "validation:INVALID": 4,
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 271,
+      "date": "2026-09-19",
+      "submitted": 81,
+      "accepted": 78,
+      "rejected": 3,
+      "block_index": 271,
+      "block_entries": 78,
+      "mine_seconds": 0.32875237899997956,
+      "nonce": 766,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 272,
+      "date": "2026-09-20",
+      "submitted": 44,
+      "accepted": 38,
+      "rejected": 6,
+      "block_index": 272,
+      "block_entries": 38,
+      "mine_seconds": 0.0847734619997027,
+      "nonce": 401,
+      "rejections": {
+        "validation:INVALID": 4,
+        "validation:NEEDS_CLARIFICATION": 2
+      }
+    },
+    {
+      "day": 273,
+      "date": "2026-09-21",
+      "submitted": 31,
+      "accepted": 30,
+      "rejected": 1,
+      "block_index": 273,
+      "block_entries": 30,
+      "mine_seconds": 0.00618956900007106,
+      "nonce": 34,
+      "rejections": {
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 274,
+      "date": "2026-09-22",
+      "submitted": 59,
+      "accepted": 58,
+      "rejected": 1,
+      "block_index": 274,
+      "block_entries": 58,
+      "mine_seconds": 0.037881655000091996,
+      "nonce": 117,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 275,
+      "date": "2026-09-23",
+      "submitted": 51,
+      "accepted": 50,
+      "rejected": 1,
+      "block_index": 275,
+      "block_entries": 50,
+      "mine_seconds": 0.017724179000197182,
+      "nonce": 63,
+      "rejections": {
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 276,
+      "date": "2026-09-24",
+      "submitted": 45,
+      "accepted": 45,
+      "rejected": 0,
+      "block_index": 276,
+      "block_entries": 45,
+      "mine_seconds": 0.13695367700029237,
+      "nonce": 562,
+      "rejections": {}
+    },
+    {
+      "day": 277,
+      "date": "2026-09-25",
+      "submitted": 65,
+      "accepted": 59,
+      "rejected": 6,
+      "block_index": 277,
+      "block_entries": 59,
+      "mine_seconds": 0.12489138099999764,
+      "nonce": 380,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 4,
+        "validation:INVALID": 2
+      }
+    },
+    {
+      "day": 278,
+      "date": "2026-09-26",
+      "submitted": 45,
+      "accepted": 43,
+      "rejected": 2,
+      "block_index": 278,
+      "block_entries": 43,
+      "mine_seconds": 0.016095907999897463,
+      "nonce": 64,
+      "rejections": {
+        "validation:INVALID": 2
+      }
+    },
+    {
+      "day": 279,
+      "date": "2026-09-27",
+      "submitted": 16,
+      "accepted": 14,
+      "rejected": 2,
+      "block_index": 279,
+      "block_entries": 14,
+      "mine_seconds": 0.0063011490001372295,
+      "nonce": 73,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2
+      }
+    },
+    {
+      "day": 280,
+      "date": "2026-09-27",
+      "submitted": 18,
+      "accepted": 15,
+      "rejected": 3,
+      "block_index": 280,
+      "block_entries": 15,
+      "mine_seconds": 0.007699314000092272,
+      "nonce": 87,
+      "rejections": {
+        "validation:INVALID": 3
+      }
+    },
+    {
+      "day": 281,
+      "date": "2026-09-28",
+      "submitted": 50,
+      "accepted": 46,
+      "rejected": 4,
+      "block_index": 281,
+      "block_entries": 46,
+      "mine_seconds": 0.03276542900039203,
+      "nonce": 124,
+      "rejections": {
+        "validation:INVALID": 3,
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 282,
+      "date": "2026-09-29",
+      "submitted": 61,
+      "accepted": 58,
+      "rejected": 3,
+      "block_index": 282,
+      "block_entries": 58,
+      "mine_seconds": 0.00701022799967177,
+      "nonce": 19,
+      "rejections": {
+        "validation:INVALID": 2,
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 283,
+      "date": "2026-09-30",
+      "submitted": 53,
+      "accepted": 50,
+      "rejected": 3,
+      "block_index": 283,
+      "block_entries": 50,
+      "mine_seconds": 0.09693563900009394,
+      "nonce": 353,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1,
+        "validation:INVALID": 2
+      }
+    },
+    {
+      "day": 284,
+      "date": "2026-10-01",
+      "submitted": 51,
+      "accepted": 47,
+      "rejected": 4,
+      "block_index": 284,
+      "block_entries": 47,
+      "mine_seconds": 0.004703860000063287,
+      "nonce": 16,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 4
+      }
+    },
+    {
+      "day": 285,
+      "date": "2026-10-02",
+      "submitted": 62,
+      "accepted": 59,
+      "rejected": 3,
+      "block_index": 285,
+      "block_entries": 59,
+      "mine_seconds": 0.14427370400017026,
+      "nonce": 447,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1,
+        "validation:INVALID": 2
+      }
+    },
+    {
+      "day": 286,
+      "date": "2026-10-03",
+      "submitted": 15,
+      "accepted": 15,
+      "rejected": 0,
+      "block_index": 286,
+      "block_entries": 15,
+      "mine_seconds": 0.0037107110001670662,
+      "nonce": 38,
+      "rejections": {}
+    },
+    {
+      "day": 287,
+      "date": "2026-10-04",
+      "submitted": 17,
+      "accepted": 16,
+      "rejected": 1,
+      "block_index": 287,
+      "block_entries": 16,
+      "mine_seconds": 0.02065633300026093,
+      "nonce": 224,
+      "rejections": {
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 288,
+      "date": "2026-10-05",
+      "submitted": 48,
+      "accepted": 46,
+      "rejected": 2,
+      "block_index": 288,
+      "block_entries": 46,
+      "mine_seconds": 0.054329889999735315,
+      "nonce": 198,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 289,
+      "date": "2026-10-06",
+      "submitted": 50,
+      "accepted": 49,
+      "rejected": 1,
+      "block_index": 289,
+      "block_entries": 49,
+      "mine_seconds": 0.11414083999989089,
+      "nonce": 413,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 290,
+      "date": "2026-10-07",
+      "submitted": 65,
+      "accepted": 59,
+      "rejected": 6,
+      "block_index": 290,
+      "block_entries": 59,
+      "mine_seconds": 0.08188774000018384,
+      "nonce": 234,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 3,
+        "validation:INVALID": 2,
+        "double_transfer": 1
+      }
+    },
+    {
+      "day": 291,
+      "date": "2026-10-08",
+      "submitted": 44,
+      "accepted": 40,
+      "rejected": 4,
+      "block_index": 291,
+      "block_entries": 40,
+      "mine_seconds": 0.05836917699980404,
+      "nonce": 249,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2,
+        "validation:INVALID": 2
+      }
+    },
+    {
+      "day": 292,
+      "date": "2026-10-09",
+      "submitted": 68,
+      "accepted": 62,
+      "rejected": 6,
+      "block_index": 292,
+      "block_entries": 62,
+      "mine_seconds": 0.006750890000148502,
+      "nonce": 17,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2,
+        "validation:INVALID": 3,
+        "double_transfer": 1
+      }
+    },
+    {
+      "day": 293,
+      "date": "2026-10-10",
+      "submitted": 22,
+      "accepted": 20,
+      "rejected": 2,
+      "block_index": 293,
+      "block_entries": 20,
+      "mine_seconds": 0.0003636830001596536,
+      "nonce": 0,
+      "rejections": {
+        "validation:INVALID": 2
+      }
+    },
+    {
+      "day": 294,
+      "date": "2026-10-11",
+      "submitted": 23,
+      "accepted": 23,
+      "rejected": 0,
+      "block_index": 294,
+      "block_entries": 23,
+      "mine_seconds": 0.04212761400003728,
+      "nonce": 287,
+      "rejections": {}
+    },
+    {
+      "day": 295,
+      "date": "2026-10-12",
+      "submitted": 56,
+      "accepted": 49,
+      "rejected": 7,
+      "block_index": 295,
+      "block_entries": 49,
+      "mine_seconds": 0.015510210000229563,
+      "nonce": 56,
+      "rejections": {
+        "validation:INVALID": 4,
+        "validation:NEEDS_CLARIFICATION": 3
+      }
+    },
+    {
+      "day": 296,
+      "date": "2026-10-13",
+      "submitted": 47,
+      "accepted": 46,
+      "rejected": 1,
+      "block_index": 296,
+      "block_entries": 46,
+      "mine_seconds": 0.003336605999720632,
+      "nonce": 10,
+      "rejections": {
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 297,
+      "date": "2026-10-14",
+      "submitted": 52,
+      "accepted": 49,
+      "rejected": 3,
+      "block_index": 297,
+      "block_entries": 49,
+      "mine_seconds": 0.025173974999688653,
+      "nonce": 89,
+      "rejections": {
+        "validation:INVALID": 2,
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 298,
+      "date": "2026-10-15",
+      "submitted": 45,
+      "accepted": 39,
+      "rejected": 6,
+      "block_index": 298,
+      "block_entries": 39,
+      "mine_seconds": 0.04172611199965104,
+      "nonce": 186,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2,
+        "validation:INVALID": 4
+      }
+    },
+    {
+      "day": 299,
+      "date": "2026-10-16",
+      "submitted": 57,
+      "accepted": 54,
+      "rejected": 3,
+      "block_index": 299,
+      "block_entries": 54,
+      "mine_seconds": 0.007039459999759856,
+      "nonce": 21,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 300,
+      "date": "2026-10-17",
+      "submitted": 17,
+      "accepted": 16,
+      "rejected": 1,
+      "block_index": 300,
+      "block_entries": 16,
+      "mine_seconds": 0.011064632999932655,
+      "nonce": 113,
+      "rejections": {
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 301,
+      "date": "2026-10-18",
+      "submitted": 18,
+      "accepted": 15,
+      "rejected": 3,
+      "block_index": 301,
+      "block_entries": 15,
+      "mine_seconds": 0.08033116900014647,
+      "nonce": 876,
+      "rejections": {
+        "validation:INVALID": 1,
+        "validation:NEEDS_CLARIFICATION": 2
+      }
+    },
+    {
+      "day": 302,
+      "date": "2026-10-19",
+      "submitted": 59,
+      "accepted": 58,
+      "rejected": 1,
+      "block_index": 302,
+      "block_entries": 58,
+      "mine_seconds": 0.04610368900011963,
+      "nonce": 145,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 303,
+      "date": "2026-10-20",
+      "submitted": 62,
+      "accepted": 60,
+      "rejected": 2,
+      "block_index": 303,
+      "block_entries": 60,
+      "mine_seconds": 0.06004783999969732,
+      "nonce": 167,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2
+      }
+    },
+    {
+      "day": 304,
+      "date": "2026-10-21",
+      "submitted": 66,
+      "accepted": 62,
+      "rejected": 4,
+      "block_index": 304,
+      "block_entries": 62,
+      "mine_seconds": 0.00682629699986137,
+      "nonce": 14,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1,
+        "validation:INVALID": 3
+      }
+    },
+    {
+      "day": 305,
+      "date": "2026-10-22",
+      "submitted": 57,
+      "accepted": 55,
+      "rejected": 2,
+      "block_index": 305,
+      "block_entries": 55,
+      "mine_seconds": 0.008355493000181013,
+      "nonce": 23,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 306,
+      "date": "2026-10-23",
+      "submitted": 69,
+      "accepted": 66,
+      "rejected": 3,
+      "block_index": 306,
+      "block_entries": 66,
+      "mine_seconds": 0.004177399999662157,
+      "nonce": 7,
+      "rejections": {
+        "validation:INVALID": 3
+      }
+    },
+    {
+      "day": 307,
+      "date": "2026-10-24",
+      "submitted": 20,
+      "accepted": 20,
+      "rejected": 0,
+      "block_index": 307,
+      "block_entries": 20,
+      "mine_seconds": 0.07581825299985212,
+      "nonce": 662,
+      "rejections": {}
+    },
+    {
+      "day": 308,
+      "date": "2026-10-25",
+      "submitted": 21,
+      "accepted": 20,
+      "rejected": 1,
+      "block_index": 308,
+      "block_entries": 20,
+      "mine_seconds": 0.008910499999728927,
+      "nonce": 81,
+      "rejections": {
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 309,
+      "date": "2026-10-26",
+      "submitted": 50,
+      "accepted": 46,
+      "rejected": 4,
+      "block_index": 309,
+      "block_entries": 46,
+      "mine_seconds": 0.006677478000256087,
+      "nonce": 23,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1,
+        "validation:INVALID": 3
+      }
+    },
+    {
+      "day": 310,
+      "date": "2026-10-27",
+      "submitted": 53,
+      "accepted": 50,
+      "rejected": 3,
+      "block_index": 310,
+      "block_entries": 50,
+      "mine_seconds": 0.12965174999999363,
+      "nonce": 432,
+      "rejections": {
+        "validation:INVALID": 2,
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 311,
+      "date": "2026-10-28",
+      "submitted": 44,
+      "accepted": 42,
+      "rejected": 2,
+      "block_index": 311,
+      "block_entries": 42,
+      "mine_seconds": 0.20974543100010123,
+      "nonce": 883,
+      "rejections": {
+        "validation:INVALID": 1,
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 312,
+      "date": "2026-10-29",
+      "submitted": 61,
+      "accepted": 58,
+      "rejected": 3,
+      "block_index": 312,
+      "block_entries": 58,
+      "mine_seconds": 0.05476813499990385,
+      "nonce": 172,
+      "rejections": {
+        "validation:INVALID": 2,
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 313,
+      "date": "2026-10-30",
+      "submitted": 44,
+      "accepted": 43,
+      "rejected": 1,
+      "block_index": 313,
+      "block_entries": 43,
+      "mine_seconds": 0.007500377999804186,
+      "nonce": 29,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 314,
+      "date": "2026-10-31",
+      "submitted": 21,
+      "accepted": 21,
+      "rejected": 0,
+      "block_index": 314,
+      "block_entries": 21,
+      "mine_seconds": 0.011976586999935535,
+      "nonce": 100,
+      "rejections": {}
+    },
+    {
+      "day": 315,
+      "date": "2026-11-01",
+      "submitted": 19,
+      "accepted": 16,
+      "rejected": 3,
+      "block_index": 315,
+      "block_entries": 16,
+      "mine_seconds": 0.04469432300038534,
+      "nonce": 489,
+      "rejections": {
+        "validation:INVALID": 1,
+        "validation:NEEDS_CLARIFICATION": 2
+      }
+    },
+    {
+      "day": 316,
+      "date": "2026-11-01",
+      "submitted": 62,
+      "accepted": 60,
+      "rejected": 2,
+      "block_index": 316,
+      "block_entries": 60,
+      "mine_seconds": 0.047562004000155866,
+      "nonce": 143,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 317,
+      "date": "2026-11-02",
+      "submitted": 54,
+      "accepted": 51,
+      "rejected": 3,
+      "block_index": 317,
+      "block_entries": 51,
+      "mine_seconds": 0.16623897799991028,
+      "nonce": 602,
+      "rejections": {
+        "validation:INVALID": 1,
+        "validation:NEEDS_CLARIFICATION": 2
+      }
+    },
+    {
+      "day": 318,
+      "date": "2026-11-03",
+      "submitted": 55,
+      "accepted": 52,
+      "rejected": 3,
+      "block_index": 318,
+      "block_entries": 52,
+      "mine_seconds": 0.1209893639997972,
+      "nonce": 426,
+      "rejections": {
+        "validation:INVALID": 1,
+        "validation:NEEDS_CLARIFICATION": 2
+      }
+    },
+    {
+      "day": 319,
+      "date": "2026-11-04",
+      "submitted": 69,
+      "accepted": 64,
+      "rejected": 5,
+      "block_index": 319,
+      "block_entries": 64,
+      "mine_seconds": 0.042040531000111514,
+      "nonce": 120,
+      "rejections": {
+        "validation:INVALID": 3,
+        "validation:NEEDS_CLARIFICATION": 2
+      }
+    },
+    {
+      "day": 320,
+      "date": "2026-11-05",
+      "submitted": 62,
+      "accepted": 61,
+      "rejected": 1,
+      "block_index": 320,
+      "block_entries": 61,
+      "mine_seconds": 0.107623859999876,
+      "nonce": 312,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 321,
+      "date": "2026-11-06",
+      "submitted": 23,
+      "accepted": 23,
+      "rejected": 0,
+      "block_index": 321,
+      "block_entries": 23,
+      "mine_seconds": 0.03928885300001639,
+      "nonce": 310,
+      "rejections": {}
+    },
+    {
+      "day": 322,
+      "date": "2026-11-07",
+      "submitted": 17,
+      "accepted": 16,
+      "rejected": 1,
+      "block_index": 322,
+      "block_entries": 16,
+      "mine_seconds": 0.021725814000092214,
+      "nonce": 236,
+      "rejections": {
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 323,
+      "date": "2026-11-08",
+      "submitted": 53,
+      "accepted": 47,
+      "rejected": 6,
+      "block_index": 323,
+      "block_entries": 47,
+      "mine_seconds": 0.13833484499991755,
+      "nonce": 530,
+      "rejections": {
+        "validation:INVALID": 4,
+        "double_transfer": 2
+      }
+    },
+    {
+      "day": 324,
+      "date": "2026-11-09",
+      "submitted": 55,
+      "accepted": 52,
+      "rejected": 3,
+      "block_index": 324,
+      "block_entries": 52,
+      "mine_seconds": 0.21522130599987577,
+      "nonce": 737,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 325,
+      "date": "2026-11-10",
+      "submitted": 62,
+      "accepted": 58,
+      "rejected": 4,
+      "block_index": 325,
+      "block_entries": 58,
+      "mine_seconds": 0.09128296999961094,
+      "nonce": 239,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2,
+        "validation:INVALID": 2
+      }
+    },
+    {
+      "day": 326,
+      "date": "2026-11-11",
+      "submitted": 62,
+      "accepted": 56,
+      "rejected": 6,
+      "block_index": 326,
+      "block_entries": 56,
+      "mine_seconds": 0.0045558219999293215,
+      "nonce": 12,
+      "rejections": {
+        "validation:INVALID": 3,
+        "validation:NEEDS_CLARIFICATION": 3
+      }
+    },
+    {
+      "day": 327,
+      "date": "2026-11-12",
+      "submitted": 60,
+      "accepted": 58,
+      "rejected": 2,
+      "block_index": 327,
+      "block_entries": 58,
+      "mine_seconds": 0.048614355999688996,
+      "nonce": 135,
+      "rejections": {
+        "validation:INVALID": 2
+      }
+    },
+    {
+      "day": 328,
+      "date": "2026-11-13",
+      "submitted": 18,
+      "accepted": 18,
+      "rejected": 0,
+      "block_index": 328,
+      "block_entries": 18,
+      "mine_seconds": 0.055383688999882,
+      "nonce": 502,
+      "rejections": {}
+    },
+    {
+      "day": 329,
+      "date": "2026-11-14",
+      "submitted": 18,
+      "accepted": 16,
+      "rejected": 2,
+      "block_index": 329,
+      "block_entries": 16,
+      "mine_seconds": 0.0702731359997415,
+      "nonce": 708,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 330,
+      "date": "2026-11-15",
+      "submitted": 54,
+      "accepted": 52,
+      "rejected": 2,
+      "block_index": 330,
+      "block_entries": 52,
+      "mine_seconds": 0.01600866999979189,
+      "nonce": 49,
+      "rejections": {
+        "validation:INVALID": 2
+      }
+    },
+    {
+      "day": 331,
+      "date": "2026-11-16",
+      "submitted": 48,
+      "accepted": 47,
+      "rejected": 1,
+      "block_index": 331,
+      "block_entries": 47,
+      "mine_seconds": 0.04807335700024851,
+      "nonce": 179,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 332,
+      "date": "2026-11-17",
+      "submitted": 54,
+      "accepted": 49,
+      "rejected": 5,
+      "block_index": 332,
+      "block_entries": 49,
+      "mine_seconds": 0.031380878999698325,
+      "nonce": 112,
+      "rejections": {
+        "validation:INVALID": 4,
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 333,
+      "date": "2026-11-18",
+      "submitted": 65,
+      "accepted": 62,
+      "rejected": 3,
+      "block_index": 333,
+      "block_entries": 62,
+      "mine_seconds": 0.03266230099961831,
+      "nonce": 91,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 334,
+      "date": "2026-11-19",
+      "submitted": 64,
+      "accepted": 63,
+      "rejected": 1,
+      "block_index": 334,
+      "block_entries": 63,
+      "mine_seconds": 0.09496987399961654,
+      "nonce": 257,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 335,
+      "date": "2026-11-20",
+      "submitted": 16,
+      "accepted": 16,
+      "rejected": 0,
+      "block_index": 335,
+      "block_entries": 16,
+      "mine_seconds": 0.005049488000167912,
+      "nonce": 33,
+      "rejections": {}
+    },
+    {
+      "day": 336,
+      "date": "2026-11-21",
+      "submitted": 16,
+      "accepted": 14,
+      "rejected": 2,
+      "block_index": 336,
+      "block_entries": 14,
+      "mine_seconds": 0.07032124199986356,
+      "nonce": 869,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2
+      }
+    },
+    {
+      "day": 337,
+      "date": "2026-11-22",
+      "submitted": 69,
+      "accepted": 65,
+      "rejected": 4,
+      "block_index": 337,
+      "block_entries": 65,
+      "mine_seconds": 0.11731495300000461,
+      "nonce": 313,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2,
+        "validation:INVALID": 2
+      }
+    },
+    {
+      "day": 338,
+      "date": "2026-11-23",
+      "submitted": 59,
+      "accepted": 57,
+      "rejected": 2,
+      "block_index": 338,
+      "block_entries": 57,
+      "mine_seconds": 0.005555623999953241,
+      "nonce": 14,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 339,
+      "date": "2026-11-24",
+      "submitted": 58,
+      "accepted": 53,
+      "rejected": 5,
+      "block_index": 339,
+      "block_entries": 53,
+      "mine_seconds": 0.024814338000396674,
+      "nonce": 83,
+      "rejections": {
+        "validation:INVALID": 4,
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 340,
+      "date": "2026-11-25",
+      "submitted": 61,
+      "accepted": 58,
+      "rejected": 3,
+      "block_index": 340,
+      "block_entries": 58,
+      "mine_seconds": 0.014276685999902838,
+      "nonce": 42,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 341,
+      "date": "2026-11-26",
+      "submitted": 43,
+      "accepted": 39,
+      "rejected": 4,
+      "block_index": 341,
+      "block_entries": 39,
+      "mine_seconds": 0.09700460500016561,
+      "nonce": 433,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 3,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 342,
+      "date": "2026-11-27",
+      "submitted": 20,
+      "accepted": 18,
+      "rejected": 2,
+      "block_index": 342,
+      "block_entries": 18,
+      "mine_seconds": 0.016872498999873642,
+      "nonce": 158,
+      "rejections": {
+        "validation:INVALID": 1,
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 343,
+      "date": "2026-11-28",
+      "submitted": 18,
+      "accepted": 17,
+      "rejected": 1,
+      "block_index": 343,
+      "block_entries": 17,
+      "mine_seconds": 0.015474414999971486,
+      "nonce": 149,
+      "rejections": {
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 344,
+      "date": "2026-11-29",
+      "submitted": 49,
+      "accepted": 48,
+      "rejected": 1,
+      "block_index": 344,
+      "block_entries": 48,
+      "mine_seconds": 0.00935575899984542,
+      "nonce": 28,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 1
+      }
+    },
+    {
+      "day": 345,
+      "date": "2026-11-30",
+      "submitted": 64,
+      "accepted": 57,
+      "rejected": 7,
+      "block_index": 345,
+      "block_entries": 57,
+      "mine_seconds": 0.13608800399970278,
+      "nonce": 423,
+      "rejections": {
+        "validation:INVALID": 3,
+        "validation:NEEDS_CLARIFICATION": 4
+      }
+    },
+    {
+      "day": 346,
+      "date": "2026-12-01",
+      "submitted": 58,
+      "accepted": 54,
+      "rejected": 4,
+      "block_index": 346,
+      "block_entries": 54,
+      "mine_seconds": 0.003842648000045301,
+      "nonce": 9,
+      "rejections": {
+        "validation:INVALID": 2,
+        "validation:NEEDS_CLARIFICATION": 2
+      }
+    },
+    {
+      "day": 347,
+      "date": "2026-12-02",
+      "submitted": 44,
+      "accepted": 42,
+      "rejected": 2,
+      "block_index": 347,
+      "block_entries": 42,
+      "mine_seconds": 0.008721777999653568,
+      "nonce": 28,
+      "rejections": {
+        "validation:INVALID": 2
+      }
+    },
+    {
+      "day": 348,
+      "date": "2026-12-03",
+      "submitted": 71,
+      "accepted": 66,
+      "rejected": 5,
+      "block_index": 348,
+      "block_entries": 66,
+      "mine_seconds": 0.0023414869997395726,
+      "nonce": 3,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2,
+        "double_transfer": 1,
+        "validation:INVALID": 2
+      }
+    },
+    {
+      "day": 349,
+      "date": "2026-12-04",
+      "submitted": 21,
+      "accepted": 19,
+      "rejected": 2,
+      "block_index": 349,
+      "block_entries": 19,
+      "mine_seconds": 0.017875972000183538,
+      "nonce": 154,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2
+      }
+    },
+    {
+      "day": 350,
+      "date": "2026-12-05",
+      "submitted": 19,
+      "accepted": 19,
+      "rejected": 0,
+      "block_index": 350,
+      "block_entries": 19,
+      "mine_seconds": 0.012756928999806405,
+      "nonce": 113,
+      "rejections": {}
+    },
+    {
+      "day": 351,
+      "date": "2026-12-06",
+      "submitted": 46,
+      "accepted": 42,
+      "rejected": 4,
+      "block_index": 351,
+      "block_entries": 42,
+      "mine_seconds": 0.008997388999887335,
+      "nonce": 37,
+      "rejections": {
+        "validation:INVALID": 2,
+        "validation:NEEDS_CLARIFICATION": 2
+      }
+    },
+    {
+      "day": 352,
+      "date": "2026-12-07",
+      "submitted": 72,
+      "accepted": 69,
+      "rejected": 3,
+      "block_index": 352,
+      "block_entries": 69,
+      "mine_seconds": 0.0345707679998668,
+      "nonce": 89,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 353,
+      "date": "2026-12-07",
+      "submitted": 67,
+      "accepted": 60,
+      "rejected": 7,
+      "block_index": 353,
+      "block_entries": 60,
+      "mine_seconds": 0.1266048839997893,
+      "nonce": 390,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 6,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 354,
+      "date": "2026-12-08",
+      "submitted": 49,
+      "accepted": 47,
+      "rejected": 2,
+      "block_index": 354,
+      "block_entries": 47,
+      "mine_seconds": 0.2031174710000414,
+      "nonce": 764,
+      "rejections": {
+        "validation:INVALID": 2
+      }
+    },
+    {
+      "day": 355,
+      "date": "2026-12-09",
+      "submitted": 51,
+      "accepted": 45,
+      "rejected": 6,
+      "block_index": 355,
+      "block_entries": 45,
+      "mine_seconds": 0.046320822999859956,
+      "nonce": 183,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2,
+        "validation:INVALID": 4
+      }
+    },
+    {
+      "day": 356,
+      "date": "2026-12-10",
+      "submitted": 25,
+      "accepted": 21,
+      "rejected": 4,
+      "block_index": 356,
+      "block_entries": 21,
+      "mine_seconds": 0.020255284999620926,
+      "nonce": 166,
+      "rejections": {
+        "validation:INVALID": 2,
+        "validation:NEEDS_CLARIFICATION": 2
+      }
+    },
+    {
+      "day": 357,
+      "date": "2026-12-11",
+      "submitted": 20,
+      "accepted": 20,
+      "rejected": 0,
+      "block_index": 357,
+      "block_entries": 20,
+      "mine_seconds": 0.10386069200012571,
+      "nonce": 848,
+      "rejections": {}
+    },
+    {
+      "day": 358,
+      "date": "2026-12-12",
+      "submitted": 57,
+      "accepted": 53,
+      "rejected": 4,
+      "block_index": 358,
+      "block_entries": 53,
+      "mine_seconds": 0.013874218000182736,
+      "nonce": 44,
+      "rejections": {
+        "validation:INVALID": 2,
+        "validation:NEEDS_CLARIFICATION": 2
+      }
+    },
+    {
+      "day": 359,
+      "date": "2026-12-13",
+      "submitted": 71,
+      "accepted": 65,
+      "rejected": 6,
+      "block_index": 359,
+      "block_entries": 65,
+      "mine_seconds": 0.01320536200000788,
+      "nonce": 35,
+      "rejections": {
+        "validation:INVALID": 4,
+        "validation:NEEDS_CLARIFICATION": 1,
+        "double_transfer": 1
+      }
+    },
+    {
+      "day": 360,
+      "date": "2026-12-14",
+      "submitted": 71,
+      "accepted": 67,
+      "rejected": 4,
+      "block_index": 360,
+      "block_entries": 67,
+      "mine_seconds": 0.03196028899992598,
+      "nonce": 86,
+      "rejections": {
+        "validation:INVALID": 2,
+        "validation:NEEDS_CLARIFICATION": 2
+      }
+    },
+    {
+      "day": 361,
+      "date": "2026-12-15",
+      "submitted": 86,
+      "accepted": 83,
+      "rejected": 3,
+      "block_index": 361,
+      "block_entries": 83,
+      "mine_seconds": 0.08389912299981006,
+      "nonce": 181,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 362,
+      "date": "2026-12-16",
+      "submitted": 95,
+      "accepted": 92,
+      "rejected": 3,
+      "block_index": 362,
+      "block_entries": 92,
+      "mine_seconds": 0.005805267000141612,
+      "nonce": 8,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 3
+      }
+    },
+    {
+      "day": 363,
+      "date": "2026-12-17",
+      "submitted": 46,
+      "accepted": 43,
+      "rejected": 3,
+      "block_index": 363,
+      "block_entries": 43,
+      "mine_seconds": 0.02378607699984059,
+      "nonce": 89,
+      "rejections": {
+        "validation:NEEDS_CLARIFICATION": 2,
+        "validation:INVALID": 1
+      }
+    },
+    {
+      "day": 364,
+      "date": "2026-12-18",
+      "submitted": 31,
+      "accepted": 31,
+      "rejected": 0,
+      "block_index": 364,
+      "block_entries": 31,
+      "mine_seconds": 0.03204139400031636,
+      "nonce": 171,
+      "rejections": {}
+    },
+    {
+      "day": 365,
+      "date": "2026-12-19",
+      "submitted": 68,
+      "accepted": 65,
+      "rejected": 3,
+      "block_index": 365,
+      "block_entries": 65,
+      "mine_seconds": 0.0034126569998989,
+      "nonce": 7,
+      "rejections": {
+        "validation:INVALID": 1,
+        "validation:NEEDS_CLARIFICATION": 2
+      }
+    }
+  ]
+}
