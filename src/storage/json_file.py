@@ -79,16 +79,20 @@ class JSONFileStorage(StorageBackend):
             self._init_encryption()
 
     def _init_encryption(self) -> None:
-        """Initialize encryption functions if available."""
-        try:
-            from encryption import (
-                decrypt_chain_data,
-                encrypt_chain_data,
-                is_encrypted,
-            )
+        """Initialize encryption functions if available.
 
-            self._encrypt_fn = encrypt_chain_data
-            self._decrypt_fn = decrypt_chain_data
+        This layer encrypts the serialized (and possibly gzipped) payload as raw
+        bytes, so it binds the byte-level primitives rather than the chain-level
+        helpers. `encrypt_chain_data`/`decrypt_chain_data` take and return the
+        chain *dictionary*; using them here round-trips bytes through a JSON
+        decode that fails on compressed payloads and hands back a dict the load
+        path then treats as bytes.
+        """
+        try:
+            from encryption import decrypt_data, encrypt_data, is_encrypted
+
+            self._encrypt_fn = encrypt_data
+            self._decrypt_fn = lambda payload: decrypt_data(payload, return_type="bytes")
             self._is_encrypted_fn = is_encrypted
         except ImportError:
             self.encryption_enabled = False

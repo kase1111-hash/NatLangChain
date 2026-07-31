@@ -6,6 +6,7 @@ Core blockchain data structures and logic
 import hashlib
 import json
 import logging
+import re
 import threading
 import time
 from datetime import datetime
@@ -73,7 +74,7 @@ DEFAULT_SANITIZE_MODE = SANITIZE_MODE_STRIP
 
 # Import intent classifier (LLM-based with keyword fallback)
 try:
-    from intent_classifier import IntentClassifier, TRANSFER_INTENT_KEYWORDS
+    from intent_classifier import IntentClassifier, TRANSFER_INTENT_KEYWORDS  # noqa: I001
 
     INTENT_CLASSIFIER_AVAILABLE = True
 except ImportError:
@@ -950,12 +951,17 @@ class MockValidator:
         content_lower = content.lower()
         intent_lower = intent.lower()
 
+        # Tokenize on word characters rather than whitespace: str.split() leaves
+        # trailing punctuation attached, so "banned." never matches "banned" and
+        # ending a sentence on the action verb slips past this check entirely.
+        content_tokens = set(re.findall(r"[a-z0-9']+", content_lower))
+
         # Find action categories present in content
         content_categories = set()
         content_actions = []
         for category, actions in self.ACTION_CATEGORIES.items():
             for action in actions:
-                if action in content_lower.split():
+                if action in content_tokens:
                     content_categories.add(category)
                     content_actions.append((action, category))
 
@@ -1396,6 +1402,9 @@ class NatLangChain:
 
         # Lock to prevent concurrent mining race conditions
         self._mining_lock = threading.Lock()
+        # Separate short-held lock for the pending queue, so submissions are not
+        # blocked for the duration of proof-of-work
+        self._pending_lock = threading.Lock()
 
         self.create_genesis_block()
 
@@ -1498,6 +1507,11 @@ class NatLangChain:
             return asset_rejection
 
         if rejection := self._get_validation_rejection(entry, skip_validation):
+            # The asset check reserves the asset before validation runs. If
+            # validation then rejects the entry, that reservation has to come
+            # back off, or the asset stays "in transit" forever and its owner can
+            # never transfer it again — a state that persists across restarts.
+            self._release_transfer_reservation(asset_transfer_info)
             return rejection
 
         # All checks passed - finalize and return success
@@ -1742,7 +1756,9 @@ class NatLangChain:
         has_transfer_intent = bool(intent_words & TRANSFER_INTENT_KEYWORDS)
         has_transfer_content = bool(content_words & TRANSFER_INTENT_KEYWORDS)
 
-        if asset_id and (has_transfer_intent or has_transfer_content):
+        if asset_id and (  # noqa: SIM114
+            has_transfer_intent or has_transfer_content
+        ):
             result["is_transfer"] = True
             result["asset_id"] = asset_id
             result["to_recipient"] = recipient
@@ -1958,11 +1974,17 @@ class NatLangChain:
         if duplicate_check["is_duplicate"]:
             logger.info("Entry rejected: duplicate detected author=%s fingerprint=%s",
                        entry.author, duplicate_check["fingerprint"][:16])
+            # The pending-queue branch of _check_duplicate carries no
+            # original_timestamp: the entry has not been mined, so there is no
+            # block time to report. That branch is reached whenever the dedup
+            # window expires while an entry is still unmined, which is the normal
+            # state on any node that mines less often than the window.
             return {
                 "status": "rejected",
                 "message": "Entry rejected: duplicate detected (possible replay attack)",
                 "reason": "duplicate",
-                "original_timestamp": duplicate_check["original_timestamp"],
+                "original_timestamp": duplicate_check.get("original_timestamp"),
+                "duplicate_source": duplicate_check.get("source", "fingerprint_registry"),
                 "fingerprint": duplicate_check["fingerprint"],
                 "entry": entry.to_dict(),
             }
@@ -1988,6 +2010,25 @@ class NatLangChain:
             }, None
         transfer_info = asset_check if asset_check.get("is_transfer") else None
         return None, transfer_info
+
+    def _release_transfer_reservation(self, asset_transfer_info: dict[str, Any] | None) -> None:
+        """Cancel an asset reservation taken for an entry that was then rejected."""
+        if not asset_transfer_info or not asset_transfer_info.get("is_transfer"):
+            return
+        if not self.enable_asset_tracking or self._asset_registry is None:
+            return
+        asset_id = asset_transfer_info.get("asset_id")
+        if not asset_id:
+            return
+        pending = self._asset_registry.get_pending_transfer(asset_id)
+        # Only release the reservation this entry actually took.
+        if pending and pending.get("fingerprint") == asset_transfer_info.get("fingerprint"):
+            self._asset_registry.cancel_transfer(asset_id)
+            logger.info(
+                "Released asset reservation after rejection asset=%s author=%s",
+                asset_id,
+                asset_transfer_info.get("from_owner"),
+            )
 
     def _get_validation_rejection(
         self, entry: NaturalLanguageEntry, skip_validation: bool
@@ -2057,7 +2098,8 @@ class NatLangChain:
         if self._rate_limiter is not None:
             self._rate_limiter.record_submission(entry.author)
 
-        self.pending_entries.append(entry)
+        with self._pending_lock:
+            self.pending_entries.append(entry)
 
         response = {
             "status": "pending",
@@ -2091,12 +2133,20 @@ class NatLangChain:
             The newly mined block or None if no pending entries
         """
         with self._mining_lock:
-            if not self.pending_entries:
-                return None
+            # Swap the queue out under the queue lock rather than clearing it
+            # after proof-of-work. Proof-of-work takes real time, and add_entry
+            # appends concurrently; clearing afterwards would discard everything
+            # accepted in the meantime. Entries that arrive during mining land in
+            # the fresh list and are mined next round.
+            with self._pending_lock:
+                if not self.pending_entries:
+                    return None
+                entries_to_mine = self.pending_entries
+                self.pending_entries = []
 
             new_block = Block(
                 index=len(self.chain),
-                entries=self.pending_entries.copy(),
+                entries=entries_to_mine,
                 previous_hash=self.get_latest_block().hash,
             )
 
@@ -2105,15 +2155,22 @@ class NatLangChain:
             # not competing with production mining difficulty.
             # TODO: add timeout to prevent runaway mining at high difficulty
             target = "0" * difficulty
-            while not new_block.hash.startswith(target):
-                new_block.nonce += 1
-                new_block.hash = new_block.calculate_hash()
+            try:
+                while not new_block.hash.startswith(target):
+                    new_block.nonce += 1
+                    new_block.hash = new_block.calculate_hash()
+            except BaseException:
+                # Mining failed or was interrupted — return the entries to the
+                # front of the queue rather than dropping them on the floor.
+                with self._pending_lock:
+                    self.pending_entries = entries_to_mine + self.pending_entries
+                raise
 
             self.chain.append(new_block)
 
             # Complete any pending asset transfers for mined entries
             if self.enable_asset_tracking and self._asset_registry is not None:
-                for entry in self.pending_entries:
+                for entry in entries_to_mine:
                     transfer_info = self._detect_asset_transfer(entry)
                     if transfer_info["is_transfer"]:
                         fingerprint = compute_entry_fingerprint(
@@ -2126,7 +2183,7 @@ class NatLangChain:
             # Register derivative relationships for mined entries
             if self.enable_derivative_tracking and self._derivative_registry is not None:
                 block_index = new_block.index
-                for entry_index, entry in enumerate(self.pending_entries):
+                for entry_index, entry in enumerate(entries_to_mine):
                     if entry.is_derivative() and entry.parent_refs:
                         self._derivative_registry.register_derivative(
                             child_block=block_index,
@@ -2139,8 +2196,6 @@ class NatLangChain:
                                 "timestamp": entry.timestamp,
                             },
                         )
-
-            self.pending_entries = []
 
             return new_block
 
@@ -2554,5 +2609,6 @@ class NatLangChain:
 
         # Lock to prevent concurrent mining race conditions
         chain._mining_lock = threading.Lock()
+        chain._pending_lock = threading.Lock()
 
         return chain
