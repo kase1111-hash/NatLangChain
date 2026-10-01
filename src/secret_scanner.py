@@ -53,35 +53,29 @@ def _scan_mode() -> str:
 CREDENTIAL_PATTERNS: list[tuple[str, re.Pattern]] = [
     # Anthropic API keys
     ("anthropic_api_key", re.compile(r"sk-ant-[a-zA-Z0-9_-]{20,}")),
-
     # OpenAI API keys (old and new format)
     ("openai_api_key", re.compile(r"sk-[a-zA-Z0-9]{20,}")),
-
     # AWS Access Key IDs
     ("aws_access_key", re.compile(r"AKIA[0-9A-Z]{16}")),
-
     # AWS Secret Access Keys (40 chars, base64-like)
     ("aws_secret_key", re.compile(r"(?<![A-Za-z0-9/+=])[A-Za-z0-9/+=]{40}(?![A-Za-z0-9/+=])")),
-
     # Google API keys
     ("google_api_key", re.compile(r"AIza[0-9A-Za-z_-]{35}")),
-
     # GitHub tokens (classic and fine-grained)
     ("github_token", re.compile(r"gh[pousr]_[A-Za-z0-9_]{36,}")),
-
     # Generic Bearer tokens in content
     ("bearer_token", re.compile(r"Bearer\s+[A-Za-z0-9_-]{20,}")),
-
     # PEM private keys
-    ("private_key_pem", re.compile(
-        r"-----BEGIN\s+(RSA |EC |ED25519 |DSA )?PRIVATE KEY-----"
-        r"[\s\S]*?"
-        r"-----END\s+(RSA |EC |ED25519 |DSA )?PRIVATE KEY-----"
-    )),
-
+    (
+        "private_key_pem",
+        re.compile(
+            r"-----BEGIN\s+(RSA |EC |ED25519 |DSA )?PRIVATE KEY-----"
+            r"[\s\S]*?"
+            r"-----END\s+(RSA |EC |ED25519 |DSA )?PRIVATE KEY-----"
+        ),
+    ),
     # Generic hex secrets (64-char hex strings that look like SHA-256 hashes used as keys)
     ("hex_secret_64", re.compile(r"(?<![a-fA-F0-9])[a-fA-F0-9]{64}(?![a-fA-F0-9])")),
-
     # Base64-encoded secrets (44+ chars, common for 32-byte keys)
     ("base64_secret", re.compile(r"(?<![A-Za-z0-9+/=])[A-Za-z0-9+/]{43}=(?![A-Za-z0-9+/=])")),
 ]
@@ -89,8 +83,14 @@ CREDENTIAL_PATTERNS: list[tuple[str, re.Pattern]] = [
 # Fields in JSON responses that are expected to contain hashes (not secrets)
 # These are excluded from hex_secret_64 and high-entropy detection
 HASH_FIELDS = {
-    "hash", "block_hash", "previous_hash", "entry_hash",
-    "chain_id", "fingerprint", "signer_fingerprint", "nonce",
+    "hash",
+    "block_hash",
+    "previous_hash",
+    "entry_hash",
+    "chain_id",
+    "fingerprint",
+    "signer_fingerprint",
+    "nonce",
 }
 
 
@@ -131,12 +131,16 @@ class ScanResult:
         return len(self.detections) > 0
 
     def add(self, pattern_name: str, matched_text: str, location: str = ""):
-        self.detections.append({
-            "pattern": pattern_name,
-            "location": location,
-            # Only log first/last 4 chars of matched text for audit trail
-            "preview": f"{matched_text[:4]}...{matched_text[-4:]}" if len(matched_text) > 12 else "***",
-        })
+        self.detections.append(
+            {
+                "pattern": pattern_name,
+                "location": location,
+                # Only log first/last 4 chars of matched text for audit trail
+                "preview": f"{matched_text[:4]}...{matched_text[-4:]}"
+                if len(matched_text) > 12
+                else "***",
+            }
+        )
 
 
 def scan_string(text: str, location: str = "") -> ScanResult:
@@ -298,6 +302,7 @@ def scan_response_body(body: bytes | str, content_type: str = "") -> ScanResult:
     # For JSON responses, parse and scan structurally
     if "json" in content_type.lower():
         import json
+
         try:
             data = json.loads(text)
             return scan_dict(data, "response")

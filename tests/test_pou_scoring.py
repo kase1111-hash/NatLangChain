@@ -485,7 +485,7 @@ class TestBindingPoURecord:
         )
         fingerprint = scorer.generate_fingerprint("content", "contract")
 
-        with pytest.raises(ValueError, match="(?i)non-verified"):
+        with pytest.raises(ValueError, match=r"(?i)non-verified"):
             BindingPoURecord(
                 contract_id="test-001",
                 signer_id="alice",

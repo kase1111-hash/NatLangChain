@@ -256,7 +256,9 @@ class AgentIdentity:
         logger.info("Saved identity for '%s' to %s", self.agent_name, path)
 
     @classmethod
-    def load(cls, path: str, agent_name: str = "", passphrase: str | None = None) -> "AgentIdentity":
+    def load(
+        cls, path: str, agent_name: str = "", passphrase: str | None = None
+    ) -> "AgentIdentity":
         """
         Load an identity keypair from an encrypted file.
 
@@ -301,7 +303,8 @@ class AgentIdentity:
         if not keystore_path:
             logger.warning(
                 "%s is enabled but %s is not set",
-                IDENTITY_ENABLED_ENV, IDENTITY_KEYSTORE_ENV,
+                IDENTITY_ENABLED_ENV,
+                IDENTITY_KEYSTORE_ENV,
             )
             return None
 

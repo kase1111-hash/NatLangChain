@@ -10,7 +10,7 @@ name = "natlangchain"
 version = "0.1.0-alpha"
 description = "A prose-first, intent-native blockchain protocol using natural language as the primary substrate"
 readme = "README.md"
-license = "CC-BY-SA-4.0"
+license = "Apache-2.0"
 requires-python = ">=3.9"
 authors = [
     { name = "kase1111-hash" }
@@ -88,6 +88,7 @@ include = [
     "/src",
     "/tests",
     "/README.md",
+    "/LICENSE",
 ]
 
 # =============================================================================
@@ -294,6 +295,12 @@ exclude = [
 [[tool.mypy.overrides]]
 module = "tests.*"
 ignore_errors = true
+
+# Third-party modules without bundled stubs, and src/retry.py which mypy
+# otherwise confuses with the PyPI "retry" package when run from the repo root
+[[tool.mypy.overrides]]
+module = ["yaml", "retry"]
+ignore_missing_imports = true
 
 # New API blueprints - stricter checking for new modular code
 [[tool.mypy.overrides]]

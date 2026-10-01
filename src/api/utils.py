@@ -58,7 +58,7 @@ API_KEY_REQUIRED = os.getenv("NATLANGCHAIN_REQUIRE_AUTH", "true").lower() == "tr
 
 # Rate limiting: uses Redis-backed distributed rate limiter when configured,
 # with automatic fallback to in-memory for single-instance deployments.
-from rate_limiter import RateLimiter, RateLimitConfig
+from rate_limiter import RateLimitConfig, RateLimiter
 
 _rate_limiter = RateLimiter(RateLimitConfig.from_env())
 
@@ -81,6 +81,13 @@ MAX_OFFSET = 100000  # Maximum offset to prevent memory exhaustion
 # Pagination configuration
 DEFAULT_PAGE_LIMIT = int(os.getenv("NATLANGCHAIN_DEFAULT_PAGE_LIMIT", "100"))
 MAX_PAGE_LIMIT = int(os.getenv("NATLANGCHAIN_MAX_PAGE_LIMIT", "1000"))
+
+# Proof-of-work difficulty (leading zero hex digits) used when mining blocks.
+# Each extra digit multiplies mining cost by 16. Clients may request a
+# different value on POST /mine, bounded by MAX_MINING_DIFFICULTY so an
+# authenticated caller cannot pin the server's CPU with a huge difficulty.
+MINING_DIFFICULTY = int(os.getenv("NATLANGCHAIN_MINING_DIFFICULTY", "2"))
+MAX_MINING_DIFFICULTY = int(os.getenv("NATLANGCHAIN_MAX_MINING_DIFFICULTY", "6"))
 DEFAULT_HISTORY_LIMIT = int(os.getenv("NATLANGCHAIN_DEFAULT_HISTORY_LIMIT", "50"))
 
 
@@ -368,6 +375,7 @@ def require_api_key(f):
 
         if not _API_KEYS:
             import logging as _logging
+
             _logging.getLogger(__name__).error(
                 "Authentication service unavailable: no API keys configured"
             )
@@ -383,14 +391,18 @@ def require_api_key(f):
                     expiry_date = datetime.date.fromisoformat(expiry)
                     if today > expiry_date:
                         import logging as _logging
+
                         _logging.getLogger(__name__).warning(
-                            "Expired API key used (expiry: %s)", expiry,
+                            "Expired API key used (expiry: %s)",
+                            expiry,
                         )
                         continue  # Expired — try next key
                 except ValueError:
                     import logging as _logging
+
                     _logging.getLogger(__name__).warning(
-                        "API key has invalid expiry format: %s", expiry,
+                        "API key has invalid expiry format: %s",
+                        expiry,
                     )
                     continue  # Invalid expiry format — reject this key
             return f(*args, **kwargs)

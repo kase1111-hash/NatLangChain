@@ -236,7 +236,8 @@ def _update_dynamic_metrics():
 
         # Calculate total entries
         total_entries = sum(
-            len(block.entries) if hasattr(block, "entries") else 0 for block in state.blockchain.chain
+            len(block.entries) if hasattr(block, "entries") else 0
+            for block in state.blockchain.chain
         )
         metrics.set_gauge("blockchain_entries_total", total_entries)
 

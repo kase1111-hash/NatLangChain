@@ -65,10 +65,8 @@ class EncryptionError(Exception):
     """Raised when encryption/decryption fails."""
 
 
-
 class KeyDerivationError(Exception):
     """Raised when key derivation fails."""
-
 
 
 def _derive_key(password: str, salt: bytes) -> bytes:
@@ -198,8 +196,7 @@ def encrypt_data(
 
 
 def decrypt_data(
-    encrypted_data: str, key: str | None = None, return_type: str = "auto",
-    aad: bytes | None = None
+    encrypted_data: str, key: str | None = None, return_type: str = "auto", aad: bytes | None = None
 ) -> str | bytes | dict[str, Any]:
     """
     Decrypt AES-256-GCM encrypted data.

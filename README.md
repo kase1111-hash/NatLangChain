@@ -37,8 +37,8 @@ Every step is immutably recorded as legible text, creating permanent, auditable 
 
 ### Prerequisites
 
-- Python 3.9+
-- An Anthropic API key (optional — server runs without it, but validation is disabled)
+- Python 3.10+
+- An Anthropic API key (optional — without it the server runs and entries are accepted without Proof of Understanding validation; semantic validation, contract parsing and intent classification need the key)
 
 ### Install
 
@@ -54,6 +54,13 @@ pip install -r requirements.txt
 cp .env.example .env
 # Edit .env and set ANTHROPIC_API_KEY (optional)
 # Set NATLANGCHAIN_REQUIRE_AUTH=false for local development
+```
+
+Authentication is on by default. Either set `NATLANGCHAIN_REQUIRE_AUTH=false` for local
+development, or generate a key and send it in the `X-API-Key` header:
+
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(32))"   # -> NATLANGCHAIN_API_KEY
 ```
 
 ### Run
@@ -94,6 +101,24 @@ docker build -t natlangchain .
 docker run -p 5000:5000 -e NATLANGCHAIN_REQUIRE_AUTH=false natlangchain
 ```
 
+Chain data lives in `/app/data` inside the container; mount a volume there (see
+`docker-compose.yml`) so the ledger survives container recreation.
+
+### Production
+
+`python run_server.py` uses Flask's development server. For a real deployment run the
+app under gunicorn via `wsgi.py` (this is what the Docker image does):
+
+```bash
+pip install ".[production]"
+gunicorn --workers 1 --threads 4 --timeout 120 --bind 0.0.0.0:5000 wsgi:app
+```
+
+Run **exactly one worker process**: the ledger, pending queue and rate-limit state are held in
+process memory, so multiple workers would each serve a different chain. Use threads for
+concurrency, put TLS termination in front of it, set `NATLANGCHAIN_API_KEY`, and keep
+`NATLANGCHAIN_REQUIRE_AUTH=true`.
+
 ## Project Structure
 
 ```
@@ -106,7 +131,7 @@ src/
 ├── semantic_search.py   # Embedding-based semantic search
 ├── encryption.py        # Data encryption at rest
 ├── entry_quality.py     # Entry quality analysis
-├── llm_providers.py     # Multi-provider LLM support
+├── llm_config.py        # Model selection and response parsing shared by all LLM callers
 ├── retry.py             # Exponential backoff with circuit breaker
 ├── rate_limiter.py      # Entry rate limiting
 ├── pou_scoring.py       # Proof of Understanding scoring
@@ -139,12 +164,42 @@ See [`.env.example`](.env.example) for all configuration options. Key settings:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `ANTHROPIC_API_KEY` | _(none)_ | Enables LLM validation |
+| `NATLANGCHAIN_LLM_MODEL` | `claude-sonnet-5-5` | Anthropic model used for all LLM features |
 | `STORAGE_BACKEND` | `json` | `json`, `postgresql`, or `memory` |
 | `NATLANGCHAIN_REQUIRE_AUTH` | `true` | Require API key for mutations |
 | `NATLANGCHAIN_API_KEY` | _(none)_ | API key for authentication |
 
+## Security model
+
+Read this before relying on the chain for anything adversarial.
+
+- **Proof of Understanding** (LLM paraphrase validation) checks that an entry is
+  comprehensible and consistent with its stated intent. It is not a signature and does not
+  prove who wrote the entry. Enable `NATLANGCHAIN_IDENTITY_ENABLED` for Ed25519 signing.
+- **Hash linkage** gives tamper *detection*: editing a mined entry breaks its block hash and
+  every later block. `GET /validate/chain` reports this.
+- **Proof of work is not tamper *resistance*.** There is no peer network or fork-choice rule in
+  the core engine, and at the default difficulty of 2 re-mining a year of history takes seconds
+  (see `simulations/FINDINGS.md`, finding 6). Whoever controls the node's storage can rewrite
+  it. Treat the chain as an auditable ledger of record kept by a trusted operator, not as a
+  trustless blockchain. `NATLANGCHAIN_MINING_DIFFICULTY` raises the cost of rewriting but every
+  extra digit also makes legitimate mining ~16x slower; publishing block hashes to an external
+  timestamping service is the practical way to make history rewrites detectable.
+- **Authentication** is a shared API key (`X-API-Key`). Rate limiting is per IP and per author.
+
+## Deployment model
+
+The ledger is held in process memory and persisted through the storage backend (JSON file by
+default, PostgreSQL with `STORAGE_BACKEND=postgresql` and `DATABASE_URL`). That means:
+
+- Run **one** application process. `gunicorn.conf.py` enforces a single worker and uses threads
+  for concurrency. Scale vertically.
+- The PostgreSQL backend makes storage durable and shareable with other tools, but it does not
+  make the API horizontally scalable: two processes would each hold their own copy of the chain.
+- Back up `CHAIN_DATA_FILE` (or the database) like any other ledger.
+
 ## License
 
-Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)
+Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE).
 
-[![CC BY-SA 4.0](https://licensebuttons.net/l/by-sa/4.0/88x31.png)](http://creativecommons.org/licenses/by-sa/4.0/)
+Contributions are accepted under the same license.

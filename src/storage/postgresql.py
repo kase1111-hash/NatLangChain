@@ -14,6 +14,13 @@ import threading
 from typing import Any
 from urllib.parse import urlparse
 
+try:
+    import psycopg2
+    from psycopg2 import pool
+except ImportError:  # pragma: no cover - exercised when the driver is absent
+    psycopg2 = None
+    pool = None
+
 from storage.base import (
     StorageBackend,
     StorageConnectionError,
@@ -31,6 +38,7 @@ CREATE TABLE IF NOT EXISTS chain_metadata (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     difficulty INTEGER DEFAULT 2,
     pending_entries_count INTEGER DEFAULT 0,
+    state_json JSONB NOT NULL DEFAULT '{}',
     CONSTRAINT single_row CHECK (id = 1)
 );
 
@@ -53,9 +61,9 @@ CREATE TABLE IF NOT EXISTS entries (
     block_index INTEGER NOT NULL,
     entry_index INTEGER NOT NULL,
     content TEXT NOT NULL,
-    author VARCHAR(255) NOT NULL,
+    author VARCHAR(500) NOT NULL,
     intent TEXT NOT NULL,
-    timestamp DOUBLE PRECISION NOT NULL,
+    timestamp TEXT NOT NULL,
     fingerprint VARCHAR(64),
     validation_status VARCHAR(50),
     metadata_json JSONB DEFAULT '{}',
@@ -67,14 +75,21 @@ CREATE TABLE IF NOT EXISTS entries (
 CREATE TABLE IF NOT EXISTS pending_entries (
     id SERIAL PRIMARY KEY,
     content TEXT NOT NULL,
-    author VARCHAR(255) NOT NULL,
+    author VARCHAR(500) NOT NULL,
     intent TEXT NOT NULL,
-    timestamp DOUBLE PRECISION NOT NULL,
+    timestamp TEXT NOT NULL,
     fingerprint VARCHAR(64),
     validation_status VARCHAR(50),
     metadata_json JSONB DEFAULT '{}',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Migrations for tables created by earlier versions of this module
+ALTER TABLE chain_metadata ADD COLUMN IF NOT EXISTS state_json JSONB NOT NULL DEFAULT '{}';
+ALTER TABLE entries ALTER COLUMN timestamp TYPE TEXT USING timestamp::text;
+ALTER TABLE entries ALTER COLUMN author TYPE VARCHAR(500);
+ALTER TABLE pending_entries ALTER COLUMN timestamp TYPE TEXT USING timestamp::text;
+ALTER TABLE pending_entries ALTER COLUMN author TYPE VARCHAR(500);
 
 -- Indexes for efficient queries
 CREATE INDEX IF NOT EXISTS idx_blocks_index ON blocks(block_index);
@@ -130,10 +145,7 @@ class PostgreSQLStorage(StorageBackend):
 
     def _init_pool(self) -> None:
         """Initialize the connection pool."""
-        try:
-            import psycopg2
-            from psycopg2 import pool
-        except ImportError:
+        if psycopg2 is None or pool is None:
             raise StorageConnectionError(
                 "psycopg2 not installed. Install with: pip install psycopg2-binary"
             )
@@ -169,9 +181,9 @@ class PostgreSQLStorage(StorageBackend):
             with conn.cursor() as cur:
                 cur.execute(CREATE_TABLES_SQL)
             conn.commit()
-        except (OSError, ValueError) as e:
+        except Exception as e:
             conn.rollback()
-            raise StorageConnectionError(f"Failed to create tables: {e}")
+            raise StorageConnectionError(f"Failed to create tables: {e}") from e
         finally:
             self._put_conn(conn)
 
@@ -187,14 +199,14 @@ class PostgreSQLStorage(StorageBackend):
             with conn.cursor() as cur:
                 # Get metadata
                 cur.execute("""
-                    SELECT difficulty, pending_entries_count
+                    SELECT difficulty, pending_entries_count, state_json
                     FROM chain_metadata WHERE id = 1
                 """)
                 metadata = cur.fetchone()
                 if not metadata:
                     return None
 
-                difficulty, pending_count = metadata
+                difficulty, _pending_count, state_json = metadata
 
                 # Get blocks with entries
                 cur.execute("""
@@ -244,14 +256,20 @@ class PostgreSQLStorage(StorageBackend):
                         }
                     )
 
-                return {
-                    "chain": chain,
-                    "pending_entries": pending_entries,
-                    "difficulty": difficulty,
-                }
+                # Registries and other top-level chain state that are not blocks
+                # or pending entries (asset ownership, derivatives, fingerprints)
+                result: dict[str, Any] = dict(state_json or {})
+                result.update(
+                    {
+                        "chain": chain,
+                        "pending_entries": pending_entries,
+                        "difficulty": difficulty,
+                    }
+                )
+                return result
 
-        except (OSError, KeyError, ValueError) as e:
-            raise StorageReadError(f"Failed to load chain: {e}")
+        except Exception as e:
+            raise StorageReadError(f"Failed to load chain: {e}") from e
         finally:
             self._put_conn(conn)
 
@@ -302,9 +320,7 @@ class PostgreSQLStorage(StorageBackend):
                     block_id = cur.fetchone()[0]
 
                     # Delete existing entries for this block and insert new ones
-                    cur.execute(
-                        "DELETE FROM entries WHERE block_index = %s", (block_index,)
-                    )
+                    cur.execute("DELETE FROM entries WHERE block_index = %s", (block_index,))
 
                     # Insert entries (denormalized for queries)
                     for i, entry in enumerate(block.get("entries", [])):
@@ -333,8 +349,7 @@ class PostgreSQLStorage(StorageBackend):
                 # Clean up blocks that are no longer in the chain (only after successful upserts)
                 if block_indices:
                     cur.execute(
-                        "DELETE FROM blocks WHERE block_index NOT IN %s",
-                        (tuple(block_indices),)
+                        "DELETE FROM blocks WHERE block_index NOT IN %s", (tuple(block_indices),)
                     )
                 else:
                     # If no blocks, clear all (chain reset scenario)
@@ -361,26 +376,34 @@ class PostgreSQLStorage(StorageBackend):
                         ),
                     )
 
-                # Update metadata
+                # Update metadata, including any top-level state that is not
+                # blocks or pending entries (asset registry, derivatives, ...)
+                extra_state = {
+                    k: v
+                    for k, v in chain_data.items()
+                    if k not in ("chain", "pending_entries", "difficulty")
+                }
                 cur.execute(
                     """
                     UPDATE chain_metadata SET
                         difficulty = %s,
                         pending_entries_count = %s,
+                        state_json = %s,
                         updated_at = CURRENT_TIMESTAMP
                     WHERE id = 1
                 """,
                     (
                         chain_data.get("difficulty", 2),
                         len(chain_data.get("pending_entries", [])),
+                        json.dumps(extra_state),
                     ),
                 )
 
             conn.commit()
 
-        except (OSError, ValueError) as e:
+        except Exception as e:
             conn.rollback()
-            raise StorageWriteError(f"Failed to save chain: {e}")
+            raise StorageWriteError(f"Failed to save chain: {e}") from e
         finally:
             self._put_conn(conn)
 
@@ -449,9 +472,9 @@ class PostgreSQLStorage(StorageBackend):
 
             conn.commit()
 
-        except (OSError, ValueError) as e:
+        except Exception as e:
             conn.rollback()
-            raise StorageWriteError(f"Failed to save block: {e}")
+            raise StorageWriteError(f"Failed to save block: {e}") from e
         finally:
             self._put_conn(conn)
 
@@ -463,7 +486,7 @@ class PostgreSQLStorage(StorageBackend):
             with conn.cursor() as cur:
                 cur.execute("SELECT 1")
             return True
-        except (OSError, RuntimeError):
+        except Exception:
             return False
         finally:
             if conn is not None:

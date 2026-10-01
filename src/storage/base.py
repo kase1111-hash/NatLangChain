@@ -12,20 +12,16 @@ class StorageError(Exception):
     """Base exception for storage-related errors."""
 
 
-
 class StorageConnectionError(StorageError):
     """Raised when connection to storage backend fails."""
-
 
 
 class StorageReadError(StorageError):
     """Raised when reading from storage fails."""
 
 
-
 class StorageWriteError(StorageError):
     """Raised when writing to storage fails."""
-
 
 
 class StorageBackend(ABC):

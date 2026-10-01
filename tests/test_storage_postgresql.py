@@ -29,7 +29,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 # Skip all tests if psycopg2 is not installed
 psycopg2_available = False
 try:
-    import psycopg2  # noqa: F401
+    import psycopg2
 
     psycopg2_available = True
 except ImportError:
@@ -207,7 +207,7 @@ class TestLoadChain:
 
         # Mock metadata query
         mock_cursor.fetchone.side_effect = [
-            (2, 0),  # difficulty, pending_count (metadata)
+            (2, 0, {}),  # difficulty, pending_count, state_json (metadata)
         ]
 
         # Mock blocks query

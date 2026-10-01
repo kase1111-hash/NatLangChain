@@ -4,7 +4,6 @@ Tests for the entry quality analyzer.
 Tests size limits, repetition detection, and readability suggestions.
 """
 
-
 from src.entry_quality import (
     DEFAULT_MAX_ENTRY_SIZE,
     EntryQualityAnalyzer,

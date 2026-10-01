@@ -178,11 +178,11 @@ class TestExtractJsonFromResponse:
         from contract_matcher import ContractMatcher
 
         matcher = ContractMatcher(api_key="test-key")
-        response = '''Result:
+        response = """Result:
 ```json
 {"score": 85}
 ```
-'''
+"""
         result = matcher._extract_json_from_response(response)
         assert '"score": 85' in result
 
@@ -397,7 +397,9 @@ class TestGenerateProposal:
         proposal = matcher._generate_proposal(mock_pending, existing, match_result, "miner1")
 
         assert proposal is not None
-        assert "PROPOSAL" in proposal.content or proposal.metadata.get("contract_type") == "proposal"
+        assert (
+            "PROPOSAL" in proposal.content or proposal.metadata.get("contract_type") == "proposal"
+        )
 
     @patch("contract_matcher.Anthropic")
     def test_generate_proposal_handles_error(self, mock_anthropic):
@@ -543,7 +545,9 @@ class TestEdgeCases:
 
         mock_message = MagicMock()
         mock_message.content = [
-            MagicMock(text='{"score": 75, "recommendation": "MATCH", "compatibility": "", "conflicts": [], "reasoning": ""}')
+            MagicMock(
+                text='{"score": 75, "recommendation": "MATCH", "compatibility": "", "conflicts": [], "reasoning": ""}'
+            )
         ]
         mock_client.messages.create.return_value = mock_message
 

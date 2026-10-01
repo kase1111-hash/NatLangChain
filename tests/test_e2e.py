@@ -160,18 +160,20 @@ class TestChainInfo:
         if not server_available:
             pytest.skip("Server not available")
 
-        response = session.get(f"{config.base_url}/blocks", timeout=config.timeout)
+        response = session.get(f"{config.base_url}/block/latest", timeout=config.timeout)
         assert response.status_code == 200
 
         data = response.json()
-        assert isinstance(data, (list, dict))
+        assert isinstance(data, dict)
+        assert "block" in data
+        assert "hash" in data["block"]
 
     def test_validate_chain(self, config, session, server_available):
         """Test chain validation."""
         if not server_available:
             pytest.skip("Server not available")
 
-        response = session.get(f"{config.base_url}/chain/validate", timeout=config.timeout)
+        response = session.get(f"{config.base_url}/validate/chain", timeout=config.timeout)
         assert response.status_code == 200
 
         data = response.json()
@@ -198,13 +200,11 @@ class TestEntryWorkflow:
 
         entry_data = {
             "content": f"E2E test entry created at {datetime.utcnow().isoformat()}",
-            "agent_id": unique_agent_id,
+            "author": unique_agent_id,
             "intent": "test",
         }
 
-        response = session.post(
-            f"{config.base_url}/entries", json=entry_data, timeout=config.timeout
-        )
+        response = session.post(f"{config.base_url}/entry", json=entry_data, timeout=config.timeout)
 
         # 201 Created or 200 OK depending on implementation
         assert response.status_code in [200, 201, 401]
@@ -221,12 +221,15 @@ class TestEntryWorkflow:
             pytest.skip("Server not available")
 
         response = session.get(
-            f"{config.base_url}/entries", params={"limit": 10}, timeout=config.timeout
+            f"{config.base_url}/entries/search",
+            params={"query": "genesis", "limit": 10},
+            timeout=config.timeout,
         )
         assert response.status_code == 200
 
         data = response.json()
-        assert isinstance(data, (list, dict))
+        assert isinstance(data, dict)
+        assert "entries" in data
 
     def test_full_entry_lifecycle(self, config, session, server_available, unique_agent_id):
         """Test complete entry lifecycle: create, read, mine."""
@@ -236,10 +239,11 @@ class TestEntryWorkflow:
         # 1. Create entry
         entry_content = f"Lifecycle test {uuid.uuid4().hex[:8]}"
         create_response = session.post(
-            f"{config.base_url}/entries",
+            f"{config.base_url}/entry",
             json={
                 "content": entry_content,
-                "agent_id": unique_agent_id,
+                "author": unique_agent_id,
+                "intent": "lifecycle test",
             },
             timeout=config.timeout,
         )
@@ -250,7 +254,7 @@ class TestEntryWorkflow:
         assert create_response.status_code in [200, 201]
 
         # 2. Get pending entries
-        pending_response = session.get(f"{config.base_url}/entries/pending", timeout=config.timeout)
+        pending_response = session.get(f"{config.base_url}/pending", timeout=config.timeout)
         # May or may not be authorized
         if pending_response.status_code == 200:
             pending = pending_response.json()
@@ -262,7 +266,7 @@ class TestEntryWorkflow:
         assert mine_response.status_code in [200, 201, 401, 403]
 
         # 4. Verify chain is still valid
-        validate_response = session.get(f"{config.base_url}/chain/validate", timeout=config.timeout)
+        validate_response = session.get(f"{config.base_url}/validate/chain", timeout=config.timeout)
         assert validate_response.status_code == 200
         assert validate_response.json().get("valid", True) is True
 
@@ -280,7 +284,7 @@ class TestContractWorkflow:
         if not server_available:
             pytest.skip("Server not available")
 
-        response = session.get(f"{config.base_url}/contracts", timeout=config.timeout)
+        response = session.get(f"{config.base_url}/contract/list", timeout=config.timeout)
         # Endpoint may or may not exist
         if response.status_code == 404:
             pytest.skip("Contracts endpoint not available")
@@ -378,7 +382,7 @@ class TestErrorHandling:
             pytest.skip("Server not available")
 
         response = session.post(
-            f"{config.base_url}/entries",
+            f"{config.base_url}/entry",
             data="not valid json",
             headers={"Content-Type": "application/json"},
             timeout=config.timeout,
@@ -392,7 +396,7 @@ class TestErrorHandling:
             pytest.skip("Server not available")
 
         response = session.post(
-            f"{config.base_url}/entries",
+            f"{config.base_url}/entry",
             json={},  # Empty body
             timeout=config.timeout,
         )
@@ -496,10 +500,10 @@ class TestFullWorkflow:
         entries_created = 0
         for i in range(3):
             response = session.post(
-                f"{config.base_url}/entries",
+                f"{config.base_url}/entry",
                 json={
                     "content": f"Workflow test entry {i} - {test_id}",
-                    "agent_id": f"workflow-test-{test_id}",
+                    "author": f"workflow-test-{test_id}",
                     "intent": "test",
                 },
                 timeout=config.timeout,
@@ -515,13 +519,15 @@ class TestFullWorkflow:
             pytest.skip("Mining requires authorization")
 
         # 4. Verify chain is still valid
-        validate = session.get(f"{config.base_url}/chain/validate", timeout=config.timeout)
+        validate = session.get(f"{config.base_url}/validate/chain", timeout=config.timeout)
         assert validate.status_code == 200
         assert validate.json().get("valid", True) is True
 
         # 5. Search for our entries
         search = session.get(
-            f"{config.base_url}/entries", params={"q": test_id, "limit": 10}, timeout=config.timeout
+            f"{config.base_url}/entries/search",
+            params={"query": test_id, "limit": 10},
+            timeout=config.timeout,
         )
         if search.status_code == 200:
             # Verify we can find our entries (implementation dependent)

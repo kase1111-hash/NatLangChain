@@ -13,14 +13,17 @@ import numpy as np
 # Configure module-level logger
 logger = logging.getLogger(__name__)
 
-# Import SentenceTransformer with error handling for optional dependency
+# Import SentenceTransformer with error handling for optional dependency.
+# Bound through the module object and annotated as Any so mypy accepts the
+# None fallback whether or not the package is installed where it runs.
+SentenceTransformer: Any = None
+SENTENCE_TRANSFORMERS_AVAILABLE = False
 try:
-    from sentence_transformers import SentenceTransformer
+    import sentence_transformers as _sentence_transformers
 
+    SentenceTransformer = _sentence_transformers.SentenceTransformer
     SENTENCE_TRANSFORMERS_AVAILABLE = True
 except ImportError:
-    SentenceTransformer = None
-    SENTENCE_TRANSFORMERS_AVAILABLE = False
     logger.warning(
         "sentence-transformers not installed. Semantic search will be unavailable. "
         "Install with: pip install sentence-transformers"
@@ -33,15 +36,12 @@ class SemanticSearchError(Exception):
     """Exception raised for semantic search errors."""
 
 
-
 class ModelLoadError(SemanticSearchError):
     """Exception raised when model fails to load."""
 
 
-
 class EncodingError(SemanticSearchError):
     """Exception raised when encoding fails."""
-
 
 
 class SemanticSearchEngine:
@@ -177,8 +177,11 @@ class SemanticSearchEngine:
                 self._embeddings_cache = np.vstack([self._embeddings_cache, new_embeddings])
                 self._entries_cache = all_entries
                 self._cache_chain_length = current_chain_length
-                logger.info("Incrementally indexed %d new entries (total: %d)",
-                           len(new_entries), len(all_entries))
+                logger.info(
+                    "Incrementally indexed %d new entries (total: %d)",
+                    len(new_entries),
+                    len(all_entries),
+                )
                 return
             except (ValueError, RuntimeError) as e:
                 logger.warning("Incremental indexing failed, doing full rebuild: %s", e)
@@ -197,7 +200,7 @@ class SemanticSearchEngine:
                 f"Failed to encode entries: {e!s}. "
                 f"Try reducing batch size or using a smaller model."
             ) from e
-        except (TypeError, RuntimeError) as e:
+        except TypeError as e:
             logger.error("Unexpected error encoding entries: %s: %s", type(e).__name__, str(e))
             raise EncodingError(f"Encoding failed: {type(e).__name__}: {e!s}") from e
 

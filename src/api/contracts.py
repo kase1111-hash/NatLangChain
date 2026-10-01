@@ -16,7 +16,7 @@ from .state import (
     create_entry_with_encryption,
     save_chain,
 )
-from .utils import managers, rate_limit_llm, require_api_key
+from .utils import MINING_DIFFICULTY, managers, rate_limit_llm, require_api_key
 
 # Try to import ContractParser for type constants
 try:
@@ -75,7 +75,9 @@ def parse_contract_endpoint():
         parsed = managers.contract_parser.parse_contract(content)
         return jsonify({"status": "success", "parsed": parsed})
     except (ValueError, RuntimeError):
-        return jsonify({"error": "Failed to parse contract", "details": "Internal error occurred"}), 500
+        return jsonify(
+            {"error": "Failed to parse contract", "details": "Internal error occurred"}
+        ), 500
 
 
 @contracts_bp.route("/match", methods=["POST"])
@@ -115,7 +117,9 @@ def match_contracts():
         pending_entries = state.blockchain.pending_entries
 
     try:
-        matches = managers.contract_matcher.find_matches(state.blockchain, pending_entries, miner_id)
+        matches = managers.contract_matcher.find_matches(
+            state.blockchain, pending_entries, miner_id
+        )
         return jsonify(
             {
                 "status": "success",
@@ -124,7 +128,9 @@ def match_contracts():
             }
         )
     except (ValueError, RuntimeError):
-        return jsonify({"error": "Failed to find matches", "details": "Internal error occurred"}), 500
+        return jsonify(
+            {"error": "Failed to find matches", "details": "Internal error occurred"}
+        ), 500
 
 
 @contracts_bp.route("/post", methods=["POST"])
@@ -194,12 +200,17 @@ def post_contract():
 
         # Add to blockchain
         result = state.blockchain.add_entry(entry)
+        if result.get("status") in ("rejected", "needs_revision"):
+            return jsonify(result), 422
+
+        # Persist the pending queue so the accepted contract survives a restart
+        save_chain()
 
         # Auto-mine if requested
         auto_mine = data.get("auto_mine", False)
         mined_block = None
         if auto_mine:
-            mined_block = state.blockchain.mine_pending_entries()
+            mined_block = state.blockchain.mine_pending_entries(difficulty=MINING_DIFFICULTY)
             save_chain()
 
         response = {"status": "success", "entry": result, "contract_metadata": contract_data}
@@ -210,7 +221,9 @@ def post_contract():
         return jsonify(response), 201
 
     except (ValueError, RuntimeError):
-        return jsonify({"error": "Contract posting failed", "reason": "Internal error occurred"}), 500
+        return jsonify(
+            {"error": "Contract posting failed", "reason": "Internal error occurred"}
+        ), 500
 
 
 @contracts_bp.route("/list", methods=["GET"])
@@ -352,7 +365,10 @@ def respond_to_contract():
         metadata=response_metadata,
     )
 
-    state.blockchain.add_entry(response_entry)
+    result = state.blockchain.add_entry(response_entry)
+    if result.get("status") in ("rejected", "needs_revision"):
+        return jsonify(result), 422
+    save_chain()
 
     return jsonify(
         {"status": "success", "response": response_entry.to_dict(), "mediation": mediation_result}

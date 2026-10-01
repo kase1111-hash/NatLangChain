@@ -3,7 +3,7 @@
 # Comprehensive CI for code quality, testing, and security.
 #
 # Jobs:
-# - lint: Code style checks (Ruff, Black)
+# - lint: Code style checks (Ruff)
 # - type-check: Static type analysis (mypy)
 # - test: Unit tests across Python versions
 # - security: Vulnerability scanning (Bandit, Safety, Trivy)
@@ -44,16 +44,13 @@ jobs:
       - name: Install linting tools
         run: |
           python -m pip install --upgrade pip
-          pip install ruff black isort
+          pip install ruff
 
       - name: Run Ruff linter
         run: ruff check src/ tests/ --output-format=github
 
       - name: Run Ruff formatter check
         run: ruff format src/ tests/ --check --diff
-
-      - name: Check import sorting
-        run: isort --check-only --diff src/ tests/
 
   # ===========================================================================
   # Type Check - Static Analysis
@@ -84,8 +81,7 @@ jobs:
           pip install mypy types-requests types-Flask
 
       - name: Run mypy
-        working-directory: src
-        run: mypy . --ignore-missing-imports --no-error-summary
+        run: mypy --config-file=pyproject.toml src/
 
   # ===========================================================================
   # Test - Unit Tests
@@ -120,7 +116,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest pytest-cov pytest-timeout
+          pip install pytest pytest-cov pytest-timeout psycopg2-binary
 
       - name: Run tests
         working-directory: src
@@ -195,175 +191,56 @@ jobs:
           output: 'trivy-results.sarif'
 
       - name: Upload Trivy results
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        uses: github/codeql-action/upload-sarif@v4
+        if: always() && hashFiles('trivy-results.sarif') != ''
         with:
           sarif_file: 'trivy-results.sarif'
         continue-on-error: true
 
   # ===========================================================================
-  # Frontend Build (if exists)
+  # PostgreSQL Storage Backend (live round-trip against a real database)
   # ===========================================================================
-  frontend:
-    name: Frontend
+  postgres:
+    name: PostgreSQL Backend
     runs-on: ubuntu-latest
-    if: hashFiles('frontend/package.json') != ''
-    defaults:
-      run:
-        working-directory: frontend
+    needs: lint
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: natlang
+          POSTGRES_PASSWORD: natlang
+          POSTGRES_DB: natlangchain_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U natlang"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install dependencies
-        run: npm ci
-
-      - name: Check for Metro bundler (should not be present)
         run: |
-          echo "Checking that Metro bundler is not present in dependencies..."
-          echo "This project uses Vite, not Metro (React Native bundler)."
+          python -m pip install --upgrade pip
+          pip install flask python-dotenv cryptography requests numpy psycopg2-binary pytest pytest-timeout
 
-          # List of Metro-related packages that should NOT be present
-          METRO_PACKAGES=(
-            "metro"
-            "metro-bundler"
-            "metro-config"
-            "metro-core"
-            "metro-resolver"
-            "metro-react-native-babel-preset"
-            "react-native"
-            "@react-native"
-          )
-
-          FOUND_METRO=false
-
-          for pkg in "${METRO_PACKAGES[@]}"; do
-            if grep -q "\"$pkg\"" package.json 2>/dev/null || \
-               grep -q "\"$pkg\"" package-lock.json 2>/dev/null; then
-              echo "::error::Found Metro-related package: $pkg"
-              echo "This project uses Vite bundler. Metro/React Native packages should not be present."
-              FOUND_METRO=true
-            fi
-          done
-
-          # Also check node_modules if it exists (belt and suspenders)
-          if [ -d "node_modules" ]; then
-            for pkg in "metro" "react-native"; do
-              if [ -d "node_modules/$pkg" ]; then
-                echo "::error::Found Metro-related package in node_modules: $pkg"
-                FOUND_METRO=true
-              fi
-            done
-          fi
-
-          if [ "$FOUND_METRO" = true ]; then
-            echo ""
-            echo "::error::Metro bundler check failed!"
-            echo "This is a Svelte + Vite project. Please remove React Native/Metro dependencies."
-            exit 1
-          fi
-
-          echo "✓ Metro bundler check passed - no React Native/Metro packages found"
-          echo "✓ Project correctly uses Vite as the bundler"
-
-      - name: Check for Expo configuration (should not be present)
+      - name: Run PostgreSQL storage tests
+        working-directory: src
+        env:
+          PYTHONPATH: .
+          NATLANGCHAIN_REQUIRE_AUTH: "false"
+          NATLANGCHAIN_TEST_DATABASE_URL: postgresql://natlang:natlang@localhost:5432/natlangchain_test
         run: |
-          echo "Checking that Expo configuration is not present..."
-          echo "This project uses Vite + Svelte, not Expo (React Native framework)."
-
-          FOUND_EXPO=false
-
-          # Check for Expo configuration files
-          EXPO_CONFIG_FILES=(
-            "app.config.js"
-            "app.config.ts"
-            "app.config.mjs"
-            "expo-config.js"
-            "expo-config.ts"
-            "expo-config.json"
-          )
-
-          for config_file in "${EXPO_CONFIG_FILES[@]}"; do
-            if [ -f "$config_file" ]; then
-              echo "::error::Found Expo configuration file: $config_file"
-              echo "This project uses Vite + Svelte. Expo configuration files should not be present."
-              FOUND_EXPO=true
-            fi
-          done
-
-          # Check if app.json exists and contains Expo configuration
-          if [ -f "app.json" ]; then
-            if grep -qE '"expo"\s*:' app.json 2>/dev/null; then
-              echo "::error::Found Expo configuration in app.json"
-              echo "The app.json file contains an 'expo' key, indicating Expo framework usage."
-              FOUND_EXPO=true
-            fi
-          fi
-
-          # List of Expo-related packages that should NOT be present
-          EXPO_PACKAGES=(
-            "expo"
-            "expo-cli"
-            "@expo/cli"
-            "@expo/config"
-            "@expo/config-plugins"
-            "@expo/metro-config"
-            "@expo/webpack-config"
-            "@expo/vector-icons"
-            "expo-constants"
-            "expo-device"
-            "expo-file-system"
-            "expo-font"
-            "expo-linking"
-            "expo-location"
-            "expo-notifications"
-            "expo-router"
-            "expo-splash-screen"
-            "expo-status-bar"
-            "expo-updates"
-          )
-
-          for pkg in "${EXPO_PACKAGES[@]}"; do
-            if grep -q "\"$pkg\"" package.json 2>/dev/null || \
-               grep -q "\"$pkg\"" package-lock.json 2>/dev/null; then
-              echo "::error::Found Expo-related package: $pkg"
-              echo "This project uses Vite bundler. Expo packages should not be present."
-              FOUND_EXPO=true
-            fi
-          done
-
-          # Check node_modules if it exists
-          if [ -d "node_modules" ]; then
-            for pkg in "expo" "@expo"; do
-              if [ -d "node_modules/$pkg" ]; then
-                echo "::error::Found Expo-related package in node_modules: $pkg"
-                FOUND_EXPO=true
-              fi
-            done
-          fi
-
-          if [ "$FOUND_EXPO" = true ]; then
-            echo ""
-            echo "::error::Expo configuration check failed!"
-            echo "This is a Svelte + Vite project. Please remove Expo dependencies and configuration."
-            exit 1
-          fi
-
-          echo "✓ Expo configuration check passed - no Expo config files or packages found"
-          echo "✓ Project correctly uses Vite + Svelte (not Expo)"
-
-      - name: Run ESLint
-        run: npm run lint
-        continue-on-error: true
-
-      - name: Build
-        run: npm run build
+          pytest ../tests/test_storage_postgresql_live.py ../tests/test_storage_postgresql.py \
+            ../tests/test_storage.py -v --tb=short --timeout=60
 
   # ===========================================================================
   # Build Verification
@@ -389,9 +266,7 @@ jobs:
         working-directory: src
         run: |
           python -c "from blockchain import NatLangChain; print('Core blockchain: OK')"
-          python -c "from api import app; print('Flask API: OK')"
-          python -c "from rbac import RBACManager; print('RBAC: OK')"
-          python -c "from boundary_daemon import BoundaryDaemon; print('Boundary Daemon: OK')"
+          python -c "from api import create_app; create_app(testing=True); print('Flask API: OK')"
 
       - name: Check for syntax errors
         run: python -m py_compile src/*.py
@@ -462,16 +337,16 @@ jobs:
           pip install pytest requests
 
       - name: Start NatLangChain
-        working-directory: src
         run: |
-          python -m api &
-          sleep 10
+          python run_server.py > server.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:5000/health && break
+            sleep 1
+          done
+          curl -sf http://localhost:5000/health || (cat server.log && exit 1)
         env:
-          PYTHONPATH: .
           NATLANGCHAIN_REQUIRE_AUTH: "false"
-          NATLANGCHAIN_RBAC_ENABLED: "false"
-          RATE_LIMIT_BACKEND: "redis"
-          RATE_LIMIT_REDIS_URL: "redis://localhost:6379/0"
+          REDIS_URL: "redis://localhost:6379/0"
 
       - name: Run E2E tests
         run: pytest tests/test_e2e.py -v --tb=short

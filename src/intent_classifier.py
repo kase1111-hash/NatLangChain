@@ -12,16 +12,36 @@ import logging
 import os
 from typing import Any
 
+from llm_config import extract_text, get_model
+
 logger = logging.getLogger(__name__)
 
 # Keyword fallback — kept for fast-path when LLM is unavailable
 TRANSFER_INTENT_KEYWORDS = {
-    "transfer", "transfers", "transferring", "transferred",
-    "sell", "sells", "selling", "sold",
-    "give", "gives", "giving", "gave",
-    "assign", "assigns", "assigning", "assigned",
-    "convey", "conveys", "conveying", "conveyed",
-    "grant", "grants", "granting", "granted",
+    "transfer",
+    "transfers",
+    "transferring",
+    "transferred",
+    "sell",
+    "sells",
+    "selling",
+    "sold",
+    "give",
+    "gives",
+    "giving",
+    "gave",
+    "assign",
+    "assigns",
+    "assigning",
+    "assigned",
+    "convey",
+    "conveys",
+    "conveying",
+    "conveyed",
+    "grant",
+    "grants",
+    "granting",
+    "granted",
 }
 
 
@@ -91,10 +111,13 @@ class IntentClassifier:
         if self.api_key:
             try:
                 from anthropic import Anthropic
+
                 self._client = Anthropic(api_key=self.api_key, timeout=30.0)
-                self.model = "claude-3-5-sonnet-20241022"
+                self.model = get_model()
             except (ValueError, RuntimeError, KeyError) as e:
-                logger.warning("Could not initialize Anthropic client for intent classification: %s", e)
+                logger.warning(
+                    "Could not initialize Anthropic client for intent classification: %s", e
+                )
                 self._client = None
 
     @property
@@ -187,10 +210,7 @@ Respond ONLY with JSON:
             messages=[{"role": "user", "content": prompt}],
         )
 
-        if not message.content or not hasattr(message.content[0], "text"):
-            raise ValueError("Empty or invalid response from LLM")
-
-        response_text = message.content[0].text.strip()
+        response_text = extract_text(message).strip()
 
         # Extract JSON from potential markdown wrapping
         if "```json" in response_text:
