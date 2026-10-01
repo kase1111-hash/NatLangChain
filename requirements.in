@@ -2,7 +2,12 @@
 # Regenerate the lock with:
 #   pip-compile --upgrade --strip-extras --output-file requirements-lock.txt requirements.in
 # then audit it with:
-#   pip-audit -r requirements-lock.txt
+#   pip-audit -r requirements-lock.txt --extra-index-url https://download.pytorch.org/whl/cpu
+#
+# The API only runs sentence-transformer inference on CPU. PyTorch's CPU wheel
+# index provides torch builds without the CUDA libraries, which cuts roughly
+# 3 GB from the image (the PyPI torch wheel pulls in the nvidia-* packages).
+--extra-index-url https://download.pytorch.org/whl/cpu
 
 # Web framework and WSGI server
 flask>=3.1.3

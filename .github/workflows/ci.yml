@@ -178,7 +178,7 @@ jobs:
         continue-on-error: true
 
       - name: Check dependencies with pip-audit
-        run: pip-audit -r requirements-lock.txt
+        run: pip-audit -r requirements-lock.txt --extra-index-url https://download.pytorch.org/whl/cpu
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master

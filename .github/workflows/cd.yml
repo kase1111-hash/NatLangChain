@@ -40,6 +40,7 @@ jobs:
       packages: write
 
     outputs:
+      image-name: ${{ steps.image.outputs.name }}
       image-tag: ${{ steps.meta.outputs.tags }}
       image-digest: ${{ steps.build.outputs.digest }}
 
@@ -56,6 +57,14 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve image name
+        id: image
+        # Docker references must be lowercase; the repository name is not.
+        # metadata-action lowercases its own tags, but every other step that
+        # builds a reference by hand (SBOM, kubectl, release notes) must use
+        # this value rather than env.IMAGE_NAME.
+        run: echo "name=${REGISTRY}/${IMAGE_NAME,,}" >> "$GITHUB_OUTPUT"
 
       - name: Extract metadata
         id: meta
@@ -84,7 +93,7 @@ jobs:
       - name: Generate SBOM
         uses: anchore/sbom-action@v0
         with:
-          image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          image: ${{ steps.image.outputs.name }}:${{ github.sha }}
           format: spdx-json
           output-file: sbom.spdx.json
 
@@ -129,7 +138,7 @@ jobs:
         run: |
           # Update image tag in deployment
           kubectl set image deployment/natlangchain \
-            natlangchain=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            natlangchain=${{ needs.build-and-push.outputs.image-name }}:${{ github.sha }} \
             -n natlangchain-staging
 
           # Wait for rollout
@@ -233,7 +242,7 @@ jobs:
         run: |
           # Update image tag
           kubectl set image deployment/natlangchain \
-            natlangchain=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.release.tag_name }} \
+            natlangchain=${{ needs.build-and-push.outputs.image-name }}:${{ github.event.release.tag_name }} \
             -n natlangchain
 
           # Wait for rollout
@@ -272,7 +281,7 @@ jobs:
 
             ---
             **Deployment Status**: ✅ Deployed to production
-            **Image**: `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.release.tag_name }}`
+            **Image**: `${{ needs.build-and-push.outputs.image-name }}:${{ github.event.release.tag_name }}`
             **Deployed at**: ${{ github.event.release.published_at }}
 
       - name: Notify on success

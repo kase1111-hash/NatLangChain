@@ -17,7 +17,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Install Python dependencies with hash verification (Finding 3.1)
+# Install pinned dependencies. The lock file points torch at PyTorch's CPU
+# wheel index, so the image carries no CUDA libraries (~3 GB smaller).
 COPY requirements-lock.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements-lock.txt
