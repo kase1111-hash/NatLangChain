@@ -391,29 +391,36 @@ class TestMiningThroughput:
 
     def test_mining_difficulty_scaling(self):
         """Measure how mining time scales with difficulty."""
-        results = []
+        # A single proof-of-work search is a geometric trial: one lucky nonce
+        # at difficulty 2 can beat an unlucky one at difficulty 1. Compare the
+        # median of several trials and two difficulty levels apart so the
+        # assertion holds without being timing-flaky.
+        trials = 5
+        medians = {}
 
         for difficulty in [1, 2, 3]:
-            chain = NatLangChain(
-                require_validation=False,
-                enable_deduplication=False,
-                enable_rate_limiting=False,
-            )
+            timings = []
+            for _ in range(trials):
+                chain = NatLangChain(
+                    require_validation=False,
+                    enable_deduplication=False,
+                    enable_rate_limiting=False,
+                )
+                for i in range(20):
+                    chain.add_entry(generate_entry(i))
 
-            # Add entries
-            for i in range(20):
-                chain.add_entry(generate_entry(i))
+                start = time.perf_counter()
+                block = chain.mine_pending_entries(difficulty=difficulty)
+                timings.append(time.perf_counter() - start)
 
-            # Time mining
-            start = time.perf_counter()
-            chain.mine_pending_entries(difficulty=difficulty)
-            elapsed = time.perf_counter() - start
+                assert block is not None
+                assert block.hash.startswith("0" * difficulty)
 
-            results.append((difficulty, elapsed))
-            print(f"  Difficulty {difficulty}: {elapsed * 1000:.2f}ms")
+            medians[difficulty] = sorted(timings)[trials // 2]
+            print(f"  Difficulty {difficulty}: median {medians[difficulty] * 1000:.2f}ms")
 
-        # Higher difficulty should take longer (exponential scaling)
-        assert results[1][1] > results[0][1], "Difficulty 2 should take longer than 1"
+        # Difficulty 3 needs ~256x the expected hash attempts of difficulty 1
+        assert medians[3] > medians[1], "Difficulty 3 should take longer than 1"
 
 
 # =============================================================================
