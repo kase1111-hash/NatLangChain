@@ -13,14 +13,17 @@ import numpy as np
 # Configure module-level logger
 logger = logging.getLogger(__name__)
 
-# Import SentenceTransformer with error handling for optional dependency
+# Import SentenceTransformer with error handling for optional dependency.
+# Bound through the module object and annotated as Any so mypy accepts the
+# None fallback whether or not the package is installed where it runs.
+SentenceTransformer: Any = None
+SENTENCE_TRANSFORMERS_AVAILABLE = False
 try:
-    from sentence_transformers import SentenceTransformer
+    import sentence_transformers as _sentence_transformers
 
+    SentenceTransformer = _sentence_transformers.SentenceTransformer
     SENTENCE_TRANSFORMERS_AVAILABLE = True
 except ImportError:
-    SentenceTransformer = None
-    SENTENCE_TRANSFORMERS_AVAILABLE = False
     logger.warning(
         "sentence-transformers not installed. Semantic search will be unavailable. "
         "Install with: pip install sentence-transformers"
