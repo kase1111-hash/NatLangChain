@@ -18,6 +18,7 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from blockchain import (
+    Block,
     MockValidator,
     NatLangChain,
     NaturalLanguageEntry,
@@ -159,7 +160,7 @@ class TestAssetReservationRelease:
 class TestMiningDoesNotDropConcurrentSubmissions:
     """Entries accepted during proof-of-work must not be discarded."""
 
-    def test_entries_submitted_during_mining_survive(self):
+    def test_entries_submitted_during_mining_survive(self, monkeypatch):
         chain = _chain(
             require_validation=False,
             enable_deduplication=False,
@@ -182,36 +183,42 @@ class TestMiningDoesNotDropConcurrentSubmissions:
         for i in range(preloaded):
             chain.add_entry(entry("pre", i))
 
-        started = threading.Event()
-        finished = threading.Event()
+        # Hold proof-of-work open deterministically: the miner blocks on its
+        # first block hash (computed after the queue swap) until the test has
+        # submitted its concurrent entries. The previous version relied on a
+        # difficulty-4 search for the window, which took under a second on a
+        # fast machine and over a minute under coverage tracing in CI.
+        original_hash = Block.calculate_hash
+        mining_started = threading.Event()
+        release = threading.Event()
 
-        def miner():
-            started.set()
-            try:
-                chain.mine_pending_entries(difficulty=4)
-            finally:
-                finished.set()
+        def gated_hash(self):
+            mining_started.set()
+            release.wait(timeout=30)
+            return original_hash(self)
 
-        thread = threading.Thread(target=miner)
+        monkeypatch.setattr(Block, "calculate_hash", gated_hash)
+
+        thread = threading.Thread(target=chain.mine_pending_entries, kwargs={"difficulty": 1})
         thread.start()
-        started.wait()
-        time.sleep(0.02)  # let proof-of-work get under way
+        assert mining_started.wait(timeout=10), "miner never started hashing"
 
         submitted_during = 0
         for i in range(30):
-            if finished.is_set():
-                break
             if chain.add_entry(entry("during", i))["status"] == "pending":
                 submitted_during += 1
-            time.sleep(0.002)
-        thread.join()
+
+        release.set()
+        thread.join(timeout=30)
+        assert not thread.is_alive(), "mining did not finish after release"
 
         on_chain = sum(len(b.entries) for b in chain.chain) - 1  # exclude genesis
         assert on_chain == preloaded, "the mined block must hold exactly the swapped-out queue"
+        assert submitted_during == 30, "submissions during proof-of-work must be accepted"
         assert len(chain.pending_entries) == submitted_during, (
             "entries accepted during proof-of-work must stay queued for the next block"
         )
-        assert chain.validate_chain(verify_pow=True, difficulty=4)
+        assert chain.validate_chain(verify_pow=True, difficulty=1)
 
     def test_mining_is_idempotent_on_empty_queue(self):
         chain = _chain(require_validation=False)

@@ -289,6 +289,9 @@ jobs:
         with:
           context: .
           push: false
+          # buildx uses a container builder; without load the image never
+          # reaches the local daemon and `docker run` below cannot find it
+          load: true
           tags: natlangchain:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -298,9 +301,17 @@ jobs:
           docker run --rm -d --name test-natlangchain -p 5000:5000 \
             -e NATLANGCHAIN_REQUIRE_AUTH=false \
             natlangchain:${{ github.sha }}
-          sleep 10
+          # Startup loads the sentence-transformer model; give it up to 90s
+          for i in $(seq 1 45); do
+            if curl -sf http://localhost:5000/health > /dev/null; then break; fi
+            sleep 2
+          done
           curl -sf http://localhost:5000/health || (docker logs test-natlangchain && exit 1)
-          curl -sf http://localhost:5000/health/live || exit 1
+          curl -sf http://localhost:5000/health/live || (docker logs test-natlangchain && exit 1)
+          curl -sf -X POST http://localhost:5000/entry -H "Content-Type: application/json" \
+            -d '{"content":"Docker smoke test entry for the CI health check.","author":"ci","intent":"smoke"}' \
+            || (docker logs test-natlangchain && exit 1)
+          curl -sf -X POST http://localhost:5000/mine || (docker logs test-natlangchain && exit 1)
           docker stop test-natlangchain
 
   # ===========================================================================
