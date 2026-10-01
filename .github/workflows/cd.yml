@@ -6,10 +6,15 @@
 # - Push to main: Deploy to staging
 # - Release published: Deploy to production
 #
-# Prerequisites:
-# - Docker registry credentials (DOCKER_USERNAME, DOCKER_PASSWORD)
-# - Kubernetes credentials (KUBE_CONFIG_STAGING, KUBE_CONFIG_PRODUCTION)
-# - Or cloud provider credentials (AWS_*, GCP_*, etc.)
+# The image is always built and pushed to GHCR. Deployment steps only run
+# when the target is configured:
+#
+# Secrets:
+# - KUBE_CONFIG_STAGING / KUBE_CONFIG_PRODUCTION: base64 kubeconfig per environment
+# - SLACK_WEBHOOK_URL (optional): deployment notifications
+# Repository variables (Settings -> Secrets and variables -> Actions -> Variables):
+# - STAGING_URL / PRODUCTION_URL: public base URL of each deployment, e.g.
+#   https://api.example.com, used for the post-deploy smoke tests
 
 name: CD
 
@@ -99,7 +104,7 @@ jobs:
     if: github.event_name == 'push'
     environment:
       name: staging
-      url: https://staging.natlangchain.io
+      url: ${{ vars.STAGING_URL }}
     env:
       # `secrets` cannot be referenced in a step-level `if`; expose presence via env
       HAS_KUBE_CONFIG: ${{ secrets.KUBE_CONFIG_STAGING != '' }}
@@ -190,9 +195,10 @@ jobs:
     if: github.event_name == 'release'
     environment:
       name: production
-      url: https://api.natlangchain.io
+      url: ${{ vars.PRODUCTION_URL }}
     env:
       HAS_KUBE_CONFIG: ${{ secrets.KUBE_CONFIG_PRODUCTION != '' }}
+      PRODUCTION_URL: ${{ vars.PRODUCTION_URL }}
 
     steps:
       - name: Checkout code
@@ -244,19 +250,19 @@ jobs:
             -n natlangchain \
             --timeout=120s
 
-          # Health checks
-          curl -sf "https://api.natlangchain.io/health"
-          curl -sf "https://api.natlangchain.io/health/live"
-          curl -sf "https://api.natlangchain.io/health/ready"
-
       - name: Run production smoke tests
-        if: env.HAS_KUBE_CONFIG == 'true'
+        if: env.HAS_KUBE_CONFIG == 'true' && env.PRODUCTION_URL != ''
         run: |
-          # Verify chain is valid
-          curl -sf "https://api.natlangchain.io/validate/chain" | jq -e '.valid == true'
+          # Health checks
+          curl -sf "${PRODUCTION_URL}/health"
+          curl -sf "${PRODUCTION_URL}/health/live"
+          curl -sf "${PRODUCTION_URL}/health/ready"
 
-          # Check metrics endpoint
-          curl -sf "https://api.natlangchain.io/metrics" | head -5
+          # Chain validity and metrics (require an API key only if auth is on
+          # for GET endpoints; pass NATLANGCHAIN_API_KEY secret if so)
+          curl -sf -H "X-API-Key: ${{ secrets.NATLANGCHAIN_API_KEY }}" \
+            "${PRODUCTION_URL}/validate/chain" | jq -e '.valid == true'
+          curl -sf "${PRODUCTION_URL}/metrics" | head -5
 
       - name: Update release notes
         uses: softprops/action-gh-release@v1

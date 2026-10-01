@@ -16,7 +16,7 @@ from .state import (
     create_entry_with_encryption,
     save_chain,
 )
-from .utils import managers, rate_limit_llm, require_api_key
+from .utils import MINING_DIFFICULTY, managers, rate_limit_llm, require_api_key
 
 # Try to import ContractParser for type constants
 try:
@@ -210,7 +210,7 @@ def post_contract():
         auto_mine = data.get("auto_mine", False)
         mined_block = None
         if auto_mine:
-            mined_block = state.blockchain.mine_pending_entries()
+            mined_block = state.blockchain.mine_pending_entries(difficulty=MINING_DIFFICULTY)
             save_chain()
 
         response = {"status": "success", "entry": result, "contract_metadata": contract_data}

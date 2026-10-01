@@ -45,7 +45,7 @@ ENV SENTENCE_TRANSFORMERS_HOME=/opt/models
 
 # Copy application code
 COPY --chown=natlang:natlang src/ ./src/
-COPY --chown=natlang:natlang run_server.py wsgi.py ./
+COPY --chown=natlang:natlang run_server.py wsgi.py gunicorn.conf.py ./
 
 # Create data directory for chain persistence
 RUN mkdir -p /app/data && \
@@ -72,11 +72,7 @@ EXPOSE 5000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')" || exit 1
 
-# Run the server under gunicorn.
-#
-# IMPORTANT: exactly one worker process. The chain, pending queue, rate
-# limiter and validator state live in process memory; a second worker would
-# serve a divergent ledger. Use threads for request concurrency instead, and
-# scale vertically (or move to the PostgreSQL backend plus a single writer)
-# rather than adding workers.
-CMD ["sh", "-c", "exec gunicorn --bind 0.0.0.0:${PORT} --workers 1 --threads ${GUNICORN_THREADS} --timeout ${GUNICORN_TIMEOUT} --graceful-timeout 30 --access-logfile - wsgi:app"]
+# Run the server under gunicorn. gunicorn.conf.py pins a single worker
+# process (chain state is in-memory) and takes threads/timeout from the
+# GUNICORN_THREADS / GUNICORN_TIMEOUT environment variables.
+CMD ["gunicorn", "-c", "gunicorn.conf.py", "wsgi:app"]

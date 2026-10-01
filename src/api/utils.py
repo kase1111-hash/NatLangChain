@@ -81,6 +81,13 @@ MAX_OFFSET = 100000  # Maximum offset to prevent memory exhaustion
 # Pagination configuration
 DEFAULT_PAGE_LIMIT = int(os.getenv("NATLANGCHAIN_DEFAULT_PAGE_LIMIT", "100"))
 MAX_PAGE_LIMIT = int(os.getenv("NATLANGCHAIN_MAX_PAGE_LIMIT", "1000"))
+
+# Proof-of-work difficulty (leading zero hex digits) used when mining blocks.
+# Each extra digit multiplies mining cost by 16. Clients may request a
+# different value on POST /mine, bounded by MAX_MINING_DIFFICULTY so an
+# authenticated caller cannot pin the server's CPU with a huge difficulty.
+MINING_DIFFICULTY = int(os.getenv("NATLANGCHAIN_MINING_DIFFICULTY", "2"))
+MAX_MINING_DIFFICULTY = int(os.getenv("NATLANGCHAIN_MAX_MINING_DIFFICULTY", "6"))
 DEFAULT_HISTORY_LIMIT = int(os.getenv("NATLANGCHAIN_DEFAULT_HISTORY_LIMIT", "50"))
 
 

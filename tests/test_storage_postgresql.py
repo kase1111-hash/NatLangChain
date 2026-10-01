@@ -207,7 +207,7 @@ class TestLoadChain:
 
         # Mock metadata query
         mock_cursor.fetchone.side_effect = [
-            (2, 0),  # difficulty, pending_count (metadata)
+            (2, 0, {}),  # difficulty, pending_count, state_json (metadata)
         ]
 
         # Mock blocks query

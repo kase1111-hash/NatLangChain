@@ -19,6 +19,8 @@ from .state import (
 )
 from .utils import (
     DEFAULT_PAGE_LIMIT,
+    MAX_MINING_DIFFICULTY,
+    MINING_DIFFICULTY,
     managers,
     require_api_key,
     validate_json_schema,
@@ -217,7 +219,7 @@ def add_entry():
     auto_mine = data.get("auto_mine", False)
     mined_block = None
     if auto_mine:
-        mined_block = state.blockchain.mine_pending_entries()
+        mined_block = state.blockchain.mine_pending_entries(difficulty=MINING_DIFFICULTY)
         save_chain()
 
     response = {"status": "success", "entry": result, "validation": validation_result}
@@ -293,7 +295,8 @@ def mine_block():
 
     Request body (optional):
     {
-        "difficulty": 2 (optional, default from chain)
+        "difficulty": 2 (optional, default NATLANGCHAIN_MINING_DIFFICULTY,
+                          at most NATLANGCHAIN_MAX_MINING_DIFFICULTY)
     }
 
     Returns:
@@ -302,16 +305,26 @@ def mine_block():
     # The body is optional: a bare `POST /mine` must work (README quick start),
     # and Flask raises 415 on get_json() when no JSON content type is sent.
     data = request.get_json(silent=True) or {}
-    difficulty = data.get("difficulty")
+    difficulty = data.get("difficulty", MINING_DIFFICULTY)
+
+    if (
+        isinstance(difficulty, bool)
+        or not isinstance(difficulty, int)
+        or difficulty < 1
+        or difficulty > MAX_MINING_DIFFICULTY
+    ):
+        return jsonify(
+            {
+                "error": "Invalid difficulty",
+                "reason": f"difficulty must be an integer from 1 to {MAX_MINING_DIFFICULTY}",
+            }
+        ), 400
 
     if not state.blockchain.pending_entries:
         return jsonify({"error": "No pending entries to mine"}), 400
 
     # Mine the block
-    if difficulty:
-        new_block = state.blockchain.mine_pending_entries(difficulty=difficulty)
-    else:
-        new_block = state.blockchain.mine_pending_entries()
+    new_block = state.blockchain.mine_pending_entries(difficulty=difficulty)
 
     # Persist to file
     save_chain()
