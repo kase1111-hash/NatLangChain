@@ -249,10 +249,13 @@ jobs:
     runs-on: ubuntu-latest
     needs: [version, release]
     if: always() && needs.release.result == 'success'
+    env:
+      # `secrets` cannot be referenced in a step-level `if`; expose presence via env
+      HAS_SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL != '' }}
 
     steps:
       - name: Send Slack notification
-        if: ${{ secrets.SLACK_WEBHOOK_URL != '' }}
+        if: env.HAS_SLACK_WEBHOOK == 'true'
         uses: 8398a7/action-slack@v3
         with:
           status: success
