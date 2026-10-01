@@ -24,8 +24,18 @@ logger = logging.getLogger(__name__)
 # Shared State
 # ============================================================
 
-# The blockchain instance
-blockchain: NatLangChain = NatLangChain()
+# The blockchain instance.
+#
+# Proof of Understanding validation for API submissions is performed by the
+# API layer (see core.add_entry / contracts.post_contract) through
+# managers.hybrid_validator, which degrades gracefully when no LLM key is
+# configured. The chain itself must therefore not re-validate on insert:
+# with require_validation=True it would call the LLM a second time per entry
+# (double cost) and reject every entry on a server started without
+# ANTHROPIC_API_KEY. NatLangChain.from_dict() (used by load_chain) already
+# defaults to require_validation=False, so this keeps fresh and reloaded
+# chains consistent.
+blockchain: NatLangChain = NatLangChain(require_validation=False)
 
 # Cryptographic agent identity (Audit 1.3)
 agent_identity = None  # Initialized via init_identity()
@@ -154,6 +164,7 @@ def create_entry_with_encryption(
     if agent_identity is not None:
         try:
             from identity import sign_entry_dict
+
             entry_dict = entry.to_dict()
             signed = sign_entry_dict(entry_dict, agent_identity)
             entry.signature = signed["metadata"].get("signature")
@@ -178,9 +189,7 @@ def decrypt_entry_metadata(entry_dict: dict[str, Any]) -> dict[str, Any]:
         return entry_dict
 
     if entry_dict.get("metadata"):
-        entry_dict["metadata"] = decrypt_sensitive_fields(
-            entry_dict["metadata"]
-        )
+        entry_dict["metadata"] = decrypt_sensitive_fields(entry_dict["metadata"])
 
     return entry_dict
 

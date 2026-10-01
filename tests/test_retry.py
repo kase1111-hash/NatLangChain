@@ -109,13 +109,16 @@ class TestRetryConfig:
         assert 502 in config.retryable_status_codes  # Bad Gateway
         assert 503 in config.retryable_status_codes  # Service Unavailable
 
-    @patch.dict(os.environ, {
-        "RETRY_MAX_ATTEMPTS": "5",
-        "RETRY_BASE_DELAY": "2.5",
-        "RETRY_MAX_DELAY": "120.0",
-        "RETRY_EXPONENTIAL_BASE": "3.0",
-        "RETRY_JITTER": "0.15",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "RETRY_MAX_ATTEMPTS": "5",
+            "RETRY_BASE_DELAY": "2.5",
+            "RETRY_MAX_DELAY": "120.0",
+            "RETRY_EXPONENTIAL_BASE": "3.0",
+            "RETRY_JITTER": "0.15",
+        },
+    )
     def test_from_env(self):
         """Test creating config from environment variables."""
         config = RetryConfig.from_env()
@@ -434,6 +437,7 @@ class TestIsRetryableException:
 
     def test_subclass_is_retryable(self):
         """Test subclass of retryable exception is retryable."""
+
         class CustomConnectionError(ConnectionError):
             pass
 
@@ -591,6 +595,7 @@ class TestRetryCall:
 
     def test_successful_call(self):
         """Test successful function call."""
+
         def success_func():
             return "result"
 
@@ -615,6 +620,7 @@ class TestRetryCall:
 
     def test_with_args_and_kwargs(self):
         """Test calling function with arguments."""
+
         def add_func(a, b, multiplier=1):
             return (a + b) * multiplier
 
@@ -650,6 +656,7 @@ class TestConvenienceDecorators:
 
     def test_retry_network_decorator(self):
         """Test retry_network decorator applies correctly."""
+
         @retry_network
         def network_func():
             return "network_result"
@@ -659,6 +666,7 @@ class TestConvenienceDecorators:
 
     def test_retry_llm_api_decorator(self):
         """Test retry_llm_api decorator applies correctly."""
+
         @retry_llm_api
         def llm_func():
             return "llm_result"
@@ -668,6 +676,7 @@ class TestConvenienceDecorators:
 
     def test_retry_database_decorator(self):
         """Test retry_database decorator applies correctly."""
+
         @retry_database
         def db_func():
             return "db_result"
@@ -707,6 +716,7 @@ class TestEdgeCases:
 
     def test_empty_retryable_exceptions(self):
         """Test with empty retryable exceptions tuple."""
+
         @retry_with_backoff(
             max_retries=3,
             base_delay=0.01,

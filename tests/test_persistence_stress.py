@@ -22,15 +22,15 @@ from blockchain import NatLangChain, NaturalLanguageEntry
 
 
 def _make_chain(**overrides):
-    defaults = dict(
-        require_validation=False,
-        enable_deduplication=False,
-        enable_rate_limiting=False,
-        enable_timestamp_validation=False,
-        enable_metadata_sanitization=False,
-        enable_asset_tracking=False,
-        enable_quality_checks=False,
-    )
+    defaults = {
+        "require_validation": False,
+        "enable_deduplication": False,
+        "enable_rate_limiting": False,
+        "enable_timestamp_validation": False,
+        "enable_metadata_sanitization": False,
+        "enable_asset_tracking": False,
+        "enable_quality_checks": False,
+    }
     defaults.update(overrides)
     return NatLangChain(**defaults)
 
@@ -38,6 +38,7 @@ def _make_chain(**overrides):
 # ============================================================
 # Large Volume Persistence
 # ============================================================
+
 
 class TestLargeVolumeRoundtrip:
     """Submit 100+ entries, mine, serialize, deserialize, verify."""
@@ -129,6 +130,7 @@ class TestLargeVolumeRoundtrip:
 # Fingerprint Persistence (Dedup Across Restart)
 # ============================================================
 
+
 class TestFingerprintPersistence:
     def test_dedup_survives_restart(self):
         chain = _make_chain(enable_deduplication=True)
@@ -140,13 +142,13 @@ class TestFingerprintPersistence:
 
         # Serialize + deserialize (simulates restart)
         data = chain.to_dict()
-        restored = NatLangChain.from_dict(
-            data, require_validation=False, enable_deduplication=True
-        )
+        restored = NatLangChain.from_dict(data, require_validation=False, enable_deduplication=True)
         restored._quality_analyzer = None
 
         # Attempt duplicate — should be rejected
-        duplicate = NaturalLanguageEntry(content=content, author="alice", intent="Unique entry test")
+        duplicate = NaturalLanguageEntry(
+            content=content, author="alice", intent="Unique entry test"
+        )
         result = restored.add_entry(duplicate)
         assert result["status"] == "rejected"
         assert result["reason"] == "duplicate"
@@ -167,9 +169,7 @@ class TestFingerprintPersistence:
 
         assert len(data.get("entry_fingerprints", {})) == 20
 
-        restored = NatLangChain.from_dict(
-            data, require_validation=False, enable_deduplication=True
-        )
+        restored = NatLangChain.from_dict(data, require_validation=False, enable_deduplication=True)
         # All 20 fingerprints should survive
         assert len(restored._entry_fingerprints) == 20
 
@@ -177,6 +177,7 @@ class TestFingerprintPersistence:
 # ============================================================
 # Asset Registry Persistence
 # ============================================================
+
 
 class TestAssetRegistryPersistence:
     def test_asset_registry_survives_restart(self):
@@ -202,6 +203,7 @@ class TestAssetRegistryPersistence:
 # ============================================================
 # Concurrent Entry Submission
 # ============================================================
+
 
 class TestConcurrentSubmissions:
     def test_concurrent_adds_no_corruption(self):
@@ -257,6 +259,7 @@ class TestConcurrentSubmissions:
 # ============================================================
 # Chain Integrity Under Volume
 # ============================================================
+
 
 class TestChainIntegrityVolume:
     def test_chain_valid_after_many_mines(self):

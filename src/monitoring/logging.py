@@ -27,11 +27,20 @@ from typing import Any
 # Patterns for sensitive data that should be redacted in logs
 SENSITIVE_PATTERNS = [
     # API keys and tokens
-    (re.compile(r"(api[_-]?key|apikey|token|secret|password|passwd|pwd)([\"']?\s*[:=]\s*[\"']?)([^\s\"',}{]+)", re.IGNORECASE), r"\1\2[REDACTED]"),
+    (
+        re.compile(
+            r"(api[_-]?key|apikey|token|secret|password|passwd|pwd)([\"']?\s*[:=]\s*[\"']?)([^\s\"',}{]+)",
+            re.IGNORECASE,
+        ),
+        r"\1\2[REDACTED]",
+    ),
     # Bearer tokens
     (re.compile(r"(Bearer\s+)([^\s]+)", re.IGNORECASE), r"\1[REDACTED]"),
     # Private keys (PEM format)
-    (re.compile(r"-----BEGIN[^-]+PRIVATE KEY-----.*?-----END[^-]+PRIVATE KEY-----", re.DOTALL), "[REDACTED_PRIVATE_KEY]"),
+    (
+        re.compile(r"-----BEGIN[^-]+PRIVATE KEY-----.*?-----END[^-]+PRIVATE KEY-----", re.DOTALL),
+        "[REDACTED_PRIVATE_KEY]",
+    ),
     # Email addresses (partial redaction)
     (re.compile(r"([a-zA-Z0-9._%+-]+)@([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})"), r"\1[...]@\2"),
     # Credit card numbers (basic pattern)
@@ -119,6 +128,7 @@ def redact_string(text: str) -> str:
     for pattern, replacement in SENSITIVE_PATTERNS:
         result = pattern.sub(replacement, result)
     return result
+
 
 # Thread-local storage for request context
 _request_context = threading.local()

@@ -80,12 +80,30 @@ try:
 except ImportError:
     INTENT_CLASSIFIER_AVAILABLE = False
     TRANSFER_INTENT_KEYWORDS = {
-        "transfer", "transfers", "transferring", "transferred",
-        "sell", "sells", "selling", "sold",
-        "give", "gives", "giving", "gave",
-        "assign", "assigns", "assigning", "assigned",
-        "convey", "conveys", "conveying", "conveyed",
-        "grant", "grants", "granting", "granted",
+        "transfer",
+        "transfers",
+        "transferring",
+        "transferred",
+        "sell",
+        "sells",
+        "selling",
+        "sold",
+        "give",
+        "gives",
+        "giving",
+        "gave",
+        "assign",
+        "assigns",
+        "assigning",
+        "assigned",
+        "convey",
+        "conveys",
+        "conveying",
+        "conveyed",
+        "grant",
+        "grants",
+        "granting",
+        "granted",
     }
 
 # Entry quality defaults (addresses chain bloat)
@@ -1858,8 +1876,11 @@ class NatLangChain:
             return None
         rate_check = self._rate_limiter.check_rate_limit(entry.author)
         if not rate_check["allowed"]:
-            logger.info("Entry rejected: rate limit exceeded for author=%s reason=%s",
-                       entry.author, rate_check["reason"])
+            logger.info(
+                "Entry rejected: rate limit exceeded for author=%s reason=%s",
+                entry.author,
+                rate_check["reason"],
+            )
             return {
                 "status": "rejected",
                 "message": rate_check["message"],
@@ -1876,8 +1897,11 @@ class NatLangChain:
             return None
         ts_check = self._validate_timestamp(entry)
         if not ts_check["is_valid"]:
-            logger.info("Entry rejected: invalid timestamp author=%s reason=%s",
-                       entry.author, ts_check["reason"])
+            logger.info(
+                "Entry rejected: invalid timestamp author=%s reason=%s",
+                entry.author,
+                ts_check["reason"],
+            )
             return {
                 "status": "rejected",
                 "message": ts_check["message"],
@@ -1895,8 +1919,11 @@ class NatLangChain:
             return None, None
         sanitize_result = self._sanitize_metadata(entry)
         if sanitize_result["rejected"]:
-            logger.info("Entry rejected: forbidden metadata author=%s fields=%s",
-                       entry.author, sanitize_result.get("forbidden_fields", []))
+            logger.info(
+                "Entry rejected: forbidden metadata author=%s fields=%s",
+                entry.author,
+                sanitize_result.get("forbidden_fields", []),
+            )
             rejection = {
                 "status": "rejected",
                 "message": sanitize_result["message"],
@@ -1972,8 +1999,11 @@ class NatLangChain:
             return None
         duplicate_check = self._check_duplicate(entry)
         if duplicate_check["is_duplicate"]:
-            logger.info("Entry rejected: duplicate detected author=%s fingerprint=%s",
-                       entry.author, duplicate_check["fingerprint"][:16])
+            logger.info(
+                "Entry rejected: duplicate detected author=%s fingerprint=%s",
+                entry.author,
+                duplicate_check["fingerprint"][:16],
+            )
             # The pending-queue branch of _check_duplicate carries no
             # original_timestamp: the entry has not been mined, so there is no
             # block time to report. That branch is reached whenever the dedup
@@ -1998,8 +2028,11 @@ class NatLangChain:
             return None, None
         asset_check = self._check_asset_transfer(entry)
         if not asset_check["allowed"]:
-            logger.warning("Entry rejected: double transfer attempt author=%s asset=%s",
-                          entry.author, asset_check.get("asset_id"))
+            logger.warning(
+                "Entry rejected: double transfer attempt author=%s asset=%s",
+                entry.author,
+                asset_check.get("asset_id"),
+            )
             return {
                 "status": "rejected",
                 "message": asset_check["message"],
@@ -2049,8 +2082,9 @@ class NatLangChain:
             }
 
         if validation_result["status"] == "error":
-            logger.warning("Entry validation error author=%s: %s",
-                          entry.author, validation_result.get("error"))
+            logger.warning(
+                "Entry validation error author=%s: %s", entry.author, validation_result.get("error")
+            )
             return {
                 "status": "rejected",
                 "message": "Validation failed with error",
@@ -2061,8 +2095,7 @@ class NatLangChain:
         decision = validation_result.get("validation", {}).get("decision", "ERROR")
 
         if decision not in self._acceptable_decisions:
-            logger.info("Entry rejected: validation decision=%s author=%s",
-                       decision, entry.author)
+            logger.info("Entry rejected: validation decision=%s author=%s", decision, entry.author)
             return {
                 "status": "rejected",
                 "message": f"Entry rejected: validation decision was {decision}",
@@ -2589,9 +2622,7 @@ class NatLangChain:
         elif "asset_registry" in data and enable_asset_tracking:
             chain._asset_registry = AssetRegistry.from_dict(data["asset_registry"])
         else:
-            chain._asset_registry = (
-                AssetRegistry() if enable_asset_tracking else None
-            )
+            chain._asset_registry = AssetRegistry() if enable_asset_tracking else None
 
         # Initialize derivative tracking
         chain.enable_derivative_tracking = enable_derivative_tracking

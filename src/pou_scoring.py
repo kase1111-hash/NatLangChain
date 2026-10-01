@@ -24,6 +24,8 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
+from llm_config import get_model
+
 # Configure PoU logging
 logger = logging.getLogger("natlangchain.pou")
 
@@ -171,7 +173,7 @@ class PoUScorer:
         self.registry_version = registry_version
         self.api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
         self._client = None
-        self._model = "claude-3-5-sonnet-20241022"
+        self._model = get_model()
 
     @property
     def client(self):

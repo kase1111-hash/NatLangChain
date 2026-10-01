@@ -14,6 +14,7 @@ from typing import Any
 
 from anthropic import Anthropic
 
+from llm_config import extract_text, get_model
 from retry import retry_llm_api
 
 logger = logging.getLogger(__name__)
@@ -83,11 +84,10 @@ def sanitize_prompt_input(
             # SECURITY: Log matched pattern server-side only (Finding 9.5)
             logger.warning(
                 "Prompt injection detected in %s: pattern=%s",
-                field_name, pattern,
+                field_name,
+                pattern,
             )
-            raise ValueError(
-                f"Input rejected for security reasons in field '{field_name}'."
-            )
+            raise ValueError(f"Input rejected for security reasons in field '{field_name}'.")
 
     # Escape delimiter-like sequences that could break prompt structure
     # Replace sequences that look like prompt delimiters
@@ -154,7 +154,7 @@ class ProofOfUnderstanding:
             raise ValueError("ANTHROPIC_API_KEY is required for validation")
 
         self.client = Anthropic(api_key=self.api_key, timeout=30.0)
-        self.model = "claude-3-5-sonnet-20241022"
+        self.model = get_model()
 
     @retry_llm_api
     def _call_llm(self, prompt: str, max_tokens: int = 1024) -> str:
@@ -181,10 +181,7 @@ class ProofOfUnderstanding:
         )
         latency_ms = (time.monotonic() - start) * 1000
 
-        if not message.content:
-            raise ValueError("Empty response from API: no content returned")
-        if not hasattr(message.content[0], "text"):
-            raise ValueError("Invalid API response format: missing 'text' attribute")
+        response_text = extract_text(message)
 
         # Record metrics
         try:
@@ -201,7 +198,7 @@ class ProofOfUnderstanding:
         except ImportError:
             pass
 
-        return message.content[0].text
+        return response_text
 
     def validate_entry(self, content: str, intent: str, author: str) -> dict[str, Any]:
         """

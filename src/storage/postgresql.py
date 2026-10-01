@@ -302,9 +302,7 @@ class PostgreSQLStorage(StorageBackend):
                     block_id = cur.fetchone()[0]
 
                     # Delete existing entries for this block and insert new ones
-                    cur.execute(
-                        "DELETE FROM entries WHERE block_index = %s", (block_index,)
-                    )
+                    cur.execute("DELETE FROM entries WHERE block_index = %s", (block_index,))
 
                     # Insert entries (denormalized for queries)
                     for i, entry in enumerate(block.get("entries", [])):
@@ -333,8 +331,7 @@ class PostgreSQLStorage(StorageBackend):
                 # Clean up blocks that are no longer in the chain (only after successful upserts)
                 if block_indices:
                     cur.execute(
-                        "DELETE FROM blocks WHERE block_index NOT IN %s",
-                        (tuple(block_indices),)
+                        "DELETE FROM blocks WHERE block_index NOT IN %s", (tuple(block_indices),)
                     )
                 else:
                     # If no blocks, clear all (chain reset scenario)

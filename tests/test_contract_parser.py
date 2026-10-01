@@ -263,21 +263,21 @@ class TestExtractJsonFromResponse:
 
     def test_extract_json_from_markdown_block(self, parser):
         """Test extracting JSON from markdown code block."""
-        response = '''Here's the result:
+        response = """Here's the result:
 ```json
 {"fee": "100", "deadline": "tomorrow"}
 ```
-'''
+"""
         result = parser._extract_json_from_response(response)
         assert '"fee": "100"' in result
 
     def test_extract_json_from_generic_code_block(self, parser):
         """Test extracting JSON from generic code block."""
-        response = '''Result:
+        response = """Result:
 ```
 {"fee": "100"}
 ```
-'''
+"""
         result = parser._extract_json_from_response(response)
         assert '"fee": "100"' in result
 
@@ -464,7 +464,9 @@ class TestLLMExtractTerms:
         mock_anthropic_class.return_value = mock_client
 
         mock_message = MagicMock()
-        mock_message.content = [MagicMock(text='{"fee": "500", "other_terms": {"location": "remote"}}')]
+        mock_message.content = [
+            MagicMock(text='{"fee": "500", "other_terms": {"location": "remote"}}')
+        ]
         mock_client.messages.create.return_value = mock_message
 
         parser = ContractParser(api_key="test-key")

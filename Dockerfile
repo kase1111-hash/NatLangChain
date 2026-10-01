@@ -4,7 +4,7 @@
 # =============================================================================
 # Stage 1: Builder
 # =============================================================================
-FROM python:3.11-slim as builder
+FROM python:3.11-slim AS builder
 
 WORKDIR /app
 
@@ -29,7 +29,7 @@ RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTr
 # =============================================================================
 # Stage 2: Runtime
 # =============================================================================
-FROM python:3.11-slim as runtime
+FROM python:3.11-slim AS runtime
 
 # Security: Create non-root user
 RUN groupadd --gid 1000 natlang && \
@@ -45,7 +45,7 @@ ENV SENTENCE_TRANSFORMERS_HOME=/opt/models
 
 # Copy application code
 COPY --chown=natlang:natlang src/ ./src/
-COPY --chown=natlang:natlang run_server.py .
+COPY --chown=natlang:natlang run_server.py wsgi.py ./
 
 # Create data directory for chain persistence
 RUN mkdir -p /app/data && \
@@ -57,10 +57,13 @@ USER natlang
 # Environment configuration
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONPATH=/app/src \
     HOST=0.0.0.0 \
     PORT=5000 \
     CHAIN_DATA_FILE=/app/data/chain_data.json \
-    FLASK_DEBUG=false
+    FLASK_DEBUG=false \
+    GUNICORN_THREADS=4 \
+    GUNICORN_TIMEOUT=120
 
 # Expose API port
 EXPOSE 5000
@@ -69,5 +72,11 @@ EXPOSE 5000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')" || exit 1
 
-# Run the server
-CMD ["python", "run_server.py"]
+# Run the server under gunicorn.
+#
+# IMPORTANT: exactly one worker process. The chain, pending queue, rate
+# limiter and validator state live in process memory; a second worker would
+# serve a divergent ledger. Use threads for request concurrency instead, and
+# scale vertically (or move to the PostgreSQL backend plus a single writer)
+# rather than adding workers.
+CMD ["sh", "-c", "exec gunicorn --bind 0.0.0.0:${PORT} --workers 1 --threads ${GUNICORN_THREADS} --timeout ${GUNICORN_TIMEOUT} --graceful-timeout 30 --access-logfile - wsgi:app"]

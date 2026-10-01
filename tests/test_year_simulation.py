@@ -109,6 +109,5 @@ class TestSimulatedOperation:
         assert matches, f"probe {probe_name} did not run"
         for incident in matches:
             assert incident["passed"], (
-                f"{probe_name}: expected {incident['expectation']}; observed "
-                f"{incident['outcome']}"
+                f"{probe_name}: expected {incident['expectation']}; observed {incident['outcome']}"
             )

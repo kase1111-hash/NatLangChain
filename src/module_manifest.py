@@ -57,6 +57,7 @@ DEFAULT_MANIFEST_DIR = "src/manifests"
 @dataclass
 class NetworkCapability:
     """A declared network endpoint that a module may access."""
+
     endpoint: str
     protocol: str = "https"
     purpose: str = ""
@@ -65,6 +66,7 @@ class NetworkCapability:
 @dataclass
 class FilesystemCapability:
     """A declared filesystem path that a module may access."""
+
     path: str
     access: str = "read"  # "read", "write", or "readwrite"
     purpose: str = ""
@@ -73,6 +75,7 @@ class FilesystemCapability:
 @dataclass
 class ShellCapability:
     """A declared shell command that a module may execute."""
+
     command: str
     purpose: str = ""
 
@@ -80,6 +83,7 @@ class ShellCapability:
 @dataclass
 class PackageCapability:
     """A declared external package dependency."""
+
     name: str
     purpose: str = ""
 
@@ -87,6 +91,7 @@ class PackageCapability:
 @dataclass
 class ModuleManifest:
     """Parsed capability manifest for a module."""
+
     module: str
     version: str = "1.0"
     description: str = ""
@@ -146,36 +151,44 @@ def _parse_manifest(data: dict[str, Any]) -> ModuleManifest:
     # Parse network capabilities
     for net in capabilities.get("network", []):
         if isinstance(net, dict):
-            manifest.network.append(NetworkCapability(
-                endpoint=net.get("endpoint", ""),
-                protocol=net.get("protocol", "https"),
-                purpose=net.get("purpose", ""),
-            ))
+            manifest.network.append(
+                NetworkCapability(
+                    endpoint=net.get("endpoint", ""),
+                    protocol=net.get("protocol", "https"),
+                    purpose=net.get("purpose", ""),
+                )
+            )
 
     # Parse filesystem capabilities
     for fs in capabilities.get("filesystem", []):
         if isinstance(fs, dict):
-            manifest.filesystem.append(FilesystemCapability(
-                path=fs.get("path", ""),
-                access=fs.get("access", "read"),
-                purpose=fs.get("purpose", ""),
-            ))
+            manifest.filesystem.append(
+                FilesystemCapability(
+                    path=fs.get("path", ""),
+                    access=fs.get("access", "read"),
+                    purpose=fs.get("purpose", ""),
+                )
+            )
 
     # Parse shell capabilities
     for sh in capabilities.get("shell", []):
         if isinstance(sh, dict):
-            manifest.shell.append(ShellCapability(
-                command=sh.get("command", ""),
-                purpose=sh.get("purpose", ""),
-            ))
+            manifest.shell.append(
+                ShellCapability(
+                    command=sh.get("command", ""),
+                    purpose=sh.get("purpose", ""),
+                )
+            )
 
     # Parse package capabilities
     for pkg in capabilities.get("packages", []):
         if isinstance(pkg, dict):
-            manifest.packages.append(PackageCapability(
-                name=pkg.get("name", ""),
-                purpose=pkg.get("purpose", ""),
-            ))
+            manifest.packages.append(
+                PackageCapability(
+                    name=pkg.get("name", ""),
+                    purpose=pkg.get("purpose", ""),
+                )
+            )
 
     return manifest
 
@@ -279,14 +292,39 @@ class ManifestRegistry:
             True if import is allowed, False if blocked
         """
         # Skip stdlib and well-known framework modules
-        if module_name.startswith(("_", "os", "sys", "json", "re", "logging",
-                                   "hashlib", "base64", "math", "time",
-                                   "threading", "collections", "dataclasses",
-                                   "typing", "abc", "enum", "functools",
-                                   "pathlib", "datetime", "uuid", "socket",
-                                   "ipaddress", "urllib", "contextlib",
-                                   "unicodedata", "secrets", "gzip",
-                                   "shutil", "subprocess")):
+        if module_name.startswith(
+            (
+                "_",
+                "os",
+                "sys",
+                "json",
+                "re",
+                "logging",
+                "hashlib",
+                "base64",
+                "math",
+                "time",
+                "threading",
+                "collections",
+                "dataclasses",
+                "typing",
+                "abc",
+                "enum",
+                "functools",
+                "pathlib",
+                "datetime",
+                "uuid",
+                "socket",
+                "ipaddress",
+                "urllib",
+                "contextlib",
+                "unicodedata",
+                "secrets",
+                "gzip",
+                "shutil",
+                "subprocess",
+            )
+        ):
             return True
 
         # Skip flask (framework, not a module we control)
@@ -302,20 +340,14 @@ class ManifestRegistry:
             self._violations.append(violation)
 
             if _is_enforcement_enabled():
-                logger.warning(
-                    "BLOCKED import of module '%s': no manifest found", module_name
-                )
+                logger.warning("BLOCKED import of module '%s': no manifest found", module_name)
                 return False
             else:
-                logger.info(
-                    "Module '%s' has no manifest (enforcement disabled)", module_name
-                )
+                logger.info("Module '%s' has no manifest (enforcement disabled)", module_name)
 
         return True
 
-    def check_network_capability(
-        self, module_name: str, endpoint: str
-    ) -> bool:
+    def check_network_capability(self, module_name: str, endpoint: str) -> bool:
         """
         Check if a module has declared a network capability for an endpoint.
 
@@ -344,13 +376,12 @@ class ManifestRegistry:
 
         logger.warning(
             "Module '%s' accessing undeclared network endpoint: %s",
-            module_name, endpoint,
+            module_name,
+            endpoint,
         )
         return not _is_enforcement_enabled()
 
-    def check_shell_capability(
-        self, module_name: str, command: str
-    ) -> bool:
+    def check_shell_capability(self, module_name: str, command: str) -> bool:
         """
         Check if a module has declared a shell capability for a command.
 
@@ -379,7 +410,8 @@ class ManifestRegistry:
 
         logger.warning(
             "Module '%s' executing undeclared shell command: %s",
-            module_name, command,
+            module_name,
+            command,
         )
         return not _is_enforcement_enabled()
 
@@ -403,11 +435,13 @@ class ManifestRegistry:
             total_shell += caps["shell"]
             total_packages += caps["packages"]
 
-            modules_summary.append({
-                "module": name,
-                "description": manifest.description,
-                "capabilities": caps,
-            })
+            modules_summary.append(
+                {
+                    "module": name,
+                    "description": manifest.description,
+                    "capabilities": caps,
+                }
+            )
 
         return {
             "total_modules": len(self._manifests),

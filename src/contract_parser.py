@@ -12,6 +12,8 @@ from typing import Any
 
 from anthropic import Anthropic
 
+from llm_config import extract_text, get_model
+
 # SECURITY: Import prompt injection prevention utilities
 # Primary: standalone sanitization module with zero dependencies (Finding 1.1)
 from sanitization import (
@@ -67,7 +69,7 @@ class ContractParser:
         """
         self.api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
         self.client = Anthropic(api_key=self.api_key, timeout=30.0) if self.api_key else None
-        self.model = "claude-3-5-sonnet-20241022"
+        self.model = get_model()
 
     def _call_llm(self, prompt: str, max_tokens: int = 512) -> str:
         """Call LLM API with metrics recording."""
@@ -79,10 +81,7 @@ class ContractParser:
         )
         latency_ms = (time.monotonic() - start) * 1000
 
-        if not message.content:
-            raise ValueError("Empty response from API")
-        if not hasattr(message.content[0], "text"):
-            raise ValueError("Invalid API response format: missing 'text' attribute")
+        response_text = extract_text(message)
 
         try:
             from llm_metrics import llm_metrics
@@ -96,7 +95,7 @@ class ContractParser:
         except ImportError:
             pass
 
-        return message.content[0].text
+        return response_text
 
     def is_contract(self, content: str) -> bool:
         """
@@ -296,7 +295,7 @@ If a term is not present, omit it. Return {{}} if no clear terms found."""
         except ValueError as e:
             logger.warning("LLM term extraction failed - validation error: %s", e)
             return None
-        except (ValueError, RuntimeError, KeyError) as e:
+        except (RuntimeError, KeyError) as e:
             logger.error("LLM term extraction failed - unexpected error: %s", e)
             return None
 
@@ -410,7 +409,7 @@ Return JSON:
         except ValueError as e:
             logger.warning("Contract validation failed - validation error: %s", e)
             return False, f"Validation error: {e!s}"
-        except (ValueError, RuntimeError) as e:
+        except RuntimeError as e:
             logger.error("Contract validation failed - unexpected error: %s", e)
             return False, f"Unexpected validation error: {e!s}"
 

@@ -61,11 +61,16 @@ def get_narrative():
     narrative = state.blockchain.get_full_narrative()
     # SECURITY: Sanitize narrative output to prevent injection payload passthrough (Finding 2.2)
     from sanitization import sanitize_output
+
     narrative = sanitize_output(narrative)
-    return narrative, 200, {
-        "Content-Type": "text/plain; charset=utf-8",
-        "Content-Disposition": "inline",
-    }
+    return (
+        narrative,
+        200,
+        {
+            "Content-Type": "text/plain; charset=utf-8",
+            "Content-Disposition": "inline",
+        },
+    )
 
 
 @core_bp.route("/entry", methods=["POST"])
@@ -205,6 +210,9 @@ def add_entry():
     if result.get("status") in ("rejected", "needs_revision"):
         return jsonify(result), 422
 
+    # Persist the pending queue so an accepted entry survives a restart or crash
+    save_chain()
+
     # Auto-mine if requested
     auto_mine = data.get("auto_mine", False)
     mined_block = None
@@ -291,7 +299,9 @@ def mine_block():
     Returns:
         Mined block details
     """
-    data = request.get_json() or {}
+    # The body is optional: a bare `POST /mine` must work (README quick start),
+    # and Flask raises 415 on get_json() when no JSON content type is sent.
+    data = request.get_json(silent=True) or {}
     difficulty = data.get("difficulty")
 
     if not state.blockchain.pending_entries:
@@ -376,9 +386,7 @@ def get_entries_by_author(author: str):
         List of entries by the author
     """
     entries = state.blockchain.get_entries_by_author(author)
-    return jsonify(
-        {"author": author, "count": len(entries), "entries": entries}
-    )
+    return jsonify({"author": author, "count": len(entries), "entries": entries})
 
 
 @core_bp.route("/entries/search", methods=["GET"])
@@ -432,6 +440,7 @@ def validate_blockchain():
     sig_stats = {"total_entries": 0, "signed": 0, "verified": 0, "unsigned": 0, "invalid": 0}
     try:
         from identity import verify_entry_signature
+
         for block in state.blockchain.chain:
             for entry in block.entries:
                 sig_stats["total_entries"] += 1
@@ -497,6 +506,7 @@ def get_stats():
     manifest_count = 0
     try:
         from module_manifest import registry
+
         manifest_count = len(registry.manifests)
     except ImportError:
         pass

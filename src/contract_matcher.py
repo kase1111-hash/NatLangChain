@@ -13,6 +13,7 @@ from anthropic import Anthropic
 
 from blockchain import NatLangChain, NaturalLanguageEntry
 from contract_parser import ContractParser
+from llm_config import extract_text, get_model
 
 # SECURITY: Import prompt injection prevention utilities
 # Primary: standalone sanitization module with zero dependencies (Finding 1.1)
@@ -63,7 +64,7 @@ class ContractMatcher:
             raise ValueError("ANTHROPIC_API_KEY required for contract matching")
 
         self.client = Anthropic(api_key=self.api_key, timeout=30.0)
-        self.model = "claude-3-5-sonnet-20241022"
+        self.model = get_model()
         self.match_threshold = match_threshold
         self.parser = ContractParser(api_key)
 
@@ -77,10 +78,7 @@ class ContractMatcher:
         )
         latency_ms = (time.monotonic() - start) * 1000
 
-        if not message.content:
-            raise ValueError("Empty response from API")
-        if not hasattr(message.content[0], "text"):
-            raise ValueError("Invalid API response format: missing 'text' attribute")
+        response_text = extract_text(message)
 
         try:
             from llm_metrics import llm_metrics
@@ -94,7 +92,7 @@ class ContractMatcher:
         except ImportError:
             pass
 
-        return message.content[0].text
+        return response_text
 
     def find_matches(
         self, blockchain: NatLangChain, pending_entries: list[NaturalLanguageEntry], miner_id: str
@@ -219,18 +217,24 @@ class ContractMatcher:
         """
         try:
             # SECURITY: Sanitize all user inputs before including in LLM prompt
-            safe_content1 = sanitize_prompt_input(content1, MAX_CONTENT_LENGTH, "contract_a_content")
+            safe_content1 = sanitize_prompt_input(
+                content1, MAX_CONTENT_LENGTH, "contract_a_content"
+            )
             safe_intent1 = sanitize_prompt_input(intent1, MAX_INTENT_LENGTH, "contract_a_intent")
-            safe_content2 = sanitize_prompt_input(content2, MAX_CONTENT_LENGTH, "contract_b_content")
+            safe_content2 = sanitize_prompt_input(
+                content2, MAX_CONTENT_LENGTH, "contract_b_content"
+            )
             safe_intent2 = sanitize_prompt_input(intent2, MAX_INTENT_LENGTH, "contract_b_intent")
 
             # SECURITY: Validate composed sections for cross-entry injection
-            validate_composed_sections([
-                ("CONTRACT_A_CONTENT", safe_content1),
-                ("CONTRACT_A_INTENT", safe_intent1),
-                ("CONTRACT_B_CONTENT", safe_content2),
-                ("CONTRACT_B_INTENT", safe_intent2),
-            ])
+            validate_composed_sections(
+                [
+                    ("CONTRACT_A_CONTENT", safe_content1),
+                    ("CONTRACT_A_INTENT", safe_intent1),
+                    ("CONTRACT_B_CONTENT", safe_content2),
+                    ("CONTRACT_B_INTENT", safe_intent2),
+                ]
+            )
 
             prompt = f"""Rate the semantic match between these two contracts on a scale of 0-100.
 
@@ -278,7 +282,9 @@ Return JSON:
                 result["score"] = 0
             VALID_RECOMMENDATIONS = {"MATCH", "PARTIAL", "NO_MATCH"}
             if result.get("recommendation") not in VALID_RECOMMENDATIONS:
-                logger.warning("LLM returned invalid recommendation: %s", result.get("recommendation"))
+                logger.warning(
+                    "LLM returned invalid recommendation: %s", result.get("recommendation")
+                )
                 result["recommendation"] = "NO_MATCH"
 
             return result
@@ -301,7 +307,7 @@ Return JSON:
                 "recommendation": "NO_MATCH",
                 "reasoning": f"API response validation failed: {e!s}",
             }
-        except (ValueError, RuntimeError, KeyError) as e:
+        except (RuntimeError, KeyError) as e:
             logger.error("Match computation failed - unexpected error: %s", e)
             return {
                 "score": 0,
@@ -363,19 +369,29 @@ Return JSON:
         """
         try:
             # SECURITY: Sanitize all user inputs before including in LLM prompt
-            safe_pending = sanitize_prompt_input(pending.content, MAX_CONTENT_LENGTH, "pending_content")
-            safe_existing = sanitize_prompt_input(existing["content"], MAX_CONTENT_LENGTH, "existing_content")
-            safe_pending_author = sanitize_prompt_input(pending.author, MAX_AUTHOR_LENGTH, "pending_author")
-            safe_existing_author = sanitize_prompt_input(existing["author"], MAX_AUTHOR_LENGTH, "existing_author")
+            safe_pending = sanitize_prompt_input(
+                pending.content, MAX_CONTENT_LENGTH, "pending_content"
+            )
+            safe_existing = sanitize_prompt_input(
+                existing["content"], MAX_CONTENT_LENGTH, "existing_content"
+            )
+            safe_pending_author = sanitize_prompt_input(
+                pending.author, MAX_AUTHOR_LENGTH, "pending_author"
+            )
+            safe_existing_author = sanitize_prompt_input(
+                existing["author"], MAX_AUTHOR_LENGTH, "existing_author"
+            )
             safe_compatibility = sanitize_prompt_input(
                 str(match_result.get("compatibility", "")), 2000, "compatibility"
             )
 
             # SECURITY: Validate composed sections for cross-entry injection
-            validate_composed_sections([
-                ("PENDING_CONTRACT", safe_pending),
-                ("EXISTING_CONTRACT", safe_existing),
-            ])
+            validate_composed_sections(
+                [
+                    ("PENDING_CONTRACT", safe_pending),
+                    ("EXISTING_CONTRACT", safe_existing),
+                ]
+            )
 
             # Generate merged proposal prose
             prompt = f"""Generate a contract proposal that merges these two matched contracts:
@@ -471,14 +487,20 @@ Write in clear, contract-appropriate language."""
         """
         try:
             # SECURITY: Sanitize all user inputs before including in LLM prompt
-            safe_original = sanitize_prompt_input(original_proposal, MAX_CONTENT_LENGTH, "original_proposal")
-            safe_counter = sanitize_prompt_input(counter_response, MAX_CONTENT_LENGTH, "counter_response")
+            safe_original = sanitize_prompt_input(
+                original_proposal, MAX_CONTENT_LENGTH, "original_proposal"
+            )
+            safe_counter = sanitize_prompt_input(
+                counter_response, MAX_CONTENT_LENGTH, "counter_response"
+            )
 
             # SECURITY: Validate composed sections for cross-entry injection
-            validate_composed_sections([
-                ("ORIGINAL_PROPOSAL", safe_original),
-                ("COUNTER_OFFER", safe_counter),
-            ])
+            validate_composed_sections(
+                [
+                    ("ORIGINAL_PROPOSAL", safe_original),
+                    ("COUNTER_OFFER", safe_counter),
+                ]
+            )
 
             prompt = f"""You are mediating a contract negotiation (Round {round_number}).
 
@@ -541,7 +563,7 @@ Return JSON:
                 "reasoning": f"Validation error: {e!s}",
                 "revised_terms": {},
             }
-        except (ValueError, RuntimeError) as e:
+        except RuntimeError as e:
             logger.error("Mediation failed - unexpected error: %s", e)
             return {
                 "points_of_agreement": [],

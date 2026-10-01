@@ -58,7 +58,7 @@ API_KEY_REQUIRED = os.getenv("NATLANGCHAIN_REQUIRE_AUTH", "true").lower() == "tr
 
 # Rate limiting: uses Redis-backed distributed rate limiter when configured,
 # with automatic fallback to in-memory for single-instance deployments.
-from rate_limiter import RateLimiter, RateLimitConfig
+from rate_limiter import RateLimitConfig, RateLimiter
 
 _rate_limiter = RateLimiter(RateLimitConfig.from_env())
 
@@ -368,6 +368,7 @@ def require_api_key(f):
 
         if not _API_KEYS:
             import logging as _logging
+
             _logging.getLogger(__name__).error(
                 "Authentication service unavailable: no API keys configured"
             )
@@ -383,14 +384,18 @@ def require_api_key(f):
                     expiry_date = datetime.date.fromisoformat(expiry)
                     if today > expiry_date:
                         import logging as _logging
+
                         _logging.getLogger(__name__).warning(
-                            "Expired API key used (expiry: %s)", expiry,
+                            "Expired API key used (expiry: %s)",
+                            expiry,
                         )
                         continue  # Expired — try next key
                 except ValueError:
                     import logging as _logging
+
                     _logging.getLogger(__name__).warning(
-                        "API key has invalid expiry format: %s", expiry,
+                        "API key has invalid expiry format: %s",
+                        expiry,
                     )
                     continue  # Invalid expiry format — reject this key
             return f(*args, **kwargs)

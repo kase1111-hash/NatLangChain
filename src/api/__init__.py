@@ -12,6 +12,7 @@ Blueprints:
 - monitoring: Health, metrics, cluster endpoints
 """
 
+import atexit
 import logging
 import os
 
@@ -47,17 +48,39 @@ def create_app(testing=False):
     if not testing:
         api_key = os.getenv("ANTHROPIC_API_KEY")
         init_managers(api_key)
+        _warn_if_auth_misconfigured()
 
     # Load blockchain from storage
     if not testing:
         from . import state
 
         state.load_chain()
+        # Flush state when the process exits. run_server.py installs richer
+        # signal handlers, but under a WSGI server (gunicorn) this is the only
+        # hook that runs when a worker is stopped.
+        atexit.register(state.save_chain)
 
     # Register blueprints
     _register_blueprints(app)
 
     return app
+
+
+def _warn_if_auth_misconfigured():
+    """Warn loudly when authentication is required but no API key exists.
+
+    In that state every mutating request is rejected with 401, which looks
+    like a broken server to a first-time operator.
+    """
+    from .utils import _API_KEYS, API_KEY_REQUIRED
+
+    if API_KEY_REQUIRED and not _API_KEYS:
+        logger.warning(
+            "NATLANGCHAIN_REQUIRE_AUTH is enabled but no API key is configured. "
+            "All authenticated endpoints will return 401. Set NATLANGCHAIN_API_KEY "
+            "(or NATLANGCHAIN_API_KEYS), or set NATLANGCHAIN_REQUIRE_AUTH=false for "
+            "local development."
+        )
 
 
 def _register_blueprints(app):
@@ -151,17 +174,12 @@ def _register_security_middleware(app):
         # CSP set to deny-all because this is a pure JSON API with no HTML rendering.
         # If a frontend is added later, these must be relaxed per-route.
         response.headers["Content-Security-Policy"] = (
-            "default-src 'none'; "
-            "frame-ancestors 'none'; "
-            "form-action 'none'; "
-            "base-uri 'none'"
+            "default-src 'none'; frame-ancestors 'none'; form-action 'none'; base-uri 'none'"
         )
 
         # SECURITY: Strict Transport Security (only effective over HTTPS)
         if os.getenv("NATLANGCHAIN_ENABLE_HSTS", "false").lower() == "true":
-            response.headers["Strict-Transport-Security"] = (
-                "max-age=31536000; includeSubDomains"
-            )
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
 
         # SECURITY: CORS headers — restrictive by default
         allowed_origins_str = os.getenv("CORS_ALLOWED_ORIGINS", "")
@@ -169,6 +187,7 @@ def _register_security_middleware(app):
         if allowed_origins_str == "*":
             # SECURITY: Wildcard CORS is not allowed (Finding 9.2)
             import logging as _logging
+
             _logging.getLogger(__name__).warning(
                 "CORS_ALLOWED_ORIGINS='*' is not supported. Ignoring wildcard."
             )
@@ -180,9 +199,7 @@ def _register_security_middleware(app):
                 response.headers["Vary"] = "Origin"
 
         response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
-        response.headers["Access-Control-Allow-Headers"] = (
-            "Content-Type, X-API-Key, Authorization"
-        )
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, X-API-Key, Authorization"
 
         # SECURITY: Additional security headers (Finding 9.3)
         response.headers["Referrer-Policy"] = "no-referrer"
@@ -242,11 +259,13 @@ def _register_security_middleware(app):
                     "BLOCKED outbound response due to %d detected secret(s)",
                     len(scan_result.detections),
                 )
-                blocked = jsonify({
-                    "error": "Response blocked by secret scanner",
-                    "message": "The response contained potentially sensitive credentials and has been blocked.",
-                    "detections_count": len(scan_result.detections),
-                })
+                blocked = jsonify(
+                    {
+                        "error": "Response blocked by secret scanner",
+                        "message": "The response contained potentially sensitive credentials and has been blocked.",
+                        "detections_count": len(scan_result.detections),
+                    }
+                )
                 blocked.status_code = 500
                 return blocked
 
@@ -333,7 +352,7 @@ def init_managers(api_key=None):
 
         managers.search_engine = SemanticSearchEngine()
         logger.info("Semantic search engine initialized")
-    except Exception as e:  # noqa: BLE001 — intentional broad catch
+    except Exception as e:
         logger.warning("Could not initialize semantic search: %s", e)
 
     # Initialize LLM-based features if API key available
@@ -365,6 +384,7 @@ def init_managers(api_key=None):
         identity = AgentIdentity.from_environment()
         if identity:
             from . import state
+
             state.agent_identity = identity
             print(f"Agent identity loaded: fingerprint={identity.fingerprint}")
         else:

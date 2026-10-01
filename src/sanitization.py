@@ -76,11 +76,10 @@ def sanitize_prompt_input(
             # SECURITY: Log matched pattern server-side only (Finding 9.5)
             logger.warning(
                 "Prompt injection detected in %s: pattern=%s",
-                field_name, pattern,
+                field_name,
+                pattern,
             )
-            raise ValueError(
-                f"Input rejected for security reasons in field '{field_name}'."
-            )
+            raise ValueError(f"Input rejected for security reasons in field '{field_name}'.")
 
     # Escape delimiter-like sequences that could break prompt structure
     text = re.sub(r"```+", "[code-block]", text)
@@ -143,20 +142,18 @@ def validate_composed_sections(
             if other_label.lower() in content_lower:
                 logger.warning(
                     "Cross-section reference detected: '%s' found in section '%s'",
-                    other_label, label,
+                    other_label,
+                    label,
                 )
-                raise ValueError(
-                    f"Input rejected: cross-section reference detected in '{label}'"
-                )
+                raise ValueError(f"Input rejected: cross-section reference detected in '{label}'")
 
         # Check for delimiter forgery: [END ...] or [BEGIN ...] patterns
         if re.search(r"\[(BEGIN|END)\s+\w+", content, re.IGNORECASE):
             logger.warning(
-                "Delimiter pattern detected in section '%s'", label,
+                "Delimiter pattern detected in section '%s'",
+                label,
             )
-            raise ValueError(
-                f"Input rejected: delimiter pattern detected in '{label}'"
-            )
+            raise ValueError(f"Input rejected: delimiter pattern detected in '{label}'")
 
     # Run injection detection on concatenated content (catches split payloads)
     combined = " ".join(content for _, content in sections)
@@ -164,11 +161,10 @@ def validate_composed_sections(
     for pattern in PROMPT_INJECTION_PATTERNS:
         if re.search(pattern, combined_lower, re.IGNORECASE):
             logger.warning(
-                "Injection pattern detected in composed prompt: pattern=%s", pattern,
+                "Injection pattern detected in composed prompt: pattern=%s",
+                pattern,
             )
-            raise ValueError(
-                "Input rejected: injection pattern detected in composed prompt"
-            )
+            raise ValueError("Input rejected: injection pattern detected in composed prompt")
 
 
 def sanitize_output(text: str) -> str:

@@ -25,7 +25,7 @@ Usage:
 import logging
 import threading
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
@@ -127,7 +127,9 @@ class LLMMetrics:
                     "input_tokens": m.total_input_tokens,
                     "output_tokens": m.total_output_tokens,
                     "avg_latency_ms": round(avg_latency, 1),
-                    "min_latency_ms": round(m.min_latency_ms, 1) if m.min_latency_ms != float("inf") else 0,
+                    "min_latency_ms": round(m.min_latency_ms, 1)
+                    if m.min_latency_ms != float("inf")
+                    else 0,
                     "max_latency_ms": round(m.max_latency_ms, 1),
                     "estimated_cost_usd": round(comp_cost_in + comp_cost_out, 6),
                 }

@@ -92,10 +92,10 @@ class TestValidationConstants:
     def test_validation_status_constants_exist(self):
         """Validation status constants should be defined."""
         from blockchain import (
-            VALIDATION_VALID,
+            VALIDATION_ERROR,
             VALIDATION_INVALID,
             VALIDATION_NEEDS_CLARIFICATION,
-            VALIDATION_ERROR,
+            VALIDATION_VALID,
         )
 
         assert VALIDATION_VALID == "VALID"
@@ -217,13 +217,13 @@ class TestValidationDecisionParsing:
 
     def test_valid_decision_recognized(self):
         """VALID decision should be recognized."""
-        from blockchain import VALIDATION_VALID, ACCEPTABLE_DECISIONS
+        from blockchain import ACCEPTABLE_DECISIONS, VALIDATION_VALID
 
         assert VALIDATION_VALID in ACCEPTABLE_DECISIONS
 
     def test_invalid_decision_not_acceptable(self):
         """INVALID decision should not be in acceptable set."""
-        from blockchain import VALIDATION_INVALID, ACCEPTABLE_DECISIONS
+        from blockchain import ACCEPTABLE_DECISIONS, VALIDATION_INVALID
 
         assert VALIDATION_INVALID not in ACCEPTABLE_DECISIONS
 

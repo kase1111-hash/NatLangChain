@@ -54,10 +54,8 @@ class RetryableError(Exception):
     """Base class for errors that should trigger a retry."""
 
 
-
 class NonRetryableError(Exception):
     """Base class for errors that should NOT trigger a retry."""
-
 
 
 class CircuitState(Enum):
@@ -324,7 +322,9 @@ def retry_with_backoff(
 
                     return result
 
-                except Exception as e:  # broad catch intentional: retry decorator must handle any exception
+                except (
+                    Exception
+                ) as e:  # broad catch intentional: retry decorator must handle any exception
                     last_exception = e
 
                     # Check if retryable

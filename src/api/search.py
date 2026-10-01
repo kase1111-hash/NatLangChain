@@ -38,7 +38,11 @@ def semantic_search():
     """
     if not managers.search_engine:
         response = jsonify(
-            {"error": "Semantic search not available", "code": "SERVICE_UNAVAILABLE", "reason": "Search engine not initialized"}
+            {
+                "error": "Semantic search not available",
+                "code": "SERVICE_UNAVAILABLE",
+                "reason": "Search engine not initialized",
+            }
         )
         response.headers["Retry-After"] = "30"
         return response, 503
@@ -87,7 +91,9 @@ def find_similar():
         List of similar entries
     """
     if not managers.search_engine:
-        response = jsonify({"error": "Semantic search not available", "code": "SERVICE_UNAVAILABLE"})
+        response = jsonify(
+            {"error": "Semantic search not available", "code": "SERVICE_UNAVAILABLE"}
+        )
         response.headers["Retry-After"] = "30"
         return response, 503
 

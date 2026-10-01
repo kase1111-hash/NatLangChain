@@ -62,7 +62,7 @@ jobs:
             type=ref,event=pr
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=sha,prefix=
+            type=sha,prefix=,format=long
 
       - name: Build and push
         id: build
@@ -100,6 +100,9 @@ jobs:
     environment:
       name: staging
       url: https://staging.natlangchain.io
+    env:
+      # `secrets` cannot be referenced in a step-level `if`; expose presence via env
+      HAS_KUBE_CONFIG: ${{ secrets.KUBE_CONFIG_STAGING != '' }}
 
     steps:
       - name: Checkout code
@@ -114,10 +117,10 @@ jobs:
         run: |
           mkdir -p ~/.kube
           echo "${{ secrets.KUBE_CONFIG_STAGING }}" | base64 -d > ~/.kube/config
-        if: ${{ secrets.KUBE_CONFIG_STAGING != '' }}
+        if: env.HAS_KUBE_CONFIG == 'true'
 
       - name: Deploy to Kubernetes
-        if: ${{ secrets.KUBE_CONFIG_STAGING != '' }}
+        if: env.HAS_KUBE_CONFIG == 'true'
         run: |
           # Update image tag in deployment
           kubectl set image deployment/natlangchain \
@@ -130,7 +133,7 @@ jobs:
             --timeout=300s
 
       - name: Verify deployment
-        if: ${{ secrets.KUBE_CONFIG_STAGING != '' }}
+        if: env.HAS_KUBE_CONFIG == 'true'
         run: |
           # Wait for pods to be ready
           kubectl wait --for=condition=ready pod \
@@ -143,7 +146,7 @@ jobs:
           curl -sf "https://${STAGING_URL}/health" || exit 1
 
       - name: Run smoke tests
-        if: ${{ secrets.KUBE_CONFIG_STAGING != '' }}
+        if: env.HAS_KUBE_CONFIG == 'true'
         run: |
           STAGING_URL=$(kubectl get ingress natlangchain -n natlangchain-staging -o jsonpath='{.spec.rules[0].host}')
 
@@ -188,6 +191,8 @@ jobs:
     environment:
       name: production
       url: https://api.natlangchain.io
+    env:
+      HAS_KUBE_CONFIG: ${{ secrets.KUBE_CONFIG_PRODUCTION != '' }}
 
     steps:
       - name: Checkout code
@@ -202,10 +207,10 @@ jobs:
         run: |
           mkdir -p ~/.kube
           echo "${{ secrets.KUBE_CONFIG_PRODUCTION }}" | base64 -d > ~/.kube/config
-        if: ${{ secrets.KUBE_CONFIG_PRODUCTION != '' }}
+        if: env.HAS_KUBE_CONFIG == 'true'
 
       - name: Create backup before deployment
-        if: ${{ secrets.KUBE_CONFIG_PRODUCTION != '' }}
+        if: env.HAS_KUBE_CONFIG == 'true'
         run: |
           # Trigger backup job
           kubectl create job --from=cronjob/natlangchain-backup \
@@ -218,7 +223,7 @@ jobs:
             --timeout=300s || true
 
       - name: Deploy to Kubernetes
-        if: ${{ secrets.KUBE_CONFIG_PRODUCTION != '' }}
+        if: env.HAS_KUBE_CONFIG == 'true'
         run: |
           # Update image tag
           kubectl set image deployment/natlangchain \
@@ -231,7 +236,7 @@ jobs:
             --timeout=300s
 
       - name: Verify deployment
-        if: ${{ secrets.KUBE_CONFIG_PRODUCTION != '' }}
+        if: env.HAS_KUBE_CONFIG == 'true'
         run: |
           # Wait for pods to be ready
           kubectl wait --for=condition=ready pod \
@@ -245,10 +250,10 @@ jobs:
           curl -sf "https://api.natlangchain.io/health/ready"
 
       - name: Run production smoke tests
-        if: ${{ secrets.KUBE_CONFIG_PRODUCTION != '' }}
+        if: env.HAS_KUBE_CONFIG == 'true'
         run: |
           # Verify chain is valid
-          curl -sf "https://api.natlangchain.io/chain/validate" | jq -e '.valid == true'
+          curl -sf "https://api.natlangchain.io/validate/chain" | jq -e '.valid == true'
 
           # Check metrics endpoint
           curl -sf "https://api.natlangchain.io/metrics" | head -5
@@ -287,7 +292,7 @@ jobs:
         continue-on-error: true
 
       - name: Rollback on failure
-        if: failure() && secrets.KUBE_CONFIG_PRODUCTION != ''
+        if: failure() && env.HAS_KUBE_CONFIG == 'true'
         run: |
           kubectl rollout undo deployment/natlangchain -n natlangchain
           kubectl rollout status deployment/natlangchain -n natlangchain --timeout=300s

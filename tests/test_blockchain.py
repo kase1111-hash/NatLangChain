@@ -27,22 +27,22 @@ from blockchain import (
     compute_entry_fingerprint,
 )
 
-
 # ============================================================
 # Helpers
 # ============================================================
 
+
 def _make_chain(**overrides):
     """Create a blockchain with all validation disabled (safe for unit tests)."""
-    defaults = dict(
-        require_validation=False,
-        enable_deduplication=False,
-        enable_rate_limiting=False,
-        enable_timestamp_validation=False,
-        enable_metadata_sanitization=False,
-        enable_asset_tracking=False,
-        enable_quality_checks=False,
-    )
+    defaults = {
+        "require_validation": False,
+        "enable_deduplication": False,
+        "enable_rate_limiting": False,
+        "enable_timestamp_validation": False,
+        "enable_metadata_sanitization": False,
+        "enable_asset_tracking": False,
+        "enable_quality_checks": False,
+    }
     defaults.update(overrides)
     return NatLangChain(**defaults)
 
@@ -54,6 +54,7 @@ def _make_entry(content="Test entry.", author="alice", intent="Test"):
 # ============================================================
 # Genesis Block
 # ============================================================
+
 
 class TestGenesisBlock:
     def test_genesis_created_on_init(self):
@@ -77,6 +78,7 @@ class TestGenesisBlock:
 # ============================================================
 # Entry Addition — Happy Path
 # ============================================================
+
 
 class TestAddEntry:
     def test_entry_goes_to_pending(self):
@@ -104,6 +106,7 @@ class TestAddEntry:
 # ============================================================
 # Pipeline Rejections
 # ============================================================
+
 
 class TestRateLimitRejection:
     def test_author_rate_limit(self):
@@ -197,6 +200,7 @@ class TestDuplicateRejection:
 # Mining
 # ============================================================
 
+
 class TestMining:
     def test_mine_creates_new_block(self):
         chain = _make_chain()
@@ -247,6 +251,7 @@ class TestMining:
 # Chain Validation
 # ============================================================
 
+
 class TestChainValidation:
     def test_fresh_chain_valid(self):
         chain = _make_chain()
@@ -273,6 +278,7 @@ class TestChainValidation:
 # Queries
 # ============================================================
 
+
 class TestQueries:
     def test_get_entries_by_author(self):
         chain = _make_chain()
@@ -292,7 +298,9 @@ class TestQueries:
 
     def test_narrative_generation(self):
         chain = _make_chain()
-        chain.add_entry(_make_entry(content="Narrative test entry.", author="narrator", intent="Narrate"))
+        chain.add_entry(
+            _make_entry(content="Narrative test entry.", author="narrator", intent="Narrate")
+        )
         chain.mine_pending_entries(difficulty=1)
         narrative = chain.get_full_narrative()
         assert "NatLangChain Narrative History" in narrative
@@ -302,6 +310,7 @@ class TestQueries:
 # ============================================================
 # Serialization / Deserialization
 # ============================================================
+
 
 class TestSerialization:
     def test_roundtrip_chain_length(self):
@@ -387,6 +396,7 @@ class TestSerialization:
 # Entry Fingerprint Persistence
 # ============================================================
 
+
 class TestFingerprintPersistence:
     def test_fingerprints_in_to_dict(self):
         chain = _make_chain(enable_deduplication=True)
@@ -427,6 +437,7 @@ class TestFingerprintPersistence:
 # ============================================================
 # Asset Registry Persistence
 # ============================================================
+
 
 class TestAssetRegistryPersistence:
     def test_asset_registry_in_to_dict(self):
@@ -474,6 +485,7 @@ class TestAssetRegistryPersistence:
 # Block Structure
 # ============================================================
 
+
 class TestBlockStructure:
     def test_block_has_expected_fields(self):
         chain = _make_chain()
@@ -497,6 +509,7 @@ class TestBlockStructure:
 # Entry Fingerprint Function
 # ============================================================
 
+
 class TestComputeFingerprint:
     def test_same_inputs_same_fingerprint(self):
         fp1 = compute_entry_fingerprint("content", "author", "intent")
@@ -518,27 +531,34 @@ class TestComputeFingerprint:
 # Parametrized Boundary Tests
 # ============================================================
 
+
 class TestEntryBoundaryConditions:
-    @pytest.mark.parametrize("content", [
-        "a",
-        "x" * 10_000,
-        "Hello\nWorld\n",
-        "Unicode: \u00e9\u00e8\u00ea \u2603 \u2764\ufe0f",
-        "   leading/trailing whitespace   ",
-    ])
+    @pytest.mark.parametrize(
+        "content",
+        [
+            "a",
+            "x" * 10_000,
+            "Hello\nWorld\n",
+            "Unicode: \u00e9\u00e8\u00ea \u2603 \u2764\ufe0f",
+            "   leading/trailing whitespace   ",
+        ],
+    )
     def test_add_entry_various_content(self, content):
         chain = _make_chain()
         result = chain.add_entry(_make_entry(content=content))
         assert result["status"] == "pending"
         assert chain.pending_entries[0].content == content
 
-    @pytest.mark.parametrize("author", [
-        "a",
-        "alice",
-        "user-with-dashes",
-        "user_with_underscores",
-        "CamelCaseUser",
-    ])
+    @pytest.mark.parametrize(
+        "author",
+        [
+            "a",
+            "alice",
+            "user-with-dashes",
+            "user_with_underscores",
+            "CamelCaseUser",
+        ],
+    )
     def test_add_entry_various_authors(self, author):
         chain = _make_chain()
         result = chain.add_entry(_make_entry(author=author))

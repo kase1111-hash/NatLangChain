@@ -20,7 +20,7 @@ mypy --config-file=pyproject.toml src/  # Type check
 
 ## Tech Stack
 
-**Backend:** Python 3.9+, Flask 3.0+, Anthropic Claude API, sentence-transformers, cryptography (AES-256)
+**Backend:** Python 3.10+, Flask 3.0+, Anthropic Claude API, sentence-transformers, cryptography (AES-256)
 
 **Infrastructure:** Docker, PostgreSQL (optional), Redis (optional)
 
@@ -49,7 +49,7 @@ src/                    # Core Python application
 ├── encryption.py       # AES-256-GCM data encryption at rest
 ├── entry_quality.py    # Entry quality analysis
 ├── pou_scoring.py      # Proof of Understanding scoring dimensions
-├── llm_providers.py    # Multi-provider LLM abstraction
+├── llm_config.py       # Model selection and response parsing shared by LLM callers
 ├── intent_classifier.py # Transfer intent detection
 ├── rate_limiter.py     # Distributed rate limiting
 └── retry.py            # Exponential backoff with circuit breaker
